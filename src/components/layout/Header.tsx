@@ -18,6 +18,14 @@ export default function Header() {
             Home
           </NavLink>
           <NavLink
+            to="/gateway"
+            className={({ isActive }) =>
+              `hover:text-white/90 ${isActive ? 'underline font-semibold' : 'text-white'}`
+            }
+          >
+            Gateway
+          </NavLink>
+          <NavLink
             to="/requests"
             className={({ isActive }) =>
               `hover:text-white/90 ${isActive ? 'underline font-semibold' : 'text-white'}`
