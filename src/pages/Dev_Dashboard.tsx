@@ -1,6 +1,6 @@
 import PageHeader from "../components/ui/PageHeader";
-import Card from "../components/ui/Card";
-import Button from "../components/ui/Button";
+import Card from "../components/ui/card";
+import Button from "../components/ui/button";
 import Table from "../components/ui/Table";
 import Form, { FormInput, FormSelect } from "../components/ui/Form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from "../components/ui/Dialog";

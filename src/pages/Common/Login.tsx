@@ -4,9 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
-import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
-import { Button as ShadcnButton } from "@/components/ui/button-shadcn";
+import Button from "../../components/ui/button";
+import Card from "../../components/ui/card";
 import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
 
 // Validation schema
@@ -100,7 +99,7 @@ export default function Login() {
           {/* Forgot Password */}
           <div className="text-right">
             <Link
-              to="/forgot-password"
+              to="/forgotPassword"
               className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
             >
               Forgot password?

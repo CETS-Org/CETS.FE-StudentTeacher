@@ -9,6 +9,12 @@ import Gateway from './pages/Common/Gateway'
 import HomePage from './pages/Common/HomePage'
 import LoginPage from './pages/Common/Login'
 import RegisterPage from './pages/Common/Register'
+import ForgotPassword from './pages/Common/ForgotPassword'
+import OtpVerification from './pages/Common/OtpVerification'
+import ResetPassword from './pages/Common/ResetPassword'
+import Wishlist from './pages/Student/Wishlist'
+import MyCourses from './pages/Student/MyCourses'
+import CourseSession from './pages/Student/CourseSession'
 
 
 export default function App() {
@@ -26,6 +32,13 @@ export default function App() {
             <Route path="/dev" element={<Dev_Dashboard />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgotPassword" element={<ForgotPassword />} /> 
+            <Route path="/otpVerification" element={<OtpVerification />} /> 
+            <Route path="/resetPassword" element={<ResetPassword />} /> 
+            
+            <Route path="/student/wishlist" element={<Wishlist />} /> 
+            <Route path="/student/myCourses" element={<MyCourses />} /> 
+            <Route path="/student/Course/:courseId" element={<CourseSession />} /> 
           </Routes>
         </div>
       </main>
