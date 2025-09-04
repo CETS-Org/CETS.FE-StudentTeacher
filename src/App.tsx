@@ -15,14 +15,21 @@ import ResetPassword from './pages/Common/ResetPassword'
 import Wishlist from './pages/Student/Wishlist'
 import MyCourses from './pages/Student/MyCourses'
 import CourseSession from './pages/Student/CourseSession'
+import Classes from './pages/Teacher/ClassesPage/Classes'
+import Courses from './pages/Teacher/CoursesPage/Courses'
+import ClassesDetail from './pages/Teacher/ClassDetail/ClassDetail'
+import SessionDetail from './pages/Teacher/ClassDetail/SessionDetail'
+
+import TeacherReport from './pages/Teacher/ReportPage/Report'
+import TeacherProfile from './pages/Teacher/TeacherProfilePage/Profile'
 
 
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
-      <Header />
+      
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 py-8">
+         <div className="px-0">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/homePage" element={<HomePage />} />
@@ -39,10 +46,22 @@ export default function App() {
             <Route path="/student/wishlist" element={<Wishlist />} /> 
             <Route path="/student/myCourses" element={<MyCourses />} /> 
             <Route path="/student/Course/:courseId" element={<CourseSession />} /> 
+
+            <Route path="/teacher/classes" element={<Classes />} />
+            <Route path="/teacher/courses" element={<Courses />} />
+            <Route path="/teacher/courses/:courseId/classes" element={<Classes />} />
+            <Route path="/teacher/classesDetail" element={<ClassesDetail />} />
+            <Route path="/teacher/sessionDetail" element={<SessionDetail />} />
+            <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
+
+            <Route path="/teacher/TeacherReport/:category" element={<TeacherReport />} />
+            
+
           </Routes>
         </div>
       </main>
       <Footer />
     </div>
+    
   )
 }
