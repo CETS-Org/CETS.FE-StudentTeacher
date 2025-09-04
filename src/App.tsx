@@ -15,6 +15,9 @@ import ResetPassword from './pages/Common/ResetPassword'
 import Wishlist from './pages/Student/Wishlist'
 import MyCourses from './pages/Student/MyCourses'
 import CourseSession from './pages/Student/CourseSession'
+import Schedule from './pages/Student/Schedule'
+import Feedback from './pages/Student/Feedback'
+import Materials from './pages/Student/Materials'
 
 
 export default function App() {
@@ -22,7 +25,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-neutral-50">
       <Header />
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="mx-auto px-4 py-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/homePage" element={<HomePage />} />
@@ -34,11 +37,13 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgotPassword" element={<ForgotPassword />} /> 
             <Route path="/otpVerification" element={<OtpVerification />} /> 
-            <Route path="/resetPassword" element={<ResetPassword />} /> 
-            
+            <Route path="/resetPassword" element={<ResetPassword />} />          
             <Route path="/student/wishlist" element={<Wishlist />} /> 
             <Route path="/student/myCourses" element={<MyCourses />} /> 
-            <Route path="/student/Course/:courseId" element={<CourseSession />} /> 
+            <Route path="/student/Course/:courseId" element={<CourseSession />} />
+            <Route path="/student/schedule" element={<Schedule />} />
+            <Route path="/student/feedback" element={<Feedback />} />
+            <Route path="/student/materials" element={<Materials />} /> 
           </Routes>
         </div>
       </main>
