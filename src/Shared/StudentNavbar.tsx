@@ -1,8 +1,7 @@
-import { Bell, User, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Bell, User, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,9 +10,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 
 export default function Navbar() {
-  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+    const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
     const navigate = useNavigate();
     const handleLogoutClick = () => {
     setIsLogoutDialogOpen(true);
@@ -70,18 +70,18 @@ export default function Navbar() {
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu>  
         {/* Logout Confirmation Dialog */}
-                <ConfirmationDialog
-                isOpen={isLogoutDialogOpen}
-                onClose={handleLogoutCancel}
-                onConfirm={handleLogoutConfirm}
-                title="Confirm Logout"
-                message="Are you sure you want to logout? You will be redirected to the login page."
-                confirmText="Logout"
-                cancelText="Cancel"
-                type="warning"
-                /> 
+        <ConfirmationDialog
+        isOpen={isLogoutDialogOpen}
+        onClose={handleLogoutCancel}
+        onConfirm={handleLogoutConfirm}
+        title="Confirm Logout"
+        message="Are you sure you want to logout? You will be redirected to the login page."
+        confirmText="Logout"
+        cancelText="Cancel"
+        type="warning"
+        />     
       </div>
     </nav>
   );

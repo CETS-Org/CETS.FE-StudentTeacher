@@ -1,5 +1,4 @@
 import { Routes, Route } from 'react-router-dom'
-import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
 import Home from './pages/Home'
 import Requests from './pages/Requests'
@@ -18,6 +17,10 @@ import CourseSession from './pages/Student/CourseSession'
 import Schedule from './pages/Student/Schedule'
 import Feedback from './pages/Student/Feedback'
 import Materials from './pages/Student/Materials'
+import TechnicalReport from './pages/Common/TechnicalReport'
+import AcademicReport from './pages/Common/AcademicReport'
+import TechnicalIssueReportDetail from './pages/Common/TechnicalIssueReportDetail'
+import AcademicChangeRequestDetail from './pages/Common/AcademicChangeRequestDetail'
 import Classes from './pages/Teacher/ClassesPage/Classes'
 import Courses from './pages/Teacher/CoursesPage/Courses'
 import ClassesDetail from './pages/Teacher/ClassDetail/ClassDetail'
@@ -51,6 +54,10 @@ export default function App() {
             <Route path="/student/schedule" element={<Schedule />} />
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/materials" element={<Materials />} /> 
+            <Route path="/student/report-issue/technical" element={<TechnicalReport />} />
+            <Route path="/student/report-issue/academic" element={<AcademicReport />} />
+            <Route path="/student/report-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
+            <Route path="/student/academic-request/detail/:id" element={<AcademicChangeRequestDetail />} />
             <Route path="/student/Course/:courseId" element={<CourseSession />} /> 
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />

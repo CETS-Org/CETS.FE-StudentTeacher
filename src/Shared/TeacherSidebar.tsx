@@ -57,6 +57,7 @@ export default function TeacherSidebar({
   const handleSubmenuToggle = (id: string) => {
     setOpenSubmenu(prev => (prev === id ? null : id));
   };
+  
 
   return (
     <>
