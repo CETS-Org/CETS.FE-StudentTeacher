@@ -18,7 +18,7 @@ type Props = {
 
 const items = [
   { id: "classes", label: "Classes", icon: BookOpen, path: "/teacher/courses" },
-  { id: "schedule", label: "Schedule", icon: Calendar, path: "/teacher/schedule" },
+  { id: "schedule", label: "Schedule", icon: Calendar, path: "/teacher/teacherSchedule" },
   { id: "attendance", label: "Attendance", icon: ClipboardCheck, path: "/teacher/attendance" },
   { id: "materials", label: "Materials", icon: BookOpen, path: "/teacher/materials" },
   { id: "feedback", label: "Feedback", icon: MessageCircle, path: "/teacher/feedback" },
