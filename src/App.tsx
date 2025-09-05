@@ -55,8 +55,9 @@ export default function App() {
             <Route path="/teacher/sessionDetail" element={<SessionDetail />} />
             <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
 
-            <Route path="/teacher/TeacherReport/:category" element={<TeacherReport />} />
-            <Route path="/teacher/teacherSchedule" element={<TeacherSchedule />} />
+            <Route path="/teacher/schedule" element={<TeacherSchedule />} />
+            <Route path="/TeacherReport/:category" element={<TeacherReport />} />
+
             
 
           </Routes>
