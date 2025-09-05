@@ -15,11 +15,13 @@ import ResetPassword from './pages/Common/ResetPassword'
 import Wishlist from './pages/Student/Wishlist'
 import MyCourses from './pages/Student/MyCourses'
 import CourseSession from './pages/Student/CourseSession'
+import Schedule from './pages/Student/Schedule'
+import Feedback from './pages/Student/Feedback'
+import Materials from './pages/Student/Materials'
 import Classes from './pages/Teacher/ClassesPage/Classes'
 import Courses from './pages/Teacher/CoursesPage/Courses'
 import ClassesDetail from './pages/Teacher/ClassDetail/ClassDetail'
 import SessionDetail from './pages/Teacher/ClassDetail/SessionDetail'
-
 import TeacherReport from './pages/Teacher/ReportPage/Report'
 import TeacherProfile from './pages/Teacher/TeacherProfilePage/Profile'
 import TeacherSchedule from './pages/Teacher/SchedulePage/TeacherSchedule'
@@ -42,12 +44,14 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgotPassword" element={<ForgotPassword />} /> 
             <Route path="/otpVerification" element={<OtpVerification />} /> 
-            <Route path="/resetPassword" element={<ResetPassword />} /> 
-            
+            <Route path="/resetPassword" element={<ResetPassword />} />          
             <Route path="/student/wishlist" element={<Wishlist />} /> 
             <Route path="/student/myCourses" element={<MyCourses />} /> 
+            <Route path="/student/Course/:courseId" element={<CourseSession />} />
+            <Route path="/student/schedule" element={<Schedule />} />
+            <Route path="/student/feedback" element={<Feedback />} />
+            <Route path="/student/materials" element={<Materials />} /> 
             <Route path="/student/Course/:courseId" element={<CourseSession />} /> 
-
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />
             <Route path="/teacher/courses/:courseId/classes" element={<Classes />} />
