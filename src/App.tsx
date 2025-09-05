@@ -24,6 +24,7 @@ import ClassesDetail from './pages/Teacher/ClassDetail/ClassDetail'
 import SessionDetail from './pages/Teacher/ClassDetail/SessionDetail'
 import TeacherReport from './pages/Teacher/ReportPage/Report'
 import TeacherProfile from './pages/Teacher/TeacherProfilePage/Profile'
+import TeacherSchedule from './pages/Teacher/SchedulePage/TeacherSchedule'
 
 
 export default function App() {
@@ -57,7 +58,13 @@ export default function App() {
             <Route path="/teacher/classesDetail" element={<ClassesDetail />} />
             <Route path="/teacher/sessionDetail" element={<SessionDetail />} />
             <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
-            <Route path="/teacher/TeacherReport/:category" element={<TeacherReport />} />      
+
+            
+
+            
+            <Route path="/teacher/teacherSchedule" element={<TeacherSchedule />} />
+            <Route path="/TeacherReport/:category" element={<TeacherReport />} />
+            
           </Routes>
         </div>
       </main>
