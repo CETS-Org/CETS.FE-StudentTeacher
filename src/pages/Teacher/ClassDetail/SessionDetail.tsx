@@ -6,6 +6,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
 import Card from "@/components/ui/card";
+import PageHeader from "@/pages/Teacher/ClassDetail/Component/PageHeader";
 
 // Import các component cho từng tab
 
@@ -66,26 +67,28 @@ export default function ClassDetailPage() {
   };
 
   return (
-    <TeacherLayout crumbs={crumbs}>
+  <TeacherLayout crumbs={crumbs}>
       <div className="p-4 md:p-6">
-        {/* Breadcrumbs và Header */}
-       
+        {/* Page Header */}
+        <PageHeader
+          title="English for Beginer - Session 01"
+          description="Manage session content, assignments, materials, and student list."
+         
+        />
 
-        {/* Tabs */}
-        <Card>
-        <div className="bg-white p-1 rounded-lg shadow-sm">
-            <Tabs
-              tabs={tabs}
-              activeTab={activeTab}
-              onTabChange={(tabId) => setActiveTab(tabId)}
-            />
-            <div className="mt-4 p-4 min-h-[607px]">
-                {renderTabContent()}
-            </div>
-        </div>
+        {/* Tabs + Card */}
+        <Card className="bg-white p-1 rounded-lg border border-gray-200 shadow-md ">
+          <Tabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId)}
+          />
+          <div className="mt-4 p-4 min-h-[607px]">
+            {renderTabContent()}
+          </div>
         </Card>
       </div>
-      
     </TeacherLayout>
+
   );
 }

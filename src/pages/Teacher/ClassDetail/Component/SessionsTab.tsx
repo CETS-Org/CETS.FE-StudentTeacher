@@ -40,7 +40,7 @@ export default function SessionsTab() {
       <div className="space-y-4">
         {/* 4. RENDER DANH SÁCH CỦA TRANG HIỆN TẠI */}
         {currentSessions.map((session) => (
-          <Card key={session.id} className="p-4">
+          <Card key={session.id} className="p-4 border border-gray-200 shadow-md">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <NotebookPen className="w-6 h-6 text-gray-500" />

@@ -30,7 +30,7 @@ type ReportItemProps = {
 
 export default function ReportItem({ report, onViewDetails }: ReportItemProps) {
   return (
-    <div className="bg-white p-4 border rounded-lg shadow-sm flex justify-between items-center">
+    <div className="bg-white p-4 border rounded-lg shadow-sm flex justify-between items-center border border-gray-200 shadow-md">
       <div>
         <h3 className="font-semibold text-gray-800">{report.title}</h3>
         <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">

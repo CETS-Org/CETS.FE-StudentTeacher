@@ -79,11 +79,11 @@ export default function ReportIssuesPage() {
       
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Report Issues</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Issues List</h1>
           <Button onClick={() => setSubmitOpen(true)}>Report Issue</Button>
         </div>
         
-        <Card>
+        <Card className="border border-gray-200 shadow-md" >
           <Tabs
               tabs={tabsData}
               activeTab={activeTab}

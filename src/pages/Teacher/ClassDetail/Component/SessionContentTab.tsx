@@ -72,7 +72,7 @@ export default function SessionContentTab({ content }: Props) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cột bên trái: Mục tiêu */}
           <motion.div variants={itemVariants} className="lg:col-span-1">
-            <Card className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1">
+            <Card className="h-full shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1 border border-gray-200 shadow-md">
               <div className="p-6">
                 <div className="flex items-center gap-4 mb-5">
                   <div className={`p-3 rounded-full ${iconBackgroundClasses.objectives} text-white shadow-md`}>
@@ -102,7 +102,7 @@ export default function SessionContentTab({ content }: Props) {
           <div className="lg:col-span-2 space-y-8">
             {/* Card Tóm tắt nội dung */}
             <motion.div variants={itemVariants}>
-              <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1">
+              <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1 border border-gray-200 shadow-md">
                 <div className="p-6">
                   <div className="flex items-center gap-4 mb-5">
                     <div className={`p-3 rounded-full ${iconBackgroundClasses.summary} text-white shadow-md`}>
@@ -122,7 +122,7 @@ export default function SessionContentTab({ content }: Props) {
             {/* Card Tài liệu đọc trước */}
             {content.preReadingUrl && (
               <motion.div variants={itemVariants}>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1">
+                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1 border border-gray-200 shadow-md">
                   <div className="p-6">
                     <div className="flex items-center gap-4 mb-5">
                         <div className={`p-3 rounded-full ${iconBackgroundClasses.prereading} text-white shadow-md`}>

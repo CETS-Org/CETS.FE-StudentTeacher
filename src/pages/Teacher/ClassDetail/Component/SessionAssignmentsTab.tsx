@@ -118,7 +118,7 @@ export default function SessionAssignmentsTab() {
           </div>
           <div className="space-y-4">
             {assignments.map(asm => (
-              <Card key={asm.id} className="p-4 hover:shadow-md transition-shadow">
+              <Card key={asm.id} className="p-4 hover:shadow-md transition-shadow border border-gray-200 shadow-md">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div className="flex-grow">
                     <div className="flex items-center gap-3">

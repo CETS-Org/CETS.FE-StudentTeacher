@@ -64,7 +64,7 @@ export default function CourseMaterialsTab() {
       <div className="space-y-3">
         {/* 4. RENDER DANH SÁCH CỦA TRANG HIỆN TẠI */}
         {currentMaterials.map((material) => (
-          <Card key={material.id} className="p-4">
+          <Card key={material.id} className="p-4 border border-gray-200 shadow-md">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <FileText className="w-6 h-6 text-blue-500" />
