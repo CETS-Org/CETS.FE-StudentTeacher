@@ -70,7 +70,7 @@ export default function App() {
 
             
             <Route path="/teacher/teacherSchedule" element={<TeacherSchedule />} />
-            <Route path="/TeacherReport/:category" element={<TeacherReport />} />
+            <Route path="/teacher/TeacherReport/:category" element={<TeacherReport />} />
             
           </Routes>
         </div>

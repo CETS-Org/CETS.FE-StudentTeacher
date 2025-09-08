@@ -190,8 +190,7 @@ const TeacherClassCard: React.FC<{ cls: TeacherClass }> = ({ cls }) => {
   /*const openClass = () => navigate(`/teacher/classes/${cls.id}`);*/
   const openClass = () => navigate(`/teacher/classesDetail`);
   const openRoster = () => navigate(`/teacher/classes/${cls.id}/roster`);
-  const openAttendance = () => navigate(`/teacher/classes/${cls.id}/attendance`);
-  const openGradebook = () => navigate(`/teacher/classes/${cls.id}/gradebook`);
+
 
   const onEdit = () => navigate(`/teacher/classes/${cls.id}/edit`);
   const onDuplicate = () => alert(`Duplicated class ${cls.title}`);
@@ -200,7 +199,7 @@ const TeacherClassCard: React.FC<{ cls: TeacherClass }> = ({ cls }) => {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200 border border-gray-200 shadow-md">
       <div className="flex flex-col lg:flex-row">
         {/* Image + status */}
         <div className="lg:w-64 h-48 lg:h-auto bg-neutral-600 relative flex-shrink-0">
@@ -399,7 +398,7 @@ export default function Classes() {
         </div>
 
         {/* Tabs + Content */}
-        <Card>
+        <Card className="border border-gray-200 shadow-md">
           <Tabs tabs={tabs} activeTab={activeTab} onTabChange={(t) => setActiveTab(t as any)} />
 
           {/* All */}

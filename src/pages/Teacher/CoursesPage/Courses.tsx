@@ -139,7 +139,7 @@ export default function Courses() {
         </div>
 
         {/* Course list */}
-        <Card>
+        <Card  className="border border-gray-200 shadow-md" title="Courses List" >
           {filtered.length > 0 ? (
             <div className="space-y-6 min-h-[707px]">
               {pageItems.map((course) => (

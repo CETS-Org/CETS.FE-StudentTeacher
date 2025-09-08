@@ -43,14 +43,14 @@ export default function ClassDetailPage() {
        
 
         {/* Tabs */}
-        <Card>
+        <Card className="border border-gray-200 shadow-md">
         <div className="bg-white p-1 rounded-lg shadow-sm">
             <Tabs
               tabs={tabs}
               activeTab={activeTab}
               onTabChange={(tabId) => setActiveTab(tabId)}
             />
-            <div className="mt-4 p-4 min-h-[607px]">
+            <div className="mt-4 p-4 min-h-[607px] ">
                 {renderTabContent()}
             </div>
         </div>

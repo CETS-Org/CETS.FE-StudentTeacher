@@ -86,7 +86,7 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
   const imgSrc = course.image || svgPlaceholder(course.title);
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200 border border-gray-200 shadow-md">
       <div className="flex flex-col lg:flex-row">
         {/* Image + status */}
         <div className="lg:w-64 h-48 lg:h-auto bg-neutral-600 relative flex-shrink-0">

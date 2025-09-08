@@ -91,7 +91,7 @@ export default function TeacherProfilePage() {
           <div>
             <div className="flex items-center gap-2">
               <User2 className="w-6 h-6 text-neutral-700" />
-              <h1 className="text-xl font-semibold">Intrunstor Profile</h1>
+              <h1 className="text-xl font-semibold">Teacher Profile</h1>
             </div>
           </div>
 
@@ -109,19 +109,19 @@ export default function TeacherProfilePage() {
         </div>
 
         {/* Profile Picture */}
-        <Card className="mb-6">
+        <Card className="mb-6 border border-gray-200 shadow-md ">
           <div className="p-4">
             
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <div className="relative ">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
                     alt="avatar"
-                    className="w-20 h-20 rounded-full object-cover border"
+                    className="w-20 h-20 rounded-full object-cover border "
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-neutral-200 grid place-content-center border">
+                  <div className="w-20 h-20 rounded-full bg-neutral-200 grid place-content-center border ">
                     <User2 className="w-8 h-8 text-neutral-500" />
                   </div>
                 )}
@@ -164,7 +164,7 @@ export default function TeacherProfilePage() {
 
         {/* Personal Information */}
         
-          <div className="p-4">
+          <div className="p-4 ">
             <h3 className="font-medium mb-4">Personal Information</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -173,7 +173,7 @@ export default function TeacherProfilePage() {
                   <User2 className="w-3.5 h-3.5" />
                   Full Name
                 </label>
-                <Input value={profile.fullName} onChange={onChange("fullName")} />
+                <Input value={profile.fullName} onChange={onChange("fullName")} className="border border-gray-200"/>
               </div>
 
               <div>
@@ -181,7 +181,7 @@ export default function TeacherProfilePage() {
                   <Calendar className="w-3.5 h-3.5" />
                   Date of Birth
                 </label>
-                <Input type="date" value={profile.dob} onChange={onChange("dob")} />
+                <Input type="date" value={profile.dob} onChange={onChange("dob")} className="border border-gray-200" />
               </div>
 
               <div>
@@ -189,7 +189,7 @@ export default function TeacherProfilePage() {
                   <Mail className="w-3.5 h-3.5" />
                   Email Address
                 </label>
-                <Input type="email" value={profile.email} onChange={onChange("email")} />
+                <Input type="email" value={profile.email} onChange={onChange("email")} className="border border-gray-200" />
               </div>
 
               <div>
@@ -197,7 +197,7 @@ export default function TeacherProfilePage() {
                   <Phone className="w-3.5 h-3.5" />
                   Phone Number
                 </label>
-                <Input value={profile.phone} onChange={onChange("phone")} />
+                <Input value={profile.phone} onChange={onChange("phone")} className="border border-gray-200" />
               </div>
 
               <div className="md:col-span-2">
@@ -205,14 +205,14 @@ export default function TeacherProfilePage() {
                   <MapPin className="w-3.5 h-3.5" />
                   Address
                 </label>
-                <Textarea value={profile.address} onChange={onChange("address")} />
+                <Textarea value={profile.address} onChange={onChange("address")} className="border border-gray-200" />
               </div>
             </div>
           </div>
-        </Card>
+       
 
         {/* Teacher Information */}
-        <Card>
+        
           <div className="p-4">
             <h3 className="font-medium mb-4">Teacher Information</h3>
 
@@ -222,7 +222,7 @@ export default function TeacherProfilePage() {
                   <IdCard className="w-3.5 h-3.5" />
                   Teacher Code
                 </label>
-                <Input value={profile.teacherCode} onChange={onChange("teacherCode")} />
+                <Input value={profile.teacherCode} onChange={onChange("teacherCode")} readOnly  className="border border-gray-200" />
               </div>
 
               <div>
@@ -230,7 +230,7 @@ export default function TeacherProfilePage() {
                   <BookOpenCheck className="w-3.5 h-3.5" />
                   Years of Experience
                 </label>
-                <Input type="number" min={0} value={profile.years} onChange={onChange("years")} />
+                <Input type="number" min={0} value={profile.years} onChange={onChange("years")} className="border border-gray-200" />
               </div>
 
               <div className="md:col-span-2">
@@ -238,7 +238,7 @@ export default function TeacherProfilePage() {
                   <FileText className="w-3.5 h-3.5" />
                   Bio
                 </label>
-                <Textarea value={profile.bio} onChange={onChange("bio")} />
+                <Textarea value={profile.bio} onChange={onChange("bio")} className="border border-gray-200" />
               </div>
 
               <div className="md:col-span-2">
@@ -251,7 +251,7 @@ export default function TeacherProfilePage() {
                   {profile.certs.map((c, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between rounded-md border px-3 py-2 bg-neutral-50"
+                      className="flex items-center justify-between rounded-md border px-3 py-2 bg-neutral-50 border border-gray-200"
                     >
                       <span className="text-sm">{c}</span>
                       {isEditing && (
