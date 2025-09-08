@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, Upload } from "lucide-react";
+import Button from "@/components/ui/button";
 
 interface TechnicalIssueReportPopupProps {
   isOpen: boolean;
@@ -265,12 +266,12 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
               className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
             >
               Submit Report
-            </button>
+            </Button>
           </div>
         </form>
       </div>

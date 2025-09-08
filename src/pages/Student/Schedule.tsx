@@ -1,283 +1,116 @@
-import React, { useState } from "react";
+import React from "react";
 import StudentLayout from "@/Shared/StudentLayout";
-import PageHeader from "@/components/ui/PageHeader";
-import Card from "@/components/ui/card";
-import Button from "@/components/ui/button";
-import { 
-  ChevronLeft, 
-  ChevronRight,
-  Calendar,
-  Clock,
-  MapPin,
-  User
-} from "lucide-react";
+import StudentWeekSchedule from "@/pages/Student/components/StudentWeekSchedule";
+import type { StudentSession } from "@/pages/Student/components/StudentWeekSchedule";
 
-// Schedule interfaces
-interface ScheduleEvent {
-  id: string;
-  title: string;
-  time: string;
-  instructor: string;
-  location?: string;
-  type: "class" | "exam" | "assignment" | "break";
-  color: string;
+/* ===== Helpers: tuần hiện tại + format yyyy:MM:dd:HH:mm ===== */
+const mondayOfThisWeek = (() => {
+  const d = new Date();
+  const day = (d.getDay() + 6) % 7; // Mon=0..Sun=6
+  d.setDate(d.getDate() - day);
+  d.setHours(0, 0, 0, 0);
+  return d;
+})();
+
+function dateOfThisWeek(offsetDay: number, h: number, m: number) {
+  const d = new Date(mondayOfThisWeek);
+  d.setDate(d.getDate() + offsetDay);
+  d.setHours(h, m, 0, 0);
+  return d;
 }
 
-interface DaySchedule {
-  date: string;
-  dayName: string;
-  events: ScheduleEvent[];
+function fmtCustom(d: Date) {
+  const zp = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}:${zp(d.getMonth() + 1)}:${zp(d.getDate())}:${zp(d.getHours())}:${zp(
+    d.getMinutes()
+  )}`;
 }
 
-interface WeekSchedule {
-  weekStart: string;
-  weekEnd: string;
-  days: DaySchedule[];
-}
+/* ===== Student Schedule Data (Tuần hiện tại) ===== */
+const studentSessions: StudentSession[] = [
+  // Thứ 2 (Mon=0)
+  { 
+    id: "1", 
+    title: "Basic English Grammar", 
+    classCode: "BE101", 
+    room: "A-201", 
+    instructor: "Ms. Johnson",
+    start: fmtCustom(dateOfThisWeek(0, 8, 0)) 
+  },
+  { 
+    id: "2", 
+    title: "English Conversation",  
+    classCode: "EC102", 
+    room: "A-201", 
+    instructor: "Mr. Smith",
+    start: fmtCustom(dateOfThisWeek(0, 14, 0)) 
+  },
 
-// Mock data for December 2023
-const mockScheduleData: WeekSchedule = {
-  weekStart: "December 12, 2023",
-  weekEnd: "December 17, 2023", 
-  days: [
-    {
-      date: "12 December 2023",
-      dayName: "Day 1",
-      events: [
-        {
-          id: "event1-1",
-          title: "Your first Test",
-          time: "14:00 - 15:00",
-          instructor: "Dr. Smith",
-          type: "exam",
-          color: "bg-primary-500"
-        },
-        {
-          id: "event2-1",
-          title: "Your first Test",
-          time: "08:00 - 13:00",
-          instructor: "Prof. Johnson",
-          location: "Room 101",
-          type: "class",
-          color: "bg-warning-500"
-        }
-      ]
-    },
-    {
-      date: "13 December 2023", 
-      dayName: "Day 2",
-      events: [
-        
-      ]
-    },
-    {
-      date: "14 December 2023",
-      dayName: "Day 3", 
-      events: [
-        {
-          id: "event3-1",
-          title: "Your first Test",
-          time: "14:00 - 15:00",
-          instructor: "Dr. Wilson",
-          type: "exam",
-          color: "bg-warning-500"
-        }
-      ]
-    },
-    {
-      date: "15 December 2023",
-      dayName: "Day 4",
-      events: [
-        {
-          id: "event4-1", 
-          title: "Your first Test",
-          time: "14:00 - 17:00",
-          instructor: "Prof. Davis",
-          location: "Lab 205",
-          type: "class",
-          color: "bg-error-500"
-        }
-      ]
-    },
-    {
-      date: "16 December 2023",
-      dayName: "Day 5", 
-      events: [
-        {
-          id: "event5-1",
-          title: "Your first Test", 
-          time: "14:00 - 15:00",
-          instructor: "Dr. Brown",
-          type: "exam",
-          color: "bg-primary-500"
-        }
-      ]
-    },
-    {
-      date: "17 December 2023",
-      dayName: "Day 6",
-      events: [
-        {
-          id: "event6-1",
-          title: "Your first Test",
-          time: "11:00 - 12:00", 
-          instructor: "Prof. Miller",
-          type: "assignment",
-          color: "bg-success-500"
-        }
-      ]
-    },
-    {
-      date: "18 December 2023",
-      dayName: "Day 7",
-      events: []
-    }
-  ]
-};
+  // Thứ 3
+  { 
+    id: "3", 
+    title: "Reading Comprehension", 
+    classCode: "RC201", 
+    room: "B-102", 
+    instructor: "Dr. Wilson",
+    start: fmtCustom(dateOfThisWeek(1, 9, 30)) 
+  },
+  { 
+    id: "4", 
+    title: "Writing Skills", 
+    classCode: "WS201", 
+    room: "B-102", 
+    instructor: "Prof. Davis",
+    start: fmtCustom(dateOfThisWeek(1, 15, 30)) 
+  },
 
-const ScheduleEventCard: React.FC<{ event: ScheduleEvent }> = ({ event }) => {
-  const getEventTypeLabel = (type: string) => {
-    switch (type) {
-      case "class": return "Class";
-      case "exam": return "Exam";
-      case "assignment": return "Assignment";
-      case "break": return "Break";
-      default: return "Event";
-    }
-  };
+  // Thứ 4
+  { 
+    id: "5", 
+    title: "Listening Practice", 
+    classCode: "LP301", 
+    room: "C-301", 
+    instructor: "Ms. Brown",
+    start: fmtCustom(dateOfThisWeek(2, 10, 0)) 
+  },
 
-  return (
-    <div className={`${event.color} text-white p-2 rounded-md text-xs`}>
-      <div className="font-medium mb-1 text-xs truncate">{event.title}</div>
-      <div className="flex items-center gap-1 mb-1">
-        <Clock className="w-2.5 h-2.5" />
-        <span className="text-xs">{event.time}</span>
-      </div>
-      <div className="flex items-center gap-1 mb-1">
-        <User className="w-2.5 h-2.5" />
-        <span className="text-xs truncate">{event.instructor}</span>
-      </div>
-      {event.location && (
-        <div className="flex items-center gap-1">
-          <MapPin className="w-2.5 h-2.5" />
-          <span className="text-xs truncate">{event.location}</span>
-        </div>
-      )}
-    </div>
-  );
-};
+  // Thứ 5
+  { 
+    id: "6", 
+    title: "Vocabulary Building", 
+    classCode: "VB401", 
+    room: "A-105", 
+    instructor: "Mr. Miller",
+    start: fmtCustom(dateOfThisWeek(3, 13, 0)) 
+  },
 
-const WeeklyCalendar: React.FC<{ schedule: WeekSchedule }> = ({ schedule }) => {
-  return (
-    <Card>
-      <div className="p-4">
-        {/* Calendar Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <div className="bg-primary-500 text-white px-3 py-1.5 rounded-md">
-              <span className="text-sm font-medium">December 2023</span>
-            </div>
-            <Button variant="ghost" size="sm">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+  // Thứ 6
+  { 
+    id: "7", 
+    title: "Pronunciation Class", 
+    classCode: "PC501", 
+    room: "D-202", 
+    instructor: "Dr. Taylor",
+    start: fmtCustom(dateOfThisWeek(4, 11, 0)) 
+  },
 
-        {/* Calendar Grid */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-neutral-200">
-                <th className="text-left p-2 font-medium text-neutral-700 w-24">
-                  <div className="text-xs">Schedule date</div>
-                </th>
-                {schedule.days.map((day, index) => (
-                  <th key={day.date} className="text-center p-2 font-medium text-neutral-700 min-w-20">
-                    <div className="text-xs">{day.dayName}</div>
-                  </th>
-                ))}
-                <th className="text-left p-2 font-medium text-neutral-700 w-20">
-                  <div className="text-xs">Notes</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {schedule.days.map((day, dayIndex) => (
-                <tr key={day.date} className="border-b border-neutral-100">
-                  {/* Date Column */}
-                  <td className="p-2 text-xs text-neutral-600 align-top">
-                    <div className="font-medium text-xs">{day.date.split(' ').slice(0, 2).join(' ')}</div>
-                    <div className="text-xs text-neutral-500">14:00-15:00</div>
-                  </td>
-                  
-                  {/* Event Columns */}
-                  {schedule.days.map((_, colIndex) => (
-                    <td key={colIndex} className="p-1 align-top">
-                      {colIndex === dayIndex && day.events.length > 0 ? (
-                        <div className="space-y-1">
-                          {day.events.map((event) => (
-                            <ScheduleEventCard key={event.id} event={event} />
-                          ))}
-                        </div>
-                      ) : colIndex === dayIndex ? (
-                        <div className="h-12 flex items-center justify-center text-neutral-400 text-xs">
-                          No events
-                        </div>
-                      ) : null}
-                    </td>
-                  ))}
-                  
-                  {/* Notes Column */}
-                  <td className="p-2 text-xs text-neutral-500 align-top">
-                    <div className="text-xs">Insert Your Statement</div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </Card>
-  );
-};
+  // Thứ 7
+  { 
+    id: "8", 
+    title: "Study Group Session", 
+    classCode: "SG601", 
+    room: "Library", 
+    instructor: "Peer Tutor",
+    start: fmtCustom(dateOfThisWeek(5, 14, 0)) 
+  },
+];
 
 export default function Schedule() {
-  const [currentWeek] = useState(mockScheduleData);
-
   return (
     <StudentLayout>
-      <div className="max-w-6xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-        {/* Page Header - Compact */}
-        <div className="mb-6">
-          <PageHeader
-            title="Van A's Schedule"
-            subtitle="Manage your class schedule and upcoming events"
-            actions={
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" iconLeft={<Calendar className="w-3 h-3" />}>
-                  <span className="hidden sm:inline">Export</span>
-                </Button>
-                <Button variant="primary" size="sm">
-                  <span className="hidden sm:inline">Add Event</span>
-                  <span className="sm:hidden">Add</span>
-                </Button>
-              </div>
-            }
-          />
-        </div>
-
-        {/* Schedule Title - Compact */}
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-neutral-900">
-            Schedule Agenda Company
-          </h2>
-        </div>
-
-        {/* Weekly Calendar - Compact */}
-        <WeeklyCalendar schedule={currentWeek} />
+      <div className="px-4 md:px-6">
+        {/* 10 slot, mỗi slot 90', học từ 8:00 → 23:00 */}
+        <StudentWeekSchedule sessions={studentSessions} startHour={8} slots={10} slotMinutes={90} />
       </div>
     </StudentLayout>
   );

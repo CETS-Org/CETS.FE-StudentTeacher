@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, AlertCircle } from "lucide-react";
+import Button from "@/components/ui/button";
 
 interface AcademicChangeRequestPopupProps {
   isOpen: boolean;
@@ -226,12 +227,12 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
               className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
             >
               Submit Request
-            </button>
+            </Button>
           </div>
         </form>
       </div>

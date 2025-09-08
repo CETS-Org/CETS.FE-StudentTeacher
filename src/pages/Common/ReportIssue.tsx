@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useLocation, useNavigate } from "react-router-dom";
+import Button from "@/components/ui/button";
 import TechnicalIssueReportPopup from "@/pages/Common/components/TechnicalIssueReportPopup";
 import AcademicChangeRequestPopup from "@/pages/Common/components/AcademicChangeRequestPopup";
 
@@ -141,12 +142,13 @@ const ReportIssue: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <button 
+              <Button 
                 onClick={() => handleViewDetails(report.id)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                variant="secondary"
+                size="sm"
               >
                 View Details
-              </button>
+              </Button>
             </div>
           </div>
         ))}
@@ -163,37 +165,42 @@ const ReportIssue: React.FC = () => {
             <AlertTriangle className="w-6 h-6 text-gray-700" />
             <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
           </div>
-          <button 
+          <Button 
             onClick={handleReportClick}
-            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+            variant="primary"
+            size="md"
           >
             {currentReportType === "Technical" ? "Report Issue" : "Request Change"}
-          </button>
+          </Button>
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="flex space-x-8">
-            <button
+            <Button
               onClick={() => setActiveTab("pending")}
-              className={`py-3 px-1 border-b-2 font-medium text-sm ${
+              variant="ghost"
+              size="sm"
+              className={`py-3 px-1 border-b-2 font-medium text-sm rounded-none ${
                 activeTab === "pending"
                   ? "border-black text-black"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
               Pending Reports
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setActiveTab("resolved")}
-              className={`py-3 px-1 border-b-2 font-medium text-sm ${
+              variant="ghost"
+              size="sm"
+              className={`py-3 px-1 border-b-2 font-medium text-sm rounded-none ${
                 activeTab === "resolved"
                   ? "border-black text-black"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
               Resolved Reports
-            </button>
+            </Button>
           </nav>
         </div>
 
