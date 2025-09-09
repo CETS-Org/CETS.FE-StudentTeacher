@@ -1,25 +1,27 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Filter, Star, Award, Users, BookOpen } from "lucide-react";
 import CourseCard from "@/pages/home/components/CourseCard";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { getCoursesApiUrl } from "@/lib/config";
 
+// API Response interface matching the provided data structure
 interface Course {
   id: string;
   title: string;
   description: string;
-  instructor: string;
+  teacher: string; // Changed from instructor to match API
   duration: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
+  level: string; // Will be "Beginner" | "Intermediate" | "Advanced" from API
   price: number;
   originalPrice?: number;
   rating: number;
   studentsCount: number;
   image: string;
   category: string;
-  features: string[];
+  features?: string[]; // Made optional as API may not include this
   isPopular?: boolean;
   isNew?: boolean;
   detailedDescription?: string;
@@ -44,8 +46,55 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
   const [selectedPriceRange, setSelectedPriceRange] = useState("all");
   const [sortBy, setSortBy] = useState("popular");
   const [showFilters, setShowFilters] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data for courses
+  // Fetch courses from API
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(getCoursesApiUrl());
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        const mappedCourses: Course[] = data.map((course: any) => ({
+          ...course,
+          features: course.features || [], 
+          originalPrice: course.originalPrice || undefined,
+          isPopular: course.isPopular || false,
+          isNew: course.isNew || false,
+          detailedDescription: course.detailedDescription || course.description,
+          curriculum: course.curriculum || [],
+          requirements: course.requirements || [],
+          whatYouWillLearn: course.whatYouWillLearn || [],
+          instructorBio: course.instructorBio || '',
+          instructorImage: course.instructorImage || '',
+          instructorRating: course.instructorRating || 0,
+          instructorStudents: course.instructorStudents || 0,
+          instructorCourses: course.instructorCourses || 0
+        }));
+        
+        setCourses(mappedCourses);
+      } catch (err) {
+        console.error('Failed to fetch courses:', err);
+        setError('Failed to load courses. Please try again later.');   
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  /*
+  // PREVIOUS HARDCODED DATA - KEPT FOR REFERENCE
   const courses: Course[] = [
     {
       id: "1",
@@ -93,249 +142,22 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
       instructorRating: 4.9,
       instructorStudents: 25000,
       instructorCourses: 5
-    },
-    {
-      id: "2",
-      title: "TOEIC Business English Mastery",
-      description: "Boost your business English skills and TOEIC score with real-world scenarios and professional vocabulary.",
-      instructor: "Michael Chen",
-      duration: "10 weeks",
-      level: "Intermediate",
-      price: 249,
-      rating: 4.7,
-      studentsCount: 12850,
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop",
-      category: "TOEIC",
-      features: ["Business scenarios", "Vocabulary building", "Mock exams", "Career guidance"],
-      isPopular: true,
-      isNew: true,
-      detailedDescription: "This TOEIC preparation course focuses on business English skills that are essential for professional success. Learn practical vocabulary and communication strategies used in real business environments.",
-      curriculum: [
-        "Business Communication Basics",
-        "TOEIC Listening Strategies",
-        "Reading Business Documents",
-        "Professional Email Writing",
-        "Meeting and Presentation Skills",
-        "Business Vocabulary Expansion",
-        "TOEIC Practice Tests",
-        "Career Development Tips"
-      ],
-      requirements: [
-        "Basic English knowledge",
-        "Interest in business English",
-        "Commitment to regular practice",
-        "Computer with internet access"
-      ],
-      whatYouWillLearn: [
-        "Master TOEIC test format and strategies",
-        "Develop business communication skills",
-        "Expand professional vocabulary",
-        "Improve listening comprehension",
-        "Enhance reading speed and accuracy",
-        "Build confidence in business settings"
-      ],
-      instructorBio: "Michael is a business English specialist with 8 years of corporate training experience. He has helped professionals from Fortune 500 companies improve their English communication skills.",
-      instructorImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-      instructorRating: 4.8,
-      instructorStudents: 18000,
-      instructorCourses: 3
-    },
-    {
-      id: "3",
-      title: "English Conversation for Beginners",
-      description: "Start your English journey with confidence. Learn essential phrases and build your speaking skills from scratch.",
-      instructor: "Emma Wilson",
-      duration: "8 weeks",
-      level: "Beginner",
-      price: 149,
-      originalPrice: 199,
-      rating: 4.9,
-      studentsCount: 25680,
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop",
-      category: "Conversation",
-      features: ["Daily practice", "Pronunciation guide", "Cultural tips", "Progress tracking"],
-      isPopular: false,
-      isNew: false,
-      detailedDescription: "Perfect for absolute beginners! This course will help you build a strong foundation in English conversation with practical, everyday phrases and confidence-building exercises.",
-      curriculum: [
-        "Basic Greetings and Introductions",
-        "Numbers, Time, and Dates",
-        "Family and Personal Information",
-        "Shopping and Money",
-        "Food and Dining",
-        "Travel and Transportation",
-        "Health and Emergencies",
-        "Daily Routines and Hobbies"
-      ],
-      requirements: [
-        "No prior English experience required",
-        "Willingness to practice speaking",
-        "Basic computer skills",
-        "Positive attitude and motivation"
-      ],
-      whatYouWillLearn: [
-        "Essential English phrases for daily life",
-        "Correct pronunciation and intonation",
-        "Basic grammar structures",
-        "Confidence in speaking English",
-        "Cultural understanding",
-        "Listening comprehension skills"
-      ],
-      instructorBio: "Emma specializes in teaching beginners and has a unique approach that makes learning English fun and engaging. She has helped over 30,000 students start their English journey.",
-      instructorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-      instructorRating: 4.9,
-      instructorStudents: 35000,
-      instructorCourses: 4
-    },
-    {
-      id: "4",
-      title: "Academic Writing Excellence",
-      description: "Master academic writing skills for university and professional success. Learn essay structure, research methods, and citation.",
-      instructor: "Dr. Robert Kim",
-      duration: "14 weeks",
-      level: "Advanced",
-      price: 349,
-      rating: 4.6,
-      studentsCount: 8750,
-      image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=250&fit=crop",
-      category: "Academic Writing",
-      features: ["Essay writing", "Research skills", "Citation styles", "Peer review"],
-      isPopular: false,
-      isNew: true,
-      detailedDescription: "This advanced course covers all aspects of academic writing, from research methodology to proper citation formats. Perfect for university students and professionals.",
-      curriculum: [
-        "Academic Writing Fundamentals",
-        "Research Methods and Sources",
-        "Essay Structure and Organization",
-        "Argumentation and Critical Thinking",
-        "Citation Styles (APA, MLA, Chicago)",
-        "Literature Review Writing",
-        "Thesis and Dissertation Writing",
-        "Peer Review and Revision"
-      ],
-      requirements: [
-        "Advanced English level (B2 or higher)",
-        "Basic research skills",
-        "Access to academic databases",
-        "Commitment to extensive writing practice"
-      ],
-      whatYouWillLearn: [
-        "Master academic writing conventions",
-        "Develop strong research skills",
-        "Learn proper citation methods",
-        "Improve critical thinking abilities",
-        "Enhance essay organization",
-        "Build confidence in academic communication"
-      ],
-      instructorBio: "Dr. Kim is a published academic with 15 years of university teaching experience. He has authored several research papers and guides students in academic writing.",
-      instructorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-      instructorRating: 4.7,
-      instructorStudents: 12000,
-      instructorCourses: 2
-    },
-    {
-      id: "5",
-      title: "Business Communication Skills",
-      description: "Enhance your professional communication with email writing, presentations, and meeting skills for career advancement.",
-      instructor: "Lisa Martinez",
-      duration: "6 weeks",
-      level: "Intermediate",
-      price: 199,
-      rating: 4.5,
-      studentsCount: 12300,
-      image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop",
-      category: "Business English",
-      features: ["Email etiquette", "Presentation skills", "Meeting management", "Networking"],
-      isPopular: false,
-      isNew: false,
-      detailedDescription: "Develop essential business communication skills that will help you succeed in the professional world. Learn to write effective emails, deliver presentations, and manage meetings.",
-      curriculum: [
-        "Professional Email Writing",
-        "Business Presentation Skills",
-        "Meeting Management and Participation",
-        "Cross-cultural Communication",
-        "Negotiation and Persuasion",
-        "Networking and Small Talk",
-        "Business Writing Styles",
-        "Crisis Communication"
-      ],
-      requirements: [
-        "Intermediate English level",
-        "Professional work experience preferred",
-        "Access to presentation software",
-        "Willingness to practice with colleagues"
-      ],
-      whatYouWillLearn: [
-        "Write professional emails and reports",
-        "Deliver compelling presentations",
-        "Lead and participate in meetings",
-        "Communicate across cultures",
-        "Build professional relationships",
-        "Handle difficult conversations"
-      ],
-      instructorBio: "Lisa is a corporate communication consultant with 12 years of experience training professionals in Fortune 500 companies. She specializes in cross-cultural business communication.",
-      instructorImage: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
-      instructorRating: 4.6,
-      instructorStudents: 15000,
-      instructorCourses: 3
-    },
-    {
-      id: "6",
-      title: "TOEFL iBT Complete Preparation",
-      description: "Comprehensive TOEFL preparation with authentic practice tests and strategies for all four sections.",
-      instructor: "David Park",
-      duration: "16 weeks",
-      level: "Advanced",
-      price: 399,
-      originalPrice: 499,
-      rating: 4.8,
-      studentsCount: 9650,
-      image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop",
-      category: "TOEFL",
-      features: ["Full practice tests", "Speaking practice", "Writing feedback", "Score guarantee"],
-      isPopular: true,
-      isNew: false,
-      detailedDescription: "Comprehensive TOEFL iBT preparation course with authentic practice materials and personalized feedback. Our proven strategies have helped students achieve their target scores.",
-      curriculum: [
-        "TOEFL iBT Overview and Strategies",
-        "Reading Section Mastery",
-        "Listening Section Techniques",
-        "Speaking Section Practice",
-        "Writing Section Development",
-        "Integrated Skills Practice",
-        "Full-Length Practice Tests",
-        "Score Improvement Strategies"
-      ],
-      requirements: [
-        "Advanced English level (B2 or higher)",
-        "Academic English background preferred",
-        "Computer with microphone and speakers",
-        "Commitment to intensive study"
-      ],
-      whatYouWillLearn: [
-        "Master all four TOEFL iBT sections",
-        "Develop time management strategies",
-        "Improve academic English skills",
-        "Practice with authentic test materials",
-        "Build confidence for test day",
-        "Achieve your target score"
-      ],
-      instructorBio: "David is a TOEFL specialist with 10 years of experience and a 98% success rate. He has helped over 20,000 students achieve their target TOEFL scores.",
-      instructorImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-      instructorRating: 4.9,
-      instructorStudents: 25000,
-      instructorCourses: 2
-    }
-  ];
+}];
+  */
 
-  const categories = ["all", "IELTS", "TOEIC", "TOEFL", "Conversation", "Academic Writing", "Business English"];
+  // Dynamic categories based on API data, with fallback for common categories
+  const categories = useMemo(() => {
+    const allCategories = ["all", ...new Set(courses.map(course => course.category).filter(Boolean))];
+    return allCategories.length > 1 ? allCategories : ["all", "Web Development", "Data Science", "Programming", "Design"];
+  }, [courses]);
+  
   const levels = ["all", "Beginner", "Intermediate", "Advanced"];
   const priceRanges = [
     { value: "all", label: "All Prices" },
-    { value: "0-150", label: "Under $150" },
-    { value: "150-250", label: "$150 - $250" },
-    { value: "250-350", label: "$250 - $350" },
-    { value: "350+", label: "Above $350" }
+    { value: "0-2000000", label: "Under 2M VND" },
+    { value: "2000000-5000000", label: "2M - 5M VND" },
+    { value: "5000000-10000000", label: "5M - 10M VND" },
+    { value: "10000000+", label: "Above 10M VND" }
   ];
 
   const sortOptions = [
@@ -350,7 +172,7 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
     let filtered = courses.filter(course => {
       const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
+                           course.teacher.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesCategory = selectedCategory === "all" || course.category === selectedCategory;
       
@@ -358,8 +180,11 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
       
       const matchesPrice = (() => {
         if (selectedPriceRange === "all") return true;
+        if (selectedPriceRange.endsWith("+")) {
+          const min = Number(selectedPriceRange.replace("+", ""));
+          return course.price >= min;
+        }
         const [min, max] = selectedPriceRange.split("-").map(Number);
-        if (max === undefined) return course.price >= min;
         return course.price >= min && course.price <= max;
       })();
 
@@ -393,7 +218,7 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
     }
 
     return filtered;
-  }, [searchTerm, selectedCategory, selectedLevel, selectedPriceRange, sortBy]);
+  }, [searchTerm, selectedCategory, selectedLevel, selectedPriceRange, sortBy, courses]);
 
   const handleEnroll = (course: Course) => {
     if (onCourseSelect) {
@@ -588,8 +413,30 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
           )}
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            <span className="ml-3 text-gray-600">Loading courses...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search className="w-12 h-12 text-red-400" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-4">Error Loading Courses</h3>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="secondary">
+              Try Again
+            </Button>
+          </div>
+        )}
+
         {/* Courses Grid */}
-        {filteredCourses.length > 0 ? (
+        {!loading && !error && filteredCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCourses.map((course, index) => (
               <div
@@ -601,7 +448,7 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
               </div>
             ))}
           </div>
-        ) : (
+        ) : !loading && !error ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Search className="w-12 h-12 text-gray-400" />
@@ -614,7 +461,7 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
               Clear all filters
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

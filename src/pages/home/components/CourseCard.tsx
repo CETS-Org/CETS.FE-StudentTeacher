@@ -6,16 +6,16 @@ interface Course {
   id: string;
   title: string;
   description: string;
-  instructor: string;
+  teacher: string;
   duration: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
+  level: string;
   price: number;
   originalPrice?: number;
   rating: number;
   studentsCount: number;
   image: string;
   category: string;
-  features: string[];
+  features?: string[];
   isPopular?: boolean;
   isNew?: boolean;
 }
@@ -80,25 +80,27 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
           {course.description}
         </p>
 
-        {/* Instructor */}
+        {/* Teacher */}
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
             <span className="text-white text-sm font-semibold">
-              {course.instructor.charAt(0)}
+              {course.teacher.charAt(0)}
             </span>
           </div>
-          <span className="text-sm text-gray-600">by {course.instructor}</span>
+          <span className="text-sm text-gray-600">by {course.teacher}</span>
         </div>
 
         {/* Features */}
-        <div className="space-y-2 mb-4">
-          {course.features.slice(0, 3).map((feature, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>{feature}</span>
-            </div>
-          ))}
-        </div>
+        {course.features && course.features.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {course.features.slice(0, 3).map((feature, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <span>{feature}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="flex items-center justify-between mb-4 text-sm text-gray-500">
@@ -128,11 +130,11 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-gray-900">
-              ${course.price}
+              {course.price.toLocaleString('vi-VN')} VND
             </span>
             {course.originalPrice && (
               <span className="text-lg text-gray-400 line-through">
-                ${course.originalPrice}
+                {course.originalPrice.toLocaleString('vi-VN')} VND
               </span>
             )}
           </div>
