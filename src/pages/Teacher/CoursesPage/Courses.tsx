@@ -2,8 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import TeacherLayout from "@/Shared/TeacherLayout";
 import PageHeader from "@/components/ui/PageHeader";
-import Card from "@/components/ui/card";
-import Button from "@/components/ui/button";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";

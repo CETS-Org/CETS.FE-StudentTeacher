@@ -1,8 +1,8 @@
 // src/pages/teacher/classes/[classId]/CourseMaterialsTab.tsx
 
 import React, { useState, useMemo } from "react";
-import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import { FileText, Upload } from "lucide-react";
 import UploadMaterialsPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadMaterialsPopup"; 
 import Pagination from "@/Shared/Pagination"; // 1. IMPORT component Pagination

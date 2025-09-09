@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Video, Calendar as CalendarIcon } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
-import { Calendar as ShadCalendar } from "@/components/ui/calendar"; // Shadcn calendar
+import { Calendar as ShadCalendar } from "@/components/ui/Calendar"; // Shadcn calendar
 
 /* =========================
    Types

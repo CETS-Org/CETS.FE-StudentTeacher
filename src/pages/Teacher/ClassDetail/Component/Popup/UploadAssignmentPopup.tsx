@@ -7,7 +7,7 @@ import {
   DialogBody,
   DialogFooter,
 } from "@/components/ui/Dialog";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import Input from "@/components/ui/input";
 import { X, Image as ImageIcon, FileText } from "lucide-react";
 

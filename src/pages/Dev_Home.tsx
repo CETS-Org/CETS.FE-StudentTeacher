@@ -1,16 +1,16 @@
 import { usePageTitle } from "../hooks/usePageTitle";
 import PageHeader from "../components/ui/PageHeader";
-import Card from "../components/ui/card";
+import Card from "../components/ui/Card";
 import Breadcrumbs from "../components/ui/Breadcrumbs";
 
-export default function Home() {
-  usePageTitle("Home");
+export default function Dev_Home() {
+  usePageTitle("Dev_Home");
 
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Home" },
+          { label: "Dev_Home" },
         ]}
       />
       

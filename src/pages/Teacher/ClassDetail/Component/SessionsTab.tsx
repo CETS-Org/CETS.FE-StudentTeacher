@@ -1,8 +1,8 @@
 // src/pages/teacher/classes/[classId]/SessionsTab.tsx
 
 import React, { useState, useMemo } from "react";
-import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import { NotebookPen } from "lucide-react";
 import Pagination from "@/Shared/Pagination"; // 1. IMPORT component Pagination
 import { useNavigate } from "react-router-dom";

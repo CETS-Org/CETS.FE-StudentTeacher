@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import Button from '@/components/ui/button'; // Giả sử bạn có component Button
+import Button from '@/components/ui/Button'; // Giả sử bạn có component Button
 
 type Props = {
   currentPage: number;

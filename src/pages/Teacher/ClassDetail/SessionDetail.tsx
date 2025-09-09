@@ -5,7 +5,7 @@ import TeacherLayout from "@/Shared/TeacherLayout";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
-import Card from "@/components/ui/card";
+import Card from "@/components/ui/Card";
 import PageHeader from "@/pages/Teacher/ClassDetail/Component/PageHeader";
 
 // Import các component cho từng tab

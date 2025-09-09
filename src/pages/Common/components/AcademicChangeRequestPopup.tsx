@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, AlertCircle } from "lucide-react";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 
 interface AcademicChangeRequestPopupProps {
   isOpen: boolean;

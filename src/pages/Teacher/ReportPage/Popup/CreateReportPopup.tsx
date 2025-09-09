@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import TechnicalReportForm from "@/pages/Teacher/ReportPage/Popup/TechnicalReportForm"; // Form con cho Technical Report
 import ScheduleChangeForm from "@/pages/Teacher/ReportPage/Popup/AcademicReportForm"; // Form con cho Schedule Change

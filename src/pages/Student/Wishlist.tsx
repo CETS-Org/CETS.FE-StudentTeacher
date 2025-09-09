@@ -1,8 +1,8 @@
 import { useState } from "react";
 import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
-import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import CourseCard, { type Course } from "@/components/ui/CourseCard";
 import Pagination from "@/Shared/Pagination";
 import { Heart } from "lucide-react";

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
-import Card from "@/components/ui/card";
-import Button from "@/components/ui/button";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 import FeedbackDialog from "./components/FeedbackDialog";
 import { 
   ChevronRight,

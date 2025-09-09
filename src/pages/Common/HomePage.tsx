@@ -1,6 +1,6 @@
 import { usePageTitle } from "../../hooks/usePageTitle";
-import Button from "../../components/ui/button";
-import Card from "../../components/ui/card";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
 import HeroImage from "../../assets/Gateway1.png";
 
 export default function HomePage() {

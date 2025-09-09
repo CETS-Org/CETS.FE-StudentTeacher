@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useLocation, useNavigate } from "react-router-dom";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import TechnicalIssueReportPopup from "@/pages/Common/components/TechnicalIssueReportPopup";
 import AcademicChangeRequestPopup from "@/pages/Common/components/AcademicChangeRequestPopup";
 

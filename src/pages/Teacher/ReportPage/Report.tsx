@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom"; // 1. IMPORT useParams
 import TeacherLayout from "@/Shared/TeacherLayout";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import { MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
@@ -12,7 +12,7 @@ import SubmitReportPopup from "@/pages/Teacher/ReportPage/Popup/CreateReportPopu
 import ViewReportPopup, { type ReportData, type ReportStatus } from "@/pages/Teacher/ReportPage/Popup/ReportDetailPopup";
 import Pagination from "@/Shared/Pagination";
 import { Tabs } from "@/components/ui/Tabs"; 
-import Card from "@/components/ui/card";
+import Card from "@/components/ui/Card";
 
 // Dữ liệu mẫu (đã dọn dẹp mục trùng lặp)
 const allMockReports: ReportData[] = [

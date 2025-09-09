@@ -4,8 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Form } from "@/components/ui/Form";
-import Button from "../../components/ui/button";
-import Card from "../../components/ui/card";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
 import { ArrowLeft, Shield, RotateCcw, Check } from "lucide-react";
 
 // Validation schema

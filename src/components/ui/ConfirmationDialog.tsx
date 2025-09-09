@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useEffect } from 'react';
-import Button from './button';
+import Button from './Button';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;

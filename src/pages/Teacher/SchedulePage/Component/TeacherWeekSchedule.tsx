@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight,Video, Calendar as CalendarIcon } from "lucid
 
 import ClassSessionDetailsPopup from "@/pages/Teacher/SchedulePage/Component/ClassSessionDetailsPopup";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
-import { Calendar as ShadCalendar } from "@/components/ui/calendar"; // Shadcn calendar
+import { Calendar as ShadCalendar } from "@/components/ui/Calendar"; // Shadcn calendar
 
 /* =========================
    Types

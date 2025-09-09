@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
-import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import { 
   Calendar,

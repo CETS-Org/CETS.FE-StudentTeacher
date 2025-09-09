@@ -1,7 +1,7 @@
 // src/components/modals/ClassSessionDetailsPopup.tsx
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import { Calendar, Clock, DoorClosed, Video, X } from "lucide-react";
 
 // Định nghĩa cấu trúc dữ liệu cho một buổi học

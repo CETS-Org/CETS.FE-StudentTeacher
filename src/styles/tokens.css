@@ -107,7 +107,7 @@
   --color-text-secondary: var(--color-neutral-600);
   --color-text-tertiary: var(--color-neutral-400);
   --color-text-inverse: #ffffff;
-  --color-border: var(--color-neutral-200);
+  --color-border: var(--color-neutral-300);
   --color-ring: var(--color-primary-500);
 
   /* Spacing */

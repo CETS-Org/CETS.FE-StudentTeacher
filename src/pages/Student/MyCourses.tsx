@@ -2,8 +2,8 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
-import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
 import { 

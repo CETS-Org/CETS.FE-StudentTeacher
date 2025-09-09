@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import TeacherLayout from "@/Shared/TeacherLayout";
-import Card from "@/components/ui/card";
-import Button from "@/components/ui/button";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import {
   User2,

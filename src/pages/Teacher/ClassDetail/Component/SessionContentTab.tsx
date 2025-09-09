@@ -1,8 +1,8 @@
 // src/components/teacher/SessionContentTab.tsx
 
 import React, { useState } from "react";
-import Card from "@/components/ui/card";
-import Button from "@/components/ui/button";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 import { CheckCircle, Link as LinkIcon, BookText, Target, ExternalLink, Upload } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import UploadAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";

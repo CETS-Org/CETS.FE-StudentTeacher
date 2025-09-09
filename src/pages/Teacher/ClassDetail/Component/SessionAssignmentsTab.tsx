@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { PlusCircle, FileText, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download } from "lucide-react";
-import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import Pagination from "@/Shared/Pagination";
 import CreateAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";

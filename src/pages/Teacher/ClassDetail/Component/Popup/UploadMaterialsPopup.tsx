@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import { UploadCloud, File, X, Info, Send } from "lucide-react";
 
 // Định nghĩa props theo khuôn mẫu

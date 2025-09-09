@@ -31,6 +31,10 @@ html, body, #root {
   scrollbar-width: none;     
 }
 
+/* Override default border color globally */
+.border {
+  border-color: var(--color-border) !important;
+}
 
 /* src/index.css */
 

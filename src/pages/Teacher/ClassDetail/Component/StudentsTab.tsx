@@ -1,6 +1,6 @@
 // src/pages/teacher/classes/[classId]/StudentsTab.tsx
 import React, { useState, useMemo } from "react";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import { Search, MessageSquare } from "lucide-react";
 
 const mockStudents = Array.from({ length: 23 }, (_, i) => ({
