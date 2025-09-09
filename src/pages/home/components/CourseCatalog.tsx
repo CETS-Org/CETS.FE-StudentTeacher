@@ -498,9 +498,8 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
               <Button
                 variant="secondary"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
+                iconLeft={<Filter className="w-4 h-4" />}
               >
-                <Filter className="w-4 h-4" />
                 Filters
                 {activeFiltersCount > 0 && (
                   <span className="bg-primary-600 text-white text-xs px-2 py-1 rounded-full">

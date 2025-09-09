@@ -50,11 +50,11 @@ export default function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading;
 
-  // 🔧 CHỈNH 3 ĐIỂM: relative + flex-row + whitespace-nowrap
+
   const base =
     "relative inline-flex flex-row items-center justify-center whitespace-nowrap rounded-md transition-colors " +
     "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500 " +
-    "disabled:opacity-60 disabled:cursor-not-allowed gap-2";
+    "disabled:opacity-60 disabled:cursor-not-allowed gap-2 leading-none";
 
   const classes = [base, getVariantClasses(variant), getSizeClasses(size), className]
     .filter(Boolean)
@@ -62,10 +62,10 @@ export default function Button({
 
   return (
     <button className={classes} disabled={isDisabled} {...props}>
-      {iconLeft && <span className="shrink-0" aria-hidden>{iconLeft}</span>}
-      <span className={loading ? "opacity-0" : undefined}>{children}</span>
+      {iconLeft && <span className="shrink-0 flex items-center" aria-hidden>{iconLeft}</span>}
+      <span className={`flex items-center ${loading ? "opacity-0" : ""}`}>{children}</span>
 
-      {iconRight && <span className="shrink-0" aria-hidden>{iconRight}</span>}
+      {iconRight && <span className="shrink-0 flex items-center" aria-hidden>{iconRight}</span>}
 
       {loading && (
         // nhờ có 'relative' ở base, spinner absolute sẽ nằm đúng trong button
