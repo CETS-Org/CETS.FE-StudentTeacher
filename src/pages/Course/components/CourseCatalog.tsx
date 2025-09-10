@@ -1,45 +1,41 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Filter, Star, Award, Users, BookOpen } from "lucide-react";
-import CourseCard from "@/pages/home/components/CourseCard";
+import CourseCard from "@/pages/Course/components/CourseCard";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { getCoursesApiUrl } from "@/lib/config";
 
-// API Response interface matching the provided data structure
 interface Course {
   id: string;
   title: string;
   description: string;
-  teacher: string; // Changed from instructor to match API
+  teacher: string; 
   duration: string;
-  level: string; // Will be "Beginner" | "Intermediate" | "Advanced" from API
+  level: string; 
   price: number;
-  originalPrice?: number;
   rating: number;
   studentsCount: number;
   image: string;
   category: string;
-  features?: string[]; // Made optional as API may not include this
+  features?: string[]; 
   isPopular?: boolean;
   isNew?: boolean;
   detailedDescription?: string;
   curriculum?: string[];
   requirements?: string[];
   whatYouWillLearn?: string[];
-  instructorBio?: string;
-  instructorImage?: string;
-  instructorRating?: number;
-  instructorStudents?: number;
-  instructorCourses?: number;
+  teacherBio?: string;
+  teacherImage?: string;
+  teacherRating?: number;
+  teacherStudents?: number;
+  teacherCourses?: number;
 }
 
-interface CourseCatalogProps {
-  onCourseSelect?: (course: Course) => void;
-}
-
-export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
+export default function CourseCatalog() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLevel, setSelectedLevel] = useState("all");
@@ -66,6 +62,9 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
         
         const mappedCourses: Course[] = data.map((course: any) => ({
           ...course,
+          image: course.image || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
+          teacher: course.teacher || "Unknown teacher",
+          duration: course.duration || "N/A",
           features: course.features || [], 
           originalPrice: course.originalPrice || undefined,
           isPopular: course.isPopular || false,
@@ -74,11 +73,11 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
           curriculum: course.curriculum || [],
           requirements: course.requirements || [],
           whatYouWillLearn: course.whatYouWillLearn || [],
-          instructorBio: course.instructorBio || '',
-          instructorImage: course.instructorImage || '',
-          instructorRating: course.instructorRating || 0,
-          instructorStudents: course.instructorStudents || 0,
-          instructorCourses: course.instructorCourses || 0
+          teacherBio: course.teacherBio || '',
+          teacherImage: course.teacherImage || '',
+          teacherRating: course.teacherRating || 0,
+          teacherStudents: course.teacherStudents || 0,
+          teacherCourses: course.teacherCourses || 0
         }));
         
         setCourses(mappedCourses);
@@ -100,7 +99,7 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
       id: "1",
       title: "Complete IELTS Preparation Course",
       description: "Master all four IELTS skills with comprehensive practice tests and expert guidance. Perfect for students aiming for band 7+.",
-      instructor: "Sarah Johnson",
+      teacher: "Sarah Johnson",
       duration: "12 weeks",
       level: "Advanced",
       price: 299,
@@ -112,7 +111,7 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
       features: ["Live classes", "Practice tests", "1-on-1 tutoring", "Certificate"],
       isPopular: true,
       isNew: false,
-      detailedDescription: "This comprehensive IELTS preparation course is designed to help you achieve your target band score. Our expert instructors will guide you through all four sections of the IELTS exam with proven strategies and techniques.",
+      detailedDescription: "This comprehensive IELTS preparation course is designed to help you achieve your target band score. Our expert teachers will guide you through all four sections of the IELTS exam with proven strategies and techniques.",
       curriculum: [
         "Introduction to IELTS",
         "Listening Skills Development",
@@ -137,11 +136,11 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
         "Build confidence through mock tests",
         "Understand IELTS scoring criteria"
       ],
-      instructorBio: "Sarah is a certified IELTS examiner with over 10 years of experience helping students achieve their target scores. She has taught thousands of students worldwide and has a 95% success rate.",
-      instructorImage: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
-      instructorRating: 4.9,
-      instructorStudents: 25000,
-      instructorCourses: 5
+      teacherBio: "Sarah is a certified IELTS examiner with over 10 years of experience helping students achieve their target scores. She has taught thousands of students worldwide and has a 95% success rate.",
+      teacherImage: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
+      teacherRating: 4.9,
+      teacherStudents: 25000,
+      teacherCourses: 5
 }];
   */
 
@@ -221,12 +220,8 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
   }, [searchTerm, selectedCategory, selectedLevel, selectedPriceRange, sortBy, courses]);
 
   const handleEnroll = (course: Course) => {
-    if (onCourseSelect) {
-      onCourseSelect(course);
-    } else {
-      // Default behavior - you can add navigation logic here
-      console.log("Enrolling in course:", course.title);
-    }
+    // Navigate to course detail page
+    navigate(`/course/${course.id}`);
   };
 
   const clearFilters = () => {
@@ -262,7 +257,7 @@ export default function CourseCatalog({ onCourseSelect }: CourseCatalogProps) {
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="text"
-                  placeholder="Search courses, instructors, or topics..."
+                  placeholder="Search courses, teachers, or topics..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-12 pr-4 py-4  text-lg rounded-2xl border-0 shadow-2xl focus:ring-4 focus:ring-white/30"

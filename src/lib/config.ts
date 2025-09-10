@@ -12,6 +12,7 @@ export const config = {
   // API endpoints
   endpoints: {
     courses: '/api/ACAD_Course',
+    courseDetail: '/api/ACAD_Course',
   },
   
   // Full API URLs
@@ -23,3 +24,6 @@ export const config = {
 
 // Helper function to get the courses API URL
 export const getCoursesApiUrl = () => config.getApiUrl(config.endpoints.courses);
+
+// Helper function to get a specific course detail API URL
+export const getCourseDetailApiUrl = (courseId: string) => `${config.getApiUrl(config.endpoints.courseDetail)}/${courseId}`;

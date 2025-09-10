@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Footer from './components/layout/Footer'
-import Home from './pages/home/Home'
+import Home from './pages/Course/CourseAll'
 import Requests from './pages/Requests'
 import Reports from './pages/Reports'
 import Dev_Dashboard from './pages/Dev_Dashboard'
@@ -29,6 +29,8 @@ import TeacherReport from './pages/Teacher/ReportPage/Report'
 import TeacherProfile from './pages/Teacher/TeacherProfilePage/Profile'
 import TeacherSchedule from './pages/Teacher/SchedulePage/TeacherSchedule'
 import Dev_Home from './pages/Dev_Home'
+import CourseDetailPage from './pages/Course/CourseDetailPage'
+import CourseAll from './pages/Course/CourseAll'
 
 
 export default function App() {
@@ -38,8 +40,9 @@ export default function App() {
       <main className="flex-1">
          <div className="px-0">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/homePage" element={<HomePage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/courses" element={<CourseAll />} />
+            <Route path="/course/:courseId" element={<CourseDetailPage />} />
             <Route path="/gateway" element={<Gateway />} />
             <Route path="/requests" element={<Requests />} />
             <Route path="/reports" element={<Reports />} />

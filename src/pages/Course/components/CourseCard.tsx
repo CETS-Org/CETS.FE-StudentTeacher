@@ -10,7 +10,6 @@ interface Course {
   duration: string;
   level: string;
   price: number;
-  originalPrice?: number;
   rating: number;
   studentsCount: number;
   image: string;
@@ -26,9 +25,6 @@ interface CourseCardProps {
 }
 
 export default function CourseCard({ course, onEnroll }: CourseCardProps) {
-  const discountPercentage = course.originalPrice 
-    ? Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)
-    : 0;
 
   return (
     <Card className="group relative hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
@@ -42,11 +38,6 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
         {course.isNew && (
           <span className="bg-accent-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
             ✨ New
-          </span>
-        )}
-        {discountPercentage > 0 && (
-          <span className="bg-success-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
-            -{discountPercentage}%
           </span>
         )}
       </div>
@@ -130,13 +121,8 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-gray-900">
-              {course.price.toLocaleString('vi-VN')} VND
+              {course.price.toLocaleString('vi-VN')} ₫
             </span>
-            {course.originalPrice && (
-              <span className="text-lg text-gray-400 line-through">
-                {course.originalPrice.toLocaleString('vi-VN')} VND
-              </span>
-            )}
           </div>
           <Button
             onClick={() => onEnroll(course)}
