@@ -4,6 +4,15 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 
+interface SyllabusItem {
+  sessionNumber: number;
+  topicTitle: string;
+  estimatedMinutes?: number;
+  required: boolean;
+  objectives?: string;
+  contentSummary?: string;
+}
+
 interface Course {
   id: string;
   courseName: string;
@@ -16,12 +25,12 @@ interface Course {
   rating: number;
   studentsCount: number;
   image: string;
-  category: string;
+  categoryName: string;
   features: string[];
   isPopular?: boolean;
   isNew?: boolean;
   detailedDescription?: string;
-  curriculum?: string[];
+  syllabusItems?: SyllabusItem[];
   requirements?: string[];
   whatYouWillLearn?: string[];
   teacherBio?: string;

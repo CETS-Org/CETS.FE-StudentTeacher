@@ -8,9 +8,18 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { getCoursesApiUrl } from "@/lib/config";
 
+interface SyllabusItem {
+  sessionNumber: number;
+  topicTitle: string;
+  estimatedMinutes?: number;
+  required: boolean;
+  objectives?: string;
+  contentSummary?: string;
+}
+
 interface Course {
   id: string;
-  title: string;
+  courseName: string;
   description: string;
   teacher: string; 
   duration: string;
@@ -19,12 +28,12 @@ interface Course {
   rating: number;
   studentsCount: number;
   image: string;
-  category: string;
+  categoryName: string;
   features?: string[]; 
   isPopular?: boolean;
   isNew?: boolean;
   detailedDescription?: string;
-  curriculum?: string[];
+  syllabusItems?: SyllabusItem[];
   requirements?: string[];
   whatYouWillLearn?: string[];
   teacherBio?: string;
@@ -62,15 +71,24 @@ export default function CourseCatalog() {
         
         const mappedCourses: Course[] = data.map((course: any) => ({
           ...course,
+          courseName: course.courseName || "Unknown Course",
+          categoryName: course.categoryName || "General",
           image: course.image || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
           teacher: course.teacher || "Unknown teacher",
           duration: course.duration || "N/A",
           features: course.features || [], 
-          originalPrice: course.originalPrice || undefined,
           isPopular: course.isPopular || false,
           isNew: course.isNew || false,
           detailedDescription: course.detailedDescription || course.description,
           curriculum: course.curriculum || [],
+          syllabusItems: course.SyllabusItems ? course.SyllabusItems.map((item: any) => ({
+            sessionNumber: item.SessionNumber,
+            topicTitle: item.TopicTitle,
+            estimatedMinutes: item.EstimatedMinutes,
+            required: item.Required,
+            objectives: item.Objectives,
+            contentSummary: item.ContentSummary
+          })) : [],
           requirements: course.requirements || [],
           whatYouWillLearn: course.whatYouWillLearn || [],
           teacherBio: course.teacherBio || '',
@@ -146,7 +164,7 @@ export default function CourseCatalog() {
 
   // Dynamic categories based on API data, with fallback for common categories
   const categories = useMemo(() => {
-    const allCategories = ["all", ...new Set(courses.map(course => course.category).filter(Boolean))];
+    const allCategories = ["all", ...new Set(courses.map(course => course.categoryName).filter(Boolean))];
     return allCategories.length > 1 ? allCategories : ["all", "Web Development", "Data Science", "Programming", "Design"];
   }, [courses]);
   
@@ -169,12 +187,12 @@ export default function CourseCatalog() {
 
   const filteredCourses = useMemo(() => {
     let filtered = courses.filter(course => {
-      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.teacher.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = selectedCategory === "all" || course.category === selectedCategory;
-      
+
+      const matchesCategory = selectedCategory === "all" || course.categoryName === selectedCategory;
+
       const matchesLevel = selectedLevel === "all" || course.level === selectedLevel;
       
       const matchesPrice = (() => {

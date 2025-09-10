@@ -4,6 +4,15 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import PaymentDialog from "./components/PaymentDialog";
 
+interface SyllabusItem {
+  sessionNumber: number;
+  topicTitle: string;
+  estimatedMinutes?: number;
+  required: boolean;
+  objectives?: string;
+  contentSummary?: string;
+}
+
 interface Course {
   id: string;
   courseName: string;
@@ -16,12 +25,12 @@ interface Course {
   rating: number;
   studentsCount: number;
   image: string;
-  category: string;
+  categoryName: string;
   features: string[];
   isPopular?: boolean;
   isNew?: boolean;
   detailedDescription?: string;
-  curriculum?: string[];
+  syllabusItems?: SyllabusItem[];
   requirements?: string[];
   whatYouWillLearn?: string[];
   teacherBio?: string;
@@ -85,7 +94,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
               <div className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <span className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {course.category}
+                    {course.categoryName}
                   </span>
                   <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
                     {course.level}
@@ -126,22 +135,46 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             </Card>
 
             {/* Course Curriculum */}
-            <Card title="Course Curriculum">
+            <Card title="Course Syllabus">
               <div className="space-y-4">
-                {course.curriculum?.map((lesson, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-semibold">
-                        {index + 1}
+                {course.syllabusItems && course.syllabusItems.length > 0 ? (
+                  course.syllabusItems.map((item, index) => (
+                    <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                            {item.sessionNumber}
+                          </div>
+                          <div className="flex-1">
+                            <span className="font-medium text-gray-900">{item.topicTitle}</span>
+                            {item.required && (
+                              <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded">Required</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Clock className="w-4 h-4" />
+                          <span>{item.estimatedMinutes ? `${item.estimatedMinutes} min` : 'N/A'}</span>
+                        </div>
                       </div>
-                      <span className="font-medium">{lesson}</span>
+                      {item.objectives && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <strong>Objectives:</strong> {item.objectives}
+                        </div>
+                      )}
+                      {item.contentSummary && (
+                        <div className="mt-1 text-sm text-gray-600">
+                          <strong>Summary:</strong> {item.contentSummary}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Clock className="w-4 h-4" />
-                      <span>15 min</span>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No curriculum available for this course yet.</p>
                   </div>
-                ))}
+                )}
               </div>
             </Card>
 
@@ -193,7 +226,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             <Card className="sticky top-8">
               <div className="text-center mb-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-3xl font-bold text-gray-900">{course.price.toLocaleString('vi-VN')}₫</span>
+                  <span className="text-3xl font-bold text-gray-900">{course.price.toLocaleString('vi-VN')} ₫</span>
                 </div>
               </div>
 

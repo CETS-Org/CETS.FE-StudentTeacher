@@ -2,9 +2,18 @@ import { Star, Clock, Users, BookOpen, ArrowRight, CheckCircle } from "lucide-re
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 
+interface SyllabusItem {
+  sessionNumber: number;
+  topicTitle: string;
+  estimatedMinutes?: number;
+  required: boolean;
+  objectives?: string;
+  contentSummary?: string;
+}
+
 interface Course {
   id: string;
-  title: string;
+  courseName: string;
   description: string;
   teacher: string;
   duration: string;
@@ -13,8 +22,9 @@ interface Course {
   rating: number;
   studentsCount: number;
   image: string;
-  category: string;
+  categoryName: string;
   features?: string[];
+  syllabusItems?: SyllabusItem[];
   isPopular?: boolean;
   isNew?: boolean;
 }
@@ -46,7 +56,7 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
       <div className="relative h-48 overflow-hidden">
         <img
           src={course.image}
-          alt={course.title}
+          alt={course.courseName}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -57,13 +67,13 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
         {/* Category */}
         <div className="mb-3">
           <span className="inline-block bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-xs font-medium">
-            {course.category}
+            {course.categoryName}
           </span>
         </div>
 
         {/* Title */}
         <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-primary-600 transition-colors duration-300 line-clamp-2">
-          {course.title}
+          {course.courseName}
         </h3>
 
         {/* Description */}
