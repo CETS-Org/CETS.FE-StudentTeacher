@@ -139,7 +139,7 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
             className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
             iconRight={<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />}
           >
-            Enroll Now
+            View Details
           </Button>
         </div>
       </div>
