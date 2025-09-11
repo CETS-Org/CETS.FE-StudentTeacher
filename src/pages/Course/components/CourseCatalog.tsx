@@ -89,7 +89,7 @@ export default function CourseCatalog() {
     let filtered = courses.filter(course => {
       const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.teacher.toLowerCase().includes(searchTerm.toLowerCase());
+                           course.teacher?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesCategory = selectedCategory === "all" || course.categoryName === selectedCategory;
 
