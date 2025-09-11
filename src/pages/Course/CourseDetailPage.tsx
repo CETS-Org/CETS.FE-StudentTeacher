@@ -42,13 +42,18 @@ export default function CourseDetailPage() {
           courseLevel: data.courseLevel || "Beginner",
           syllabusItems: data.syllabusItems ? 
             data.syllabusItems.map((item: Record<string, unknown>) => ({
+              id: (item.id ) as string,
               sessionNumber: (item.sessionNumber || 1) as number,
               topicTitle: (item.topicTitle || "Untitled Topic") as string,
               estimatedMinutes: item.estimatedMinutes as number | undefined,
               required: item.required !== undefined ? item.required as boolean : true,
               objectives: item.objectives as string | undefined,
-              contentSummary: item.contentSummary as string | undefined
-            })) : []
+              contentSummary: item.contentSummary as string | undefined,
+              preReadingUrl: item.preReadingUrl as string | null | undefined
+            })) : [],
+          benefits: data.benefits || [],
+          requirements: data.requirements || [],
+          teacherDetail: data.teacherDetail || undefined
         };
         
         setCourse(mappedCourse);

@@ -2,22 +2,28 @@
 // This file contains all course-related interfaces used across the application
 
 export interface SyllabusItem {
+  id: string;
   sessionNumber: number;
   topicTitle: string;
   estimatedMinutes?: number;
   required: boolean;
   objectives?: string;
   contentSummary?: string;
+  preReadingUrl?: string | null;
 }
 
 export interface Benefit {
   id: string;
+  courseID: string;
+  courseName: string | null;
   benefitID: string;
   benefitName: string;
 }
 
 export interface Requirement {
   id: string;
+  courseID: string;
+  courseName: string;
   requirementID: string;
   requirementName: string;
 }
@@ -33,8 +39,16 @@ export interface Course {
   courseObjective: string | string[] | null;
   
   // Teacher information
-  teacher: string;
-  teachers: string[];
+  teacher?: string; // Keep for backward compatibility
+  teacherDetail?: {
+    id: string;
+    fullName: string;
+    bio: string;
+    rating: number;
+    totalStudents: number;
+    totalCourses: number;
+    yearsExperience: number;
+  };
   teacherBio?: string;
   teacherImage?: string;
   teacherRating?: number;
@@ -194,8 +208,16 @@ export function simpleCourseToCourse(simpleCourse: SimpleCourse, additionalData?
     courseImageUrl: simpleCourse.image,
     description: simpleCourse.description,
     courseObjective: additionalData?.courseObjective || null,
-    teacher: additionalData?.teacher || "Unknown Teacher",
-    teachers: additionalData?.teachers || [],
+    teacher: additionalData?.teacher,
+    teacherDetail: additionalData?.teacherDetail || {
+      id: "unknown",
+      fullName: "Unknown Teacher",
+      bio: "",
+      rating: 0,
+      totalStudents: 0,
+      totalCourses: 0,
+      yearsExperience: 0
+    },
     duration: simpleCourse.duration,
     courseLevel: simpleCourse.level,
     formatName: simpleCourse.format,

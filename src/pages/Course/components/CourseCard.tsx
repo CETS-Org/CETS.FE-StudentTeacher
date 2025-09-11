@@ -54,10 +54,10 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
             <span className="text-white text-sm font-semibold">
-              {course.teacher.charAt(0)}
+              {course.teacherDetail?.fullName?.charAt(0) || '?'}
             </span>
           </div>
-          <span className="text-sm text-gray-600">by {course.teacher}</span>
+          <span className="text-sm text-gray-600">by {course.teacherDetail?.fullName || 'Unknown Teacher'}</span>
         </div>
 
         {/* Benefits */}

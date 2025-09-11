@@ -209,33 +209,39 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             )}
 
             {/* Teacher */}
-            <Card title="About the Teacher">
-              <div className="flex items-start gap-6">
-                <img
-                  src={course.teacherImage || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"}
-                  alt={course.teacher}
-                  className="w-20 h-20 rounded-full object-cover"
-                />
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{course.teacher}</h3>
-                  <p className="text-gray-600 mb-4">{course.teacherBio}</p>
-                  <div className="flex items-center gap-6 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span>{course.teacherRating}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span>{course.teacherStudents?.toLocaleString()} students</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <BookOpen className="w-4 h-4" />
-                      <span>{course.teacherCourses} courses</span>
+            {course.teacherDetail && (
+              <Card title="About the Teacher">
+                <div className="flex items-start gap-6">
+                  <div className="w-20 h-20 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-2xl font-bold">
+                      {course.teacherDetail.fullName.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{course.teacherDetail.fullName}</h3>
+                    <p className="text-gray-600 mb-4">{course.teacherDetail.bio}</p>
+                    <div className="flex items-center gap-6 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                        <span>{course.teacherDetail.rating || 'No rating yet'}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        <span>{course.teacherDetail.totalStudents?.toLocaleString()} students</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="w-4 h-4" />
+                        <span>{course.teacherDetail.totalCourses} courses</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        <span>{course.teacherDetail.yearsExperience} years experience</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
