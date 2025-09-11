@@ -1,33 +1,13 @@
 import React, { useState } from "react";
 import Button from "./Button";
 import { Heart, Clock, Users, Star, ChevronRight } from "lucide-react";
+import type { SimpleCourse, SimpleCourseCardProps } from "@/types/course";
 
-export interface Course {
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  format: "Online" | "In-person" | "Hybrid";
-  timeOfDay: "Morning" | "Evening" | "Weekend";
-  price: number;
-  originalPrice?: number;
-  duration: string;
-  rating?: number;
-  students?: number;
-}
+// Re-export for backward compatibility
+export type { SimpleCourse as Course };
+export type { SimpleCourseCardProps as CourseCardProps };
 
-export interface CourseCardProps {
-  course: Course;
-  onRemoveFromWishlist?: (id: string) => void;
-  onEnroll?: (course: Course) => void;
-  onViewDetails?: (course: Course) => void;
-  showWishlistButton?: boolean;
-  isWishlisted?: boolean;
-  className?: string;
-}
-
-const CourseCard: React.FC<CourseCardProps> = ({ 
+const CourseCard: React.FC<SimpleCourseCardProps> = ({ 
   course, 
   onRemoveFromWishlist,
   onEnroll,

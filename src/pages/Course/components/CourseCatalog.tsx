@@ -7,41 +7,7 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { getCoursesApiUrl } from "@/lib/config";
-
-interface SyllabusItem {
-  sessionNumber: number;
-  topicTitle: string;
-  estimatedMinutes?: number;
-  required: boolean;
-  objectives?: string;
-  contentSummary?: string;
-}
-
-interface Course {
-  id: string;
-  courseName: string;
-  description: string;
-  teacher: string; 
-  duration: string;
-  level: string; 
-  price: number;
-  rating: number;
-  studentsCount: number;
-  image: string;
-  categoryName: string;
-  features?: string[]; 
-  isPopular?: boolean;
-  isNew?: boolean;
-  detailedDescription?: string;
-  syllabusItems?: SyllabusItem[];
-  requirements?: string[];
-  whatYouWillLearn?: string[];
-  teacherBio?: string;
-  teacherImage?: string;
-  teacherRating?: number;
-  teacherStudents?: number;
-  teacherCourses?: number;
-}
+import type { Course } from "@/types/course";
 
 export default function CourseCatalog() {
   const navigate = useNavigate();
@@ -71,31 +37,17 @@ export default function CourseCatalog() {
         
         const mappedCourses: Course[] = data.map((course: any) => ({
           ...course,
-          courseName: course.courseName || "Unknown Course",
-          categoryName: course.categoryName || "General",
-          image: course.image || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
-          teacher: course.teacher || "Unknown teacher",
-          duration: course.duration || "N/A",
-          features: course.features || [], 
-          isPopular: course.isPopular || false,
-          isNew: course.isNew || false,
-          detailedDescription: course.detailedDescription || course.description,
-          curriculum: course.curriculum || [],
-          syllabusItems: course.SyllabusItems ? course.SyllabusItems.map((item: any) => ({
-            sessionNumber: item.SessionNumber,
-            topicTitle: item.TopicTitle,
-            estimatedMinutes: item.EstimatedMinutes,
-            required: item.Required,
-            objectives: item.Objectives,
-            contentSummary: item.ContentSummary
-          })) : [],
-          requirements: course.requirements || [],
-          whatYouWillLearn: course.whatYouWillLearn || [],
-          teacherBio: course.teacherBio || '',
-          teacherImage: course.teacherImage || '',
-          teacherRating: course.teacherRating || 0,
-          teacherStudents: course.teacherStudents || 0,
-          teacherCourses: course.teacherCourses || 0
+          courseImageUrl: course.courseImageUrl || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
+          courseLevel: course.levelName || "Beginner",
+          syllabusItems: Array.isArray(course.syllabusItems) ? 
+            course.syllabusItems.map((item: any) => ({
+              sessionNumber: item.sessionNumber || 1,
+              topicTitle: item.topicTitle || "Untitled Topic",
+              estimatedMinutes: item.estimatedMinutes,
+              required: item.required !== undefined ? item.required : true,
+              objectives: item.objectives,
+              contentSummary: item.contentSummary
+            })) : []
         }));
         
         setCourses(mappedCourses);
@@ -110,59 +62,7 @@ export default function CourseCatalog() {
     fetchCourses();
   }, []);
 
-  /*
-  // PREVIOUS HARDCODED DATA - KEPT FOR REFERENCE
-  const courses: Course[] = [
-    {
-      id: "1",
-      title: "Complete IELTS Preparation Course",
-      description: "Master all four IELTS skills with comprehensive practice tests and expert guidance. Perfect for students aiming for band 7+.",
-      teacher: "Sarah Johnson",
-      duration: "12 weeks",
-      level: "Advanced",
-      price: 299,
-      originalPrice: 399,
-      rating: 4.8,
-      studentsCount: 15420,
-      image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
-      category: "IELTS",
-      features: ["Live classes", "Practice tests", "1-on-1 tutoring", "Certificate"],
-      isPopular: true,
-      isNew: false,
-      detailedDescription: "This comprehensive IELTS preparation course is designed to help you achieve your target band score. Our expert teachers will guide you through all four sections of the IELTS exam with proven strategies and techniques.",
-      curriculum: [
-        "Introduction to IELTS",
-        "Listening Skills Development",
-        "Reading Comprehension Strategies",
-        "Writing Task 1: Academic & General",
-        "Writing Task 2: Essay Writing",
-        "Speaking Test Preparation",
-        "Practice Tests & Mock Exams",
-        "Final Review & Tips"
-      ],
-      requirements: [
-        "Intermediate English level (B1 or higher)",
-        "Basic computer skills",
-        "Dedication to study 3-4 hours per week",
-        "Access to computer with internet connection"
-      ],
-      whatYouWillLearn: [
-        "Master all four IELTS skills (Listening, Reading, Writing, Speaking)",
-        "Learn proven strategies for each test section",
-        "Practice with authentic IELTS materials",
-        "Develop time management skills for the exam",
-        "Build confidence through mock tests",
-        "Understand IELTS scoring criteria"
-      ],
-      teacherBio: "Sarah is a certified IELTS examiner with over 10 years of experience helping students achieve their target scores. She has taught thousands of students worldwide and has a 95% success rate.",
-      teacherImage: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
-      teacherRating: 4.9,
-      teacherStudents: 25000,
-      teacherCourses: 5
-}];
-  */
 
-  // Dynamic categories based on API data, with fallback for common categories
   const categories = useMemo(() => {
     const allCategories = ["all", ...new Set(courses.map(course => course.categoryName).filter(Boolean))];
     return allCategories.length > 1 ? allCategories : ["all", "Web Development", "Data Science", "Programming", "Design"];
@@ -193,16 +93,16 @@ export default function CourseCatalog() {
 
       const matchesCategory = selectedCategory === "all" || course.categoryName === selectedCategory;
 
-      const matchesLevel = selectedLevel === "all" || course.level === selectedLevel;
+      const matchesLevel = selectedLevel === "all" || course.courseLevel === selectedLevel;
       
       const matchesPrice = (() => {
         if (selectedPriceRange === "all") return true;
         if (selectedPriceRange.endsWith("+")) {
           const min = Number(selectedPriceRange.replace("+", ""));
-          return course.price >= min;
+          return course.standardPrice >= min;
         }
         const [min, max] = selectedPriceRange.split("-").map(Number);
-        return course.price >= min && course.price <= max;
+        return course.standardPrice >= min && course.standardPrice <= max;
       })();
 
       return matchesSearch && matchesCategory && matchesLevel && matchesPrice;
@@ -219,10 +119,10 @@ export default function CourseCatalog() {
         filtered.sort((a, b) => b.rating - a.rating);
         break;
       case "price-low":
-        filtered.sort((a, b) => a.price - b.price);
+        filtered.sort((a, b) => a.standardPrice - b.standardPrice);
         break;
       case "price-high":
-        filtered.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => b.standardPrice - a.standardPrice);
         break;
       case "popular":
       default:

@@ -10,13 +10,7 @@ import {
   BookOpen
 } from "lucide-react";
 
-// Feedback interfaces
-interface Course {
-  id: string;
-  title: string;
-  instructor: string;
-  status: "active" | "completed";
-}
+import type { FeedbackCourse as Course } from "@/types/course";
 
 // Mock courses data
 const mockCourses: Course[] = [

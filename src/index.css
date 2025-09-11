@@ -22,7 +22,6 @@ html, body, #root {
   line-clamp: 3;
 }
 
-
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -35,11 +34,5 @@ html, body, #root {
 .border {
   border-color: var(--color-border) !important;
 }
-
-/* src/index.css */
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 

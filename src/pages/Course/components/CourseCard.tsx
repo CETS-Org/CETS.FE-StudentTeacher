@@ -1,38 +1,7 @@
 import { Star, Clock, Users, BookOpen, ArrowRight, CheckCircle } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
-
-interface SyllabusItem {
-  sessionNumber: number;
-  topicTitle: string;
-  estimatedMinutes?: number;
-  required: boolean;
-  objectives?: string;
-  contentSummary?: string;
-}
-
-interface Course {
-  id: string;
-  courseName: string;
-  description: string;
-  teacher: string;
-  duration: string;
-  level: string;
-  price: number;
-  rating: number;
-  studentsCount: number;
-  image: string;
-  categoryName: string;
-  features?: string[];
-  syllabusItems?: SyllabusItem[];
-  isPopular?: boolean;
-  isNew?: boolean;
-}
-
-interface CourseCardProps {
-  course: Course;
-  onEnroll: (course: Course) => void;
-}
+import type { CourseCardProps } from "@/types/course";
 
 export default function CourseCard({ course, onEnroll }: CourseCardProps) {
 
@@ -55,7 +24,7 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
       {/* Course Image */}
       <div className="relative h-48 overflow-hidden">
         <img
-          src={course.image}
+          src={course.courseImageUrl}
           alt={course.courseName}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
@@ -91,13 +60,13 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
           <span className="text-sm text-gray-600">by {course.teacher}</span>
         </div>
 
-        {/* Features */}
-        {course.features && course.features.length > 0 && (
+        {/* Benefits */}
+        {course.benefits && course.benefits.length > 0 && (
           <div className="space-y-2 mb-4">
-            {course.features.slice(0, 3).map((feature, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+            {course.benefits.slice(0, 3).map((benefit) => (
+              <div key={benefit.id} className="flex items-center gap-2 text-sm text-gray-600">
                 <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                <span>{feature}</span>
+                <span>{benefit.benefitName}</span>
               </div>
             ))}
           </div>
@@ -122,7 +91,7 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
           <div className="flex items-center gap-1">
             <BookOpen className="w-4 h-4" />
             <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
-              {course.level}
+              {course.courseLevel}
             </span>
           </div>
         </div>
@@ -131,7 +100,7 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-gray-900">
-              {course.price.toLocaleString('vi-VN')} ₫
+              {course.standardPrice.toLocaleString('vi-VN')} ₫
             </span>
           </div>
           <Button

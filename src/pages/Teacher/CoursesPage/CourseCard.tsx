@@ -23,29 +23,9 @@ import {
 ========================= */
 
 
-export interface TeacherCourse {
-  id: string;
-  title: string;
-  courseCode: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  format: "Online" | "Offline" | "Hybrid";
-  category?: string;
+import type { TeacherCourse } from "@/types/course";
 
-  // schedule-ish (optional cho Course)
-  schedule?: string;
-  location?: string;
-  startDate?: string;
-  endDate?: string;
-
-  // meta
-  enrolled?: number;
-  capacity?: number;
-  totalHours?: number;
-  rating?: number;
-
- 
-  image?: string; // cho phép rỗng
-}
+export type { TeacherCourse };
 
 /* =========================
    Helpers

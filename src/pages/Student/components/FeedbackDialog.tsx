@@ -7,13 +7,7 @@ import {
   X
 } from "lucide-react";
 
-// Feedback interfaces
-interface Course {
-  id: string;
-  title: string;
-  instructor: string;
-  status: "active" | "completed";
-}
+import type { FeedbackCourse as Course } from "@/types/course";
 
 interface CourseFeedbackData {
   overallRating: number;

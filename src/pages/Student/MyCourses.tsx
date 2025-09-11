@@ -18,34 +18,7 @@ import {
   MapPin
 } from "lucide-react";
 
-// Course interface for center-based classes
-interface MyCourse {
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-  instructor: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  format: "Online" | "In-person" | "Hybrid";
-  category: string;
-  
-  // Enrollment info
-  enrolledDate: string;
-  startDate: string;
-  endDate: string;
-  status: "upcoming" | "active" | "completed";
-  
-  // Class schedule info
-  schedule: string; // e.g., "Mon, Wed, Fri - 7:00 PM"
-  location?: string;
-  totalHours: number;
-  sessionsPerWeek: number;
-  
-  // Additional info
-  certificate?: boolean;
-  rating?: number;
-  price: number;
-}
+import type { MyCourse } from "@/types/course";
 
 const mockMyCourses: MyCourse[] = [
   {

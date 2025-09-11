@@ -1,44 +1,9 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-
-interface SyllabusItem {
-  sessionNumber: number;
-  topicTitle: string;
-  estimatedMinutes?: number;
-  required: boolean;
-  objectives?: string;
-  contentSummary?: string;
-}
-
-interface Course {
-  id: string;
-  courseName: string;
-  description: string;
-  teacher: string;
-  duration: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  price: number;
-  originalPrice?: number;
-  rating: number;
-  studentsCount: number;
-  image: string;
-  categoryName: string;
-  features: string[];
-  isPopular?: boolean;
-  isNew?: boolean;
-  detailedDescription?: string;
-  syllabusItems?: SyllabusItem[];
-  requirements?: string[];
-  whatYouWillLearn?: string[];
-  teacherBio?: string;
-  teacherImage?: string;
-  teacherRating?: number;
-  teacherStudents?: number;
-  teacherCourses?: number;
-}
+import Input from "@/components/ui/Input";
+import type { Course } from "@/types/course";
 
 interface EnrollmentData {
   fullName: string;
@@ -75,16 +40,16 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
   // Calculate payment amounts
   const getPaymentAmount = () => {
     if (enrollmentData.paymentPlan === "quarterly") {
-      return Math.round(course.price / 4);
+      return Math.round(course.standardPrice / 4);
     }
-    return course.price;
+    return course.standardPrice;
   };
 
   const getTotalAmount = () => {
     if (enrollmentData.paymentPlan === "quarterly") {
-      return course.price;
+      return course.standardPrice;
     }
-    return course.price;
+    return course.standardPrice;
   };
 
   const handleSubmit = () => {
@@ -109,7 +74,7 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center gap-4">
                 <img
-                  src={course.image}
+                  src={course.courseImageUrl}
                   alt={course.courseName}
                   className="w-16 h-16 object-cover rounded-lg"
                 />
@@ -117,7 +82,7 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                   <h3 className="font-semibold text-gray-900">{course.courseName}</h3>
                   <p className="text-sm text-gray-600">by {course.teacher}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-lg font-bold text-primary-600">{course.price.toLocaleString('vi-VN')}₫</span>
+                    <span className="text-lg font-bold text-primary-600">{course.standardPrice.toLocaleString('vi-VN')}₫</span>
                   </div>
                 </div>
               </div>
@@ -195,7 +160,7 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                         <span className="font-semibold text-gray-900">One-time Payment</span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <div className="font-medium text-lg text-primary-600">{course.price.toLocaleString('vi-VN')}₫</div>
+                        <div className="font-medium text-lg text-primary-600">{course.standardPrice.toLocaleString('vi-VN')}₫</div>
                         <div>Pay once and get lifetime access</div>
                       </div>
                     </div>

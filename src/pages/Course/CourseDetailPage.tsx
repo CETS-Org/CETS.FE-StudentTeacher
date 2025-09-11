@@ -6,41 +6,7 @@ import Loader from "@/components/ui/Loader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import CourseDetail from "./CourseDetail";
 import { getCourseDetailApiUrl } from "@/lib/config";
-
-interface SyllabusItem {
-  sessionNumber: number;
-  topicTitle: string;
-  estimatedMinutes?: number;
-  required: boolean;
-  objectives?: string;
-  contentSummary?: string;
-}
-
-interface Course {
-  id: string;
-  courseName: string;
-  description: string;
-  teacher: string;
-  duration: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  price: number;
-  rating: number;
-  studentsCount: number;
-  image: string;
-  categoryName: string;
-  features: string[]; 
-  isPopular?: boolean;
-  isNew?: boolean;
-  detailedDescription?: string;
-  syllabusItems?: SyllabusItem[];
-  requirements?: string[];
-  whatYouWillLearn?: string[];
-  teacherBio?: string;
-  teacherImage?: string;
-  teacherRating?: number;
-  teacherStudents?: number;
-  teacherCourses?: number;
-}
+import type { Course } from "@/types/course";
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -72,32 +38,17 @@ export default function CourseDetailPage() {
         // Map the API response to our Course interface
         const mappedCourse: Course = {
           ...data,
-          courseName: data.courseName || "Unknown Course",
-          categoryName: data.categoryName || "General",
-          image: data.image || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
-          teacher: data.teacher || "Unknown teacher",
-          duration: data.duration || "N/A",
-          level: data.level || "Beginner",
-          features: data.features || [], 
-          isPopular: data.isPopular || false,
-          isNew: data.isNew || false,
-          detailedDescription: data.detailedDescription || data.description,
-          syllabusItems: (data.SyllabusItems || data.syllabusItems || data.syllabus) ? 
-            (data.SyllabusItems || data.syllabusItems || data.syllabus).map((item: any) => ({
-              sessionNumber: item.SessionNumber || item.sessionNumber || 1,
-              topicTitle: item.TopicTitle || item.topicTitle || item.title || "Untitled Topic",
-              estimatedMinutes: item.EstimatedMinutes || item.estimatedMinutes || item.duration,
-              required: item.Required !== undefined ? item.Required : (item.required !== undefined ? item.required : true),
-              objectives: item.Objectives || item.objectives,
-              contentSummary: item.ContentSummary || item.contentSummary || item.summary
-            })) : [],
-          requirements: data.requirements || [],
-          whatYouWillLearn: data.whatYouWillLearn || [],
-          teacherBio: data.teacherBio || '',
-          teacherImage: data.teacherImage || '',
-          teacherRating: data.teacherRating || 0,
-          teacherStudents: data.teacherStudents || 0,
-          teacherCourses: data.teacherCourses || 0
+          courseImageUrl: data.courseImageUrl || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
+          courseLevel: data.courseLevel || "Beginner",
+          syllabusItems: data.syllabusItems ? 
+            data.syllabusItems.map((item: Record<string, unknown>) => ({
+              sessionNumber: (item.sessionNumber || 1) as number,
+              topicTitle: (item.topicTitle || "Untitled Topic") as string,
+              estimatedMinutes: item.estimatedMinutes as number | undefined,
+              required: item.required !== undefined ? item.required as boolean : true,
+              objectives: item.objectives as string | undefined,
+              contentSummary: item.contentSummary as string | undefined
+            })) : []
         };
         
         setCourse(mappedCourse);
