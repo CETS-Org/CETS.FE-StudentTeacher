@@ -1,57 +1,63 @@
 import { useState } from "react";
-import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones } from "lucide-react";
+import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import PaymentDialog from "./components/PaymentDialog";
-
-interface SyllabusItem {
-  sessionNumber: number;
-  topicTitle: string;
-  estimatedMinutes?: number;
-  required: boolean;
-  objectives?: string;
-  contentSummary?: string;
-}
-
-interface Course {
-  id: string;
-  courseName: string;
-  description: string;
-  teacher: string;
-  duration: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  price: number;
-  originalPrice?: number;
-  rating: number;
-  studentsCount: number;
-  image: string;
-  categoryName: string;
-  features: string[];
-  isPopular?: boolean;
-  isNew?: boolean;
-  detailedDescription?: string;
-  syllabusItems?: SyllabusItem[];
-  requirements?: string[];
-  whatYouWillLearn?: string[];
-  teacherBio?: string;
-  teacherImage?: string;
-  teacherRating?: number;
-  teacherStudents?: number;
-  teacherCourses?: number;
-}
-
-interface CourseDetailProps {
-  course: Course;
-}
+import type { CourseDetailProps } from "@/types/course";
 
 export default function CourseDetail({ course }: CourseDetailProps) {
   const [showEnrollmentDialog, setShowEnrollmentDialog] = useState(false);
+
+  // Function to get appropriate icon for benefit content
+  const getBenefitIcon = (benefitName: string) => {
+    const benefit = benefitName.toLowerCase();
+    
+    if (benefit.includes('lifetime') || benefit.includes('access')) {
+      return <CheckCircle className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('download') || benefit.includes('resource')) {
+      return <Download className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('certificate') || benefit.includes('completion')) {
+      return <Award className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('guarantee') || benefit.includes('money') || benefit.includes('refund')) {
+      return <Shield className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('support') || benefit.includes('help') || benefit.includes('assistance')) {
+      return <Headphones className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('video') || benefit.includes('lecture')) {
+      return <Video className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('mobile') || benefit.includes('phone') || benefit.includes('app')) {
+      return <Smartphone className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('offline') || benefit.includes('wifi')) {
+      return <Wifi className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('schedule') || benefit.includes('time') || benefit.includes('flexible')) {
+      return <Calendar className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('community') || benefit.includes('forum') || benefit.includes('discussion')) {
+      return <MessageCircle className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('material') || benefit.includes('document') || benefit.includes('pdf')) {
+      return <FileText className="w-4 h-4 text-success-600" />;
+    }
+    if (benefit.includes('online') || benefit.includes('web') || benefit.includes('anywhere')) {
+      return <Globe className="w-4 h-4 text-success-600" />;
+    }
+    
+    // Default icon
+    return <CheckCircle className="w-4 h-4 text-success-600" />;
+  };
 
   const handleEnroll = () => {
     setShowEnrollmentDialog(true);
   };
 
-  const handleEnrollmentSubmit = (enrollmentData: any) => {
+  const handleEnrollmentSubmit = (enrollmentData: unknown) => {
     // Handle enrollment submission
     console.log("Enrollment data:", enrollmentData);
     // You can add success notification here
@@ -67,7 +73,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             <Card>
               <div className="relative">
                 <img
-                  src={course.image}
+                  src={course.courseImageUrl}
                   alt={course.courseName}
                   className="w-full h-64 object-cover rounded-t-lg"
                 />
@@ -97,7 +103,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                     {course.categoryName}
                   </span>
                   <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
-                    {course.level}
+                    {course.courseLevel}
                   </span>
                 </div>
                 
@@ -116,23 +122,33 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4" />
-                    <span>{course.level}</span>
+                    <span>{course.courseLevel}</span>
                   </div>
                 </div>
               </div>
             </Card>
 
             {/* What You'll Learn */}
-            <Card title="What You'll Learn">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {course.whatYouWillLearn?.map((item, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+            {course.courseObjective && (
+              <Card title="What You'll Learn">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Array.isArray(course.courseObjective) ? (
+                    course.courseObjective.map((objective, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700">{objective}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">{course.courseObjective}</span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
 
             {/* Course Curriculum */}
             <Card title="Course Syllabus">
@@ -179,19 +195,21 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             </Card>
 
             {/* Requirements */}
-            <Card title="Requirements">
-              <ul className="space-y-2">
-                {course.requirements?.map((req, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-primary-600 mt-1">•</span>
-                    <span className="text-gray-700">{req}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+            {course.requirements && course.requirements.length > 0 && (
+              <Card title="Requirements">
+                <ul className="space-y-2">
+                  {course.requirements.map((req) => (
+                    <li key={req.id} className="flex items-start gap-2">
+                      <span className="text-primary-600 mt-1">•</span>
+                      <span className="text-gray-700">{req.requirementName}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
 
-            {/* Instructor */}
-            <Card title="About the Instructor">
+            {/* Teacher */}
+            <Card title="About the Teacher">
               <div className="flex items-start gap-6">
                 <img
                   src={course.teacherImage || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"}
@@ -226,7 +244,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             <Card className="sticky top-8">
               <div className="text-center mb-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-3xl font-bold text-gray-900">{course.price.toLocaleString('vi-VN')} ₫</span>
+                  <span className="text-3xl font-bold text-gray-900">{course.standardPrice.toLocaleString('vi-VN')} ₫</span>
                 </div>
               </div>
 
@@ -237,28 +255,16 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                 Enroll Now
               </Button>
 
-              <div className="space-y-3 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-success-600" />
-                  <span>Lifetime access</span>
+               {course.benefits && course.benefits.length > 0 && (
+                <div className="space-y-3 text-sm text-gray-600">
+                  {course.benefits.map((benefit) => (
+                    <div key={benefit.id} className="flex items-center gap-2">
+                      {getBenefitIcon(benefit.benefitName)}
+                      <span>{benefit.benefitName}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Download className="w-4 h-4 text-success-600" />
-                  <span>Downloadable resources</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-success-600" />
-                  <span>Certificate of completion</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-success-600" />
-                  <span>30-day money-back guarantee</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Headphones className="w-4 h-4 text-success-600" />
-                  <span>24/7 support</span>
-                </div>
-              </div>
+              )}
             </Card>
 
             {/* Course Stats */}
@@ -281,7 +287,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Level</span>
-                  <span className="font-semibold">{course.level}</span>
+                  <span className="font-semibold">{course.courseLevel}</span>
                 </div>
               </div>
             </Card>
