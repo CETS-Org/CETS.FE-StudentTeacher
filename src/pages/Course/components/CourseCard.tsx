@@ -87,13 +87,14 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
               <Clock className="w-4 h-4" />
               <span>{course.duration}</span>
             </div>
+            <div className="flex items-center gap-1">
+              <BookOpen className="w-4 h-4" />
+              <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                {course.courseLevel}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <BookOpen className="w-4 h-4" />
-            <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
-              {course.courseLevel}
-            </span>
-          </div>
+        
         </div>
 
         {/* Price and Enroll Button */}

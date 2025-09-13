@@ -1,162 +1,180 @@
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter, Star, Award, Users, BookOpen } from "lucide-react";
+
 import CourseCard from "@/pages/Course/components/CourseCard";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { getCoursesApiUrl } from "@/lib/config";
-import type { Course } from "@/types/course";
+import { getCourseSearchApiUrl } from "@/lib/config"
 
+import type { Course, CourseSearchResult } from "@/types/course";
+
+/* =========================
+   Config endpoint
+   ========================= */
+// Đổi endpoint nếu muốn bản BETTER (FTS)
+const SEARCH_ENDPOINT = getCourseSearchApiUrl(); // or "/api/ACAD_Course/search-better"
+
+/* =========================
+   Helpers
+   ========================= */
+function useDebounce<T>(value: T, delay = 450) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+type FacetItem = { key: string; label?: string | null; count: number; selected?: boolean };
+
+const priceOptions = [
+  { value: "all", label: "All Prices" },
+  { value: "0-2000000", label: "Under 2M VND" },
+  { value: "2000000-5000000", label: "2M - 5M VND" },
+  { value: "5000000-10000000", label: "5M - 10M VND" },
+  { value: "10000000+", label: "Above 10M VND" },
+];
+
+const sortOptions = [
+  { value: "popular", label: "Most Popular" },
+  { value: "newest", label: "Newest" },
+  { value: "rating", label: "Highest Rated" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+];
+
+const uiSortToServer: Record<string, string> = {
+  popular: "Relevance",
+  newest: "Created.desc",
+  rating: "Relevance",
+  "price-low": "Price.asc",
+  "price-high": "Price.desc",
+};
+
+/* =========================
+   Component
+   ========================= */
 export default function CourseCatalog() {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedLevel, setSelectedLevel] = useState("all");
-  const [selectedPriceRange, setSelectedPriceRange] = useState("all");
-  const [sortBy, setSortBy] = useState("popular");
-  const [showFilters, setShowFilters] = useState(false);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Fetch courses from API
+  // UI states
+  const [q, setQ] = useState("");
+  const qDebounced = useDebounce(q);
+
+  const [showFilters, setShowFilters] = useState(false);
+  const [uiSort, setUiSort] = useState("popular");
+  const [priceRange, setPriceRange] = useState("all");
+
+  // Multi-select facets
+  const [levelIds, setLevelIds] = useState<string[]>([]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+
+  // Data states
+  const [items, setItems] = useState<Course[]>([]);
+  const [levelsFacet, setLevelsFacet] = useState<FacetItem[]>([]);
+  const [categoriesFacet, setCategoriesFacet] = useState<FacetItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(18);
+
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Build querystring
+  function buildSearchParams() {
+    const s = new URLSearchParams();
+    if (qDebounced) s.set("Q", qDebounced);
+    if (levelIds.length) s.set("LevelIds", levelIds.join(","));
+    if (categoryIds.length) s.set("CategoryIds", categoryIds.join(","));
+    if (priceRange !== "all") {
+      if (priceRange.endsWith("+")) {
+        s.set("PriceMin", priceRange.replace("+", ""));
+      } else {
+        const [min, max] = priceRange.split("-");
+        s.set("PriceMin", min);
+        s.set("PriceMax", max);
+      }
+    }
+    s.set("Sort", uiSortToServer[uiSort] ?? "Relevance");
+    s.set("Page", String(page));
+    s.set("PageSize", String(pageSize));
+    return s;
+  }
+
+  // Fetch
   useEffect(() => {
-    const fetchCourses = async () => {
+    const abort = new AbortController();
+    (async () => {
+      setLoading(true);
+      setErr(null);
       try {
-        setLoading(true);
-        setError(null);
-        const response = await fetch(getCoursesApiUrl());
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        const mappedCourses: Course[] = data.map((course: any) => ({
-          ...course,
-          courseImageUrl: course.courseImageUrl || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
-          courseLevel: course.levelName || "Beginner",
-          syllabusItems: Array.isArray(course.syllabusItems) ? 
-            course.syllabusItems.map((item: any) => ({
-              sessionNumber: item.sessionNumber || 1,
-              topicTitle: item.topicTitle || "Untitled Topic",
-              estimatedMinutes: item.estimatedMinutes,
-              required: item.required !== undefined ? item.required : true,
-              objectives: item.objectives,
-              contentSummary: item.contentSummary
-            })) : []
-        }));
-        
-        setCourses(mappedCourses);
-      } catch (err) {
-        console.error('Failed to fetch courses:', err);
-        setError('Failed to load courses. Please try again later.');   
+        const qs = buildSearchParams();
+        const res = await fetch(`${SEARCH_ENDPOINT}?${qs.toString()}`, { signal: abort.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: CourseSearchResult = await res.json();
+
+        // API có thể trả object {items:[]} – bảo vệ an toàn
+        const arr = Array.isArray((data as any).items) ? (data.items as Course[]) : [];
+        setItems(arr);
+
+        setTotal((data as any).total ?? 0);
+        setPageSize((data as any).pageSize ?? pageSize);
+
+        const facets = (data as any).facets || {};
+        setLevelsFacet((facets.levels as FacetItem[]) ?? []);
+        setCategoriesFacet((facets.categories as FacetItem[]) ?? []);
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
+        console.error("Failed to fetch courses:", e);
+        setErr("Failed to load courses. Please try again later.");
       } finally {
         setLoading(false);
       }
-    };
+    })();
+    return () => abort.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qDebounced, levelIds.join(","), categoryIds.join(","), priceRange, uiSort, page]);
 
-    fetchCourses();
-  }, []);
+  // Helpers Facet
+  const toggleFacet = (setter: (v: string[]) => void, current: string[], key: string) => {
+    const next = current.includes(key) ? current.filter((x) => x !== key) : [...current, key];
+    setter(next);
+    setPage(1);
+  };
 
+  // Active filter count
+  const activeFiltersCount = useMemo(() => {
+    let n = 0;
+    if (qDebounced) n++;
+    if (levelIds.length) n++;
+    if (categoryIds.length) n++;
+    if (priceRange !== "all") n++;
+    return n;
+  }, [qDebounced, levelIds, categoryIds, priceRange]);
 
-  const categories = useMemo(() => {
-    const allCategories = ["all", ...new Set(courses.map(course => course.categoryName).filter(Boolean))];
-    return allCategories.length > 1 ? allCategories : ["all", "Web Development", "Data Science", "Programming", "Design"];
-  }, [courses]);
-  
-  const levels = ["all", "Beginner", "Intermediate", "Advanced"];
-  const priceRanges = [
-    { value: "all", label: "All Prices" },
-    { value: "0-2000000", label: "Under 2M VND" },
-    { value: "2000000-5000000", label: "2M - 5M VND" },
-    { value: "5000000-10000000", label: "5M - 10M VND" },
-    { value: "10000000+", label: "Above 10M VND" }
-  ];
+  // Price value for select
+  const currentPriceValue = useMemo(() => priceRange, [priceRange]);
 
-  const sortOptions = [
-    { value: "popular", label: "Most Popular" },
-    { value: "newest", label: "Newest" },
-    { value: "rating", label: "Highest Rated" },
-    { value: "price-low", label: "Price: Low to High" },
-    { value: "price-high", label: "Price: High to Low" }
-  ];
-
-  const filteredCourses = useMemo(() => {
-    let filtered = courses.filter(course => {
-      const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.teacher?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesCategory = selectedCategory === "all" || course.categoryName === selectedCategory;
-
-      const matchesLevel = selectedLevel === "all" || course.courseLevel === selectedLevel;
-      
-      const matchesPrice = (() => {
-        if (selectedPriceRange === "all") return true;
-        if (selectedPriceRange.endsWith("+")) {
-          const min = Number(selectedPriceRange.replace("+", ""));
-          return course.standardPrice >= min;
-        }
-        const [min, max] = selectedPriceRange.split("-").map(Number);
-        return course.standardPrice >= min && course.standardPrice <= max;
-      })();
-
-      return matchesSearch && matchesCategory && matchesLevel && matchesPrice;
-    });
-
-    // Sort courses
-    switch (sortBy) {
-      case "newest":
-        filtered = filtered.filter(course => course.isNew).concat(
-          filtered.filter(course => !course.isNew)
-        );
-        break;
-      case "rating":
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case "price-low":
-        filtered.sort((a, b) => a.standardPrice - b.standardPrice);
-        break;
-      case "price-high":
-        filtered.sort((a, b) => b.standardPrice - a.standardPrice);
-        break;
-      case "popular":
-      default:
-        filtered.sort((a, b) => {
-          if (a.isPopular && !b.isPopular) return -1;
-          if (!a.isPopular && b.isPopular) return 1;
-          return b.studentsCount - a.studentsCount;
-        });
-        break;
-    }
-
-    return filtered;
-  }, [searchTerm, selectedCategory, selectedLevel, selectedPriceRange, sortBy, courses]);
+  const clearAll = () => {
+    setQ("");
+    setLevelIds([]);
+    setCategoryIds([]);
+    setPriceRange("all");
+    setUiSort("popular");
+    setPage(1);
+  };
 
   const handleEnroll = (course: Course) => {
-    // Navigate to course detail page
     navigate(`/course/${course.id}`);
   };
 
-  const clearFilters = () => {
-    setSearchTerm("");
-    setSelectedCategory("all");
-    setSelectedLevel("all");
-    setSelectedPriceRange("all");
-    setSortBy("popular");
-  };
-
-  const activeFiltersCount = [searchTerm, selectedCategory, selectedLevel, selectedPriceRange].filter(
-    filter => filter !== "all" && filter !== ""
-  ).length;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
-      {/* Hero Section */}
+      {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-primary-800">
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -164,34 +182,34 @@ export default function CourseCatalog() {
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-primary-200 bg-clip-text text-transparent">
               Discover Your Perfect Course
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-primary-100  mx-auto">
-              Master English with our expert-led courses. From beginner to advanced, 
+            <p className="text-xl md:text-2xl mb-8 text-primary-100 mx-auto">
+              Master English with our expert-led courses. From beginner to advanced,
               we have everything you need to achieve your language goals.
             </p>
-            
-            {/* Search Bar */}
+
             <div className="w-[70%] mx-auto relative">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="text"
                   placeholder="Search courses, teachers, or topics..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-4  text-lg rounded-2xl border-0 shadow-2xl focus:ring-4 focus:ring-white/30"
+                  value={q}
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setPage(1);
+                  }}
+                  className="pl-12 pr-4 py-4 text-lg rounded-2xl border-0 shadow-2xl focus:ring-4 focus:ring-white/30"
                 />
               </div>
             </div>
           </div>
         </div>
-        
-        {/* Floating Elements */}
-        <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-bounce"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-white/10 rounded-full animate-pulse"></div>
-        <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-white/10 rounded-full animate-bounce delay-1000"></div>
+        <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-bounce" />
+        <div className="absolute top-40 right-20 w-16 h-16 bg-white/10 rounded-full animate-pulse" />
+        <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-white/10 rounded-full animate-bounce delay-1000" />
       </div>
 
-      {/* Stats Section */}
+      {/* Stats */}
       <div className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -227,97 +245,118 @@ export default function CourseCatalog() {
         </div>
       </div>
 
-      {/* Filters and Courses Section */}
+      {/* Filters & Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Filter Controls */}
+        {/* Top controls */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
                 variant="secondary"
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() => setShowFilters((v) => !v)}
                 iconLeft={<Filter className="w-4 h-4" />}
               >
                 Filters
                 {activeFiltersCount > 0 && (
-                  <span className="bg-primary-600 text-white text-xs px-2 py-1 rounded-full">
+                  <span className="bg-primary-600 text-white text-xs px-2 py-1 rounded-full ml-2">
                     {activeFiltersCount}
                   </span>
                 )}
               </Button>
-              
+
               <Select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                value={uiSort}
+                onChange={(e) => {
+                  setUiSort(e.target.value);
+                  setPage(1);
+                }}
                 className="min-w-[200px]"
               >
-                {sortOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                {sortOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </Select>
             </div>
+
             
-            <div className="text-gray-600">
-              Showing {filteredCourses.length} of {courses.length} courses
-            </div>
           </div>
 
-          {/* Filter Panel */}
+          {/* Filter panel */}
           {showFilters && (
             <Card className="mt-6 animate-in slide-in-from-top-4 duration-300">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Category */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                  <Select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                  >
-                    {categories.map(category => (
-                      <option key={category} value={category}>
-                        {category === "all" ? "All Categories" : category}
-                      </option>
-                    ))}
-                  </Select>
+                  <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                    {categoriesFacet.length > 0 ? (
+                      categoriesFacet.map((f) => (
+                        <label key={f.key} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={categoryIds.includes(f.key)}
+                            onChange={() => toggleFacet(setCategoryIds, categoryIds, f.key)}
+                          />
+                          <span>
+                            {f.label ?? f.key}{" "}
+                            <span className="text-sm text-neutral-500">({f.count})</span>
+                          </span>
+                        </label>
+                      ))
+                    ) : (
+                      <div className="text-sm text-neutral-500">No categories</div>
+                    )}
+                  </div>
                 </div>
-                
+
+                {/* Level */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
-                  <Select
-                    value={selectedLevel}
-                    onChange={(e) => setSelectedLevel(e.target.value)}
-                  >
-                    {levels.map(level => (
-                      <option key={level} value={level}>
-                        {level === "all" ? "All Levels" : level}
-                      </option>
-                    ))}
-                  </Select>
+                  <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                    {levelsFacet.length > 0 ? (
+                      levelsFacet.map((f) => (
+                        <label key={f.key} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={levelIds.includes(f.key)}
+                            onChange={() => toggleFacet(setLevelIds, levelIds, f.key)}
+                          />
+                          <span>
+                            {f.label ?? f.key}{" "}
+                            <span className="text-sm text-neutral-500">({f.count})</span>
+                          </span>
+                        </label>
+                      ))
+                    ) : (
+                      <div className="text-sm text-neutral-500">No levels</div>
+                    )}
+                  </div>
                 </div>
-                
+
+                {/* Price */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
                   <Select
-                    value={selectedPriceRange}
-                    onChange={(e) => setSelectedPriceRange(e.target.value)}
+                    value={currentPriceValue}
+                    onChange={(e) => {
+                      setPriceRange(e.target.value);
+                      setPage(1);
+                    }}
                   >
-                    {priceRanges.map(range => (
-                      <option key={range.value} value={range.value}>
-                        {range.label}
+                    {priceOptions.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
                       </option>
                     ))}
                   </Select>
                 </div>
               </div>
-              
+
               {activeFiltersCount > 0 && (
                 <div className="mt-4 flex justify-end">
-                  <Button
-                    variant="secondary"
-                    onClick={clearFilters}
-                    className="text-sm"
-                  >
+                  <Button variant="secondary" onClick={clearAll} className="text-sm">
                     Clear all filters
                   </Button>
                 </div>
@@ -326,7 +365,7 @@ export default function CourseCatalog() {
           )}
         </div>
 
-        {/* Loading State */}
+        {/* States */}
         {loading && (
           <div className="flex justify-center items-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -334,34 +373,54 @@ export default function CourseCatalog() {
           </div>
         )}
 
-        {/* Error State */}
-        {error && (
+        {err && !loading && (
           <div className="text-center py-16">
             <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Search className="w-12 h-12 text-red-400" />
             </div>
             <h3 className="text-2xl font-semibold text-gray-900 mb-4">Error Loading Courses</h3>
-            <p className="text-gray-600 mb-6">{error}</p>
+            <p className="text-gray-600 mb-6">{err}</p>
             <Button onClick={() => window.location.reload()} variant="secondary">
               Try Again
             </Button>
           </div>
         )}
 
-        {/* Courses Grid */}
-        {!loading && !error && filteredCourses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredCourses.map((course, index) => (
-              <div
-                key={course.id}
-                className="animate-in fade-in-0 slide-in-from-bottom-4"
-                style={{ animationDelay: `${index * 100}ms` }}
+        {!loading && !err && items.length > 0 ? (
+          <>
+            {/* Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {items.map((course, index) => (
+                <div
+                  key={course.id}
+                  className="animate-in fade-in-0 slide-in-from-bottom-4"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <CourseCard course={course} onEnroll={handleEnroll} />
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
               >
-                <CourseCard course={course} onEnroll={handleEnroll} />
-              </div>
-            ))}
-          </div>
-        ) : !loading && !error ? (
+                Prev
+              </Button>
+              <span className="text-sm">Page {page}</span>
+              <Button
+                variant="secondary"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page * pageSize >= total || loading}
+              >
+                Next
+              </Button>
+            </div>
+          </>
+        ) : !loading && !err ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Search className="w-12 h-12 text-gray-400" />
@@ -370,7 +429,7 @@ export default function CourseCatalog() {
             <p className="text-gray-600 mb-6">
               Try adjusting your search criteria or filters to find what you're looking for.
             </p>
-            <Button onClick={clearFilters} variant="secondary">
+            <Button onClick={clearAll} variant="secondary">
               Clear all filters
             </Button>
           </div>

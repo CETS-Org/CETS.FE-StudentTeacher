@@ -199,6 +199,27 @@ export interface FeedbackCourse {
   status: "active" | "completed";
 }
 
+export interface FacetItem {
+  key: string;
+  label: string;
+  count: number;
+  selected: boolean;
+}
+
+export interface CourseSearchResult {
+  page: number;
+  pageSize: number;
+  total: number;
+  items: Course[];
+  facets: {
+    levels: FacetItem[];
+    categories: FacetItem[];
+  };
+}
+
+
+
+
 // Utility function to convert SimpleCourse to Course (with default values)
 export function simpleCourseToCourse(simpleCourse: SimpleCourse, additionalData?: Partial<Course>): Course {
   return {
@@ -228,4 +249,6 @@ export function simpleCourseToCourse(simpleCourse: SimpleCourse, additionalData?
     studentsCount: simpleCourse.students || 0,
     ...additionalData,
   };
+
+  
 }
