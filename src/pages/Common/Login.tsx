@@ -2,11 +2,22 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "react-router-dom";
-import { Form, FormInput } from "@/components/ui/Form";
+import { Link, useNavigate } from "react-router-dom";
+import { Form, FormInput, FormSelect } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserCheck } from "lucide-react";
+import { getLoginStudentApiUrl, getLoginTeacherApiUrl } from "@/lib/config";
+
+// Role options
+const roleOptions = [
+  { value: "", label: "Select your role" },
+  { value: "student", label: "Student" },
+  { value: "teacher", label: "Teacher" },
+  { value: "accountant", label: "Accountant Staff" },
+  { value: "academic", label: "Academic Staff" },
+  { value: "admin", label: "Admin" },
+];
 
 // Validation schema
 const loginSchema = z.object({
@@ -18,40 +29,138 @@ const loginSchema = z.object({
     .string()
     .min(1, "Password is required")
     .min(6, "Password must be at least 6 characters"),
+  role: z
+    .string()
+    .min(1, "Please select a role"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+// API response types
+interface LoginResponse {
+  message: string;
+  token: string;
+  account: {
+    id: string;
+    email: string;
+    fullName: string;
+    roleNames: string[];
+    isVerified?: boolean;
+    studentInfo?: any;
+    teacherInfo?: any;
+  };
+}
+
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
+      role: "",
     },
   });
+
+  const callLoginAPI = async (data: LoginFormData): Promise<LoginResponse> => {
+    const { email, password, role } = data;
+    let apiUrl = "";
+    
+    // Determine API endpoint based on role
+    switch (role) {
+      case "student":
+        apiUrl = getLoginStudentApiUrl();
+        break;
+      case "teacher":
+        apiUrl = getLoginTeacherApiUrl();
+        break;
+      case "accountant":
+      case "academic":
+      case "admin":
+        throw new Error(`Login for ${role} role is not implemented yet`);
+      default:
+        throw new Error("Invalid role selected");
+    }
+
+    console.log("API URL:", apiUrl); // Debug log
+    console.log("Request payload:", { email, password }); // Debug log
+
+    // Use JSON format (standard and recommended)
+    const requestBody = JSON.stringify({ email, password });
+    console.log("Request body (JSON):", requestBody);
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      mode: "cors",
+      credentials: "include",
+      body: requestBody,
+    });
+
+    console.log("Response status:", response.status); // Debug log
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  };
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
       console.log("Login data:", data);
-      // TODO: Implement actual login logic
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      alert("Login successful!");
+      
+      const response = await callLoginAPI(data);
+      
+      // Check if account is verified
+      // For testing: if email is "test.unverified@example.com", simulate unverified account
+      const isVerified = data.email === "test.unverified@example.com" 
+        ? false 
+        : (response.account.isVerified ?? true); // Default to true if not present
+      
+      if (!isVerified) {
+        // Account not verified - navigate to Gateway with verification state
+        navigate("/gateway", {
+          state: {
+            showVerification: true,
+            email: response.account.email
+          }
+        });
+        return;
+      }
+      
+      // Store token and user info in localStorage
+      localStorage.setItem("authToken", response.token);
+      localStorage.setItem("userInfo", JSON.stringify(response.account));
+      
+      // Navigate based on role
+      if (data.role === "student") {
+        navigate("/student/myCourses");
+      } else if (data.role === "teacher") {
+        navigate("/teacher/courses");
+      }
+      
     } catch (error) {
       console.error("Login error:", error);
-      alert("Login failed!");
+      alert(error instanceof Error ? error.message : "Login failed!");
     } finally {
       setIsLoading(false);
     }
   };
 
+
+
   return (
-    <div className="w-full px-70">
-      <Card className="shadow-xl border-0">
+    <div className="w-full px-70 pt-40">
+      <Card className="shadow-xl border-0 w-1/2 mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mx-auto w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">
@@ -64,7 +173,17 @@ export default function Login() {
         </div>
 
         {/* Form */}
-        <Form methods={methods} onSubmit={onSubmit} className="space-y-6">
+        <Form methods={methods} onSubmit={onSubmit} className="space-y-6">{/*[!!! KEEP CHANGES BELOW]*/}
+          {/* Role Selection */}
+          <div className="w-40">
+            <FormSelect
+              name="role"
+              label="Role"
+              options={roleOptions}
+              className="text-sm py-1.5 px-2"
+            />
+          </div>
+
           {/* Email Field */}
           <FormInput
             name="email"
@@ -113,7 +232,7 @@ export default function Login() {
             size="lg"
             loading={isLoading}
             className="w-full"
-            iconLeft={<Mail className="w-4 h-4" />}
+            iconLeft={<UserCheck className="w-4 h-4" />}
           >
             {isLoading ? "Signing in..." : "Sign in"}
           </Button>

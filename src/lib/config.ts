@@ -13,7 +13,9 @@ export const config = {
   endpoints: {
     courses: '/api/ACAD_Course/',
     courseDetail: '/api/ACAD_Course',
-    coursesSearch:'/api/ACAD_Course/search-basic'
+    coursesSearch:'/api/ACAD_Course/search-basic',
+    loginStudent: '/api/IDN_Account/login/student',
+    loginTeacher: '/api/IDN_Account/login/teacher',
   },
   
   // Full API URLs
@@ -29,3 +31,6 @@ export const getCourseSearchApiUrl = () => config.getApiUrl(config.endpoints.cou
 
 // Helper function to get a specific course detail API URL
 export const getCourseDetailApiUrl = (courseId: string) => `${config.getApiUrl(config.endpoints.courseDetail)}/${courseId}`;
+
+export const getLoginStudentApiUrl = () => config.getApiUrl(config.endpoints.loginStudent);
+export const getLoginTeacherApiUrl = () => config.getApiUrl(config.endpoints.loginTeacher);
