@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -6,11 +5,6 @@ import HeroImage from "../../assets/Gateway1.png";
 
 export default function HomePage() {
   usePageTitle("Home - Online Learning Platform");
-  const navigate = useNavigate();
-
-  const handleExploreCourses = () => {
-    navigate("/courses");
-  };
 
   // Mock data for courses
   const popularCourses = [
@@ -95,7 +89,7 @@ export default function HomePage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="text-base px-8 py-4" onClick={handleExploreCourses}>
+              <Button size="lg" className="text-base px-8 py-4">
                 Explore Courses
               </Button>
               <Button variant="secondary" size="lg" className="text-base px-8 py-4">
