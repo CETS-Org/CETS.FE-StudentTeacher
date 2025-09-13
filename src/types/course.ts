@@ -39,7 +39,7 @@ export interface Course {
   courseObjective: string | string[] | null;
   
   // Teacher information
-  teacher?: string; // Keep for backward compatibility
+
   teacherDetails?: {
     id: string;
     fullName: string;
@@ -229,7 +229,6 @@ export function simpleCourseToCourse(simpleCourse: SimpleCourse, additionalData?
     courseImageUrl: simpleCourse.image,
     description: simpleCourse.description,
     courseObjective: additionalData?.courseObjective || null,
-    teacher: additionalData?.teacher,
     teacherDetails: additionalData?.teacherDetails || [{
       id: "unknown",
       fullName: "Unknown Teacher",

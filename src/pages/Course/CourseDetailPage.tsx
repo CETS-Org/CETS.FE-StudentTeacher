@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import Loader from "@/components/ui/Loader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import CourseDetail from "./CourseDetail";
-import { getCourseDetailApiUrl } from "@/lib/config";
+import { api } from "@/lib/config";
 import type { Course } from "@/types/course";
 
 export default function CourseDetailPage() {
@@ -27,13 +27,8 @@ export default function CourseDetailPage() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(getCourseDetailApiUrl(courseId));
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
+        const response = await api.getCourseDetail(courseId);
+        const data = response.data;
         
         // Map the API response to our Course interface
         const mappedCourse: Course = {
@@ -57,9 +52,17 @@ export default function CourseDetailPage() {
         };
         
         setCourse(mappedCourse);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch course details:', err);
-        setError('Failed to load course details. Please try again later.');   
+        
+        // Handle axios errors
+        if (err.response) {
+          setError(`Failed to load course details. Status: ${err.response.status}`);
+        } else if (err.request) {
+          setError('Network error. Please check your connection.');
+        } else {
+          setError('Failed to load course details. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }

@@ -7,15 +7,14 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { getCourseSearchApiUrl } from "@/lib/config"
+import { api } from "@/lib/config"
 
 import type { Course, CourseSearchResult } from "@/types/course";
 
 /* =========================
    Config endpoint
    ========================= */
-// Đổi endpoint nếu muốn bản BETTER (FTS)
-const SEARCH_ENDPOINT = getCourseSearchApiUrl(); // or "/api/ACAD_Course/search-better"
+// Using axios API method for course search
 
 /* =========================
    Helpers
@@ -112,10 +111,11 @@ export default function CourseCatalog() {
       setLoading(true);
       setErr(null);
       try {
-        const qs = buildSearchParams();
-        const res = await fetch(`${SEARCH_ENDPOINT}?${qs.toString()}`, { signal: abort.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: CourseSearchResult = await res.json();
+        const searchParams = buildSearchParams();
+        const paramsObject = Object.fromEntries(searchParams.entries());
+        
+        const response = await api.searchCourses(paramsObject, { signal: abort.signal });
+        const data: CourseSearchResult = response.data;
 
         // API có thể trả object {items:[]} – bảo vệ an toàn
         const arr = Array.isArray((data as any).items) ? (data.items as Course[]) : [];
@@ -128,7 +128,7 @@ export default function CourseCatalog() {
         setLevelsFacet((facets.levels as FacetItem[]) ?? []);
         setCategoriesFacet((facets.categories as FacetItem[]) ?? []);
       } catch (e: any) {
-        if (e?.name === "AbortError") return;
+        if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") return;
         console.error("Failed to fetch courses:", e);
         setErr("Failed to load courses. Please try again later.");
       } finally {

@@ -7,7 +7,7 @@ import { Form, FormInput, FormSelect } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { Eye, EyeOff, LogIn, UserCheck } from "lucide-react";
-import { getLoginStudentApiUrl, getLoginTeacherApiUrl } from "@/lib/config";
+import { api } from "@/lib/config";
 
 // Role options
 const roleOptions = [
@@ -67,50 +67,47 @@ export default function Login() {
 
   const callLoginAPI = async (data: LoginFormData): Promise<LoginResponse> => {
     const { email, password, role } = data;
-    let apiUrl = "";
+    const credentials = { email, password };
     
-    // Determine API endpoint based on role
-    switch (role) {
-      case "student":
-        apiUrl = getLoginStudentApiUrl();
-        break;
-      case "teacher":
-        apiUrl = getLoginTeacherApiUrl();
-        break;
-      case "accountant":
-      case "academic":
-      case "admin":
-        throw new Error(`Login for ${role} role is not implemented yet`);
-      default:
-        throw new Error("Invalid role selected");
+    console.log("Request payload:", credentials); // Debug log
+
+    try {
+      let response;
+      
+      // Call appropriate API method based on role
+      switch (role) {
+        case "student":
+          response = await api.loginStudent(credentials);
+          break;
+        case "teacher":
+          response = await api.loginTeacher(credentials);
+          break;
+        case "accountant":
+        case "academic":
+        case "admin":
+          throw new Error(`Login for ${role} role is not implemented yet`);
+        default:
+          throw new Error("Invalid role selected");
+      }
+
+      console.log("Response status:", response.status); // Debug log
+      return response.data;
+    } catch (error: any) {
+      console.error("API Error:", error);
+      
+      // Handle axios errors
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || `HTTP error! status: ${error.response.status}`;
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error("Network error. Please check your connection.");
+      } else {
+        // Something else happened
+        throw error;
+      }
     }
-
-    console.log("API URL:", apiUrl); // Debug log
-    console.log("Request payload:", { email, password }); // Debug log
-
-    // Use JSON format (standard and recommended)
-    const requestBody = JSON.stringify({ email, password });
-    console.log("Request body (JSON):", requestBody);
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      mode: "cors",
-      credentials: "include",
-      body: requestBody,
-    });
-
-    console.log("Response status:", response.status); // Debug log
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
   };
 
   const onSubmit = async (data: LoginFormData) => {
