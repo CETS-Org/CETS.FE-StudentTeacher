@@ -7,18 +7,10 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { api } from "@/lib/config"
+import { api } from "@/lib/config";
 
 import type { Course, CourseSearchResult } from "@/types/course";
 
-/* =========================
-   Config endpoint
-   ========================= */
-// Using axios API method for course search
-
-/* =========================
-   Helpers
-   ========================= */
 function useDebounce<T>(value: T, delay = 450) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -54,9 +46,6 @@ const uiSortToServer: Record<string, string> = {
   "price-high": "Price.desc",
 };
 
-/* =========================
-   Component
-   ========================= */
 export default function CourseCatalog() {
   const navigate = useNavigate();
 
@@ -71,11 +60,13 @@ export default function CourseCatalog() {
   // Multi-select facets
   const [levelIds, setLevelIds] = useState<string[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [skillIds, setSkillIds] = useState<string[]>([]); // NEW
 
   // Data states
   const [items, setItems] = useState<Course[]>([]);
   const [levelsFacet, setLevelsFacet] = useState<FacetItem[]>([]);
   const [categoriesFacet, setCategoriesFacet] = useState<FacetItem[]>([]);
+  const [skillsFacet, setSkillsFacet] = useState<FacetItem[]>([]); // NEW
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(18);
@@ -89,6 +80,7 @@ export default function CourseCatalog() {
     if (qDebounced) s.set("Q", qDebounced);
     if (levelIds.length) s.set("LevelIds", levelIds.join(","));
     if (categoryIds.length) s.set("CategoryIds", categoryIds.join(","));
+    if (skillIds.length) s.set("SkillIds", skillIds.join(",")); // NEW
     if (priceRange !== "all") {
       if (priceRange.endsWith("+")) {
         s.set("PriceMin", priceRange.replace("+", ""));
@@ -113,11 +105,10 @@ export default function CourseCatalog() {
       try {
         const searchParams = buildSearchParams();
         const paramsObject = Object.fromEntries(searchParams.entries());
-        
+
         const response = await api.searchCourses(paramsObject, { signal: abort.signal });
         const data: CourseSearchResult = response.data;
 
-        // API có thể trả object {items:[]} – bảo vệ an toàn
         const arr = Array.isArray((data as any).items) ? (data.items as Course[]) : [];
         setItems(arr);
 
@@ -127,6 +118,7 @@ export default function CourseCatalog() {
         const facets = (data as any).facets || {};
         setLevelsFacet((facets.levels as FacetItem[]) ?? []);
         setCategoriesFacet((facets.categories as FacetItem[]) ?? []);
+        setSkillsFacet((facets.skills as FacetItem[]) ?? []); // NEW
       } catch (e: any) {
         if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") return;
         console.error("Failed to fetch courses:", e);
@@ -137,7 +129,7 @@ export default function CourseCatalog() {
     })();
     return () => abort.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, levelIds.join(","), categoryIds.join(","), priceRange, uiSort, page]);
+  }, [qDebounced, levelIds.join(","), categoryIds.join(","), skillIds.join(","), priceRange, uiSort, page]);
 
   // Helpers Facet
   const toggleFacet = (setter: (v: string[]) => void, current: string[], key: string) => {
@@ -152,17 +144,18 @@ export default function CourseCatalog() {
     if (qDebounced) n++;
     if (levelIds.length) n++;
     if (categoryIds.length) n++;
+    if (skillIds.length) n++; // NEW
     if (priceRange !== "all") n++;
     return n;
-  }, [qDebounced, levelIds, categoryIds, priceRange]);
+  }, [qDebounced, levelIds, categoryIds, skillIds, priceRange]);
 
-  // Price value for select
   const currentPriceValue = useMemo(() => priceRange, [priceRange]);
 
   const clearAll = () => {
     setQ("");
     setLevelIds([]);
     setCategoryIds([]);
+    setSkillIds([]); // NEW
     setPriceRange("all");
     setUiSort("popular");
     setPage(1);
@@ -279,8 +272,6 @@ export default function CourseCatalog() {
                 ))}
               </Select>
             </div>
-
-            
           </div>
 
           {/* Filter panel */}
@@ -351,6 +342,32 @@ export default function CourseCatalog() {
                       </option>
                     ))}
                   </Select>
+                </div>
+              </div>
+
+              {/* Skills (NEW) */}
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mt-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+                  <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                    {skillsFacet.length > 0 ? (
+                      skillsFacet.map((f) => (
+                        <label key={f.key} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={skillIds.includes(f.key)}
+                            onChange={() => toggleFacet(setSkillIds, skillIds, f.key)}
+                          />
+                          <span>
+                            {f.label ?? f.key}{" "}
+                            <span className="text-sm text-neutral-500">({f.count})</span>
+                          </span>
+                        </label>
+                      ))
+                    ) : (
+                      <div className="text-sm text-neutral-500">No skills</div>
+                    )}
+                  </div>
                 </div>
               </div>
 

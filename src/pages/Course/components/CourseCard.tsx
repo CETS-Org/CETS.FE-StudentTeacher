@@ -67,6 +67,26 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
           </span>
         </div>
 
+           {/* Skills */}
+        {Array.isArray(course.courseSkills) && course.courseSkills.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {course.courseSkills.slice(0, 3).map((s) => (
+              <span
+                key={s.id ?? s.skillID}
+                className="px-2 py-1 text-xs rounded-full bg-sky-50 text-sky-700 border border-sky-200"
+                title={s.skillName}
+              >
+                {s.skillName}
+              </span>
+            ))}
+            {course.courseSkills.length > 3 && (
+              <span className="px-2 py-1 text-xs rounded-full bg-gray-50 text-gray-600 border">
+                +{course.courseSkills.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Benefits */}
         {course.benefits && course.benefits.length > 0 && (
           <div className="space-y-2 mb-4">

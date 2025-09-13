@@ -28,6 +28,14 @@ export interface Requirement {
   requirementName: string;
 }
 
+export interface CourseSkill {
+  id: string;
+  courseID: string;
+  courseName: string;
+  skillID: string;
+  skillName: string;
+}
+
 // Main Course interface combining all properties from different components
 export interface Course {
   // Core properties
@@ -73,6 +81,7 @@ export interface Course {
   benefits?: Benefit[];
   syllabusItems?: SyllabusItem[];
   requirements?: Requirement[];
+  courseSkills?: CourseSkill[];
   
   // Status flags
   isPopular?: boolean;
