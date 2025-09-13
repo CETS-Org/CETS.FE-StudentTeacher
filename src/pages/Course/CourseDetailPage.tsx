@@ -53,7 +53,7 @@ export default function CourseDetailPage() {
             })) : [],
           benefits: data.benefits || [],
           requirements: data.requirements || [],
-          teacherDetail: data.teacherDetail || undefined
+          teacherDetails: data.teacherDetails || []
         };
         
         setCourse(mappedCourse);

@@ -40,7 +40,7 @@ export interface Course {
   
   // Teacher information
   teacher?: string; // Keep for backward compatibility
-  teacherDetail?: {
+  teacherDetails?: {
     id: string;
     fullName: string;
     bio: string;
@@ -48,7 +48,7 @@ export interface Course {
     totalStudents: number;
     totalCourses: number;
     yearsExperience: number;
-  };
+  }[];
   teacherBio?: string;
   teacherImage?: string;
   teacherRating?: number;
@@ -209,7 +209,7 @@ export function simpleCourseToCourse(simpleCourse: SimpleCourse, additionalData?
     description: simpleCourse.description,
     courseObjective: additionalData?.courseObjective || null,
     teacher: additionalData?.teacher,
-    teacherDetail: additionalData?.teacherDetail || {
+    teacherDetails: additionalData?.teacherDetails || [{
       id: "unknown",
       fullName: "Unknown Teacher",
       bio: "",
@@ -217,7 +217,7 @@ export function simpleCourseToCourse(simpleCourse: SimpleCourse, additionalData?
       totalStudents: 0,
       totalCourses: 0,
       yearsExperience: 0
-    },
+    }],
     duration: simpleCourse.duration,
     courseLevel: simpleCourse.level,
     formatName: simpleCourse.format,
