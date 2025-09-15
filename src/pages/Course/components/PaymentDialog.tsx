@@ -80,7 +80,14 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                 />
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900">{course.courseName}</h3>
-                  <p className="text-sm text-gray-600">by {course.teacher}</p>
+                  <p className="text-sm text-gray-600">
+                    by {course.teacherDetails && course.teacherDetails.length > 0 
+                      ? course.teacherDetails.length === 1 
+                        ? course.teacherDetails[0].fullName
+                        : `${course.teacherDetails[0].fullName} +${course.teacherDetails.length - 1} more`
+                      : 'Unknown Teacher'
+                    }
+                  </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-lg font-bold text-primary-600">{course.standardPrice.toLocaleString('vi-VN')}₫</span>
                   </div>

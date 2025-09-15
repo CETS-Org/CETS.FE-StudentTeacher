@@ -216,7 +216,11 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                     <div key={teacher.id} className={`flex items-start gap-6 ${index > 0 ? 'pt-6 border-t border-gray-200' : ''}`}>
                       <div className="w-20 h-20 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-white text-2xl font-bold">
-                          {teacher.fullName.charAt(0)}
+                          {teacher.avatarUrl ? (
+                            <img src={teacher.avatarUrl} alt={teacher.fullName} className="w-full h-full object-cover rounded-full" />
+                          ) : (
+                            teacher.fullName.charAt(0)
+                          )}
                         </span>
                       </div>
                       <div className="flex-1">

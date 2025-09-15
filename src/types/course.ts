@@ -43,18 +43,14 @@ export interface Course {
   teacherDetails?: {
     id: string;
     fullName: string;
+    avatarUrl?: string;
     bio: string;
     rating: number;
     totalStudents: number;
     totalCourses: number;
     yearsExperience: number;
   }[];
-  teacherBio?: string;
-  teacherImage?: string;
-  teacherRating?: number;
-  teacherStudents?: number;
-  teacherCourses?: number;
-  
+
   // Course details
   duration: string;
   courseLevel: string;
