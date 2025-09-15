@@ -6,6 +6,7 @@ export interface Tab {
   label: string;
   badge?: number | string;
   disabled?: boolean;
+  color?: string;
 }
 
 export interface TabsProps {
@@ -52,11 +53,11 @@ export function Tabs({ tabs, activeTab, onTabChange, className = "" }: TabsProps
                   {tab.label}
                   {tab.badge !== undefined && (
                     <span className={`
-                      inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full min-w-[1.25rem] h-5
-                      ${isActive 
+                      inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full min-w-[1.25rem] h-5 shadow-md
+                      ${tab.color || (isActive 
                         ? 'bg-primary-100 text-primary-700' 
                         : 'bg-neutral-100 text-neutral-600'
-                      }
+                      )}
                     `}>
                       {tab.badge}
                     </span>
