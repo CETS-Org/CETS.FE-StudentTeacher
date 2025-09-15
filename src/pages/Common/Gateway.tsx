@@ -4,10 +4,27 @@ import Card from "../../components/ui/Card";
 import GateWayImg1 from "../../assets/Gateway1.png";
 import GateWayImg2 from "../../assets/Gateway2.png";
 import GateWayImg3 from "../../assets/Gateway3.png";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/Dialog";
 
 export default function Gateway() {
   usePageTitle("Gateway - Unlimited Educational Resources");
+  const location = useLocation();
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
+  useEffect(() => {
+    // Check if user was redirected from login with verification needed
+    if (location.state?.showVerification) {
+      setUserEmail(location.state.email || "");
+      setShowVerificationDialog(true);
+    }
+  }, [location.state]);
+
+  const handleCloseDialog = () => {
+    setShowVerificationDialog(false);
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50">
       {/* Hero Section */}
@@ -162,6 +179,41 @@ export default function Gateway() {
           </div>
         </div>
       </div>
-    </div>
+      {/* Verification Dialog */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Account Verification Required</DialogTitle>
+          </DialogHeader>
+          <div className="text-center space-y-6">
+            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-neutral-900">
+                Please Verify Your Account
+              </h3>
+              <p className="text-neutral-600">
+                Your account needs to be verified before you can access the system.
+              </p>
+              {userEmail && (
+                <p className="text-sm text-neutral-500">
+                  Account: <span className="font-medium">{userEmail}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Please check your email for verification instructions or contact your administrator for assistance.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>   
   );
 }
