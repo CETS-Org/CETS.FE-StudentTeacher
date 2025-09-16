@@ -1,8 +1,7 @@
 // src/pages/teacher/classes/[classId]/CourseMaterialsTab.tsx
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
 import { FileText, Upload } from "lucide-react";
 import UploadMaterialsPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadMaterialsPopup"; 
 import Pagination from "@/Shared/Pagination"; // 1. IMPORT component Pagination
@@ -51,28 +50,43 @@ export default function CourseMaterialsTab() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Course Materials</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-primary-800">Course Materials</h2>
         <Button 
           variant="primary" 
           iconLeft={<Upload className="w-4 h-4" />}
           onClick={() => setPopupOpen(true)}
+          className="bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200"
         >
           Upload Materials
         </Button>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {/* 4. RENDER DANH SÁCH CỦA TRANG HIỆN TẠI */}
         {currentMaterials.map((material) => (
-          <Card key={material.id} className="p-4 border border-gray-200 shadow-md">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <FileText className="w-6 h-6 text-blue-500" />
-                <span className="font-medium text-gray-800">{material.name}</span>
+          <div key={material.id} className="flex items-center justify-between p-4 border border-accent-200 rounded-lg bg-white hover:bg-accent-25 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-accent-500 rounded-xl flex items-center justify-center shadow-md">
+                <FileText className="w-6 h-6 text-white" />
               </div>
-              <span className="text-sm text-gray-500">{material.date}</span>
+              <div>
+                <h4 className="font-semibold text-primary-800">{material.name}</h4>
+                <p className="text-sm text-accent-600 font-medium">{material.date}</p>
+              </div>
             </div>
-          </Card>
+            
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-primary-600 bg-neutral-200 px-3 py-1 rounded-full">PDF</span>
+              <Button
+                variant="primary"
+                size="sm"
+                iconLeft={<FileText className="w-4 h-4" />}
+                className="bg-accent-500 hover:bg-accent-600 shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                View
+              </Button>
+            </div>
+          </div>
         ))}
       </div>
 
