@@ -132,7 +132,7 @@ const MaterialCard: React.FC<{
 
   return (
     <Card>
-      <div className="p-4 hover:bg-gradient-to-r hover:from-primary-25 hover:to-accent-25 transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary-400">
+      <div className="p-4 hover:bg-gradient-to-r hover:from-accent-25 hover:to-accent-50 transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary-400">
         <div className="flex items-center justify-between">
           {/* File Info */}
           <div className="flex items-center gap-4 flex-1">
@@ -171,7 +171,7 @@ const MaterialCard: React.FC<{
               size="sm"
               onClick={() => onDownload(material)}
               iconLeft={<Download className="w-4 h-4" />}
-              className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 shadow-md hover:shadow-lg"
+              className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-accent-300 hover:to-accent-600 shadow-md hover:shadow-lg"
             >
               <span className="hidden sm:inline">Download</span>
             </Button>

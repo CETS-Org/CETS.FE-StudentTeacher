@@ -227,7 +227,7 @@ const MyCourseCard: React.FC<{ course: MyCourse }> = ({ course }) => {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-accent-100 bg-gradient-to-br from-white via-white to-accent-25">
+    <Card className="overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:via-white hover:to-accent-25">
       <div className="flex flex-col lg:flex-row">
         {/* Course Image */}
         <div className="lg:w-64 h-48 lg:h-auto bg-gradient-to-br from-primary-600 to-primary-800 relative flex-shrink-0">
@@ -259,7 +259,7 @@ const MyCourseCard: React.FC<{ course: MyCourse }> = ({ course }) => {
         </div>
 
         {/* Course Content */}
-        <div className="flex-1 p-6 bg-gradient-to-br from-white to-accent-25/30">
+        <div className="flex-1 p-6 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
           <div className="flex justify-between items-start mb-6">
             <div className="flex-1">
               <h3 className="text-xl font-bold text-primary-800 mb-2 leading-tight">
@@ -423,7 +423,7 @@ export default function MyCourses() {
         </div>
 
         {/* Tabs Navigation */}
-        <Card className="shadow-lg border border-accent-100 bg-gradient-to-br from-white to-accent-25/30">
+        <Card className="shadow-lg border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
           <Tabs
             tabs={tabs}
             activeTab={activeTab}
