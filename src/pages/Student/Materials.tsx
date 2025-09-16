@@ -86,22 +86,56 @@ const MaterialCard: React.FC<{
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
       case "pdf":
-        return <FileText className="w-5 h-5 text-red-500" />;
+        return (
+          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-md">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+        );
       case "doc":
-        return <FileText className="w-5 h-5 text-blue-500" />;
+        return (
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+        );
       case "ppt":
-        return <FileText className="w-5 h-5 text-orange-500" />;
+        return (
+          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+        );
       default:
-        return <FileText className="w-5 h-5 text-neutral-500" />;
+        return (
+          <div className="w-10 h-10 bg-gradient-to-br from-neutral-400 to-neutral-500 rounded-lg flex items-center justify-center shadow-md">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+        );
     }
+  };
+
+  const getCategoryBadge = (category: string | undefined) => {
+    const categoryColors: Record<string, string> = {
+      "English": "bg-gradient-to-r from-blue-500 to-blue-600",
+      "Business": "bg-gradient-to-r from-purple-500 to-purple-600", 
+      "IELTS": "bg-gradient-to-r from-green-500 to-green-600",
+      "Speaking": "bg-gradient-to-r from-orange-500 to-orange-600",
+      "Writing": "bg-gradient-to-r from-pink-500 to-pink-600"
+    };
+    
+    if (!category) return null;
+    
+    return (
+      <span className={`inline-block px-2 py-1 text-xs font-medium text-white rounded-full shadow-sm ${categoryColors[category] || "bg-gradient-to-r from-neutral-400 to-neutral-500"}`}>
+        {category}
+      </span>
+    );
   };
 
   return (
     <Card>
-      <div className="p-4 hover:bg-neutral-50 transition-colors">
+      <div className="p-4 hover:bg-gradient-to-r hover:from-accent-25 hover:to-accent-50 transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary-400">
         <div className="flex items-center justify-between">
           {/* File Info */}
-          <div className="flex items-center gap-3 flex-1">
+          <div className="flex items-center gap-4 flex-1">
             {/* File Icon */}
             <div className="flex-shrink-0">
               {getFileIcon(material.fileType)}
@@ -109,18 +143,21 @@ const MaterialCard: React.FC<{
             
             {/* File Details */}
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-neutral-900 truncate">
-                {material.title}
-              </h4>
-              <p className="text-sm text-neutral-600 truncate">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-semibold text-primary-800 truncate">
+                  {material.title}
+                </h4>
+                {getCategoryBadge(material.category)}
+              </div>
+              <p className="text-sm text-neutral-600 truncate mb-2">
                 {material.fileName}
               </p>
-              <div className="flex items-center gap-4 mt-1">
-                <span className="text-xs text-neutral-500 flex items-center gap-1">
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-accent-600 flex items-center gap-1 bg-accent-50 px-2 py-1 rounded-full">
                   <Calendar className="w-3 h-3" />
                   {material.uploadDate}
                 </span>
-                <span className="text-xs text-neutral-500">
+                <span className="text-xs text-success-600 bg-success-50 px-2 py-1 rounded-full font-medium">
                   {material.fileSize}
                 </span>
               </div>
@@ -130,10 +167,11 @@ const MaterialCard: React.FC<{
           {/* Download Button */}
           <div className="flex-shrink-0 ml-4">
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
               onClick={() => onDownload(material)}
               iconLeft={<Download className="w-4 h-4" />}
+              className="btn-primary"
             >
               <span className="hidden sm:inline">Download</span>
             </Button>
@@ -154,18 +192,20 @@ const MaterialsFilters: React.FC<{
 }> = ({ searchTerm, onSearchChange, selectedCategory, onCategoryChange, categories }) => {
   return (
     <Card>
-      <div className="p-4">
+      <div className="p-4 bg-white ">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
+                <Search className="w-3 h-3 text-white" />
+              </div>
               <input
                 type="text"
                 placeholder="Search materials..."
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full pl-12 pr-4 py-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white shadow-sm transition-all duration-200"
               />
             </div>
           </div>
@@ -173,11 +213,13 @@ const MaterialsFilters: React.FC<{
           {/* Category Filter */}
           <div className="sm:w-48">
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 bg-gradient-to-br from-accent-500 to-accent-600 rounded-full flex items-center justify-center">
+                <Filter className="w-3 h-3 text-white" />
+              </div>
               <select
                 value={selectedCategory}
                 onChange={(e) => onCategoryChange(e.target.value)}
-                className="w-full pl-10 pr-8 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 appearance-none bg-white"
+                className="w-full pl-12 pr-8 py-3 border border-accent-200 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 appearance-none bg-white shadow-sm transition-all duration-200"
               >
                 <option value="">All Categories</option>
                 {categories.map((category) => (
@@ -265,12 +307,14 @@ export default function Materials() {
           ) : (
             // Empty State
             <Card>
-              <div className="p-8 text-center">
-                <FileText className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-neutral-900 mb-2">
+              <div className="p-8 text-center bg-gradient-to-br from-neutral-50 to-primary-25">
+                <div className="w-16 h-16 bg-gradient-to-br from-neutral-400 to-neutral-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
+                  <FileText className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-medium text-primary-800 mb-2">
                   No materials found
                 </h3>
-                <p className="text-neutral-600">
+                <p className="text-neutral-600 mb-4">
                   {searchTerm || selectedCategory 
                     ? "Try adjusting your search or filter criteria."
                     : "No public materials are available at the moment."
@@ -278,8 +322,8 @@ export default function Materials() {
                 </p>
                 {(searchTerm || selectedCategory) && (
                   <Button
-                    variant="secondary"
-                    className="mt-4"
+                    variant="primary"
+                    className="mt-4 btn-primary"
                     onClick={() => {
                       setSearchTerm("");
                       setSelectedCategory("");
@@ -296,16 +340,26 @@ export default function Materials() {
         {/* Statistics Footer */}
         <div className="mt-8">
           <Card>
-            <div className="p-4">
-              <div className="flex items-center justify-between text-sm text-neutral-600">
-                <div className="flex items-center gap-4">
-                  <span>Total Materials: {materials.length}</span>
-                  <span>•</span>
-                  <span>Filtered: {filteredMaterials.length}</span>
+            <div className="p-4 bg-gradient-to-r from-success-25 via-info-25 to-warning-25">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-gradient-to-br from-success-500 to-success-600 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-white">{materials.length}</span>
+                    </div>
+                    <span className="text-sm font-medium text-success-700">Total Materials</span>
+                  </div>
+                  <div className="w-px h-6 bg-neutral-300"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-gradient-to-br from-info-500 to-info-600 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-white">{filteredMaterials.length}</span>
+                    </div>
+                    <span className="text-sm font-medium text-info-700">Filtered Results</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white px-3 py-2 rounded-lg shadow-sm">
                   <BookOpen className="w-4 h-4" />
-                  <span>Public Library</span>
+                  <span className="text-sm font-medium">Public Library</span>
                 </div>
               </div>
             </div>

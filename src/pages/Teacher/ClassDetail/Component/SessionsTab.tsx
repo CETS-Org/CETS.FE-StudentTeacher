@@ -1,6 +1,6 @@
 // src/pages/teacher/classes/[classId]/SessionsTab.tsx
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { NotebookPen } from "lucide-react";
@@ -36,18 +36,21 @@ export default function SessionsTab() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Sessions</h2>
+      <h2 className="text-xl font-bold text-primary-800 mb-6">Sessions</h2>
       <div className="space-y-4">
         {/* 4. RENDER DANH SÁCH CỦA TRANG HIỆN TẠI */}
         {currentSessions.map((session) => (
-          <Card key={session.id} className="p-4 border border-gray-200 shadow-md">
+          <Card key={session.id} className="p-4 border border-accent-100 shadow-lg bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300 hover:shadow-xl">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <NotebookPen className="w-6 h-6 text-gray-500" />
-                <span className="font-medium text-gray-800">{session.name}</span>
+                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+                  <NotebookPen className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-semibold text-primary-800">{session.name}</span>
               </div>
                 <Button 
-                variant="secondary" 
+                variant="primary" 
+                className="btn-secondary"
                 onClick={() => navigate('/teacher/sessionDetail')}
               >
                 Go to Session

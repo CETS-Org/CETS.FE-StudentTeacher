@@ -38,23 +38,23 @@ const StarRating: React.FC<{
   onRatingChange: (rating: number) => void;
   size?: "sm" | "md";
 }> = ({ rating, onRatingChange, size = "md" }) => {
-  const starSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
+  const starSize = size === "sm" ? "w-4 h-4" : "w-6 h-6";
   
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1 p-2 bg-yellow-25 rounded-lg border border-yellow-200 w-fit">
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           type="button"
           onClick={() => onRatingChange(star)}
-          className="focus:outline-none"
+          className="focus:outline-none hover:scale-110 transition-transform"
         >
           <Star
             className={`${starSize} ${
               star <= rating
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-neutral-300"
-            } hover:text-yellow-400 transition-colors`}
+                ? "fill-yellow-400 text-yellow-500 drop-shadow-sm"
+                : "text-neutral-300 hover:text-yellow-300"
+            } transition-all duration-200`}
           />
         </button>
       ))}
@@ -69,19 +69,52 @@ const RadioGroup: React.FC<{
   value: string;
   onChange: (value: string) => void;
 }> = ({ name, options, value, onChange }) => {
+  const getOptionColor = (optionValue: string) => {
+    switch (optionValue) {
+      case "excellent":
+      case "very_supportive":
+      case "highly_relevant":
+        return "border-green-200 bg-green-25 text-green-800 hover:bg-green-50";
+      case "good":
+      case "supportive":
+      case "somewhat_relevant":
+        return "border-blue-200 bg-blue-25 text-blue-800 hover:bg-blue-50";
+      case "average":
+      case "somewhat_supportive":
+        return "border-yellow-200 bg-yellow-25 text-yellow-800 hover:bg-yellow-50";
+      case "poor":
+      case "not_supportive":
+      case "not_very_relevant":
+        return "border-red-200 bg-red-25 text-red-800 hover:bg-red-50";
+      default:
+        return "border-neutral-200 bg-neutral-25 text-neutral-700 hover:bg-neutral-50";
+    }
+  };
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {options.map((option) => (
-        <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+        <label 
+          key={option.value} 
+          className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+            value === option.value 
+              ? `${getOptionColor(option.value)} ring-2 ring-primary-200 shadow-sm` 
+              : "border-neutral-200 bg-white hover:bg-neutral-25"
+          }`}
+        >
           <input
             type="radio"
             name={name}
             value={option.value}
             checked={value === option.value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-4 h-4 text-primary-500 border-neutral-300 focus:ring-primary-500"
+            className="w-5 h-5 text-primary-500 border-neutral-300 focus:ring-primary-500"
           />
-          <span className="text-sm text-neutral-700">{option.label}</span>
+          <span className={`text-sm font-medium ${
+            value === option.value ? "" : "text-neutral-700"
+          }`}>
+            {option.label}
+          </span>
         </label>
       ))}
     </div>
@@ -151,28 +184,40 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
         />
         
         {/* Dialog Content */}
-        <div className="inline-block w-200 mx-8 p-0 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative z-10 max-h-screen">
+        <div className="inline-block w-200 mx-8 p-0 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative z-10 max-h-[90vh] overflow-y-auto">
           {step === "course" ? (
             // Course Feedback Form
             <div>
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary-500" />
-                  <h3 className="text-lg font-semibold text-neutral-900">Course Feedback</h3>
+              <div className="flex items-center justify-between p-6 border-b  bg-gradient-to-r ">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-md">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-primary-800">Course Feedback</h3>
+                    <p className="text-sm text-accent-600">Step 1 of 2</p>
+                  </div>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="p-2 hover:bg-neutral-100 rounded-md transition-colors"
+                  className="p-2 hover:bg-red-100 rounded-lg transition-colors border border-transparent hover:border-red-200"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 text-red-500" />
                 </button>
               </div>
 
               {/* Course Info */}
-              <div className="p-6 border-b border-neutral-200">
-                <h4 className="font-medium text-neutral-900">{course.title}</h4>
-                <p className="text-sm text-neutral-600">Instructor: {course.instructor}</p>
+              <div className="p-6 border-b border-neutral-200 bg-gradient-to-r from-blue-25 to-blue-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                    <BookOpen className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-blue-800">{course.title}</h4>
+                    <p className="text-sm text-blue-600">Instructor: {course.instructor}</p>
+                  </div>
+                </div>
               </div>
 
               {/* Form Content */}
@@ -251,7 +296,7 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
 
                 {/* Additional Comments */}
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="block text-sm font-medium text-primary-700 mb-2">
                     Additional Comments
                   </label>
                   <textarea
@@ -260,26 +305,27 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
                       setCourseFeedbackData({ ...courseFeedbackData, additionalComments: e.target.value })
                     }
                     placeholder="Share your thoughts about the course content, structure, or any suggestions..."
-                    className="w-full p-3 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                    className="w-full p-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none text-primary-800 placeholder-primary-400"
                     rows={4}
                   />
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t">
+                <div className="flex justify-end gap-3 pt-4 border-t border-accent-200">
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={handleClose}
+                    className="border-neutral-300 hover:bg-neutral-100"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     variant="primary"
-                    className="bg-neutral-900 hover:bg-neutral-800 text-white px-8"
+                    className="btn-primary px-8"
                   >
-                    Next Page
+                    Next Step →
                   </Button>
                 </div>
               </form>
@@ -288,23 +334,35 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
             // Teacher Feedback Form
             <div>
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <User className="w-5 h-5 text-primary-500" />
-                  <h3 className="text-lg font-semibold text-neutral-900">Teacher Feedback</h3>
+              <div className="flex items-center justify-between p-6 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-purple-800">Teacher Feedback</h3>
+                    <p className="text-sm text-purple-600">Step 2 of 2</p>
+                  </div>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="p-2 hover:bg-neutral-100 rounded-md transition-colors"
+                  className="p-2 hover:bg-red-100 rounded-lg transition-colors border border-transparent hover:border-red-200"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 text-red-500" />
                 </button>
               </div>
 
               {/* Course Info */}
-              <div className="p-6 border-b border-neutral-200">
-                <h4 className="font-medium text-neutral-900">{course.title}</h4>
-                <p className="text-sm text-neutral-600">Instructor: {course.instructor}</p>
+              <div className="p-6 border-b border-neutral-200 bg-gradient-to-r from-purple-25 to-purple-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-purple-800">{course.title}</h4>
+                    <p className="text-sm text-purple-600">Instructor: {course.instructor}</p>
+                  </div>
+                </div>
               </div>
 
               {/* Form Content */}
@@ -384,7 +442,7 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
 
                 {/* Additional Comments */}
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="block text-sm font-medium text-primary-700 mb-2">
                     Additional Comments
                   </label>
                   <textarea
@@ -393,26 +451,27 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
                       setTeacherFeedbackData({ ...teacherFeedbackData, additionalComments: e.target.value })
                     }
                     placeholder="Share your thoughts about the teacher's performance, teaching style, or any suggestions..."
-                    className="w-full p-3 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                    className="w-full p-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none text-primary-800 placeholder-primary-400"
                     rows={4}
                   />
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t">
+                <div className="flex justify-end gap-3 pt-4 border-t border-accent-200">
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => setStep("course")}
+                    className="border-neutral-300 hover:bg-neutral-100"
                   >
-                    Back
+                    ← Back
                   </Button>
                   <Button
                     type="submit"
                     variant="primary"
-                    className="bg-neutral-900 hover:bg-neutral-800 text-white px-8"
+                    className="btn-secondary px-8"
                   >
-                    Submit Teacher Feedback
+                    Submit Feedback ✓
                   </Button>
                 </div>
               </form>

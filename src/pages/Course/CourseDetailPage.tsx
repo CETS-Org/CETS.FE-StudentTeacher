@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import Loader from "@/components/ui/Loader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import CourseDetail from "./CourseDetail";
+import StudentNavbar from "@/Shared/StudentNavbar";
 import { api } from "@/lib/config";
 import type { Course } from "@/types/course";
 
@@ -77,8 +78,9 @@ export default function CourseDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
-        <div className="flex justify-center items-center py-20">
+      <div className="min-h-screen bg-gray-50">
+        <StudentNavbar />
+        <div className="flex justify-center items-center py-20 pt-36">
           <Loader />
           <span className="ml-3 text-gray-600">Loading course details...</span>
         </div>
@@ -88,8 +90,9 @@ export default function CourseDetailPage() {
 
   if (error || !course) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
-        <div className="max-w-4xl mx-auto px-4 py-20">
+      <div className="min-h-screen bg-gray-50">
+        <StudentNavbar />
+        <div className="max-w-4xl mx-auto px-4 py-20 pt-36">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-4">Course Not Found</h1>
             <p className="text-gray-600 mb-8">{error || "The course you're looking for doesn't exist."}</p>
@@ -113,9 +116,11 @@ export default function CourseDetailPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+    <div className="min-h-screen bg-gray-50">
+      <StudentNavbar />
+      
       {/* Breadcrumb Navigation */}
-      <div className="bg-white border-b">
+      <div className="bg-white border-b pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Breadcrumbs items={breadcrumbItems} />
         </div>

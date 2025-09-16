@@ -218,37 +218,41 @@ const SessionCard: React.FC<{
   onToggle: () => void 
 }> = ({ session, isExpanded, onToggle }) => {
   return (
-    <Card className="mb-4">
+    <Card className="mb-4 border border-accent-200 bg-white hover:bg-accent-25 hover:shadow-lg transition-all duration-200">
       <div 
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-neutral-50 transition-colors"
+        className="flex items-center justify-between p-4 cursor-pointer"
         onClick={onToggle}
       >
         <div className="flex items-center gap-4">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-            session.isCompleted ? 'bg-success-100' : 'bg-neutral-100'
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md ${
+            session.isCompleted 
+              ? 'bg-success-500' 
+              : 'bg-accent-500'
           }`}>
             {session.isCompleted ? (
-              <CheckCircle className="w-4 h-4 text-success-600" />
+              <CheckCircle className="w-5 h-5 text-white" />
             ) : (
-              <Play className="w-4 h-4 text-neutral-400" />
+              <Play className="w-4 h-4 text-white" />
             )}
           </div>
           
           <div>
-            <h3 className="font-semibold text-neutral-900">{session.title}</h3>
-            <p className="text-sm text-neutral-600">Topic: {session.topic}</p>
+            <h3 className="font-semibold text-primary-800">{session.title}</h3>
+            <p className="text-sm text-accent-600 font-medium">Topic: {session.topic}</p>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="text-right text-sm text-neutral-600">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
-              <span>{session.date}</span>
+          <div className="text-right text-sm">
+            <div className="flex items-center gap-2 bg-accent-100 px-3 py-1.5 rounded-lg">
+              <Calendar className="w-4 h-4 text-primary-600" />
+              <span className="font-medium text-primary-700">{session.date}</span>
             </div>
           </div>
           
-          <div className="text-neutral-400">
+          <div className={`p-1 rounded-lg transition-colors ${
+            isExpanded ? 'bg-primary-100 text-primary-600' : 'bg-neutral-100 text-neutral-500'
+          }`}>
             {isExpanded ? (
               <ChevronUp className="w-5 h-5" />
             ) : (
@@ -260,23 +264,36 @@ const SessionCard: React.FC<{
       
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 border-t border-neutral-100">
+        <div className="px-4 pb-4 border-t border-accent-200 bg-accent-25">
           <div className="pt-4">
             {/* Submission Tasks */}
             {session.submissionTasks.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-neutral-900 mb-3">Submissions:</h4>
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary-800 mb-3 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-accent-500 rounded-md flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  </div>
+                  Submissions:
+                </h4>
                 {session.submissionTasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 p-2 bg-neutral-50 rounded-md">
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                      task.isSubmitted ? 'bg-success-500' : 'bg-neutral-300'
+                  <div key={task.id} className={`flex items-center gap-3 p-3 rounded-lg border ${
+                    task.isSubmitted 
+                      ? 'bg-success-50 border-success-200' 
+                      : 'bg-warning-50 border-warning-200'
+                  }`}>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${
+                      task.isSubmitted 
+                        ? 'bg-success-500' 
+                        : 'bg-warning-500'
                     }`}>
-                      {task.isSubmitted && (
+                      {task.isSubmitted ? (
                         <CheckCircle className="w-3 h-3 text-white" />
+                      ) : (
+                        <Clock className="w-3 h-3 text-white" />
                       )}
                     </div>
-                    <span className={`text-sm ${
-                      task.isSubmitted ? 'text-neutral-700' : 'text-neutral-600'
+                    <span className={`text-sm font-medium ${
+                      task.isSubmitted ? 'text-success-700' : 'text-warning-700'
                     }`}>
                       {task.title}
                     </span>
@@ -286,7 +303,12 @@ const SessionCard: React.FC<{
             )}
             
             {session.submissionTasks.length === 0 && (
-              <p className="text-sm text-neutral-500 italic">No submissions for this session</p>
+              <div className="text-center py-6">
+                <div className="w-12 h-12 bg-info-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FileText className="w-6 h-6 text-info-600" />
+                </div>
+                <p className="text-sm text-info-600 font-medium">No submissions for this session</p>
+              </div>
             )}
           </div>
         </div>
@@ -302,26 +324,27 @@ const MaterialCard: React.FC<{ material: CourseMaterial }> = ({ material }) => {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center">
-          <FileText className="w-5 h-5 text-neutral-600" />
+    <div className="flex items-center justify-between p-4 border border-accent-200 rounded-lg bg-white hover:bg-accent-25 hover:shadow-md transition-all duration-200">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-accent-500 rounded-xl flex items-center justify-center shadow-md">
+          <FileText className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h4 className="font-medium text-neutral-900">{material.title}</h4>
-          <p className="text-sm text-neutral-500">{material.uploadDate}</p>
+          <h4 className="font-semibold text-primary-800">{material.title}</h4>
+          <p className="text-sm text-accent-600 font-medium">{material.uploadDate}</p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {material.size && (
-          <span className="text-sm text-neutral-500">{material.size}</span>
+          <span className="text-sm font-medium text-primary-600 bg-neutral-200 px-3 py-1 rounded-full">{material.size}</span>
         )}
         <Button
-          variant="ghost"
+          variant="primary"
           size="sm"
           onClick={handleDownload}
           iconLeft={<Download className="w-4 h-4" />}
+          className="bg-accent-500 hover:bg-accent-600 shadow-md hover:shadow-lg transition-all duration-200"
         >
           Download
         </Button>
@@ -390,7 +413,7 @@ const FileUploadModal: React.FC<{
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragActive 
-              ? 'border-primary-500 bg-primary-50' 
+              ? 'border-primary-500 bg-accent-100' 
               : 'border-neutral-300 hover:border-neutral-400'
           }`}
           onDragEnter={handleDrag}
@@ -464,12 +487,12 @@ const AssignmentCard: React.FC<{
 }> = ({ assignment, onSubmit }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "graded": return "bg-success-100 text-success-700";
-      case "submitted": return "bg-primary-100 text-primary-700"; 
-      case "pending": return "bg-warning-100 text-warning-700";
-      case "late": return "bg-error-100 text-error-700";
-      case "locked": return "bg-neutral-100 text-neutral-500";
-      default: return "bg-neutral-100 text-neutral-700";
+      case "graded": return "bg-success-500 text-white shadow-lg";
+      case "submitted": return "bg-accent-500 text-white shadow-lg"; 
+      case "pending": return "bg-warning-500 text-white shadow-lg";
+      case "late": return "bg-error-500 text-white shadow-lg";
+      case "locked": return "bg-neutral-400 text-white shadow-lg";
+      default: return "bg-neutral-400 text-white shadow-lg";
     }
   };
 
@@ -488,61 +511,77 @@ const AssignmentCard: React.FC<{
   const isLocked = assignment.status === "locked";
 
   return (
-    <Card className="p-6">
-      <div className="flex justify-between items-start mb-4">
+    <Card className="p-6 border border-accent-200 bg-white hover:shadow-lg transition-all duration-200">
+      <div className="flex justify-between items-start mb-6">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+          <h3 className="text-xl font-bold text-primary-800 mb-3">
             {assignment.title}
           </h3>
-          <div className="flex items-center gap-4 text-sm text-neutral-600">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
-              <span>Due: {assignment.dueDate}</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 bg-accent-50 px-3 py-2 rounded-lg">
+              <Calendar className="w-4 h-4 text-primary-600" />
+              <span className="text-sm font-medium text-primary-700">Due: {assignment.dueDate}</span>
             </div>
             {assignment.status === "pending" && (
-              <div className="flex items-center gap-1 text-warning-600">
-                <ClockIcon className="w-4 h-4" />
-                <span>3 days left</span>
+              <div className="flex items-center gap-2 bg-warning-50 px-3 py-2 rounded-lg">
+                <ClockIcon className="w-4 h-4 text-warning-600" />
+                <span className="text-sm font-medium text-warning-700">3 days left</span>
               </div>
             )}
           </div>
         </div>
         
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(assignment.status)}`}>
+        <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(assignment.status)}`}>
           {getStatusLabel(assignment.status)}
         </span>
       </div>
 
       {/* Score Display */}
       {assignment.score && (
-        <div className="mb-4 p-3 bg-success-50 rounded-md">
+        <div className="mb-6 p-4 bg-success-50 border border-success-200 rounded-xl">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-success-700">Score: {assignment.score}</span>
-            <CheckCircle className="w-4 h-4 text-success-500" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-success-500 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-lg font-bold text-success-700">Score: {assignment.score}</span>
+            </div>
+            <div className="text-success-600">
+              <Star className="w-6 h-6 fill-current" />
+            </div>
           </div>
         </div>
       )}
 
       {/* Submitted File */}
       {assignment.submittedFile && (
-        <div className="mb-4 p-3 bg-neutral-50 rounded-md">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-neutral-500" />
-            <span className="text-sm font-medium text-neutral-900">
-              {assignment.submittedFile.name}
-            </span>
-            <span className="text-sm text-neutral-500">
-              ({assignment.submittedFile.size})
-            </span>
+        <div className="mb-6 p-4 bg-accent-50 border border-accent-200 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <span className="text-sm font-semibold text-accent-800">
+                {assignment.submittedFile.name}
+              </span>
+              <p className="text-xs text-accent-600">
+                Size: {assignment.submittedFile.size}
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {/* Instructor Remarks */}
       {assignment.instructorRemarks && (
-        <div className="mb-4 p-4 bg-neutral-50 rounded-md">
-          <h4 className="text-sm font-medium text-neutral-900 mb-2">Instructor Remarks:</h4>
-          <p className="text-sm text-neutral-700">{assignment.instructorRemarks}</p>
+        <div className="mb-6 p-4 bg-info-50 border border-info-200 rounded-xl">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 bg-info-500 rounded-lg flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 text-white" />
+            </div>
+            <h4 className="text-sm font-semibold text-info-800">Instructor Remarks:</h4>
+          </div>
+          <p className="text-sm text-info-700 leading-relaxed pl-11">{assignment.instructorRemarks}</p>
         </div>
       )}
 
@@ -565,6 +604,7 @@ const AssignmentCard: React.FC<{
             variant="primary"
             onClick={() => onSubmit(assignment.id)}
             iconLeft={<Upload className="w-4 h-4" />}
+            className="bg-warning-500 hover:bg-warning-600 shadow-lg transition-all duration-200"
           >
             Submit Assignment
           </Button>
@@ -756,16 +796,39 @@ export default function CourseSession() {
   };
 
   const tabs = [
-    { id: "sessions", label: "Sessions", badge: course.sessions.length },
-    { id: "materials", label: "Course Materials", badge: course.materials.length },
-    { id: "homework", label: "Homework/Quiz" },
-    { id: "assignments", label: "Assignment Submission", badge: course.assignments.length },
-    { id: "instructor", label: "Instructor" }
+    { 
+      id: "sessions", 
+      label: "Sessions", 
+      badge: course.sessions.length,
+      color: "bg-primary-500 text-white"
+    },
+    { 
+      id: "materials", 
+      label: "Course Materials", 
+      badge: course.materials.length,
+      color: "bg-accent-500 text-white"
+    },
+    { 
+      id: "homework", 
+      label: "Homework/Quiz",
+      color: "bg-info-500 text-white"
+    },
+    { 
+      id: "assignments", 
+      label: "Assignment Submission", 
+      badge: course.assignments.length,
+      color: "bg-warning-500 text-white"
+    },
+    { 
+      id: "instructor", 
+      label: "Instructor",
+      color: "bg-success-500 text-white"
+    }
   ];
 
   return (
     <StudentLayout>
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6">
           <button 
@@ -779,30 +842,36 @@ export default function CourseSession() {
           <span className="text-sm text-neutral-900 font-medium">{course.title}</span>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Main Content */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {/* Course Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-8 p-6 border border-accent-200 rounded-xl">
               <div>
-                <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+                <h1 className="text-3xl font-bold text-primary-800 mb-3">
                   {course.title}
                 </h1>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(course.status)}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold shadow-md ${getStatusColor(course.status)}`}>
                     {course.status}
                   </span>
-                  <CheckCircle className="w-4 h-4 text-success-500" />
+                  <div className="flex items-center gap-2 bg-success-50 px-3 py-2 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-success-600" />
+                    <span className="text-sm font-medium text-success-700">Verified</span>
+                  </div>
                 </div>
               </div>
               
-              <Button variant="primary">
+              <Button 
+                variant="primary"
+                className="bg-accent-500 hover:bg-accent-600 shadow-lg transition-all duration-200 px-8 py-3 text-lg font-semibold"
+              >
                 Go to Class
               </Button>
             </div>
 
             {/* Tabs Navigation */}
-            <Card className="mb-6">
+            <Card className="mb-8 border border-accent-200 bg-white shadow-lg">
               <Tabs
                 tabs={tabs}
                 activeTab={activeTab}
@@ -826,7 +895,7 @@ export default function CourseSession() {
 
             <TabContent activeTab={activeTab} tabId="materials">
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-neutral-900 mb-4">Course Materials</h2>
+                <h2 className="text-lg font-semibold text-neutral-900 mb-4">Course Materials</h2>
                 {course.materials.map((material) => (
                   <MaterialCard key={material.id} material={material} />
                 ))}
@@ -845,11 +914,14 @@ export default function CourseSession() {
             </TabContent>
 
             <TabContent activeTab={activeTab} tabId="homework">
-              <Card className="text-center py-12">
-                <h3 className="text-lg font-medium text-neutral-900 mb-2">
+              <Card className="text-center py-16 border border-info-200 bg-info-25">
+                <div className="w-20 h-20 bg-info-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ClockIcon className="w-10 h-10 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-info-800 mb-3">
                   Homework/Quiz
                 </h3>
-                <p className="text-neutral-600">
+                <p className="text-info-600 font-medium">
                   Coming soon...
                 </p>
               </Card>
@@ -888,57 +960,75 @@ export default function CourseSession() {
           </div>
 
           {/* Sidebar */}
-          <div className="w-80">
-            <Card>
+          <div className="lg:w-80 w-full lg:flex-shrink-0">
+            <Card className="border border-accent-200 bg-white shadow-lg">
               <div className="p-6">
-                <h3 className="font-semibold text-neutral-900 mb-4">Course Info</h3>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-primary-800 text-lg">Course Info</h3>
+                </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-neutral-600">Instructor</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <User className="w-4 h-4 text-neutral-500" />
-                      <span className="text-sm font-medium text-neutral-900">{course.instructor}</span>
+                <div className="space-y-5">
+                  <div className="p-3  border border-accent-200 rounded-lg">
+                    <label className="text-xs font-medium text-accent-600 uppercase tracking-wide">Instructor</label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="w-6 h-6 bg-accent-500 rounded-full flex items-center justify-center">
+                        <User className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-accent-800">{course.instructor}</span>
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="text-sm text-neutral-600">Duration</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Clock className="w-4 h-4 text-neutral-500" />
-                      <span className="text-sm font-medium text-neutral-900">{course.duration}</span>
+                  <div className="p-3 border border-primary-200 rounded-lg">
+                    <label className="text-xs font-medium text-primary-600 uppercase tracking-wide">Duration</label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
+                        <Clock className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-primary-800">{course.duration}</span>
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="text-sm text-neutral-600">Next Class</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Calendar className="w-4 h-4 text-neutral-500" />
-                      <span className="text-sm font-medium text-neutral-900">{course.nextClass}</span>
+                  <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
+                    <label className="text-xs font-medium text-warning-600 uppercase tracking-wide">Next Class</label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="w-6 h-6 bg-warning-500 rounded-full flex items-center justify-center">
+                        <Calendar className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-warning-800">{course.nextClass}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="mt-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-neutral-700">Progress</span>
-                    <span className="text-sm font-semibold text-neutral-900">{course.progress}%</span>
+                <div className="mt-8 p-4 bg-success-50 border border-success-200 rounded-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-success-500 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-success-700">Course Progress</span>
+                        <span className="text-lg font-bold text-success-800">{course.progress}%</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-full bg-neutral-200 rounded-full h-3">
+                  <div className="w-full bg-success-200 rounded-full h-4 shadow-inner">
                     <div 
-                      className="bg-primary-500 h-3 rounded-full transition-all duration-300"
+                      className="bg-success-500 h-4 rounded-full transition-all duration-500 shadow-sm"
                       style={{ width: `${course.progress}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Contact Advisor */}
-                <div className="mt-6 pt-6 border-t border-neutral-200">
+                <div className="mt-8">
                   <Button 
-                    variant="secondary" 
-                    className="w-full"
-                    iconLeft={<MessageCircle className="w-4 h-4" />}
+                    variant="primary" 
+                    className="w-full bg-accent-500 hover:bg-accent-600 shadow-lg transition-all duration-200 py-3"
+                    iconLeft={<MessageCircle className="w-5 h-5" />}
                   >
                     Contact Advisor
                   </Button>
