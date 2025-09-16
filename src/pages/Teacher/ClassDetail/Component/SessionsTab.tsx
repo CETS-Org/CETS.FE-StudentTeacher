@@ -50,7 +50,7 @@ export default function SessionsTab() {
               </div>
                 <Button 
                 variant="primary" 
-                className="bg-gradient-to-r from-accent-600 to-accent-700 hover:from-accent-300 hover:to-accent-400 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200"
+                className="btn-secondary"
                 onClick={() => navigate('/teacher/sessionDetail')}
               >
                 Go to Session

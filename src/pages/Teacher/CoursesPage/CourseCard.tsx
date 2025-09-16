@@ -60,7 +60,7 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute top-3 left-3 z-10 flex gap-2">
-            <span className="bg-gradient-to-r from-primary-300 to-accent-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold shadow-md">
+            <span className="bg-gradient-to-r from-accent-400 to-accent-500  text-white px-2.5 py-1 rounded-full text-xs font-semibold shadow-md">
               {course.level}
             </span>
             <span className="bg-white/90 text-primary-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-primary-200 shadow-sm">
@@ -79,7 +79,7 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
                 </span>
               </h3>
               <p className="text-xs mt-1">
-                <span className="inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
+                <span className="inline-flex items-center gap-1 bg-warning-200 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
                   <span className="font-semibold">{course.courseCode}</span>
                 </span>
               </p>
@@ -118,7 +118,7 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
           <div className="flex flex-wrap gap-3">
             <Button
               variant="primary"
-              className="flex-1 sm:flex-initial bg-gradient-to-r from-primary-300 to-accent-500 hover:from-accent-500 hover:to-accent-300"
+              className="flex-1 sm:flex-initial btn-primary"
               iconRight={<ExternalLink className="w-4 h-4" />}
               onClick={openCourse}
             >

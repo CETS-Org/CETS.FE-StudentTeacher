@@ -69,7 +69,7 @@ export default function StudentsTab() {
               variant="primary" 
               onClick={startTaking}
               iconLeft={<UserCheck className="w-4 h-4" />}
-              className="bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200"
+              className="btn-secondary"
             >
               Take Attendance
             </Button>
@@ -143,7 +143,7 @@ export default function StudentsTab() {
                           variant="primary"
                           size="sm"
                           iconLeft={<MessageSquare className="w-4 h-4" />}
-                          className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 shadow-md hover:shadow-lg transition-all duration-200"
+                          className="btn-primary"
                         >
                           Message
                         </Button>
@@ -173,7 +173,7 @@ export default function StudentsTab() {
             <Button 
               variant="primary" 
               onClick={saveAttendance}
-              className="bg-gradient-to-r from-success-500 to-success-600 hover:from-success-600 hover:to-success-700 shadow-lg shadow-success-500/25 hover:shadow-success-600/30 transition-all duration-200"
+              className="btn-secondary"
             >
               Save Attendance
             </Button>

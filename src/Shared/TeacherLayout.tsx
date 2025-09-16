@@ -50,7 +50,7 @@ export default function TeacherLayout({ children, className = "", crumbs, pageHe
                 {...pageHeader}
                 title={
                   typeof pageHeader.title === 'string' ? (
-                    <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
+                    <span className="bg-gradient-to-r text-primary-800 font-bold text-3xl">
                       {pageHeader.title}
                     </span>
                   ) : pageHeader.title

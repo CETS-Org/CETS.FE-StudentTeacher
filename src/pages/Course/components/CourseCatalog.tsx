@@ -216,7 +216,7 @@ export default function CourseCatalog() {
                   className="pl-16 pr-6 py-5 text-lg rounded-2xl border-0 shadow-2xl bg-white/95 backdrop-blur-sm focus:ring-4 focus:ring-accent-300/50 focus:bg-white transition-all"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Button className="bg-gradient-to-r from-accent-500 to-primary-600 hover:from-accent-600 hover:to-primary-700 text-white px-6 py-2 rounded-xl font-semibold shadow-lg">
+                  <Button className="btn-secondary px-6 py-2 rounded-xl font-semibold">
                     Search
                   </Button>
                 </div>
@@ -327,7 +327,7 @@ export default function CourseCatalog() {
                 variant="secondary"
                 onClick={() => setShowFilters((v) => !v)}
                 iconLeft={<Filter className="w-4 h-4" />}
-                className="bg-gradient-to-r from-accent-500 to-primary-600 hover:from-accent-600 hover:to-primary-700 text-white border-0 shadow-md"
+                className="btn-secondary border-0"
               >
                 Filters
                 {activeFiltersCount > 0 && (

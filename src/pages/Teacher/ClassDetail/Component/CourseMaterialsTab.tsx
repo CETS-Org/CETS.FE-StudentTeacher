@@ -56,7 +56,7 @@ export default function CourseMaterialsTab() {
           variant="primary" 
           iconLeft={<Upload className="w-4 h-4" />}
           onClick={() => setPopupOpen(true)}
-          className="bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200"
+          className="btn-secondary"
         >
           Upload Materials
         </Button>

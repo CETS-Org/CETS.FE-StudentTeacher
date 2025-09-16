@@ -93,7 +93,7 @@ export default function CourseListItem({ course, onEnroll }: CourseCardProps) {
           
           <Button
             onClick={() => onEnroll(course)}
-            className="bg-gradient-to-r from-primary-600 to-accent-500 hover:from-accent-500 hover:to-accent-200 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 text-sm w-full"
+            className="btn-primary text-sm w-full"
             iconRight={<ArrowRight className="w-4 h-4" />}
           >
             View Details

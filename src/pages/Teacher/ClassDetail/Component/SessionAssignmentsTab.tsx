@@ -115,7 +115,7 @@ export default function SessionAssignmentsTab() {
             <Button 
               onClick={() => setCreateOpen(true)} 
               iconLeft={<PlusCircle size={16} />}
-              className="bg-gradient-to-r from-accent-400 to-accent-500 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200"
+              className="btn-secondary"
             >
               Create Assignment
             </Button>
@@ -144,7 +144,7 @@ export default function SessionAssignmentsTab() {
                   <Button 
                     variant="primary"
                     onClick={() => handleViewSubmissions(asm)}
-                    className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-accent-500 hover:to-accent-600 shadow-lg shadow-primary-500/25"
+                    className="btn-primary"
                   >
                     View Submissions
                   </Button>

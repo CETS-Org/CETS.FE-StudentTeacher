@@ -309,7 +309,7 @@ const TeacherClassCard: React.FC<{ cls: TeacherClass }> = ({ cls }) => {
           <div className="flex flex-wrap gap-3">
             <Button 
               variant="primary" 
-              className="flex-1 sm:flex-initial bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200" 
+              className="flex-1 sm:flex-initial btn-secondary" 
               iconRight={<ExternalLink className="w-4 h-4" />} 
               onClick={openClass}
             >
@@ -393,7 +393,7 @@ export default function Classes() {
           <div className="flex gap-3">
             <Button 
               variant="primary"
-              className="bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200"
+              className="btn-secondary"
             >
               Open Today's Schedule
             </Button>
@@ -489,7 +489,7 @@ export default function Classes() {
               </p>
               <Button 
                 variant="primary"
-                className="bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200"
+                className="btn-secondary"
               >
                 Create Class
               </Button>

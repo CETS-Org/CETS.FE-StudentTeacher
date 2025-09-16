@@ -171,7 +171,7 @@ const MaterialCard: React.FC<{
               size="sm"
               onClick={() => onDownload(material)}
               iconLeft={<Download className="w-4 h-4" />}
-              className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-accent-300 hover:to-accent-600 shadow-md hover:shadow-lg"
+              className="btn-primary"
             >
               <span className="hidden sm:inline">Download</span>
             </Button>
@@ -323,7 +323,7 @@ export default function Materials() {
                 {(searchTerm || selectedCategory) && (
                   <Button
                     variant="primary"
-                    className="mt-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
+                    className="mt-4 btn-primary"
                     onClick={() => {
                       setSearchTerm("");
                       setSelectedCategory("");

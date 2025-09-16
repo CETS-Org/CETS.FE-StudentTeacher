@@ -252,6 +252,15 @@
 .w-6xl { width: var(--width-6xl); }
 .w-7xl { width: var(--width-7xl); }
 
+/* Button utilities */
+.btn-primary {
+  @apply bg-gradient-to-r from-primary-500 to-primary-600 hover:from-accent-500 hover:to-accent-600 shadow-lg shadow-primary-500/25 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg;
+}
+
+.btn-secondary {
+  @apply bg-gradient-to-r from-accent-400 to-accent-500 hover:from-accent-600 hover:to-accent-700 shadow-lg shadow-accent-500/25 hover:shadow-accent-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg;
+}
+
 /* Scrollbar utilities */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */

@@ -96,7 +96,7 @@ export default function Courses() {
     >
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {/* Search & Filters */}
-        <div className="flex flex-wrap gap-3 mb-6 items-center p-4 rounded-xl bg-gradient-to-r from-primary-50 to-accent-50 border border-primary-100">
+        <div className="flex flex-wrap gap-3 mb-6 items-center">
           <div className="relative flex-1 min-w-[220px]">
             <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-primary-400" />
             <input
