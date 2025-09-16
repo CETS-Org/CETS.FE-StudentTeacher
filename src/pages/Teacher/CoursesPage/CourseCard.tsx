@@ -4,19 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import ClassActionsMenu from "@/pages/Teacher/ClassesPage/ClassActionsMenu";
-import {
-  BookOpen,
-  CheckCircle2,
-  Clock,
-  Calendar,
-  Users,
-  Star,
-  FileText,
-  FolderOpen,
-  MapPin,
-  GraduationCap,
-  ExternalLink,
-} from "lucide-react";
+import { Clock, Users, Star, ExternalLink } from "lucide-react";
 
 /* =========================
    Types
@@ -32,14 +20,7 @@ export type { TeacherCourse };
 ========================= */
 
 
-function fmtDate(d?: string) {
-  if (!d) return "";
-  try {
-    return new Date(d).toLocaleDateString();
-  } catch {
-    return d;
-  }
-}
+// (date helper removed as it's unused)
 
 function svgPlaceholder(title: string, w = 400, h = 240) {
   const t = encodeURIComponent(title.substring(0, 22));
@@ -53,8 +34,7 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
   const navigate = useNavigate();
 
   const openCourse = () => {navigate("/teacher/classes");};
-  const openSyllabus = () => navigate(`/teacher/courses/${course.id}/syllabus`);
-  const openMaterials = () => navigate(`/teacher/courses/${course.id}/materials`);
+  // extra navigations removed as they're unused
   
 
   const onEdit = () => navigate(`/teacher/courses/${course.id}/edit`);
@@ -66,10 +46,10 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
   const imgSrc = course.image || svgPlaceholder(course.title);
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200 border border-gray-200 shadow-md">
+    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border border-primary-200 shadow-lg bg-white/90 backdrop-blur-sm">
       <div className="flex flex-col lg:flex-row">
-        {/* Image + status */}
-        <div className="lg:w-64 h-48 lg:h-auto bg-neutral-600 relative flex-shrink-0">
+        {/* Image + gradients */}
+        <div className="lg:w-64 h-48 lg:h-auto relative flex-shrink-0">
           <img
             src={imgSrc}
             alt={course.title}
@@ -78,19 +58,33 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
               (e.currentTarget as HTMLImageElement).src = svgPlaceholder(course.title);
             }}
           />
-     
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+          <div className="absolute top-3 left-3 z-10 flex gap-2">
+            <span className="bg-gradient-to-r from-primary-300 to-accent-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold shadow-md">
+              {course.level}
+            </span>
+            <span className="bg-white/90 text-primary-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-primary-200 shadow-sm">
+              {course.format}
+            </span>
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 p-6">
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1 pr-3">
-              <h3 className="text-lg font-semibold text-neutral-900">{course.title}</h3>
-              <p className="text-sm text-neutral-600">
-                Code: {course.courseCode} • {course.level} • {course.format}
+              <h3 className="text-lg font-semibold text-neutral-900">
+                <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
+                  {course.title}
+                </span>
+              </h3>
+              <p className="text-xs mt-1">
+                <span className="inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
+                  <span className="font-semibold">{course.courseCode}</span>
+                </span>
               </p>
               {course.category && (
-                <p className="text-sm text-neutral-600 mt-1 line-clamp-2">{course.category}</p>
+                <p className="text-sm text-neutral-600 mt-2 line-clamp-2">{course.category}</p>
               )}
             </div>
 
@@ -98,46 +92,38 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
             <ClassActionsMenu onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} align="right" />
           </div>
 
-    
-
           {/* Meta */}
-          <div className="flex flex-wrap gap-4 text-sm text-neutral-600 mb-4">
+          <div className="flex flex-wrap gap-4 text-sm text-neutral-700 mb-4">
             {typeof course.totalHours === "number" && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 bg-accent-50 text-accent-700 px-2.5 py-1 rounded-md border border-accent-100">
                 <Clock className="w-4 h-4" />
                 <span>{course.totalHours}h total</span>
               </div>
             )}
-        
+            {typeof course.enrolled === "number" && (
+              <div className="flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-md border border-primary-100">
+                <Users className="w-4 h-4" />
+                <span>{course.enrolled} enrolled</span>
+              </div>
+            )}
+            {typeof course.rating === "number" && (
+              <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-md border border-yellow-100">
+                <Star className="w-4 h-4" />
+                <span>{course.rating.toFixed(1)}</span>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3">
             <Button
               variant="primary"
-              className="flex-1 sm:flex-initial"
+              className="flex-1 sm:flex-initial bg-gradient-to-r from-primary-300 to-accent-500 hover:from-accent-500 hover:to-accent-300"
               iconRight={<ExternalLink className="w-4 h-4" />}
               onClick={openCourse}
             >
               View Classes
             </Button>
-           {/*   <Button
-              variant="secondary"
-              className="flex-1 sm:flex-initial"
-              iconLeft={<FileText className="w-4 h-4" />}
-              onClick={openSyllabus}
-            >
-              Syllabus
-            </Button>  */}
-          {/*  <Button
-              variant="secondary"
-              className="flex-1 sm:flex-initial"
-              iconLeft={<FolderOpen className="w-4 h-4" />}
-              onClick={openMaterials}
-            >
-              Materials
-            </Button> */}
-         
           </div>
         </div>
       </div>

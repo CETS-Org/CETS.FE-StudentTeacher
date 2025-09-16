@@ -3,7 +3,9 @@ import React, { useState } from "react";
 import Navbar from "./TeacherNavbar";
 import TeacherSidebar from "./TeacherSidebar";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import PageHeader from "@/components/ui/PageHeader";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
+import type { PageHeaderProps } from "@/components/ui/PageHeader";
 import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import ChatPopup from "@/pages/Teacher/ChatPage/ChatPopup"; // ⬅️ thêm import
@@ -12,9 +14,10 @@ type Props = {
   children: React.ReactNode;
   className?: string;
   crumbs?: Crumb[];
+  pageHeader?: PageHeaderProps;
 };
 
-export default function TeacherLayout({ children, className = "", crumbs }: Props) {
+export default function TeacherLayout({ children, className = "", crumbs, pageHeader }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -41,6 +44,25 @@ export default function TeacherLayout({ children, className = "", crumbs }: Prop
       >
        <div className={cn("p-6", className)}>
           {crumbs && <Breadcrumbs items={crumbs} />}
+          {pageHeader && (
+            <div className="mb-2">
+              <PageHeader 
+                {...pageHeader}
+                title={
+                  typeof pageHeader.title === 'string' ? (
+                    <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
+                      {pageHeader.title}
+                    </span>
+                  ) : pageHeader.title
+                }
+                subtitle={
+                  typeof pageHeader.subtitle === 'string' ? (
+                    <span className="text-sm text-neutral-600">{pageHeader.subtitle}</span>
+                  ) : pageHeader.subtitle
+                }
+              />
+            </div>
+          )}
           {children}
 
           
