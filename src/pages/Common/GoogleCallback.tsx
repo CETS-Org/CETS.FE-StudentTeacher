@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { api } from '@/lib/config';
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -12,14 +13,19 @@ export default function GoogleCallback() {
       const params = new URLSearchParams(hash.substring(1));
       const accessToken = params.get('access_token');
       const error = params.get('error');
-
+      
       if (error) {
         // Gửi lỗi về parent window
-        window.opener?.postMessage({
-          type: 'GOOGLE_AUTH_ERROR',
-          error: error
-        }, window.location.origin);
-        window.close();
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'GOOGLE_AUTH_ERROR',
+            error: error
+          }, window.location.origin);
+          window.close();
+        } else {
+          // Nếu không có parent window, redirect về login với error
+          window.location.href = '/login?error=' + encodeURIComponent(error);
+        }
         return;
       }
 
@@ -27,31 +33,58 @@ export default function GoogleCallback() {
         // Lấy thông tin user từ Google API
         fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${accessToken}`)
           .then(response => response.json())
-          .then(userInfo => {
-            // Gửi thông tin về parent window
-            window.opener?.postMessage({
-              type: 'GOOGLE_AUTH_SUCCESS',
-              token: accessToken,
-              userInfo: {
-                id: userInfo.id,
+          .then(async (userInfo) => {
+            console.log('Google User Info:', userInfo);
+            
+            try {
+              // Gửi thông tin về backend để xác thực và lấy token của hệ thống
+              const backendResponse = await api.googleLogin({
                 email: userInfo.email,
                 fullName: userInfo.name,
                 picture: userInfo.picture,
-                roleNames: ['user'] // Default role, có thể cần xác định từ backend
+                googleId: userInfo.id
+              });
+
+              const backendData = backendResponse.data;
+              console.log('Backend Response:', backendData);
+
+              // Gửi thông tin về parent window
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: 'GOOGLE_AUTH_SUCCESS',
+                  token: backendData.token, // Sử dụng token từ backend
+                  userInfo: backendData.account // Sử dụng thông tin từ backend
+                }, window.location.origin);
+                window.close();
+              } else {
+                // Nếu không có parent window, lưu thông tin và redirect
+                localStorage.setItem("authToken", backendData.token);
+                localStorage.setItem("userInfo", JSON.stringify(backendData.account));
+                window.location.href = '/gateway';
               }
-            }, window.location.origin);
-            window.close();
+            } catch (backendError) {
+              console.error('Backend Error:', backendError);                           
+            }
           })
           .catch(error => {
-            window.opener?.postMessage({
-              type: 'GOOGLE_AUTH_ERROR',
-              error: 'Failed to get user info'
-            }, window.location.origin);
-            window.close();
+            console.error('Error fetching user info:', error);
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'GOOGLE_AUTH_ERROR',
+                error: 'Failed to get user info'
+              }, window.location.origin);
+              window.close();
+            } else {
+              window.location.href = '/login?error=' + encodeURIComponent('Failed to get user info');
+            }
           });
       } else {
         // Không có token, đóng popup
-        window.close();
+        if (window.opener) {
+          window.close();
+        } else {
+          window.location.href = '/login';
+        }
       }
     };
 
@@ -67,3 +100,4 @@ export default function GoogleCallback() {
     </div>
   );
 }
+

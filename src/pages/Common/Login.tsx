@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,6 +55,15 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+
+  // Xử lý lỗi từ URL parameters (khi redirect từ Google)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+      setErrorMessage(decodeURIComponent(error));
+    }
+  }, []);
 
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -156,6 +165,8 @@ export default function Login() {
       const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/google-callback`;
       const scope = "email profile";
       
+      console.log("Google OAuth Config:", { clientId, redirectUri, scope });
+      
       // Create Google OAuth URL
       const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${clientId}&` +
@@ -163,6 +174,8 @@ export default function Login() {
         `response_type=token&` +
         `scope=${encodeURIComponent(scope)}&` +
         `prompt=consent`;
+      
+      console.log("Google Auth URL:", googleAuthUrl);
       
       // Open Google OAuth popup
       const popup = window.open(
@@ -182,18 +195,33 @@ export default function Login() {
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
           const { token, userInfo } = event.data;
           
-          // Store token and user info
+          console.log('Received from GoogleCallback:', { token, userInfo });
+          
+          // Store token and user info 
           localStorage.setItem("authToken", token);
           localStorage.setItem("userInfo", JSON.stringify(userInfo));
           
-          // Navigate based on user role (you might need to determine this from the Google response)
-          // For now, we'll navigate to a default page or show role selection
-          navigate("/gateway", {
-            state: {
-              googleAuth: true,
-              userInfo: userInfo
+          // Navigate based on user role from backend response
+          if (userInfo.roleNames && userInfo.roleNames.includes('student')) {
+            navigate("/student/myCourses");
+          } else if (userInfo.roleNames && userInfo.roleNames.includes('teacher')) {
+            navigate("/teacher/courses");
+          } else {
+            // Default navigation if role not determined
+            if(!userInfo.isVerified){
+
             }
-          });
+            if (!userInfo.isVerified) {
+                  // Account not verified - navigate to Gateway with verification state
+                  navigate("/gateway", {
+                    state: {
+                      showVerification: true,
+                      email: userInfo.email
+                    }
+                  });
+                  return;
+            }
+          }
           
           popup.close();
           window.removeEventListener('message', messageListener);

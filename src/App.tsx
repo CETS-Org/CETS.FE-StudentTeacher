@@ -30,6 +30,7 @@ import TeacherSchedule from './pages/Teacher/SchedulePage/TeacherSchedule'
 import Dev_Home from './pages/Dev_Home'
 import CourseDetailPage from './pages/Course/CourseDetailPage'
 import CourseAll from './pages/Course/CourseAll'
+import GoogleCallback from './pages/Common/GoogleCallback'
 
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/dev" element={<Dev_Home />} />
             <Route path="/dev/dashboard" element={<Dev_Dashboard />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/google-callback" element={<GoogleCallback />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgotPassword" element={<ForgotPassword />} /> 
             <Route path="/otpVerification" element={<OtpVerification />} /> 

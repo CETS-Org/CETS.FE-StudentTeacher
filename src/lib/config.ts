@@ -69,5 +69,9 @@ export const api = {
   
   loginTeacher: (credentials: any, config?: AxiosRequestConfig) => 
     apiClient.post('/api/IDN_Account/login/teacher', credentials, config),
+  
+  // Google OAuth
+  googleLogin: (googleData: any, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/googleLogin', googleData, config),
 };
 
