@@ -1,7 +1,7 @@
 // src/components/teacher/SessionAssignmentsTab.tsx
 
-import React, { useState, useMemo } from "react";
-import { PlusCircle, FileText, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download } from "lucide-react";
+import { useState, useMemo } from "react";
+import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Pagination from "@/Shared/Pagination";
@@ -53,7 +53,7 @@ export default function SessionAssignmentsTab() {
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [, setSelectedSubmission] = useState<Submission | null>(null);
 
   // State cho phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,8 +92,8 @@ export default function SessionAssignmentsTab() {
     setGradeOpen(true);
   };
 
-  const handleFeedbackSubmit = (feedback: string) => { /* ... */ };
-  const handleGradeSubmit = (score: string) => { /* ... */ };
+  const handleFeedbackSubmit = () => { /* ... */ };
+  const handleGradeSubmit = () => { /* ... */ };
   
   // --- LOGIC PHÂN TRANG ---
   const submissionsToDisplay = selectedAssignment?.submissions || [];
@@ -111,29 +111,44 @@ export default function SessionAssignmentsTab() {
       {viewMode === 'assignments' && (
         <div>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Session Assignments</h2>
-            <Button onClick={() => setCreateOpen(true)} iconLeft={<PlusCircle size={16} />}>
+            <h2 className="text-xl font-bold text-primary-800">Session Assignments</h2>
+            <Button 
+              onClick={() => setCreateOpen(true)} 
+              iconLeft={<PlusCircle size={16} />}
+              className="btn-secondary"
+            >
               Create Assignment
             </Button>
           </div>
           <div className="space-y-4">
             {assignments.map(asm => (
-              <Card key={asm.id} className="p-4 hover:shadow-md transition-shadow border border-gray-200 shadow-md">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div className="flex-grow">
-                    <div className="flex items-center gap-3">
-                      <FileText className="text-blue-500" size={20}/>
-                      <h3 className="font-semibold text-lg text-gray-900">{asm.title}</h3>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500 mt-2 pl-8">
-                      <span className="flex items-center gap-1.5"><Calendar size={14}/> Due: {asm.dueDate}</span>
-                      <span className="flex items-center gap-1.5"><Users size={14}/> {asm.submissions.length} Submissions</span>
+              <Card key={asm.id} className="p-6 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-primary-800 mb-3">
+                      {asm.title}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2 bg-error-200 px-3 py-2 rounded-lg">
+                        <Calendar className="w-4 h-4 text-primary-600" />
+                        <span className="text-sm font-medium text-primary-700">Due: {asm.dueDate}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-warning-200 px-3 py-2 rounded-lg">
+                        <Users className="w-4 h-4 text-primary-600" />
+                        <span className="text-sm font-medium text-primary-700">{asm.submissions.length} Submissions</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex-shrink-0 flex gap-2 self-end sm:self-center">
-                    <Button variant="secondary" onClick={() => handleViewSubmissions(asm)}>View Submissions</Button>
-                    <Button variant="secondary">Edit</Button>
-                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button 
+                    variant="primary"
+                    onClick={() => handleViewSubmissions(asm)}
+                    className="btn-primary"
+                  >
+                    View Submissions
+                  </Button>
+                  <Button variant="secondary">Edit</Button>
                 </div>
               </Card>
             ))}

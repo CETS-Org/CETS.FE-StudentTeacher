@@ -99,7 +99,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
               
               <div className="p-6">
                 <div className="flex items-center gap-4 mb-4">
-                  <span className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-sm font-medium">
+                  <span className="bg-accent-100 text-primary-800 px-3 py-1 rounded-full text-sm font-medium">
                     {course.categoryName}
                   </span>
                   <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
@@ -158,7 +158,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                     <div key={index} className="p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                          <div className="w-8 h-8 bg-accent-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-semibold">
                             {item.sessionNumber}
                           </div>
                           <div className="flex-1">

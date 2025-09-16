@@ -1,13 +1,13 @@
 // src/components/modals/ClassSessionDetailsPopup.tsx
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
-import Button from "@/components/ui/Button";
-import { Calendar, Clock, DoorClosed, Video, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
+import { Calendar as CalendarIcon, Clock, MapPin, Video, User, BookOpen, GraduationCap } from "lucide-react";
 
 // Định nghĩa cấu trúc dữ liệu cho một buổi học
 type SessionDetails = {
   courseName: string;
   className: string;
+  instructor?: string;
   date: string;
   time: string;
   roomNumber: string;
@@ -22,25 +22,6 @@ type Props = {
   session: SessionDetails | null; // Cho phép null để xử lý trường hợp không có dữ liệu
 };
 
-// Component con để hiển thị một mục thông tin
-// Định nghĩa kiểu dữ liệu cho props của InfoItem
-type InfoItemProps = {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-};
-
-const InfoItem = ({ icon: Icon, label, value }: InfoItemProps) => (
-  <div>
-    <p className="text-sm text-gray-500 flex items-center gap-2">
-      <Icon size={16} />
-      {label}
-    </p>
-    <p className="font-medium text-gray-800 mt-1">{value}</p>
-  </div>
-);
-
-
 export default function ClassSessionDetailsPopup({ open, onOpenChange, session }: Props) {
   if (!session) {
     return null; // Không render gì nếu không có dữ liệu buổi học
@@ -48,73 +29,116 @@ export default function ClassSessionDetailsPopup({ open, onOpenChange, session }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="md">
+      <DialogContent size="xl" className="border border-accent-200">
         <DialogHeader>
-          <DialogTitle>Class Session Details</DialogTitle>
-          {/* Nút đóng 'x' */}
-          <button onClick={() => onOpenChange(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-             <X size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-lg font-bold text-primary-800">Teaching Session Details</DialogTitle>
+              <p className="text-accent-600 text-sm">Course Information & Schedule</p>
+            </div>
+          </div>
         </DialogHeader>
-        <DialogBody className="space-y-6 pt-4">
-          {/* Thông tin khóa học và lớp */}
-          <div>
-            <p className="text-sm text-gray-500">Course</p>
-            <p className="text-xl font-semibold text-gray-900">{session.courseName}</p>
-          </div>
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-500">Class Section</p>
-              <p className="text-xl font-semibold text-gray-900">{session.className}</p>
-            </div>
-            <button className="text-sm font-medium text-blue-600 hover:underline p-0">
-                Details
-            </button>
-          </div>
-
-          <hr/>
-
-          {/* Lưới thông tin chi tiết */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            <InfoItem icon={Calendar} label="Date" value={session.date} />
-            <InfoItem icon={Clock} label="Time" value={session.time} />
-            <InfoItem icon={DoorClosed} label="Room Number" value={session.roomNumber} />
-            <div>
-              <p className="text-sm text-gray-500">Teaching Format</p>
-              <span className="mt-1 inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                {session.format}
-              </span>
-            </div>
-          </div>
-
-          {/* Liên kết cuộc họp trực tuyến */}
-          {session.meetingLink && (
-            <div>
-              <hr/>
-              <p className="font-semibold text-gray-700 mt-4 mb-2">Online Meeting</p>
-              <div className="relative">
-                <Video size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  readOnly
-                  value={session.meetingLink}
-                  className="w-full border rounded-md pl-10 pr-3 py-2 bg-gray-50 text-gray-600"
-                />
+        <DialogBody className="pt-3">
+          {session && (
+            <div className="space-y-4">
+              {/* Course Header */}
+              <div className="p-4 bg-primary-500 text-white rounded-lg relative overflow-hidden">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="w-4 h-4" />
+                  <span className="text-primary-100 text-xs font-medium uppercase tracking-wide">Course</span>
+                </div>
+                <h3 className="text-lg font-bold mb-1">{session.courseName}</h3>
+                <p className="text-primary-100 text-sm font-medium">{session.className}</p>
               </div>
-              <Button 
-                variant="primary" 
-                className="w-full mt-3" 
-                iconLeft={<Video size={16}/>}
-                onClick={() => window.open(session.meetingLink, '_blank')}
-              >
-                Join Meeting
-              </Button>
+
+              {/* Quick Info Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {session.instructor && (
+                  <div className="p-3 bg-accent-50 border border-accent-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="font-bold text-accent-800 text-sm uppercase tracking-wide">Teacher</span>
+                    </div>
+                    <p className="text-accent-700 font-semibold text-base">{session.instructor}</p>
+                    <p className="text-accent-600 text-sm mt-1">Office hours available after class</p>
+                  </div>
+                )}
+
+                <div className="p-3 bg-success-50 border border-success-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-success-500 rounded-lg flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-bold text-success-800 text-sm uppercase tracking-wide">Schedule</span>
+                  </div>
+                  <p className="text-success-700 font-semibold text-base">{session.time}</p>
+                  <p className="text-success-600 text-sm mt-1">90 minutes duration</p>
+                </div>
+
+                <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-warning-500 rounded-lg flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-bold text-warning-800 text-sm uppercase tracking-wide">Location</span>
+                  </div>
+                  <p className="text-warning-700 font-semibold text-base">{session.roomNumber}</p>
+                  <p className="text-warning-600 text-sm mt-1">CETS Language Center</p>
+                </div>
+
+                <div className="p-3 bg-primary-25 border border-primary-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-bold text-primary-800 text-sm uppercase tracking-wide">Date</span>
+                  </div>
+                  <p className="text-primary-700 font-semibold text-base">{session.date}</p>
+                  <p className="text-primary-600 text-sm mt-1">Arrive 10 minutes early to set up</p>
+                </div>
+              </div>
+
+              {/* Meeting Link Section */}
+              {session.meetingLink && (
+                <div className="p-3 bg-info-50 border border-info-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-info-500 rounded flex items-center justify-center">
+                        <Video className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="font-bold text-info-800 text-sm">Online Meeting Room</span>
+                    </div>
+                    <a 
+                      href={session.meetingLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-info-500 hover:bg-info-600 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                    >
+                      <Video className="w-3 h-3" />
+                      Start Meeting
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Teaching Preparation */}
+              <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg">
+                <h4 className="font-bold text-neutral-800 mb-2 text-sm">Teaching Preparation</h4>
+                <div className="text-neutral-700 text-xs space-y-1">
+                  <div>• Review lesson plan and materials</div>
+                  <div>• Check audio/visual equipment</div>
+                  <div>• Prepare handouts and exercises</div>
+                  <div>• Set up classroom or online room</div>
+                </div>
+              </div>
             </div>
           )}
         </DialogBody>
-        <DialogFooter className="mt-4">
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>Close</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
