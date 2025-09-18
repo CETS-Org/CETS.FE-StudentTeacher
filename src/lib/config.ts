@@ -73,5 +73,9 @@ export const api = {
   // Google OAuth
   googleLogin: (googleData: any, config?: AxiosRequestConfig) => 
     apiClient.post('/api/IDN_Account/googleLogin', googleData, config),
+  
+  // Registration
+  register: (userData: any, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/register', userData, config),
 };
 
