@@ -92,8 +92,8 @@ export default function Register() {
 
   return (
     // Full screen layout that breaks out of parent container
-      <div className="w-full mx-auto px-70 py-8">
-        <Card className="shadow-xl border-0 rounded-2xl">
+      <div className="w-full mx-auto px-70 py-8 pt-20">
+        <Card className="shadow-xl border-0 w-1/2 mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="mx-auto w-14 h-14 bg-primary-600 rounded-full flex items-center justify-center mb-4">

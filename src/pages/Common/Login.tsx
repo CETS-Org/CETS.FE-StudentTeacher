@@ -253,7 +253,7 @@ export default function Login() {
 
 
   return (
-    <div className="w-full px-70 pt-40">
+    <div className="w-full px-70 pt-20">
       <Card className="shadow-xl border-0 w-1/2 mx-auto">
         {/* Header */}
         <div className="text-center mb-8">

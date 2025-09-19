@@ -31,6 +31,7 @@ import Dev_Home from './pages/Dev_Home'
 import CourseDetailPage from './pages/Course/CourseDetailPage'
 import CourseAll from './pages/Course/CourseAll'
 import GoogleCallback from './pages/Common/GoogleCallback'
+import ChangePassword from './pages/Common/ChangePassword'
 
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/forgotPassword" element={<ForgotPassword />} /> 
             <Route path="/otpVerification" element={<OtpVerification />} /> 
             <Route path="/resetPassword" element={<ResetPassword />} />          
+            <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/student/wishlist" element={<Wishlist />} /> 
             <Route path="/student/myCourses" element={<MyCourses />} /> 
             <Route path="/student/Course/:courseId" element={<CourseSession />} />
