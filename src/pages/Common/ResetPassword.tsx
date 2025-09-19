@@ -7,6 +7,7 @@ import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { ArrowLeft, Lock, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { api } from "@/lib/config";
 
 // Validation schema
 const resetPasswordSchema = z.object({
@@ -33,7 +34,7 @@ export default function ResetPassword() {
   const location = useLocation();
   
   const email = location.state?.email || "";
-  const otp = location.state?.otp || "";
+  const token = location.state?.token || "";
 
   const methods = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
@@ -43,26 +44,33 @@ export default function ResetPassword() {
     },
   });
 
-  // Redirect if no email or OTP
+  // Redirect if no email or token
   useState(() => {
-    if (!email || !otp) {
-      navigate("/forgot-password");
+    if (!email || !token) {
+      navigate("/forgotPassword");
     }
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
     setIsLoading(true);
     try {
-      console.log("Reset password data:", { email, otp, password: data.password });
-      // TODO: Implement actual reset password API call
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      console.log("Reset password data:", { email, token, password: data.password });
+      
+      // Call the reset password API
+      const response = await api.resetPassword({
+        email: email,
+        newPassword: data.password,
+        token: token
+      });
+      console.log("Reset password response:", response.data);
       
       // Show success message and redirect to login
       alert("Password reset successful! Please login with your new password.");
       navigate("/login");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Reset password error:", error);
-      alert("Failed to reset password!");
+      const errorMessage = error.response?.data?.message || "Failed to reset password!";
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -98,8 +106,8 @@ export default function ResetPassword() {
   const passwordStrength = getPasswordStrength(watchedPassword);
 
   return (
-    <div className="w-full px-70">
-      <Card className="shadow-xl border-0">
+    <div className="w-full px-70 pt-40">
+      <Card className="shadow-xl border-0 w-1/2 mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mx-auto w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">

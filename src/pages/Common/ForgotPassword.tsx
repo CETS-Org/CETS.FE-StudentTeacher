@@ -7,6 +7,7 @@ import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { ArrowLeft, Mail, Send } from "lucide-react";
+import { api } from "@/lib/config";
 
 // Validation schema
 const forgotPasswordSchema = z.object({
@@ -33,22 +34,33 @@ export default function ForgotPassword() {
     setIsLoading(true);
     try {
       console.log("Forgot password data:", data);
-      // TODO: Implement actual forgot password API call
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
       
-      // Navigate to OTP verification with email
-      navigate("/otp-verification", { state: { email: data.email } });
-    } catch (error) {
+      // Call the forgot password API
+      const response = await api.forgotPassword(data.email);
+      console.log("Forgot password response:", response.data);
+      
+      // Store the token from response for OTP verification
+      const token = response.data;
+      
+      // Navigate to OTP verification with email and token
+      navigate("/otpVerification", { 
+        state: { 
+          email: data.email,
+          token: token 
+        } 
+      });
+    } catch (error: any) {
       console.error("Forgot password error:", error);
-      alert("Failed to send reset email!");
+      const errorMessage = error.response?.data?.message || "Failed to send reset email!";
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full px-70">
-      <Card className="shadow-xl border-0">
+    <div className="w-full px-70 pt-40 ">
+      <Card className="shadow-xl border-0 w-1/2 mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mx-auto w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">

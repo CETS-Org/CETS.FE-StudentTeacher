@@ -77,5 +77,15 @@ export const api = {
   // Registration
   register: (userData: any, config?: AxiosRequestConfig) => 
     apiClient.post('/api/IDN_Account/register', userData, config),
+  
+  // Forgot Password Flow
+  forgotPassword: (email: string, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/forgot-password', email, config),
+  
+  verifyOtp: (otpData: { email: string; otp: string; token: string }, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/verify-otp', otpData, config),
+  
+  resetPassword: (resetData: { email: string; newPassword: string; token: string }, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/reset-password', resetData, config),
 };
 
