@@ -33,6 +33,7 @@ import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession'
 import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
+import AcademicResults from './pages/Student/AcademicResults/AcademicResults'
 
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/student/class/:classId" element={<ClassSession />} />
             <Route path="/student/schedule" element={<Schedule />} />
             <Route path="/student/attendance" element={<AttendanceReport />} />
+            <Route path="/student/academic-results" element={<AcademicResults />} />
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/materials" element={<Materials />} /> 
             <Route path="/student/request-issue/technical" element={<TechnicalReport />} />

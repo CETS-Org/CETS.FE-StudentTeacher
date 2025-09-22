@@ -109,12 +109,7 @@ export default function Feedback() {
         <div className="mb-8">
           <PageHeader
             title="Feedback"
-            subtitle="Share your feedback to help us improve your learning experience"
-            actions={
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-primary-500" />
-              </div>
-            }
+            description="Share your feedback to help us improve your learning experience"
           />
         </div>
 
