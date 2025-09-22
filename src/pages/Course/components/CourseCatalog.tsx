@@ -68,13 +68,16 @@ export default function CourseCatalog() {
   const [items, setItems] = useState<Course[]>([]);
   const [levelsFacet, setLevelsFacet] = useState<FacetItem[]>([]);
   const [categoriesFacet, setCategoriesFacet] = useState<FacetItem[]>([]);
-  const [skillsFacet, setSkillsFacet] = useState<FacetItem[]>([]); // NEW
+  const [_skillsFacet, setSkillsFacet] = useState<FacetItem[]>([]); // Reserved for future skills filter
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(18);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Wishlist state
+  const [wishlist, setWishlist] = useState<Set<string>>(new Set());
 
   // Build querystring
   function buildSearchParams() {
@@ -165,6 +168,22 @@ export default function CourseCatalog() {
 
   const handleEnroll = (course: Course) => {
     navigate(`/course/${course.id}`);
+  };
+
+  const toggleWishlist = (courseId: string) => {
+    setWishlist(prev => {
+      const newWishlist = new Set(prev);
+      if (newWishlist.has(courseId)) {
+        newWishlist.delete(courseId);
+      } else {
+        newWishlist.add(courseId);
+      }
+      return newWishlist;
+    });
+  };
+
+  const isInWishlist = (courseId: string) => {
+    return wishlist.has(courseId);
   };
 
   return (
@@ -555,7 +574,12 @@ export default function CourseCatalog() {
                     className="animate-in fade-in-0 slide-in-from-bottom-4"
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <CourseCard course={course} onEnroll={handleEnroll} />
+                    <CourseCard 
+                      course={course} 
+                      onEnroll={handleEnroll} 
+                      onToggleWishlist={toggleWishlist}
+                      isInWishlist={isInWishlist(course.id)}
+                    />
                   </div>
                 ))}
               </div>
@@ -567,7 +591,12 @@ export default function CourseCatalog() {
                     className="animate-in fade-in-0 slide-in-from-left-4"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
-                    <CourseListItem course={course} onEnroll={handleEnroll} />
+                    <CourseListItem 
+                      course={course} 
+                      onEnroll={handleEnroll} 
+                      onToggleWishlist={toggleWishlist}
+                      isInWishlist={isInWishlist(course.id)}
+                    />
                   </div>
                 ))}
               </div>
