@@ -1,9 +1,10 @@
 // src/pages/Teacher/SchedulePage.tsx
+import { useState } from "react";
 import TeacherLayout from "@/Shared/TeacherLayout";
 import TeacherWeekSchedule from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
+import ScheduleRegistrationDialog, { type DaySchedule } from "@/pages/Teacher/SchedulePage/Component/ScheduleRegistrationDialog";
 import PageHeader from "@/components/ui/PageHeader";
-import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { Calendar, Clock, BookOpen } from "lucide-react";
+import { Calendar, BookOpen, Plus } from "lucide-react";
 import type { Session } from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
 
 /* ===== Helpers: tuần hiện tại + format yyyy:MM:dd:HH:mm ===== */
@@ -60,14 +61,31 @@ const sessions: Session[] = [
 ];
 
 export default function SchedulePage() {
+  const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
+
   const breadcrumbItems = [
     { label: "Schedule" }
   ];
 
+  const handleRegisterClick = () => {
+    setIsRegistrationDialogOpen(true);
+  };
+
+  const handleRegistrationDialogClose = () => {
+    setIsRegistrationDialogOpen(false);
+  };
+
+  const handleRegistrationSubmit = (daySchedules: DaySchedule) => {
+    // Here you would typically make an API call to register for the schedule
+    console.log('Registering for schedule:', daySchedules);
+    
+    // You could add a toast notification here for success feedback
+    // For example: toast.success('Schedule registration successful!');
+  };
+
   return (
-    <TeacherLayout crumbs={[{ label: "Schedule" }]}>
-        {/* Breadcrumbs */}
-        <Breadcrumbs items={breadcrumbItems} />
+    <TeacherLayout crumbs={breadcrumbItems}>
+
         
         <PageHeader
           title="My Teaching Schedule"
@@ -76,11 +94,12 @@ export default function SchedulePage() {
           controls={[
             {
               type: 'button',
-              label: `${sessions.length} Classes This Week`,
-              variant: 'secondary',
-              icon: <Clock className="w-4 h-4" />,
-              className: 'bg-accent-50 text-accent-700 border-accent-200'
+              label: 'Register for Schedule',
+              variant: 'primary',
+              icon: <Plus className="w-4 h-4" />,
+              onClick: handleRegisterClick
             },
+           
             {
               type: 'button',
               label: 'View All Classes',
@@ -94,6 +113,14 @@ export default function SchedulePage() {
         <div className="bg-white rounded-xl border border-accent-200 shadow-lg">
           <TeacherWeekSchedule sessions={sessions} startHour={8} slots={10} slotMinutes={90} />
         </div>
+
+        {/* Schedule Registration Dialog */}
+        <ScheduleRegistrationDialog
+          isOpen={isRegistrationDialogOpen}
+          onClose={handleRegistrationDialogClose}
+          onSubmit={handleRegistrationSubmit}
+        />
     </TeacherLayout>
   );
 }
+

@@ -440,7 +440,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
             <Button 
               variant="secondary" 
               iconLeft={<CheckCircle className="w-4 h-4" />}
-              className="flex-1 sm:flex-initial bg-gradient-to-r from-success-100 to-success-200 text-success-700 border-success-300 hover:from-success-200 hover:to-success-300 shadow-md hover:shadow-lg transition-all duration-200"
+              className="flex-1 sm:flex-initial bg-gradient-to-r from-success-400 to-success-500 text-success-700 border-success-300 hover:from-success-200 hover:to-success-300 shadow-md hover:shadow-lg transition-all duration-200"
             >
               Certificate
             </Button>
