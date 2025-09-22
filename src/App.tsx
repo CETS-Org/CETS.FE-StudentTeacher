@@ -32,6 +32,7 @@ import GoogleCallback from './pages/Common/GoogleCallback'
 import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession'
+import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
 
 
 export default function App() {
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/student/my-classes" element={<MyClasses />} /> 
             <Route path="/student/class/:classId" element={<ClassSession />} />
             <Route path="/student/schedule" element={<Schedule />} />
+            <Route path="/student/attendance" element={<AttendanceReport />} />
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/materials" element={<Materials />} /> 
             <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
