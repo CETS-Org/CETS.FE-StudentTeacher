@@ -3,7 +3,7 @@
 
 import type { PaidItem } from "@/types/payment";
 
-export interface PaymentPlan {
+export interface PaymentMethodPlan {
   id: string;
   name: string;
   description: string;
@@ -246,7 +246,7 @@ const allItems: PaidItem[] = [
 ];
 
 // Payment plans with grouped items
-export const mockPaymentPlans: PaymentPlan[] = [
+export const mockPaymentPlans: PaymentMethodPlan[] = [
   {
     id: "one-time-payment",
     name: "One-Time Payment",

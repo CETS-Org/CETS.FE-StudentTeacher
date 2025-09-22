@@ -85,7 +85,6 @@ export default function PaymentDialog({
         itemId: item.id,
         itemName: item.name,
         amount: paymentData.installmentPlan ? paymentData.installmentPlan.monthlyAmount : item.price,
-        currency: item.currency,
         paymentMethod: paymentData.paymentMethod,
         installmentPlan: paymentData.installmentPlan,
         studentInfo: paymentData.studentInfo,

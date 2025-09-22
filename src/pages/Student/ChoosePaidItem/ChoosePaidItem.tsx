@@ -12,41 +12,70 @@ import {
   ArrowLeft
 } from "lucide-react";
 
-import type { PaidItem } from "@/types/payment";
+import type { PaidItem, PaymentPlan, PlanPaymentRequest } from "@/types/payment";
 import PaymentDialog from "./components/PaymentDialog";
-import PaymentPlanCard from "./components/PaymentPlanCard";
 import PlanItemsList from "./components/PlanItemsList";
-import { mockPaymentPlans, type PaymentPlan } from "./data/mockPaymentPlansData";
+import type { PaymentMethodPlan } from "./data/mockPaymentPlansData";
+import { mockSeriesPlans } from "@/data/mockSeriesPlansData";
+import PlanPaymentDialog from "./components/PlanPaymentDialog";
+import SeriesPlanCard from "./components/SeriesPlanCard";
 
 export default function ChoosePaidItem() {
-  const [currentView, setCurrentView] = useState<"plans" | "items">("plans");
+  const [currentView, setCurrentView] = useState<"plans" | "series-plans" | "items">("series-plans");
   const [selectedPlan, setSelectedPlan] = useState<PaymentPlan | null>(null);
+  const [selectedMethodPlan, setSelectedMethodPlan] = useState<PaymentMethodPlan | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState<PaidItem | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showPlanPaymentDialog, setShowPlanPaymentDialog] = useState(false);
 
-  // Debug: Log the imported data
-  console.log("Mock payment plans imported:", mockPaymentPlans.length, "plans");
 
-  // Filter plans based on search term
-  const filteredPlans = useMemo(() => {
-    if (!searchTerm) return mockPaymentPlans;
+  // Filter SeriesID plans based on search term
+  const filteredSeriesPlans = useMemo(() => {
+    if (!searchTerm) return mockSeriesPlans;
 
-    return mockPaymentPlans.filter(plan => 
+    return mockSeriesPlans.filter(plan => 
       plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       plan.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plan.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase()))
+      (plan.features && plan.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase())))
     );
   }, [searchTerm]);
 
+  // Filter payment method plans based on search term (for future use)
+  // const filteredMethodPlans = useMemo(() => {
+  //   if (!searchTerm) return mockPaymentPlans;
+
+  //   return mockPaymentPlans.filter(plan => 
+  //     plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     plan.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     plan.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase()))
+  //   );
+  // }, [searchTerm]);
+
+  // Handle SeriesID plan selection (to view items)
   const handlePlanSelect = (plan: PaymentPlan) => {
+    console.log("Navigating to plan details:", plan.name);
     setSelectedPlan(plan);
     setCurrentView("items");
   };
 
+  // Handle direct plan payment (bypass item selection)
+  const handlePlanPayDirectly = (plan: PaymentPlan) => {
+    console.log("Opening payment dialog for plan:", plan.name);
+    setSelectedPlan(plan);
+    setShowPlanPaymentDialog(true);
+  };
+
+  // Handle payment method plan selection (for future use)
+  // const handleMethodPlanSelect = (plan: PaymentMethodPlan) => {
+  //   setSelectedMethodPlan(plan);
+  //   setCurrentView("items");
+  // };
+
   const handleBackToPlans = () => {
-    setCurrentView("plans");
+    setCurrentView("series-plans");
     setSelectedPlan(null);
+    setSelectedMethodPlan(null);
     setSearchTerm("");
   };
 
@@ -63,6 +92,14 @@ export default function ChoosePaidItem() {
     // Show success message or redirect
   };
 
+  const handlePlanPaymentSubmit = (paymentData: PlanPaymentRequest) => {
+    console.log("Plan payment submitted:", paymentData);
+    setShowPlanPaymentDialog(false);
+    setSelectedPlan(null);
+    // Here you would typically send the plan payment data to your backend
+    alert(`Payment successful! Paid ${paymentData.totalAmount.toLocaleString('vi-VN')} VND for ${paymentData.planName}`);
+  };
+
   const breadcrumbItems = [
     { label: "Payment Plans" }
   ];
@@ -72,16 +109,16 @@ export default function ChoosePaidItem() {
       <Breadcrumbs items={breadcrumbItems} />
       
       <PageHeader
-        title={currentView === "plans" ? "Payment Plans" : `${selectedPlan?.name} Items`}
-        description={currentView === "plans" 
+        title={currentView === "series-plans" ? "Payment Plans" : `${selectedPlan?.name || selectedMethodPlan?.name} Items`}
+        description={currentView === "series-plans" 
           ? "Choose a payment plan that works best for you"
           : `Browse items available in your selected plan`
         }
-        icon={currentView === "plans" 
+        icon={currentView === "series-plans" 
           ? <Layers className="w-5 h-5 text-white" />
           : <ShoppingCart className="w-5 h-5 text-white" />
         }
-        controls={currentView === "plans" ? [
+        controls={currentView === "series-plans" ? [
           {
             type: 'button',
             label: 'Payment History',
@@ -123,16 +160,17 @@ export default function ChoosePaidItem() {
       )}
 
       {/* Main Content */}
-      {currentView === "plans" ? (
-        // Payment Plans View
+      {currentView === "series-plans" ? (
+        // SeriesID Plans View
         <div className="py-6">
-          {filteredPlans.length > 0 ? (
+          {filteredSeriesPlans.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPlans.map((plan) => (
-                <PaymentPlanCard
-                  key={plan.id}
+              {filteredSeriesPlans.map((plan) => (
+                <SeriesPlanCard
+                  key={plan.seriesId}
                   plan={plan}
                   onSelect={handlePlanSelect}
+                  onPayDirectly={handlePlanPayDirectly}
                 />
               ))}
             </div>
@@ -165,9 +203,9 @@ export default function ChoosePaidItem() {
         </div>
       ) : (
         // Plan Items View
-        selectedPlan && (
+        (selectedPlan || selectedMethodPlan) && (
           <PlanItemsList
-            plan={selectedPlan}
+            plan={(selectedPlan || selectedMethodPlan)!}
             onBack={handleBackToPlans}
             onItemSelect={handleItemSelect}
           />
@@ -181,6 +219,17 @@ export default function ChoosePaidItem() {
           onOpenChange={setShowPaymentDialog}
           item={selectedItem}
           onPaymentSubmit={handlePaymentSubmit}
+        />
+      )}
+
+      
+      {/* Plan Payment Dialog */}
+      {selectedPlan && (
+        <PlanPaymentDialog
+          open={showPlanPaymentDialog}
+          onOpenChange={setShowPlanPaymentDialog}
+          plan={selectedPlan}
+          onPaymentSubmit={handlePlanPaymentSubmit}
         />
       )}
     </StudentLayout>

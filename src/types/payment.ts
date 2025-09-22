@@ -21,9 +21,12 @@ export interface PaidItem {
   type: PaymentItemType;
   price: number;
   originalPrice?: number;
-  currency: string;
   imageUrl?: string;
   category: string;
+  
+  // Plan information
+  seriesId?: string; // Groups items into plans
+  planName?: string; // Name of the plan this item belongs to
   
   // Availability
   isAvailable: boolean;
@@ -41,10 +44,7 @@ export interface PaidItem {
   
   // Additional properties
   features?: string[];
-  requirements?: string[];
-  deliveryInfo?: string;
-  refundPolicy?: string;
-  
+
   // Metadata
   createdAt: string;
   updatedAt?: string;
@@ -55,7 +55,7 @@ export interface PaymentRequest {
   itemId: string;
   itemName: string;
   amount: number;
-  currency: string;
+
   paymentMethod: PaymentMethod;
   installmentPlan?: {
     plan: InstallmentPlan;
@@ -78,7 +78,7 @@ export interface PaymentHistory {
   itemId: string;
   itemName: string;
   amount: number;
-  currency: string;
+
   paymentMethod: PaymentMethod;
   status: PaymentStatus;
   installmentInfo?: {
@@ -100,9 +100,69 @@ export interface PaymentDialogProps {
   onPaymentSubmit: (paymentData: PaymentRequest) => void;
 }
 
+// Payment plan interface (for SeriesID-based plans)
+export interface PaymentPlan {
+  seriesId: string;
+  name: string;
+  description: string;
+  totalPrice: number;
+  originalTotalPrice?: number;
+
+  items: PaidItem[];
+  
+  // Plan features
+  features?: string[];
+  benefits?: string[];
+  
+  // Payment options
+  supportedPaymentMethods: PaymentMethod[];
+  installmentOptions?: {
+    plan: InstallmentPlan;
+    installments: number;
+    monthlyAmount: number;
+    totalAmount: number;
+    interestRate?: number;
+  }[];
+  
+  // Metadata
+  createdAt: string;
+  updatedAt?: string;
+  isPopular?: boolean;
+}
+
+// Plan payment request interface
+export interface PlanPaymentRequest {
+  seriesId: string;
+  planName: string;
+  totalAmount: number;
+
+  paymentMethod: PaymentMethod;
+  installmentPlan?: {
+    plan: InstallmentPlan;
+    installments: number;
+    monthlyAmount: number;
+    totalAmount: number;
+  };
+  studentInfo: {
+    studentId: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+  };
+  notes?: string;
+}
+
 // Payment item card props
 export interface PaymentItemCardProps {
   item: PaidItem;
   onSelect: (item: PaidItem) => void;
+  className?: string;
+}
+
+// Payment plan card props
+export interface PaymentPlanCardProps {
+  plan: PaymentPlan;
+  onSelect: (plan: PaymentPlan) => void;
+  onPayDirectly?: (plan: PaymentPlan) => void; // For direct plan payment
   className?: string;
 }

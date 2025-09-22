@@ -12,7 +12,7 @@ export const mockPaidItems: PaidItem[] = [
     type: "book",
     price: 450000,
     originalPrice: 500000,
-    currency: "VND",
+
     category: "Textbooks",
     isAvailable: true,
     stock: 25,
@@ -25,7 +25,7 @@ export const mockPaidItems: PaidItem[] = [
     type: "book",
     price: 320000,
     originalPrice: 380000,
-    currency: "VND",
+
     category: "Textbooks",
     isAvailable: true,
     stock: 18,
@@ -37,7 +37,7 @@ export const mockPaidItems: PaidItem[] = [
     description: "Essential vocabulary for TOEIC test preparation with audio pronunciation.",
     type: "book",
     price: 280000,
-    currency: "VND",
+
     category: "Textbooks",
     isAvailable: true,
     stock: 32,
@@ -50,7 +50,7 @@ export const mockPaidItems: PaidItem[] = [
     type: "book",
     price: 380000,
     originalPrice: 420000,
-    currency: "VND",
+
     category: "Textbooks",
     isAvailable: false,
     stock: 0,
@@ -64,7 +64,7 @@ export const mockPaidItems: PaidItem[] = [
     description: "Complete IELTS preparation course with mock tests and personalized feedback.",
     type: "course",
     price: 2500000,
-    currency: "VND",
+
     category: "Courses",
     isAvailable: true,
     installmentOptions: [
@@ -92,7 +92,7 @@ export const mockPaidItems: PaidItem[] = [
     type: "course",
     price: 3200000,
     originalPrice: 3500000,
-    currency: "VND",
+
     category: "Courses",
     isAvailable: true,
     installmentOptions: [
@@ -114,7 +114,7 @@ export const mockPaidItems: PaidItem[] = [
     description: "Official certificate for course completion with digital verification.",
     type: "certificate",
     price: 200000,
-    currency: "VND",
+
     category: "Certificates",
     isAvailable: true,
     createdAt: "2024-01-20T00:00:00Z"
@@ -125,7 +125,7 @@ export const mockPaidItems: PaidItem[] = [
     description: "Digital certificate for course completion with verification code.",
     type: "certificate",
     price: 150000,
-    currency: "VND",
+
     category: "Certificates",
     isAvailable: true,
     createdAt: "2024-01-22T00:00:00Z"

@@ -1,18 +1,17 @@
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { 
-  ArrowLeft,
   ShoppingCart,
   Package, 
   DollarSign
 } from "lucide-react";
 
-import type { PaymentPlan } from "../data/mockPaymentPlansData";
-import type { PaidItem } from "@/types/payment";
+import type { PaymentMethodPlan } from "../data/mockPaymentPlansData";
+import type { PaidItem, PaymentPlan } from "@/types/payment";
 import PaymentItemCard from "./PaymentItemCard";
 
 interface PlanItemsListProps {
-  plan: PaymentPlan;
+  plan: PaymentPlan | PaymentMethodPlan;
   onBack: () => void;
   onItemSelect: (item: PaidItem) => void;
   className?: string;
@@ -38,7 +37,7 @@ export default function PlanItemsList({
   };
 
   const getItemsByCategory = () => {
-    const categories = plan.items.reduce((acc, item) => {
+    const categories = plan.items.reduce((acc: Record<string, PaidItem[]>, item: PaidItem) => {
       if (!acc[item.category]) {
         acc[item.category] = [];
       }
@@ -55,19 +54,11 @@ export default function PlanItemsList({
     <div className={`space-y-6 ${className}`}>
       {/* Plan Header */}
       <Card className="bg-gradient-to-r from-secondary-200 to-secondary-300 border-primary-200">
-        <div className="flex items-center gap-4 mb-4">
-          <Button
-            variant="secondary"
-            iconLeft={<ArrowLeft className="w-4 h-4" />}
-            onClick={onBack}
-          >
-            Back to Plans
-          </Button>
-        </div>
+       
         
         <div className="flex items-center gap-4">
           <div className="p-3 bg-primary-600 rounded-xl text-white">
-            {getPlanIcon(plan.type)}
+            {'type' in plan ? getPlanIcon(plan.type) : <Package className="w-5 h-5" />}
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">{plan.name}</h2>
@@ -75,14 +66,17 @@ export default function PlanItemsList({
             <div className="flex items-center gap-4 text-sm text-gray-600">
               <span className="flex items-center gap-1">
                 <Package className="w-4 h-4" />
-                {plan.totalItems} Items Available
+                {plan.items.length} Items Available
               </span>
               <span>
-                {formatPrice(plan.priceRange.min)} - {formatPrice(plan.priceRange.max)}
+                {'priceRange' in plan ? 
+                  `${formatPrice((plan as PaymentMethodPlan).priceRange.min)} - ${formatPrice((plan as PaymentMethodPlan).priceRange.max)}` :
+                  formatPrice((plan as PaymentPlan).totalPrice)
+                }
               </span>
             </div>
           </div>
-          <div className="text-3xl">{plan.icon}</div>
+          <div className="text-3xl">{'icon' in plan ? (plan as PaymentMethodPlan).icon : '📚'}</div>
         </div>
       </Card>
 
@@ -90,7 +84,7 @@ export default function PlanItemsList({
       <Card>
         <h3 className="font-semibold text-gray-900 mb-3">Plan Benefits</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {plan.features.map((feature, index) => (
+          {plan.features && plan.features.map((feature: string, index: number) => (
             <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
               <div className="w-2 h-2 bg-accent-500 rounded-full flex-shrink-0"></div>
               <span>{feature}</span>
@@ -100,7 +94,7 @@ export default function PlanItemsList({
       </Card>
 
       {/* Items by Category */}
-      {Object.entries(itemsByCategory).map(([category, items]) => (
+      {(Object.entries(itemsByCategory) as [string, PaidItem[]][]).map(([category, items]) => (
         <div key={category}>
           <div className="flex items-center gap-2 mb-4">
             <h3 className="text-lg font-semibold text-gray-900">{category}</h3>
@@ -122,7 +116,7 @@ export default function PlanItemsList({
       ))}
 
       {/* Empty State */}
-      {plan.totalItems === 0 && (
+      {plan.items.length === 0 && (
         <Card className="text-center py-12">
           <div className="flex flex-col items-center gap-4">
             <Package className="w-12 h-12 text-gray-400" />

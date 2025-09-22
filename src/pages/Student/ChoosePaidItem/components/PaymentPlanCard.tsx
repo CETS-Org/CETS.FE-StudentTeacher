@@ -9,11 +9,11 @@ import {
   Target
 } from "lucide-react";
 
-import type { PaymentPlan } from "../data/mockPaymentPlansData";
+import type { PaymentMethodPlan } from "../data/mockPaymentPlansData";
 
 interface PaymentPlanCardProps {
-  plan: PaymentPlan;
-  onSelect: (plan: PaymentPlan) => void;
+  plan: PaymentMethodPlan;
+  onSelect: (plan: PaymentMethodPlan) => void;
   className?: string;
 }
 
