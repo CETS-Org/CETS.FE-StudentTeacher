@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TeacherLayout from "@/Shared/TeacherLayout";
-import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
 import ClassActionsMenu from "@/pages/Teacher/ClassesPage/ClassActionsMenu";
-import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 
 
@@ -18,7 +16,6 @@ import {
   BookOpen,
   ExternalLink,
   CheckCircle2,
-  ClipboardList,
   GraduationCap,
   MapPin,
   Star,
@@ -81,7 +78,7 @@ const mockClasses: TeacherClass[] = [
     attendanceRate: 92,
     rating: 4.7,
     status: "ongoing",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
   {
     id: "c-202",
@@ -103,7 +100,7 @@ const mockClasses: TeacherClass[] = [
     attendanceRate: 88,
     rating: 4.8,
     status: "ongoing",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
   {
     id: "c-303",
@@ -123,7 +120,7 @@ const mockClasses: TeacherClass[] = [
     enrolled: 12,
     capacity: 16,
     status: "upcoming",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
   {
     id: "c-404",
@@ -144,7 +141,7 @@ const mockClasses: TeacherClass[] = [
     attendanceRate: 95,
     rating: 4.9,
     status: "completed",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
 ];
 
@@ -153,9 +150,9 @@ const mockClasses: TeacherClass[] = [
 ========================= */
 
 const badgeByStatus: Record<ClassStatus, string> = {
-  ongoing: "bg-primary-100 text-primary-700",
-  upcoming: "bg-info-100 text-info-700",
-  completed: "bg-success-100 text-success-700",
+  ongoing: "bg-gradient-to-r from-accent-400 to-accent-500 text-white shadow-lg shadow-accent-500/25",
+  upcoming: "bg-gradient-to-r from-warning-400 to-warning-500 text-white shadow-lg shadow-warning-500/25",
+  completed: "bg-gradient-to-r from-success-500 to-success-600 text-white shadow-lg shadow-success-500/25",
 };
 
 const labelByStatus: Record<ClassStatus, string> = {
@@ -163,6 +160,7 @@ const labelByStatus: Record<ClassStatus, string> = {
   upcoming: "Upcoming",
   completed: "Completed",
 };
+
 
 function fmtDate(d: string) {
   try {
@@ -199,10 +197,10 @@ const TeacherClassCard: React.FC<{ cls: TeacherClass }> = ({ cls }) => {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200 border border-gray-200 shadow-md">
+    <Card className="overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:via-white hover:to-accent-25">
       <div className="flex flex-col lg:flex-row">
         {/* Image + status */}
-        <div className="lg:w-64 h-48 lg:h-auto bg-neutral-600 relative flex-shrink-0">
+        <div className="lg:w-64 h-48 lg:h-auto bg-gradient-to-br from-primary-600 to-primary-800 relative flex-shrink-0">
           <img
             src={cls.image}
             alt={cls.title}
@@ -211,68 +209,110 @@ const TeacherClassCard: React.FC<{ cls: TeacherClass }> = ({ cls }) => {
               (e.currentTarget as HTMLImageElement).src = placeholder(cls.title);
             }}
           />
-          <div className="absolute top-3 left-3">
-            <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md ${badgeByStatus[cls.status]}`}>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          <div className="absolute top-4 left-4 z-10">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full backdrop-blur-sm ${badgeByStatus[cls.status]}`}>
               {cls.status === "completed" ? <CheckCircle2 className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
               {labelByStatus[cls.status]}
+            </span>
+          </div>
+          <div className="absolute top-4 right-4 z-10">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-white/90 text-primary-700 backdrop-blur-sm border border-primary-200 shadow-sm">
+              {cls.format}
             </span>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-6 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1 pr-3">
-              <h3 className="text-lg font-semibold text-neutral-900">{cls.title}</h3>
-              <p className="text-sm text-neutral-600">
-                Code: {cls.courseCode} • {cls.level} • {cls.format}
+              <h3 className="text-xl font-bold text-primary-800 mb-2 leading-tight">
+                {cls.title}
+              </h3>
+              <p className="text-xs mt-1">
+                <span className="inline-flex items-center gap-1 bg-warning-200 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
+                  <span className="font-semibold">{cls.courseCode}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 bg-accent-50 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
+                  <GraduationCap className="w-3 h-3" />
+                  <span>{cls.level}</span>
+                </span>
               </p>
-              <p className="text-sm text-neutral-600 mt-1 line-clamp-2">{cls.category}</p>
+              <p className="text-sm text-neutral-600 mt-2 line-clamp-2">{cls.category}</p>
             </div>
 
             {/* Quick actions (file riêng) */}
             <ClassActionsMenu onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} align="right" />
           </div>
 
-          {/* Schedule */}
-          <div className="bg-neutral-50 p-3 rounded-md mb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className="w-4 h-4 text-neutral-700" />
-              <span className="text-sm font-medium text-neutral-900">Schedule</span>
-            </div>
-            <p className="text-sm text-neutral-700">{cls.schedule}</p>
-            {cls.location && (
-              <div className="flex items-center gap-1 text-xs text-neutral-600 mt-1">
-                <MapPin className="w-3 h-3" />
-                <span>{cls.location}</span>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3 text-xs text-neutral-600 mt-2">
-              <span>
-                <Calendar className="inline w-3 h-3 mr-1" />
-                {fmtDate(cls.startDate)} → {fmtDate(cls.endDate)}
-              </span>
-              {cls.nextSession && (
-                <span>
-                  <Clock className="inline w-3 h-3 mr-1" /> Next: {new Date(cls.nextSession).toLocaleString()}
+          {/* Schedule Section */}
+          <div className="mb-6">
+            <div className="bg-gradient-to-r from-accent-50 to-accent-100 border border-accent-200 p-4 rounded-xl">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-accent-500 to-accent-600 rounded-lg flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-semibold text-accent-800 text-sm">
+                  Class Schedule
                 </span>
+              </div>
+              <p className="text-sm font-medium text-accent-700 mb-2">
+                {cls.schedule}
+              </p>
+              {cls.location && (
+                <div className="flex items-center gap-2 text-xs text-accent-600 mb-3">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="font-medium">{cls.location}</span>
+                </div>
               )}
+              <div className="flex flex-wrap gap-2">
+                <div className="flex items-center gap-1 bg-white/60 text-accent-700 px-2 py-1 rounded-md text-xs font-medium">
+                  <Calendar className="w-3 h-3" />
+                  <span>{fmtDate(cls.startDate)} → {fmtDate(cls.endDate)}</span>
+                </div>
+                {cls.nextSession && (
+                  <div className="flex items-center gap-1 bg-warning-100 text-warning-700 px-2 py-1 rounded-md text-xs font-medium">
+                    <Clock className="w-3 h-3" />
+                    <span>Next: {new Date(cls.nextSession).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Meta */}
-          <div className="flex flex-wrap gap-4 text-sm text-neutral-600 mb-4">
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              <span>
-                {cls.enrolled}/{cls.capacity} students
-              </span>
-            </div>                 
+          {/* Class Info */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+            <div className="flex items-center gap-2 bg-neutral-200 px-3 py-2 rounded-lg">
+              <Users className="w-4 h-4 text-primary-600" />
+              <span className="text-xs font-semibold text-primary-700">{cls.enrolled}/{cls.capacity} Students</span>
+            </div>
+            <div className="flex items-center gap-2 bg-info-100 px-3 py-2 rounded-lg">
+              <Clock className="w-4 h-4 text-info-600" />
+              <span className="text-xs font-semibold text-info-700">{cls.totalHours}h</span>
+            </div>
+            {cls.attendanceRate && (
+              <div className="flex items-center gap-2 bg-success-50 px-3 py-2 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-success-600" />
+                <span className="text-xs font-semibold text-success-700">{cls.attendanceRate}% Attendance</span>
+              </div>
+            )}
+            {cls.rating && (
+              <div className="flex items-center gap-2 bg-warning-50 px-3 py-2 rounded-lg">
+                <Star className="w-4 h-4 fill-warning-500 text-warning-500" />
+                <span className="text-xs font-semibold text-warning-700">{cls.rating.toFixed(1)} Rating</span>
+              </div>
+            )}
           </div>
 
           {/* Buttons */}
           <div className="flex flex-wrap gap-3">
-            <Button variant="primary" className="flex-1 sm:flex-initial" iconRight={<ExternalLink className="w-4 h-4" />} onClick={openClass}>
+            <Button 
+              variant="primary" 
+              className="flex-1 sm:flex-initial btn-secondary" 
+              iconRight={<ExternalLink className="w-4 h-4" />} 
+              onClick={openClass}
+            >
               Open Class
             </Button>
             <Button variant="secondary" className="flex-1 sm:flex-initial" iconLeft={<Users className="w-4 h-4" />} onClick={openRoster}>
@@ -337,47 +377,49 @@ export default function Classes() {
   );
 
   const tabs = [
-    { id: "all", label: "All", badge: counts.all },
-    { id: "ongoing", label: "Ongoing", badge: counts.ongoing },
-    { id: "upcoming", label: "Upcoming", badge: counts.upcoming },
-    { id: "completed", label: "Completed", badge: counts.completed },
+    { id: "all", label: "All", badge: counts.all, color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white" },
+    { id: "ongoing", label: "Ongoing", badge: counts.ongoing, color: "bg-gradient-to-r from-accent-500 to-accent-600 text-white" },
+    { id: "upcoming", label: "Upcoming", badge: counts.upcoming, color: "bg-gradient-to-r from-warning-500 to-warning-600 text-white" },
+    { id: "completed", label: "Completed", badge: counts.completed, color: "bg-gradient-to-r from-success-500 to-success-600 text-white" },
   ];
 
   return (
-     <TeacherLayout crumbs={crumbs}>
+    <TeacherLayout 
+      crumbs={crumbs}
+      pageHeader={{
+        title: "My Classes",
+        subtitle: "Manage and track your teaching sessions",
+        actions: (
+          <div className="flex gap-3">
+            <Button 
+              variant="primary"
+              className="btn-secondary"
+            >
+              Open Today's Schedule
+            </Button>
+          </div>
+        )
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-       
-        {/* Header */}
-        <div className="mb-6">
-          <PageHeader
-            title="My Classes"
-            
-            actions={
-              <div className="flex gap-3">
-                
-                <Button variant="primary">Open Today’s Schedule</Button>
-              </div>
-            }
-          />
-        </div>
 
         {/* Search & Filters */}
-        <div className="flex flex-wrap gap-3 mb-6 items-center">
+        <div className="flex flex-wrap gap-3 mb-6 items-center rounded-xl ">
           <div className="relative flex-1 min-w-[220px]">
-            <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-neutral-400" />
+            <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-primary-400" />
             <input
               type="text"
               placeholder="Search by title or code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full border rounded-md pl-9 pr-3 py-2 text-sm"
+              className="w-full border border-primary-200 rounded-lg pl-9 pr-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-300 bg-white"
             />
           </div>
 
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value as any)}
-            className="border rounded-md px-3 py-2 text-sm"
+            className="border border-primary-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-300"
           >
             <option value="All">All Levels</option>
             <option value="Beginner">Beginner</option>
@@ -388,7 +430,7 @@ export default function Classes() {
           <select
             value={formatFilter}
             onChange={(e) => setFormatFilter(e.target.value as any)}
-            className="border rounded-md px-3 py-2 text-sm"
+            className="border border-primary-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-300"
           >
             <option value="All">All Formats</option>
             <option value="Online">Online</option>
@@ -398,7 +440,7 @@ export default function Classes() {
         </div>
 
         {/* Tabs + Content */}
-        <Card className="border border-gray-200 shadow-md">
+        <Card className="shadow-lg border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
           <Tabs tabs={tabs} activeTab={activeTab} onTabChange={(t) => setActiveTab(t as any)} />
 
           {/* All */}
@@ -440,12 +482,17 @@ export default function Classes() {
           {/* Empty state */}
           {filtered.length === 0 && (
             <div className="text-center py-12">
-              <BookOpen className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+              <BookOpen className="w-16 h-16 text-primary-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-neutral-900 mb-2">No classes found</h3>
               <p className="text-neutral-600 mb-6">
                 {activeTab === "all" ? "You don't have any classes yet." : `No ${activeTab} classes available.`}
               </p>
-              <Button variant="primary">Create Class</Button>
+              <Button 
+                variant="primary"
+                className="btn-secondary"
+              >
+                Create Class
+              </Button>
             </div>
           )}
 

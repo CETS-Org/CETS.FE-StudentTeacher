@@ -29,11 +29,11 @@ export default function StudentLayout({ children, className = "", crumbs }: Prop
 
       <main
         className={cn(
-          "flex-1 pt-7 transition-[margin] duration-300",
+          "flex-1 pt-7 transition-[margin] duration-300 overflow-hidden",
           collapsed ? "lg:ml-16" : "lg:ml-64"
         )}
       >
-        <div className={cn("p-6", className)}>
+        <div className={cn("p-6 max-w-full", className)}>
           {crumbs && <Breadcrumbs items={crumbs} />}
           {children}
         </div>

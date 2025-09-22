@@ -1,11 +1,11 @@
 // src/pages/teacher/classes/[classId]/StudentsTab.tsx
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Button from "@/components/ui/Button";
-import { Search, MessageSquare } from "lucide-react";
+import { Search, MessageSquare, Users, UserCheck } from "lucide-react";
 
 const mockStudents = Array.from({ length: 23 }, (_, i) => ({
   id: i + 1,
-  avatar: `/api/placeholder/40/40?text=S${i + 1}`,
+  avatar: `https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg`,
   name: `Student Name ${i + 1}`,
   email: `student${i + 1}@email.com`,
 }));
@@ -43,21 +43,34 @@ export default function StudentsTab() {
   return (
     <div>
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Class : SE17D05</h2>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+            <Users className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-primary-800">Class: SE17D05</h2>
+            <p className="text-sm text-neutral-600">{filtered.length} students enrolled</p>
+          </div>
+        </div>
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
             <input
               type="text"
               placeholder="Search students..."
-              className="border rounded-md pl-9 pr-3 py-2 text-sm w-64"
+              className="border border-accent-200 rounded-lg pl-9 pr-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           {!isTaking && (
-            <Button variant="primary" onClick={startTaking}>
+            <Button 
+              variant="primary" 
+              onClick={startTaking}
+              iconLeft={<UserCheck className="w-4 h-4" />}
+              className="btn-secondary"
+            >
               Take Attendance
             </Button>
           )}
@@ -65,7 +78,7 @@ export default function StudentsTab() {
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg overflow-hidden ">
+      <div className="border border-accent-200 rounded-xl overflow-hidden shadow-lg bg-white">
         <div
           className="max-h-[520px] overflow-y-auto scrollbar-hide"
           style={{ scrollbarGutter: "stable" }}
@@ -79,62 +92,72 @@ export default function StudentsTab() {
           <col className="w-40" />     {/* Actions */}
         </colgroup>
 
-        <thead className="sticky top-0 z-10 bg-sky-200">
+        <thead className="sticky top-0 z-10 bg-gradient-to-r from-accent-200 to-accent-300">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium  uppercase tracking-wider">
-              STT
+            <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+              #
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium  uppercase tracking-wider">
+            <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
               Avatar
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium  uppercase tracking-wider">
+            <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
               Name
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium  uppercase tracking-wider">
+            <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
               Email
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium  uppercase tracking-wider">
+            <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
               {isTaking ? "Mark Absent" : "Actions"}
             </th>
           </tr>
         </thead>
 
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-accent-100 bg-white">
               {filtered.map((s, idx) => {
                 const isAbsent = !!absent[s.id];
                 return (
-                  <tr key={s.id}>
+                  <tr key={s.id} className="hover:bg-accent-25/50 transition-colors duration-200">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {idx + 1}
+                      <span className="text-sm font-medium text-primary-700">
+                        {idx + 1}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <img
-                        src={s.avatar}
-                        alt={s.name}
-                        className="w-10 h-10 rounded-full bg-gray-200"
-                      />
+                      <div className="relative">
+                        <img
+                          src={s.avatar}
+                          alt={s.name}
+                          className="w-10 h-10 rounded-full bg-neutral-200 ring-2 ring-accent-200"
+                        />
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{s.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{s.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-semibold text-primary-800">{s.name}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-neutral-600">{s.email}</span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {!isTaking ? (
                         <Button
-                          variant="secondary"
+                          variant="primary"
                           size="sm"
                           iconLeft={<MessageSquare className="w-4 h-4" />}
+                          className="btn-primary"
                         >
                           Message
                         </Button>
                       ) : (
-                        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <label className="inline-flex items-center gap-3 cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={isAbsent}
                             onChange={(e) =>
                               toggleAbsent(s.id, e.target.checked)
                             }
+                            className="w-4 h-4 text-warning-600 border-2 border-neutral-300 rounded focus:ring-warning-500 focus:ring-2"
                           />
-                          <span className="text-gray-700">Absent</span>
+                          <span className="text-sm font-medium text-warning-700">Absent</span>
                         </label>
                       )}
                     </td>
@@ -146,11 +169,19 @@ export default function StudentsTab() {
         </div>
 
         {isTaking && (
-          <div className="px-4 py-3 border-t flex items-center gap-2">
-            <Button variant="primary" onClick={saveAttendance}>
+          <div className="px-6 py-4 border-t border-accent-200 bg-gradient-to-r from-accent-25 to-primary-25 flex items-center gap-3">
+            <Button 
+              variant="primary" 
+              onClick={saveAttendance}
+              className="btn-secondary"
+            >
               Save Attendance
             </Button>
-            <Button variant="secondary" onClick={cancelTaking}>
+            <Button 
+              variant="secondary" 
+              onClick={cancelTaking}
+              className="border-neutral-300 text-neutral-700 hover:bg-neutral-50"
+            >
               Cancel
             </Button>
           </div>

@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { Eye, EyeOff, UserPlus, Mail } from "lucide-react";
+import { api } from "../../lib/config";
 
 // Validation schema
 const registerSchema = z
@@ -42,6 +43,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const methods = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -55,14 +57,34 @@ export default function Register() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
-    try {
-      console.log("Register data:", data);
-      // TODO: Implement actual register logic
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API call
-      alert("Registration successful!");
-    } catch (error) {
+    try {   
+      // Call the registration API
+      const response = await api.register({
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+      });     
+      console.log("Registration successful:", response.data);
+      // Navigate to Gateway page with verification message
+      navigate("/gateway", {
+        state: {
+          showVerification: true,
+        }
+      });
+      
+    } catch (error: any) {
       console.error("Register error:", error);
-      alert("Registration failed!");
+      
+      // Handle different error types
+      if (error.response?.data?.message) {
+        alert(`Registration failed: ${error.response.data.message}`);
+      } else if (error.response?.status === 400) {
+        alert("Registration failed: Invalid data provided");
+      } else if (error.response?.status === 409) {
+        alert("Registration failed: Email already exists");
+      } else {
+        alert("Registration failed: Please try again later");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -70,8 +92,8 @@ export default function Register() {
 
   return (
     // Full screen layout that breaks out of parent container
-      <div className="w-full mx-auto px-70 py-8">
-        <Card className="shadow-xl border-0 rounded-2xl">
+      <div className="w-full mx-auto px-70 py-8 pt-20">
+        <Card className="shadow-xl border-0 w-1/2 mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="mx-auto w-14 h-14 bg-primary-600 rounded-full flex items-center justify-center mb-4">

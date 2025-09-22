@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { getAuthToken, isTokenValid, clearAuthData } from '@/lib/utils';
 
 /**
  * Environment configuration
@@ -69,5 +70,67 @@ export const api = {
   
   loginTeacher: (credentials: any, config?: AxiosRequestConfig) => 
     apiClient.post('/api/IDN_Account/login/teacher', credentials, config),
+  
+  // Google OAuth
+  googleLogin: (googleData: any, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/googleLogin', googleData, config),
+  
+  // Registration
+  register: (userData: any, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/register', userData, config),
+  
+  // Forgot Password Flow
+  forgotPassword: (email: string, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/forgot-password', email, config),
+  
+  verifyOtp: (otpData: { email: string; otp: string; token: string }, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/verify-otp', otpData, config),
+  
+  resetPassword: (resetData: { email: string; newPassword: string; token: string }, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/IDN_Account/reset-password', resetData, config),
+  
+  // Change Password (requires JWT authorization)
+  changePassword: async (changePasswordData: { email: string; oldPassword: string; newPassword: string }, config?: AxiosRequestConfig) => {
+    try {
+      // Verify JWT token exists and is valid before making the request
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('Authentication token not found. Please login again.');
+      }
+
+      if (!isTokenValid()) {
+        clearAuthData();
+        throw new Error('Session expired. Please login again.');
+      }
+
+      console.log('Making change password request with JWT authorization...');
+      
+      // The apiClient automatically adds JWT token via interceptor
+      const response = await apiClient.post('/api/IDN_Account/change-password', changePasswordData, {
+        ...config,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...config?.headers
+        }
+      });
+      
+      console.log('Change password response:', response.data);
+      return response;
+    } catch (error: any) {
+      console.error('Change password API error:', error);
+      
+      // Handle specific JWT authorization errors
+      if (error.response?.status === 401) {
+        // Token expired or invalid
+        clearAuthData();
+        throw new Error('Session expired. Please login again.');
+      } else if (error.response?.status === 403) {
+        throw new Error('Access denied. Insufficient permissions.');
+      }
+      
+      throw error;
+    }
+  },
 };
 

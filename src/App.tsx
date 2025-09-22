@@ -11,7 +11,6 @@ import ForgotPassword from './pages/Common/ForgotPassword'
 import OtpVerification from './pages/Common/OtpVerification'
 import ResetPassword from './pages/Common/ResetPassword'
 import Wishlist from './pages/Student/Wishlist'
-import MyCourses from './pages/Student/MyCourses'
 import CourseSession from './pages/Student/CourseSession'
 import Schedule from './pages/Student/Schedule'
 import Feedback from './pages/Student/Feedback'
@@ -30,6 +29,9 @@ import TeacherSchedule from './pages/Teacher/SchedulePage/TeacherSchedule'
 import Dev_Home from './pages/Dev_Home'
 import CourseDetailPage from './pages/Course/CourseDetailPage'
 import CourseAll from './pages/Course/CourseAll'
+import GoogleCallback from './pages/Common/GoogleCallback'
+import ChangePassword from './pages/Common/ChangePassword'
+import MyClasses from './pages/Student/MyClasses'
 
 
 export default function App() {
@@ -48,12 +50,14 @@ export default function App() {
             <Route path="/dev" element={<Dev_Home />} />
             <Route path="/dev/dashboard" element={<Dev_Dashboard />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/google-callback" element={<GoogleCallback />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgotPassword" element={<ForgotPassword />} /> 
             <Route path="/otpVerification" element={<OtpVerification />} /> 
             <Route path="/resetPassword" element={<ResetPassword />} />          
+            <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/student/wishlist" element={<Wishlist />} /> 
-            <Route path="/student/myCourses" element={<MyCourses />} /> 
+            <Route path="/student/my-classes" element={<MyClasses />} /> 
             <Route path="/student/Course/:courseId" element={<CourseSession />} />
             <Route path="/student/schedule" element={<Schedule />} />
             <Route path="/student/feedback" element={<Feedback />} />

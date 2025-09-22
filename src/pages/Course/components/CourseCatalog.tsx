@@ -1,24 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, Star, Award, Users, BookOpen } from "lucide-react";
+import { Search, Filter, Star, Award, Users, BookOpen, Grid3X3, List } from "lucide-react";
 
 import CourseCard from "@/pages/Course/components/CourseCard";
+import CourseListItem from "@/pages/Course/components/CourseListItem";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
 import { api } from "@/lib/config"
 
 import type { Course, CourseSearchResult } from "@/types/course";
 
-/* =========================
-   Config endpoint
-   ========================= */
-// Using axios API method for course search
-
-/* =========================
-   Helpers
-   ========================= */
 function useDebounce<T>(value: T, delay = 450) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -54,9 +46,6 @@ const uiSortToServer: Record<string, string> = {
   "price-high": "Price.desc",
 };
 
-/* =========================
-   Component
-   ========================= */
 export default function CourseCatalog() {
   const navigate = useNavigate();
 
@@ -65,17 +54,21 @@ export default function CourseCatalog() {
   const qDebounced = useDebounce(q);
 
   const [showFilters, setShowFilters] = useState(false);
+  const [showDesktopFilters, setShowDesktopFilters] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [uiSort, setUiSort] = useState("popular");
   const [priceRange, setPriceRange] = useState("all");
 
   // Multi-select facets
   const [levelIds, setLevelIds] = useState<string[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [skillIds, setSkillIds] = useState<string[]>([]); // NEW
 
   // Data states
   const [items, setItems] = useState<Course[]>([]);
   const [levelsFacet, setLevelsFacet] = useState<FacetItem[]>([]);
   const [categoriesFacet, setCategoriesFacet] = useState<FacetItem[]>([]);
+  const [skillsFacet, setSkillsFacet] = useState<FacetItem[]>([]); // NEW
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(18);
@@ -89,6 +82,7 @@ export default function CourseCatalog() {
     if (qDebounced) s.set("Q", qDebounced);
     if (levelIds.length) s.set("LevelIds", levelIds.join(","));
     if (categoryIds.length) s.set("CategoryIds", categoryIds.join(","));
+    if (skillIds.length) s.set("SkillIds", skillIds.join(",")); // NEW
     if (priceRange !== "all") {
       if (priceRange.endsWith("+")) {
         s.set("PriceMin", priceRange.replace("+", ""));
@@ -113,11 +107,10 @@ export default function CourseCatalog() {
       try {
         const searchParams = buildSearchParams();
         const paramsObject = Object.fromEntries(searchParams.entries());
-        
+
         const response = await api.searchCourses(paramsObject, { signal: abort.signal });
         const data: CourseSearchResult = response.data;
 
-        // API có thể trả object {items:[]} – bảo vệ an toàn
         const arr = Array.isArray((data as any).items) ? (data.items as Course[]) : [];
         setItems(arr);
 
@@ -127,6 +120,7 @@ export default function CourseCatalog() {
         const facets = (data as any).facets || {};
         setLevelsFacet((facets.levels as FacetItem[]) ?? []);
         setCategoriesFacet((facets.categories as FacetItem[]) ?? []);
+        setSkillsFacet((facets.skills as FacetItem[]) ?? []); // NEW
       } catch (e: any) {
         if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") return;
         console.error("Failed to fetch courses:", e);
@@ -137,7 +131,7 @@ export default function CourseCatalog() {
     })();
     return () => abort.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, levelIds.join(","), categoryIds.join(","), priceRange, uiSort, page]);
+  }, [qDebounced, levelIds.join(","), categoryIds.join(","), skillIds.join(","), priceRange, uiSort, page]);
 
   // Helpers Facet
   const toggleFacet = (setter: (v: string[]) => void, current: string[], key: string) => {
@@ -152,17 +146,18 @@ export default function CourseCatalog() {
     if (qDebounced) n++;
     if (levelIds.length) n++;
     if (categoryIds.length) n++;
+    if (skillIds.length) n++; // NEW
     if (priceRange !== "all") n++;
     return n;
-  }, [qDebounced, levelIds, categoryIds, priceRange]);
+  }, [qDebounced, levelIds, categoryIds, skillIds, priceRange]);
 
-  // Price value for select
   const currentPriceValue = useMemo(() => priceRange, [priceRange]);
 
   const clearAll = () => {
     setQ("");
     setLevelIds([]);
     setCategoryIds([]);
+    setSkillIds([]); // NEW
     setPriceRange("all");
     setUiSort("popular");
     setPage(1);
@@ -173,104 +168,224 @@ export default function CourseCatalog() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+    <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 min-h-screen">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-primary-800">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-500 to-accent-500">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-700/20 to-accent-600/20"></div>
+          <div className="absolute top-0 left-0 w-72 h-72 bg-accent-300/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-20 right-0 w-96 h-96 bg-blue-300/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-accent-400/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center text-white">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-primary-200 bg-clip-text text-transparent">
-              Discover Your Perfect Course
+            <div className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium mb-8 border border-white/30">
+              <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+              Join 50,000+ learners worldwide
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+              <span className="bg-gradient-to-r from-white via-blue-100 to-accent-100 bg-clip-text text-transparent whitespace-nowrap">
+                Learn Without Limits
+              </span>
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-primary-100 mx-auto">
-              Master English with our expert-led courses. From beginner to advanced,
-              we have everything you need to achieve your language goals.
+            
+            <p className="text-xl md:text-2xl mb-12 text-blue-100 max-w-4xl mx-auto leading-normal">
+              Transform your career with expert-led courses. Master new skills, earn certificates, and join a global community of learners.
             </p>
 
-            <div className="w-[70%] mx-auto relative">
+            <div className="max-w-2xl mx-auto relative mb-8">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 w-6 h-6" />
                 <Input
                   type="text"
-                  placeholder="Search courses, teachers, or topics..."
+                  placeholder="What do you want to learn today?"
                   value={q}
                   onChange={(e) => {
                     setQ(e.target.value);
                     setPage(1);
                   }}
-                  className="pl-12 pr-4 py-4 text-lg rounded-2xl border-0 shadow-2xl focus:ring-4 focus:ring-white/30"
+                  className="pl-16 pr-6 py-5 text-lg rounded-2xl border-0 shadow-2xl bg-white/95 backdrop-blur-sm focus:ring-4 focus:ring-accent-300/50 focus:bg-white transition-all"
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Button className="btn-secondary px-6 py-2 rounded-xl font-semibold">
+                    Search
+                  </Button>
+                </div>
               </div>
             </div>
+
+          
           </div>
         </div>
-        <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-bounce" />
-        <div className="absolute top-40 right-20 w-16 h-16 bg-white/10 rounded-full animate-pulse" />
-        <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-white/10 rounded-full animate-bounce delay-1000" />
+        
+        {/* Floating elements */}
+        <div className="absolute top-32 left-10 w-20 h-20 bg-gradient-to-br from-accent-400 to-primary-500 rounded-2xl rotate-12 animate-bounce opacity-20"></div>
+        <div className="absolute top-20 right-20 w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full animate-pulse opacity-30"></div>
+        <div className="absolute bottom-32 left-1/4 w-12 h-12 bg-gradient-to-br from-primary-400 to-accent-500 rounded-xl -rotate-12 animate-bounce delay-1000 opacity-25"></div>
+        <div className="absolute top-1/2 right-10 w-8 h-8 bg-gradient-to-br from-accent-400 to-blue-500 rounded-full animate-ping opacity-20"></div>
       </div>
 
       {/* Stats */}
-      <div className="py-16 bg-white">
+      <div className="py-20 bg-gradient-to-r from-white via-blue-50 to-accent-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Trusted by Learners Worldwide
+            </h2>
+            <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed text-center">
+              Join thousands of students who have transformed their careers with our courses
+            </p>
+          </div>
+          
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center group">
-              <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Users className="w-8 h-8 text-white" />
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-accent-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
+                  <Users className="w-10 h-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">✓</span>
+                </div>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">50K+</div>
-              <div className="text-gray-600">Happy Students</div>
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent mb-2">50K+</div>
+              <div className="text-gray-700 font-medium whitespace-nowrap">Happy Students</div>
+              <div className="text-sm text-gray-500 mt-1 whitespace-nowrap">Across 150+ countries</div>
             </div>
+            
             <div className="text-center group">
-              <div className="w-16 h-16 bg-accent-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <BookOpen className="w-8 h-8 text-white" />
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
+                  <BookOpen className="w-10 h-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">★</span>
+                </div>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">100+</div>
-              <div className="text-gray-600">Expert Courses</div>
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">100+</div>
+              <div className="text-gray-700 font-medium whitespace-nowrap">Expert Courses</div>
+              <div className="text-sm text-gray-500 mt-1 whitespace-nowrap">By industry experts</div>
             </div>
+            
             <div className="text-center group">
-              <div className="w-16 h-16 bg-success-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Star className="w-8 h-8 text-white" />
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
+                  <Star className="w-10 h-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-pink-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">♥</span>
+                </div>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">4.8</div>
-              <div className="text-gray-600">Average Rating</div>
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mb-2">4.8</div>
+              <div className="text-gray-700 font-medium whitespace-nowrap">Average Rating</div>
+              <div className="text-sm text-gray-500 mt-1 whitespace-nowrap">From 25,000+ reviews</div>
             </div>
+            
             <div className="text-center group">
-              <div className="w-16 h-16 bg-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Award className="w-8 h-8 text-white" />
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
+                  <Award className="w-10 h-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">🏆</span>
+                </div>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">95%</div>
-              <div className="text-gray-600">Success Rate</div>
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2">95%</div>
+              <div className="text-gray-700 font-medium whitespace-nowrap">Success Rate</div>
+              <div className="text-sm text-gray-500 mt-1 whitespace-nowrap">Course completion</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters & Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Explore Our Courses
+          </h2>
+          <p className="text-lg text-gray-600 max-w-4xl mx-auto leading-relaxed text-center">
+            Find the perfect course to advance your skills and career goals
+          </p>
+        </div>
+
         {/* Top controls */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
+          <div className="flex items-center gap-4">
+            {/* Mobile filter toggle */}
+            <div className="md:hidden">
               <Button
                 variant="secondary"
                 onClick={() => setShowFilters((v) => !v)}
                 iconLeft={<Filter className="w-4 h-4" />}
+                className="btn-secondary border-0"
               >
                 Filters
                 {activeFiltersCount > 0 && (
-                  <span className="bg-primary-600 text-white text-xs px-2 py-1 rounded-full ml-2">
+                  <span className="bg-yellow-400 text-gray-900 text-xs px-2 py-1 rounded-full ml-2 font-bold">
                     {activeFiltersCount}
                   </span>
                 )}
               </Button>
+            </div>
+            
+            {/* Desktop filter toggle */}
+            <div className="hidden md:block">
+              <Button
+                variant="secondary"
+                onClick={() => setShowDesktopFilters((v) => !v)}
+                iconLeft={<Filter className="w-4 h-4" />}
+                className={`border-0 shadow-md transition-all ${
+                  showDesktopFilters 
+                    ? 'bg-gradient-to-r from-accent-500 to-primary-600 hover:from-accent-600 hover:to-primary-700 text-white' 
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                {showDesktopFilters ? 'Hide Filters' : 'Show Filters'}
+                {activeFiltersCount > 0 && (
+                  <span className="bg-yellow-400 text-gray-900 text-xs px-2 py-1 rounded-full ml-2 font-bold">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </Button>
+            </div>
+            
+            {/* View mode toggle */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <Button
+                variant="ghost"
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-white shadow-sm text-primary-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-white shadow-sm text-primary-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
 
+            <div className="relative">
               <Select
                 value={uiSort}
                 onChange={(e) => {
                   setUiSort(e.target.value);
                   setPage(1);
                 }}
-                className="min-w-[200px]"
+                className="min-w-[200px] bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-accent-500 focus:border-transparent"
               >
                 {sortOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -279,71 +394,117 @@ export default function CourseCatalog() {
                 ))}
               </Select>
             </div>
-
-            
           </div>
 
-          {/* Filter panel */}
-          {showFilters && (
-            <Card className="mt-6 animate-in slide-in-from-top-4 duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex items-center gap-3 text-sm text-gray-600">
+            <span className="font-medium">Showing {items.length} of {total} courses</span>
+            <div className="w-2 h-2 bg-accent-400 rounded-full"></div>
+            <span>Updated daily</span>
+          </div>
+        </div>
+
+        {/* Sidebar Layout */}
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Sidebar Filters */}
+          <div className={`md:w-72 flex-shrink-0 transition-all duration-300 ${
+            showFilters ? 'block' : 'hidden md:block'
+          } ${
+            showDesktopFilters ? 'md:block' : 'md:hidden'
+          }`}>
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 sticky top-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Filters</h3>
+                {activeFiltersCount > 0 && (
+                  <Button 
+                    variant="secondary" 
+                    onClick={clearAll} 
+                    className="text-xs bg-gradient-to-r from-error-500 to-error-600 hover:from-error-600 hover:to-error-700 text-white border-0 shadow-md px-3 py-1 rounded-lg font-semibold"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-4">
                 {/* Category */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                  <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 bg-gradient-to-br from-accent-500 to-primary-600 rounded flex items-center justify-center">
+                      <span className="text-white text-xs">📚</span>
+                    </div>
+                    <label className="text-sm font-semibold text-gray-800">Category</label>
+                  </div>
+                  <div className="space-y-1 max-h-32 overflow-auto">
                     {categoriesFacet.length > 0 ? (
                       categoriesFacet.map((f) => (
-                        <label key={f.key} className="flex items-center gap-2">
+                        <label key={f.key} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-accent-50 transition-colors cursor-pointer">
                           <input
                             type="checkbox"
                             checked={categoryIds.includes(f.key)}
                             onChange={() => toggleFacet(setCategoryIds, categoryIds, f.key)}
+                            className="w-3 h-3 text-accent-600 rounded focus:ring-accent-500"
                           />
-                          <span>
-                            {f.label ?? f.key}{" "}
-                            <span className="text-sm text-neutral-500">({f.count})</span>
+                          <span className="text-gray-700 flex-1 text-xs">
+                            {f.label ?? f.key}
+                          </span>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                            {f.count}
                           </span>
                         </label>
                       ))
                     ) : (
-                      <div className="text-sm text-neutral-500">No categories</div>
+                      <div className="text-xs text-gray-500 text-center py-2">No categories</div>
                     )}
                   </div>
                 </div>
 
                 {/* Level */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
-                  <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded flex items-center justify-center">
+                      <span className="text-white text-xs">📊</span>
+                    </div>
+                    <label className="text-sm font-semibold text-gray-800">Level</label>
+                  </div>
+                  <div className="space-y-1 max-h-32 overflow-auto">
                     {levelsFacet.length > 0 ? (
                       levelsFacet.map((f) => (
-                        <label key={f.key} className="flex items-center gap-2">
+                        <label key={f.key} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-accent-50 transition-colors cursor-pointer">
                           <input
                             type="checkbox"
                             checked={levelIds.includes(f.key)}
                             onChange={() => toggleFacet(setLevelIds, levelIds, f.key)}
+                            className="w-3 h-3 text-accent-600 rounded focus:ring-accent-500"
                           />
-                          <span>
-                            {f.label ?? f.key}{" "}
-                            <span className="text-sm text-neutral-500">({f.count})</span>
+                          <span className="text-gray-700 flex-1 text-xs">
+                            {f.label ?? f.key}
+                          </span>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                            {f.count}
                           </span>
                         </label>
                       ))
                     ) : (
-                      <div className="text-sm text-neutral-500">No levels</div>
+                      <div className="text-xs text-gray-500 text-center py-2">No levels</div>
                     )}
                   </div>
                 </div>
 
                 {/* Price */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 bg-gradient-to-br from-yellow-500 to-orange-600 rounded flex items-center justify-center">
+                      <span className="text-white text-xs">💰</span>
+                    </div>
+                    <label className="text-sm font-semibold text-gray-800">Price Range</label>
+                  </div>
                   <Select
                     value={currentPriceValue}
                     onChange={(e) => {
                       setPriceRange(e.target.value);
                       setPage(1);
                     }}
+                    className="w-full text-xs bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-accent-500 focus:border-transparent"
                   >
                     {priceOptions.map((p) => (
                       <option key={p.value} value={p.value}>
@@ -353,20 +514,13 @@ export default function CourseCatalog() {
                   </Select>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {activeFiltersCount > 0 && (
-                <div className="mt-4 flex justify-end">
-                  <Button variant="secondary" onClick={clearAll} className="text-sm">
-                    Clear all filters
-                  </Button>
-                </div>
-              )}
-            </Card>
-          )}
-        </div>
-
-        {/* States */}
-        {loading && (
+          {/* Main Content */}
+          <div className="flex-1 min-w-0">
+            {/* States */}
+       {loading && (
           <div className="flex justify-center items-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             <span className="ml-3 text-gray-600">Loading courses...</span>
@@ -388,18 +542,36 @@ export default function CourseCatalog() {
 
         {!loading && !err && items.length > 0 ? (
           <>
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {items.map((course, index) => (
-                <div
-                  key={course.id}
-                  className="animate-in fade-in-0 slide-in-from-bottom-4"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <CourseCard course={course} onEnroll={handleEnroll} />
-                </div>
-              ))}
-            </div>
+            {/* Course Display */}
+            {viewMode === 'grid' ? (
+              <div className={`grid gap-6 ${
+                showDesktopFilters 
+                  ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+                  : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              }`}>
+                {items.map((course, index) => (
+                  <div
+                    key={course.id}
+                    className="animate-in fade-in-0 slide-in-from-bottom-4"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <CourseCard course={course} onEnroll={handleEnroll} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {items.map((course, index) => (
+                  <div
+                    key={course.id}
+                    className="animate-in fade-in-0 slide-in-from-left-4"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <CourseListItem course={course} onEnroll={handleEnroll} />
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Pagination */}
             <div className="mt-8 flex items-center justify-center gap-2">
@@ -434,6 +606,8 @@ export default function CourseCatalog() {
             </Button>
           </div>
         ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

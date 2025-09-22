@@ -2,75 +2,115 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
-import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
-import { ArrowLeft, Lock, Eye, EyeOff, CheckCircle } from "lucide-react";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import { Eye, EyeOff, CheckCircle, Lock } from "lucide-react";
 import { api } from "@/lib/config";
+import { clearAuthData } from "@/lib/utils";
 
 // Validation schema
-const resetPasswordSchema = z.object({
-  password: z
+const changePasswordSchema = z.object({
+  oldPassword: z
     .string()
-    .min(1, "Password is required")
+    .min(1, "Old password is required"),
+  newPassword: z
+    .string()
+    .min(1, "New password is required")
     .min(8, "Password must be at least 8 characters")
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
   confirmPassword: z
     .string()
     .min(1, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
+}).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
-type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
-export default function ResetPassword() {
-  const [showPassword, setShowPassword] = useState(false);
+export default function ChangePassword() {
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  const email = location.state?.email || "";
-  const token = location.state?.token || "";
 
-  const methods = useForm<ResetPasswordFormData>({
-    resolver: zodResolver(resetPasswordSchema),
+  const methods = useForm<ChangePasswordFormData>({
+    resolver: zodResolver(changePasswordSchema),
     defaultValues: {
-      password: "",
+      oldPassword: "",
+      newPassword: "",
       confirmPassword: "",
     },
   });
 
-  // Redirect if no email or token
-  useState(() => {
-    if (!email || !token) {
-      navigate("/forgotPassword");
-    }
-  });
-
-  const onSubmit = async (data: ResetPasswordFormData) => {
+  const onSubmit = async (data: ChangePasswordFormData) => {
     setIsLoading(true);
     try {
-      console.log("Reset password data:", { email, token, password: data.password });
+      // Get user email from localStorage
+      const userData = localStorage.getItem('userInfo');
+      const authToken = localStorage.getItem('authToken');
       
-      // Call the reset password API
-      const response = await api.resetPassword({
+      console.log("Auth token exists:", !!authToken); // Debug log
+      console.log("User data exists:", !!userData); // Debug log
+      
+      if (!userData) {
+        alert("User information not found. Please login again.");
+        navigate("/login");
+        return;
+      }
+      
+      if (!authToken) {
+        alert("Authentication token not found. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      const email = JSON.parse(userData).email;
+      console.log("Using email for change password:", email); // Debug log
+      console.log("JWT Token will be automatically attached to the request via axios interceptor");
+
+      // Call the change password API (JWT token will be automatically attached by interceptor)
+      const response = await api.changePassword({
         email: email,
-        newPassword: data.password,
-        token: token
+        oldPassword: data.oldPassword,
+        newPassword: data.newPassword
       });
-      console.log("Reset password response:", response.data);
       
-      // Show success message and redirect to login
-      alert("Password reset successful! Please login with your new password.");
-      navigate("/login");
+      console.log("Change password response:", response);
+      
+      // Show success message and redirect
+      alert("Password changed successfully!");
+      navigate(-1); // Go back to previous page
     } catch (error: any) {
-      console.error("Reset password error:", error);
-      const errorMessage = error.response?.data?.message || "Failed to reset password!";
-      alert(errorMessage);
+      console.error("Change password error:", error);
+      console.error("Error response:", error.response); // Debug log
+      
+      // Handle different error types
+      if (error.response?.status === 400) {
+        alert("Invalid request. Please check your information and try again.");
+      } else if (error.response?.status === 401) {
+        // JWT authorization error - token expired or invalid
+        alert("Session expired. Please login again.");
+        clearAuthData();
+        navigate("/login");
+      } else if (error.response?.status === 403) {
+        alert("Access denied. Insufficient permissions.");
+        navigate("/login");
+      } else if (error.response?.status === 404) {
+        alert("Account not found. Please login again.");
+        navigate("/login");
+      } else if (error.message?.includes('Authentication token not found')) {
+        alert("Authentication required. Please login again.");
+        navigate("/login");
+      } else if (error.message?.includes('Session expired')) {
+        alert("Session expired. Please login again.");
+        navigate("/login");
+      } else {
+        alert("Failed to change password. Please try again later.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -102,7 +142,7 @@ export default function ResetPassword() {
     return "Strong";
   };
 
-  const watchedPassword = methods.watch("password");
+  const watchedPassword = methods.watch("newPassword");
   const passwordStrength = getPasswordStrength(watchedPassword);
 
   return (
@@ -113,29 +153,51 @@ export default function ResetPassword() {
           <div className="mx-auto w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">
             <Lock className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900">Reset Password</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">Change Password</h1>
           <p className="text-sm text-neutral-600 mt-2">
-            Create a new strong password for your account
+            Enter your current password and create a new secure password for your account.
           </p>
         </div>
 
         {/* Form */}
         <Form methods={methods} onSubmit={onSubmit} className="space-y-6">
+          {/* Old Password Field */}
+          <div className="relative">
+            <FormInput
+              name="oldPassword"
+              type={showOldPassword ? "text" : "password"}
+              label="Old Password *"
+              placeholder="Enter your current password"
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowOldPassword(!showOldPassword)}
+              className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              {showOldPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+
           {/* New Password Field */}
           <div className="relative">
             <FormInput
-              name="password"
-              type={showPassword ? "text" : "password"}
-              label="New Password"
+              name="newPassword"
+              type={showNewPassword ? "text" : "password"}
+              label="New Password *"
               placeholder="Enter your new password"
               autoComplete="new-password"
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowNewPassword(!showNewPassword)}
               className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-colors"
             >
-              {showPassword ? (
+              {showNewPassword ? (
                 <EyeOff className="w-5 h-5" />
               ) : (
                 <Eye className="w-5 h-5" />
@@ -187,7 +249,7 @@ export default function ResetPassword() {
             <FormInput
               name="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
-              label="Confirm Password"
+              label="Confirm Password *"
               placeholder="Confirm your new password"
               autoComplete="new-password"
             />
@@ -213,19 +275,18 @@ export default function ResetPassword() {
             className="w-full"
             iconLeft={<CheckCircle className="w-4 h-4" />}
           >
-            {isLoading ? "Resetting..." : "Reset Password"}
+            {isLoading ? "Processing..." : "Change Password"}
           </Button>
         </Form>
 
-        {/* Back to Login */}
+        {/* Back to Previous Page */}
         <div className="mt-8 pt-6 border-t border-neutral-200 text-center">
-          <Link
-            to="/login"
+          <button
+            onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium hover:underline"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Login
-          </Link>
+            ← Back to Previous Page
+          </button>
         </div>
       </Card>
 
@@ -233,12 +294,12 @@ export default function ResetPassword() {
       <div className="mt-8 text-center">
         <p className="text-xs text-neutral-500">
           Password changed successfully?{" "}
-          <Link
-            to="/login"
+          <button
+            onClick={() => navigate(-1)}
             className="text-primary-600 hover:underline"
           >
-            Sign in here
-          </Link>
+            Return to dashboard
+          </button>
         </p>
       </div>
     </div>

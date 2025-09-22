@@ -1,12 +1,8 @@
 // src/pages/Teacher/Courses.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TeacherLayout from "@/Shared/TeacherLayout";
-import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
-import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
-import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import CourseCard, { type TeacherCourse } from "@/pages/Teacher/CoursesPage/CourseCard";
 
@@ -15,8 +11,6 @@ import { BookOpen, Search as SearchIcon } from "lucide-react";
 /* =========================
    Mock Data
 ========================= */
-
-type CourseStatus = "ongoing" | "upcoming" | "archived";
 const crumbs: Crumb[] = [{ label: "Courses" }];
 const mockCourses: TeacherCourse[] = [
   {
@@ -93,32 +87,31 @@ export default function Courses() {
   const pageItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
   return (
-    <TeacherLayout crumbs={crumbs}>
+    <TeacherLayout 
+      crumbs={crumbs}
+      pageHeader={{
+        title: "My Courses",
+        subtitle: "Explore, manage, and track your classes"
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-             <div className="mb-6">
-                  <PageHeader
-                    title="My Courses"
-                    
-                  
-                  />
-                </div>
         {/* Search & Filters */}
         <div className="flex flex-wrap gap-3 mb-6 items-center">
           <div className="relative flex-1 min-w-[220px]">
-            <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-neutral-400" />
+            <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-primary-400" />
             <input
               type="text"
               placeholder="Search by title or code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full border rounded-md pl-9 pr-3 py-2 text-sm"
+              className="w-full border border-primary-200 rounded-lg pl-9 pr-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-300 bg-white"
             />
           </div>
 
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value as any)}
-            className="border rounded-md px-3 py-2 text-sm"
+            className="border border-primary-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-300"
           >
             <option value="All">All Levels</option>
             <option value="Beginner">Beginner</option>
@@ -129,7 +122,7 @@ export default function Courses() {
           <select
             value={formatFilter}
             onChange={(e) => setFormatFilter(e.target.value as any)}
-            className="border rounded-md px-3 py-2 text-sm"
+            className="border border-primary-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-300"
           >
             <option value="All">All Formats</option>
             <option value="Online">Online</option>
@@ -139,7 +132,12 @@ export default function Courses() {
         </div>
 
         {/* Course list */}
-        <Card  className="border border-gray-200 shadow-md" title="Courses List" >
+        <Card className="border border-primary-200 shadow-lg bg-white/90 backdrop-blur-sm" title={
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-primary-600" />
+            <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">Courses List</span>
+          </div>
+        }>
           {filtered.length > 0 ? (
             <div className="space-y-6 min-h-[707px]">
               {pageItems.map((course) => (
@@ -160,7 +158,7 @@ export default function Courses() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <BookOpen className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+              <BookOpen className="w-16 h-16 text-primary-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                 No courses found
               </h3>

@@ -1,6 +1,6 @@
 // src/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule.tsx
 import React, { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight,Video, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 
 import ClassSessionDetailsPopup from "@/pages/Teacher/SchedulePage/Component/ClassSessionDetailsPopup";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
@@ -57,7 +57,7 @@ function fmtDaySub(d: Date) {
 function fmtTime(h: number, m = 0) {
   const t = new Date();
   t.setHours(h, m, 0, 0);
-  return t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return t.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 function toDateAny(s: string): Date {
   // hỗ trợ "yyyy:MM:dd:HH:mm"
@@ -66,6 +66,17 @@ function toDateAny(s: string): Date {
     return new Date(y, M - 1, d, H, m, 0, 0);
   }
   return new Date(s);
+}
+
+function getTeachingSessionStyles() {
+  // Teacher sessions use a consistent style since they don't have attendance status
+  return {
+    border: "border-accent-300",
+    bg: "bg-white",
+    hover: "hover:bg-accent-25 hover:border-accent-400",
+    text: "text-primary-800",
+    badge: "bg-accent-50 text-accent-600"
+  };
 }
 
 /* =========================
@@ -88,6 +99,7 @@ export default function TeacherWeekSchedule({
   const [detailsData, setDetailsData] = useState<{
     courseName: string;
     className: string;
+    instructor?: string;
     date: string;
     time: string;
     roomNumber: string;
@@ -178,80 +190,83 @@ export default function TeacherWeekSchedule({
     setDetailsData({
       courseName: s.title,
       className: `Class ${s.classCode}`,
+      instructor: "You (Instructor)",
       date: dateStr,
       time: `${startLabel} – ${endLabel}`,
       roomNumber: s.room ?? "—",
       format: "In-person",
-      meetingLink: "https://meet.google.com/quv-niif-mnx",
+      meetingLink: "https://meet.google.com/teacher-class",
     });
     setDetailsOpen(true);
   }
 
   return (
-    <div className="bg-white rounded-xl border border-sky-100 shadow-sm mt-4">
+    <div className="bg-white rounded-xl border-0 shadow-none">
       {/* ===== Header ===== */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-6 border-b border-accent-200">
         <div>
-          <h2 className="text-lg font-semibold text-sky-900">Schedule</h2>
-          <div className="mt-1 flex items-center gap-2 text-sky-700">
+          <h2 className="text-xl font-bold text-primary-800">Weekly Schedule</h2>
+          <div className="mt-2 flex items-center gap-3">
             <button
-              className="p-1 rounded hover:bg-sky-100"
+              className="p-2 rounded-lg hover:bg-accent-100 transition-colors border border-accent-200"
               onClick={() => setWeekStart((d) => addDays(d, -7))}
               aria-label="Previous week"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-5 h-5 text-primary-600" />
             </button>
-            <span className="text-sm">{labelWeek}</span>
+            <span className="text-lg font-semibold text-primary-700 px-4">{labelWeek}</span>
             <button
-              className="p-1 rounded hover:bg-sky-100"
+              className="p-2 rounded-lg hover:bg-accent-100 transition-colors border border-accent-200"
               onClick={() => setWeekStart((d) => addDays(d, 7))}
               aria-label="Next week"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5 text-primary-600" />
             </button>
           </div>
         </div>
 
-        {/* Today → mở Dialog chứa Shadcn Calendar */}
+        {/* Calendar Button */}
         <button
-          className="inline-flex items-center gap-2 bg-sky-100 hover:bg-sky-200 text-sky-900 px-3 py-2 rounded-md text-sm"
+          className="inline-flex items-center gap-2 bg-accent-500 hover:bg-accent-600 text-white px-4 py-3 rounded-lg text-sm font-medium shadow-md transition-all duration-200"
           onClick={() => setPickerOpen(true)}
         >
-          <CalendarIcon className="w-4 h-4" />
-          Today
+          <CalendarIcon className="w-5 h-5" />
+          Select Date
         </button>
       </div>
 
       {/* ===== Grid Header Row ===== */}
-      <div className="border-t border-sky-100">
-        <div className="grid grid-cols-[120px_repeat(7,minmax(0,1fr))] text-sm text-sky-800">
-          <div className="p-3 border-b border-sky-100 font-medium">Time</div>
+      <div className="border-t border-accent-200">
+        <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))] text-sm">
+          <div className="p-3 border-b border-accent-400 font-bold text-primary-800 bg-accent-200 text-center">Time</div>
           {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d, i) => (
             <div
               key={d.toISOString()}
               className={
-                "p-3 border-b border-sky-100 text-center " +
-                (i === todayIdx ? "bg-sky-50 rounded-t" : "")
+                "p-3 border-b border-accent-200 text-center border-l " +
+                (i === todayIdx ? "bg-accent-50" : "bg-white")
               }
             >
-              <div className="font-medium flex items-center justify-center gap-2">
+              <div className="font-bold text-center text-primary-800">
                 {fmtDayHeader(d)}
-                {i === todayIdx && (
-                  <span className="text-[10px] px-2 py-[2px] rounded-full bg-sky-200 text-sky-900">
+              </div>
+              <div className="text-xs text-accent-600 font-medium mt-1">{fmtDaySub(d)}</div>
+              {i === todayIdx && (
+                <div className="mt-2">
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-accent-500 text-white font-semibold">
                     Today
                   </span>
-                )}
-              </div>
-              <div className="text-xs text-sky-600">{fmtDaySub(d)}</div>
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         {/* ===== Grid Body ===== */}
-        <div className="grid grid-cols-[120px_repeat(7,minmax(0,1fr))]">
+        <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))]">
           {slotTimes.map(([h, m], row) => (
             <React.Fragment key={row}>
-              <div className="border-t border-sky-100 p-3 text-xs text-sky-700">
+              <div className="border-t border-accent-400 p-2 text-sm font-semibold text-primary-700 bg-accent-200 text-center">
                 {fmtTime(h, m)}
               </div>
 
@@ -259,20 +274,20 @@ export default function TeacherWeekSchedule({
                 const key = `${dayIdx}-${row}`;
                 const items = cellMap.get(key) || [];
 
-                // nền cột hôm nay (nhạt)
-                const colBase = dayIdx === todayIdx ? "bg-sky-50" : "";
+                // Background for today's column
+                const colBase = dayIdx === todayIdx ? "bg-accent-25" : "bg-white";
 
-                // highlight slot nếu có session + theo selected/today
+                // Highlight slot if has session
                 let slotHighlight = "";
                 if (items.length > 0) {
-                  if (dayIdx === selectedIdx) slotHighlight = "bg-sky-200"; // ngày chọn (đậm hơn)
-                  else if (dayIdx === todayIdx) slotHighlight = "bg-sky-100"; // hôm nay (nhạt)
+                  if (dayIdx === selectedIdx) slotHighlight = "bg-accent-100"; // selected day
+                  else if (dayIdx === todayIdx) slotHighlight = "bg-accent-50"; // today
                 }
 
                 return (
                   <div
                     key={key}
-                    className={`border-t border-l border-sky-100 p-1 min-h-[92px] ${colBase} ${slotHighlight}`}
+                    className={`border-t border-l border-accent-200 p-2 min-h-[60px] ${colBase} ${slotHighlight} hover:bg-accent-25 transition-colors`}
                   >
                     <div
                       className={
@@ -288,31 +303,28 @@ export default function TeacherWeekSchedule({
                           h + Math.floor(eMin / 60),
                           eMin % 60
                         );
+                        const sessionStyles = getTeachingSessionStyles();
                         return (
                           <button
                             key={s.id}
                             onClick={() => openDetails(s, startLabel, endLabel)}
-                            className="group w-full text-left rounded-lg border border-sky-200 bg-white shadow-sm p-2 transition
-                                       hover:shadow-md hover:ring-1 hover:ring-sky-300 hover:border-sky-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-                            title={`${s.title} • ${startLabel} – ${endLabel}`} // tool-tip natif
+                            className={`group w-full text-left rounded-lg shadow-md p-2 transition-all duration-200
+                                       hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400
+                                       ${sessionStyles.border} ${sessionStyles.bg} ${sessionStyles.hover}`}
+                            title={`${s.title} • ${startLabel} – ${endLabel}`}
                           >
-                            <div className="text-sm font-semibold leading-5 text-sky-900 group-hover:text-sky-950">
+                            <div className={`text-sm font-bold leading-4 group-hover:opacity-90 mb-1 ${sessionStyles.text}`}>
                               {s.title}
                             </div>
-                           <div className="text-[12px] text-sky-700">
-                                Class {s.classCode}
-                                {s.room ? (
-                                    <>
-                                    {" • "}{s.room}
-                                    {detailsData?.meetingLink && (
-                                        <span className="inline-flex items-center gap-1 ml-1 text-sky-600">
-                                        / <Video className="w-3 h-3" />
-                                        </span>
-                                    )}
-                                    </>
-                                ) : null}
+                            <div className={`text-xs font-medium mb-1 ${sessionStyles.text} opacity-80`}>
+                              {s.classCode}
+                              {s.room && (
+                                <span>
+                                  {" • "}{s.room}
+                                </span>
+                              )}
                             </div>
-                            <div className="text-[12px] text-sky-700 mt-0.5">
+                            <div className={`text-xs font-medium px-1 py-0.5 rounded ${sessionStyles.badge}`}>
                               {startLabel} – {endLabel}
                             </div>
                           </button>
@@ -351,7 +363,7 @@ export default function TeacherWeekSchedule({
                 setPickerOpen(false);          // đóng dialog
               }}
               initialFocus
-              className="rounded-md border border-sky-100"
+              className="rounded-md border border-accent-200"
             />
           </DialogBody>
         </DialogContent>
