@@ -13,7 +13,8 @@ import {
   MoreVertical,
   CheckCircle,
   Users,
-  MapPin
+  MapPin,
+  GraduationCap
 } from "lucide-react";
 
 import type { MyClass } from "@/types/class";
@@ -311,15 +312,24 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mb-3">
-            {classItem.courseCode && (
-              <p className="text-xs text-neutral-500 mt-1">
-                Course: {classItem.courseCode} - {classItem.courseName}
+            <div className="flex items-center gap-2">
+              <p className="text-xs mt-1">
+                <span className="inline-flex items-center gap-1 bg-warning-200 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
+                  <span className="text-xs font-semibold">{classItem.courseCode}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 bg-accent-100 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
+                  <GraduationCap className="w-3 h-3" />
+                  <span className="text-xs font-semibold">{classItem.level}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 bg-secondary-200 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
+                  <Users className="w-3 h-3 text-accent-600" />
+                  <span className="text-xs font-semibold text-accent-700">{classItem.courseFormat || 'N/A'}</span>
+                </span>
               </p>
-            )}
+
             </div>
 
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-1 mt-4">
               <div className="w-8 h-8 bg-accent-400 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs font-semibold">{classItem.instructor?.charAt(0) || 'T'}</span>
               </div>
@@ -412,25 +422,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
           </div>
         )}
 
-        {/* Class Info */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-          <div className="flex items-center gap-2 bg-accent2-200 px-3 py-2 rounded-lg">
-            <BookOpen className="w-4 h-4 text-primary-600" />
-            <span className="text-xs font-semibold text-primary-700">{classItem.level || 'N/A'}</span>
-          </div>
-          <div className="flex items-center gap-2 bg-secondary-200 px-3 py-2 rounded-lg">
-            <Users className="w-4 h-4 text-accent-600" />
-            <span className="text-xs font-semibold text-accent-700">{classItem.courseFormat || 'N/A'}</span>
-          </div>
-          <div className="flex items-center gap-2 bg-info-100 px-3 py-2 rounded-lg">
-            <Clock className="w-4 h-4 text-info-600" />
-            <span className="text-xs font-semibold text-info-700">{classItem.totalHours || 0}h</span>
-          </div>
-          <div className="flex items-center gap-2 bg-success-50 px-3 py-2 rounded-lg">
-            <Calendar className="w-4 h-4 text-success-600" />
-            <span className="text-xs font-semibold text-success-700">{new Date(classItem.startDate).toLocaleDateString()}</span>
-          </div>
-        </div>
+
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3">

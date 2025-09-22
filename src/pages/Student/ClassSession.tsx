@@ -747,8 +747,8 @@ const InstructorCard: React.FC<{ instructor: Instructor }> = ({ instructor }) =>
   );
 };
 
-export default function CourseSession() {
-  const { courseId } = useParams();
+export default function ClassSession() {
+  const { classId } = useParams();
   const navigate = useNavigate();
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("sessions");
@@ -771,7 +771,7 @@ export default function CourseSession() {
   };
 
   const goBack = () => {
-    navigate('/student/myCourses');
+    navigate('/student/my-classes');
   };
 
   const handleAssignmentSubmit = (assignmentId: string) => {
@@ -836,7 +836,7 @@ export default function CourseSession() {
             className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">My Courses</span>
+            <span className="text-sm">My Classes</span>
           </button>
           <span className="text-neutral-400">›</span>
           <span className="text-sm text-neutral-900 font-medium">{course.title}</span>
@@ -861,13 +861,7 @@ export default function CourseSession() {
                   </div>
                 </div>
               </div>
-              
-              <Button 
-                variant="primary"
-                className="bg-accent-500 hover:bg-accent-600 shadow-lg transition-all duration-200 px-8 py-3 text-lg font-semibold"
-              >
-                Go to Class
-              </Button>
+             
             </div>
 
             {/* Tabs Navigation */}
@@ -967,7 +961,7 @@ export default function CourseSession() {
                   <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
                     <FileText className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="font-bold text-primary-800 text-lg">Course Info</h3>
+                  <h3 className="font-bold text-primary-800 text-lg">Class Info</h3>
                 </div>
                 
                 <div className="space-y-5">

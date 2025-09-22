@@ -11,7 +11,6 @@ import ForgotPassword from './pages/Common/ForgotPassword'
 import OtpVerification from './pages/Common/OtpVerification'
 import ResetPassword from './pages/Common/ResetPassword'
 import Wishlist from './pages/Student/Wishlist'
-import CourseSession from './pages/Student/CourseSession'
 import Schedule from './pages/Student/Schedule'
 import Feedback from './pages/Student/Feedback'
 import Materials from './pages/Student/Materials'
@@ -32,6 +31,7 @@ import CourseAll from './pages/Course/CourseAll'
 import GoogleCallback from './pages/Common/GoogleCallback'
 import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
+import ClassSession from './pages/Student/ClassSession'
 
 
 export default function App() {
@@ -58,7 +58,7 @@ export default function App() {
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/student/wishlist" element={<Wishlist />} /> 
             <Route path="/student/my-classes" element={<MyClasses />} /> 
-            <Route path="/student/Course/:courseId" element={<CourseSession />} />
+            <Route path="/student/class/:classId" element={<ClassSession />} />
             <Route path="/student/schedule" element={<Schedule />} />
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/materials" element={<Materials />} /> 
@@ -66,7 +66,6 @@ export default function App() {
             <Route path="/student/report-issue/academic" element={<AcademicReport />} />
             <Route path="/student/report-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
             <Route path="/student/academic-request/detail/:id" element={<AcademicChangeRequestDetail />} />
-            <Route path="/student/Course/:courseId" element={<CourseSession />} /> 
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />
             <Route path="/teacher/courses/:courseId/classes" element={<Classes />} />
