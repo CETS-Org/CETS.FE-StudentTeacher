@@ -1,6 +1,9 @@
 // src/pages/Teacher/SchedulePage.tsx
 import TeacherLayout from "@/Shared/TeacherLayout";
 import TeacherWeekSchedule from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
+import PageHeader from "@/components/ui/PageHeader";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { Calendar, Clock, BookOpen } from "lucide-react";
 import type { Session } from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
 
 /* ===== Helpers: tuần hiện tại + format yyyy:MM:dd:HH:mm ===== */
@@ -57,32 +60,40 @@ const sessions: Session[] = [
 ];
 
 export default function SchedulePage() {
+  const breadcrumbItems = [
+    { label: "Schedule" }
+  ];
+
   return (
     <TeacherLayout crumbs={[{ label: "Schedule" }]}>
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-primary-800">My Teaching Schedule</h1>
-              <p className="text-neutral-600 mt-2">View and manage your weekly teaching schedule</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-accent-50 px-4 py-2 rounded-lg border border-accent-200">
-                <div className="flex items-center gap-2 text-accent-700">
-                  <div className="w-3 h-3 bg-accent-500 rounded-full"></div>
-                  <span className="text-sm font-medium">{sessions.length} Classes This Week</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbItems} />
+        
+        <PageHeader
+          title="My Teaching Schedule"
+          description="View and manage your weekly teaching schedule"
+          icon={<Calendar className="w-5 h-5 text-white" />}
+          controls={[
+            {
+              type: 'button',
+              label: `${sessions.length} Classes This Week`,
+              variant: 'secondary',
+              icon: <Clock className="w-4 h-4" />,
+              className: 'bg-accent-50 text-accent-700 border-accent-200'
+            },
+            {
+              type: 'button',
+              label: 'View All Classes',
+              variant: 'secondary',
+              icon: <BookOpen className="w-4 h-4" />
+            }
+          ]}
+        />
 
         {/* Schedule Grid */}
         <div className="bg-white rounded-xl border border-accent-200 shadow-lg">
           <TeacherWeekSchedule sessions={sessions} startHour={8} slots={10} slotMinutes={90} />
         </div>
-      </div>
     </TeacherLayout>
   );
 }

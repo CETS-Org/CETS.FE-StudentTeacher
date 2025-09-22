@@ -62,9 +62,9 @@ export default function App() {
             <Route path="/student/schedule" element={<Schedule />} />
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/materials" element={<Materials />} /> 
-            <Route path="/student/report-issue/technical" element={<TechnicalReport />} />
-            <Route path="/student/report-issue/academic" element={<AcademicReport />} />
-            <Route path="/student/report-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
+            <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
+            <Route path="/student/request-issue/academic" element={<AcademicReport />} />
+            <Route path="/student/request-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
             <Route path="/student/academic-request/detail/:id" element={<AcademicChangeRequestDetail />} />
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />
@@ -76,8 +76,8 @@ export default function App() {
             
 
             
-            <Route path="/teacher/teacherSchedule" element={<TeacherSchedule />} />
-            <Route path="/teacher/TeacherReport/:category" element={<TeacherReport />} />
+            <Route path="/teacher/schedule" element={<TeacherSchedule />} />
+            <Route path="/teacher/request-issue/:category" element={<TeacherReport />} />
             
           </Routes>
         </div>

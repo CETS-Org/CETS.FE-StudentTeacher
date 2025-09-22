@@ -1,11 +1,12 @@
 import { useState } from "react";
 import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import CourseCard, { type Course } from "@/components/ui/CourseCard";
 import Pagination from "@/Shared/Pagination";
-import { Heart } from "lucide-react";
+import { Heart, BookOpen } from "lucide-react";
 
 const mockCourses: Course[] = [
   {
@@ -144,21 +145,30 @@ export default function Wishlist() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const breadcrumbItems = [
+    { label: "Wishlist" }
+  ];
+
   return (
     <StudentLayout>
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbItems} />
+        
         {/* Page Header */}
-        <div className="mb-8">
-          <PageHeader
-            title="My Wishlist"
-            subtitle={`Courses you've saved for later`}
-            actions={
-              <div className="text-sm text-neutral-600 bg-neutral-100 px-3 py-1 rounded-full">
-                {courses.length} course{courses.length !== 1 ? 's' : ''} saved
-              </div>
+        <PageHeader
+          title="My Wishlist"
+          description="Save and manage courses you're interested in taking. Keep track of your favorite courses and enroll when you're ready"
+          icon={<Heart className="w-5 h-5 text-white" />}
+          controls={[
+            {
+              type: 'button',
+              label: `${courses.length} Course${courses.length !== 1 ? 's' : ''} Saved`,
+              variant: 'secondary',
+              icon: <BookOpen className="w-4 h-4" />,
+              className: 'bg-accent-50 text-accent-700 border-accent-200'
             }
-          />
-        </div>
+          ]}
+        />
 
         {/* Course Grid */}
         {courses.length > 0 ? (
@@ -205,7 +215,6 @@ export default function Wishlist() {
             </div>
           </Card>
         )}
-      </div>
     </StudentLayout>
   );
 }

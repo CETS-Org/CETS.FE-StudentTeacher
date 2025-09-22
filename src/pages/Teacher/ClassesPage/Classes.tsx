@@ -5,6 +5,8 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
+import PageHeader from "@/components/ui/PageHeader";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { 
   BookOpen, 
   Clock, 
@@ -445,6 +447,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
 };
 
 export default function Classes() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -533,14 +536,32 @@ export default function Classes() {
     { id: "upcoming", label: "Upcoming", badge: tabCounts.upcoming, color: "bg-gradient-to-r from-warning-500 to-warning-600 text-white" }
   ];
 
+  const breadcrumbItems = [
+    { label: "My Classes" }
+  ];
+
   return (
     <TeacherLayout>
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary-800 mb-2">My Classes</h1>
-          <p className="text-neutral-600">Manage and track your teaching sessions</p>
-        </div>
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbItems} />
+        
+        <PageHeader
+          title="My Classes"
+          description="Manage and track your teaching sessions"
+          icon={<GraduationCap className="w-5 h-5 text-white" />}
+          controls={[
+            
+            {
+              type: 'button',
+              label: "Today's Schedule",
+              variant: 'secondary',
+              icon: <Calendar className="w-4 h-4" />,
+              onClick: () => {
+                navigate('/teacher/schedule');
+              }
+            }
+          ]}
+        />
 
         {/* Search & Filters */}
         <div className="mb-6">
@@ -702,7 +723,6 @@ export default function Classes() {
             </div>
           )}
         </Card>
-      </div>
     </TeacherLayout>
   );
 }

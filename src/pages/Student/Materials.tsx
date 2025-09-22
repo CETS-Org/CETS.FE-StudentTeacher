@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { 
@@ -264,24 +265,30 @@ export default function Materials() {
     document.body.removeChild(link);
   };
 
+  const breadcrumbItems = [
+    { label: "Materials" }
+  ];
+
   return (
     <StudentLayout>
-      <div className="mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbItems} />
+        
         {/* Page Header */}
-        <div className="mb-8">
-          <PageHeader
-            title="Public Materials"
-            subtitle="Access and download learning materials and resources"
-            actions={
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-primary-500" />
-                <span className="text-sm text-neutral-600">
-                  {filteredMaterials.length} materials
-                </span>
-              </div>
+        <PageHeader
+          title="Learning Materials"
+          description="Access and download educational resources, course materials, and study guides for your classes"
+          icon={<FileText className="w-5 h-5 text-white" />}
+          controls={[
+            {
+              type: 'button',
+              label: `${filteredMaterials.length} Materials`,
+              variant: 'secondary',
+              icon: <BookOpen className="w-4 h-4" />,
+              className: 'bg-accent-50 text-accent-700 border-accent-200'
             }
-          />
-        </div>
+          ]}
+        />
 
         {/* Search and Filters */}
         <div className="mb-6">
@@ -365,7 +372,6 @@ export default function Materials() {
             </div>
           </Card>
         </div>
-      </div>
     </StudentLayout>
   );
 }
