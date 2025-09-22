@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import PaymentDialog from "./components/PaymentDialog";
+import ClassReservationDialog from "./components/ClassReservationDialog";
 import type { CourseDetailProps } from "@/types/course";
 
 export default function CourseDetail({ course }: CourseDetailProps) {
@@ -309,7 +309,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
         </div>
 
       {/* Enrollment Dialog */}
-      <PaymentDialog
+      <ClassReservationDialog
         open={showEnrollmentDialog}
         onOpenChange={setShowEnrollmentDialog}
         course={course}

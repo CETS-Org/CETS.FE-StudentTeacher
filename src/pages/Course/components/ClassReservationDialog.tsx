@@ -1,59 +1,50 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
 import type { Course } from "@/types/course";
 
-interface EnrollmentData {
+interface ClassReservationData {
   fullName: string;
   email: string;
   phone: string;
-  paymentMethod: string;
   paymentPlan: string;
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
-  cardholderName: string;
+  notes?: string;
 }
 
-interface PaymentDialogProps {
+interface ClassReservationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   course: Course;
-  onSubmit: (data: EnrollmentData) => void;
+  onSubmit: (data: ClassReservationData) => void;
 }
 
-export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: PaymentDialogProps) {
-  const [enrollmentData, setEnrollmentData] = useState<EnrollmentData>({
+export default function ClassReservationDialog({ open, onOpenChange, course, onSubmit }: ClassReservationDialogProps) {
+  const [reservationData, setReservationData] = useState<ClassReservationData>({
     fullName: "",
     email: "",
     phone: "",
-    paymentMethod: "credit_card",
     paymentPlan: "one_time", // "one_time" or "quarterly"
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    cardholderName: ""
+    notes: ""
   });
 
   // Calculate payment amounts
   const getPaymentAmount = () => {
-    if (enrollmentData.paymentPlan === "quarterly") {
+    if (reservationData.paymentPlan === "quarterly") {
       return Math.round(course.standardPrice / 4);
     }
     return course.standardPrice;
   };
 
   const getTotalAmount = () => {
-    if (enrollmentData.paymentPlan === "quarterly") {
+    if (reservationData.paymentPlan === "quarterly") {
       return course.standardPrice;
     }
     return course.standardPrice;
   };
 
   const handleSubmit = () => {
-    onSubmit(enrollmentData);
+    onSubmit(reservationData);
     onOpenChange(false);
   };
 
@@ -65,7 +56,7 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xl" className="max-w-5xl">
         <DialogHeader>
-          <DialogTitle>Complete Your Enrollment</DialogTitle>
+          <DialogTitle>Reserve Your Class Spot</DialogTitle>
         </DialogHeader>
       
         <DialogBody>
@@ -103,8 +94,8 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                   <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                   <Input
                     type="text"
-                    value={enrollmentData.fullName}
-                    onChange={(e) => setEnrollmentData({...enrollmentData, fullName: e.target.value})}
+                    value={reservationData.fullName}
+                    onChange={(e) => setReservationData({...reservationData, fullName: e.target.value})}
                     placeholder="Enter your full name"
                   />
                 </div>
@@ -112,8 +103,8 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                   <Input
                     type="email"
-                    value={enrollmentData.email}
-                    onChange={(e) => setEnrollmentData({...enrollmentData, email: e.target.value})}
+                    value={reservationData.email}
+                    onChange={(e) => setReservationData({...reservationData, email: e.target.value})}
                     placeholder="Enter your email"
                   />
                 </div>
@@ -121,46 +112,33 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                   <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                   <Input
                     type="tel"
-                    value={enrollmentData.phone}
-                    onChange={(e) => setEnrollmentData({...enrollmentData, phone: e.target.value})}
+                    value={reservationData.phone}
+                    onChange={(e) => setReservationData({...reservationData, phone: e.target.value})}
                     placeholder="Enter your phone number"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Payment Information */}
+            {/* Payment Plan Selection */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h4>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment Plan</h4>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-                  <Select
-                    value={enrollmentData.paymentMethod}
-                    onChange={(e) => setEnrollmentData({...enrollmentData, paymentMethod: e.target.value})}
-                  >
-                    <option value="credit_card">Credit Card</option>
-                    <option value="debit_card">Debit Card</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Plan</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Choose your payment plan</label>
                   <div className="grid grid-cols-2 gap-4">
                     <div 
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        enrollmentData.paymentPlan === "one_time" 
+                        reservationData.paymentPlan === "one_time" 
                           ? "border-primary-600 bg-primary-50" 
                           : "border-gray-200 hover:border-gray-300"
                       }`}
-                      onClick={() => setEnrollmentData({...enrollmentData, paymentPlan: "one_time"})}
+                      onClick={() => setReservationData({...reservationData, paymentPlan: "one_time"})}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <input 
                           type="radio" 
-                          checked={enrollmentData.paymentPlan === "one_time"}
+                          checked={reservationData.paymentPlan === "one_time"}
                           onChange={() => {}}
                           className="text-primary-600"
                         />
@@ -174,16 +152,16 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                     
                     <div 
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        enrollmentData.paymentPlan === "quarterly" 
+                        reservationData.paymentPlan === "quarterly" 
                           ? "border-primary-600 bg-primary-50" 
                           : "border-gray-200 hover:border-gray-300"
                       }`}
-                      onClick={() => setEnrollmentData({...enrollmentData, paymentPlan: "quarterly"})}
+                      onClick={() => setReservationData({...reservationData, paymentPlan: "quarterly"})}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <input 
                           type="radio" 
-                          checked={enrollmentData.paymentPlan === "quarterly"}
+                          checked={reservationData.paymentPlan === "quarterly"}
                           onChange={() => {}}
                           className="text-primary-600"
                         />
@@ -198,57 +176,17 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                   </div>
                 </div>
                 
-                {enrollmentData.paymentMethod === "credit_card" || enrollmentData.paymentMethod === "debit_card" ? (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
-                      <Input
-                        type="text"
-                        value={enrollmentData.cardNumber}
-                        onChange={(e) => setEnrollmentData({...enrollmentData, cardNumber: e.target.value})}
-                        placeholder="1234 5678 9012 3456"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
-                        <Input
-                          type="text"
-                          value={enrollmentData.expiryDate}
-                          onChange={(e) => setEnrollmentData({...enrollmentData, expiryDate: e.target.value})}
-                          placeholder="MM/YY"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">CVV</label>
-                        <Input
-                          type="text"
-                          value={enrollmentData.cvv}
-                          onChange={(e) => setEnrollmentData({...enrollmentData, cvv: e.target.value})}
-                          placeholder="123"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
-                      <Input
-                        type="text"
-                        value={enrollmentData.cardholderName}
-                        onChange={(e) => setEnrollmentData({...enrollmentData, cardholderName: e.target.value})}
-                        placeholder="Name on card"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-600">
-                      {enrollmentData.paymentMethod === "paypal" 
-                        ? "You will be redirected to PayPal to complete your payment."
-                        : "Bank transfer details will be provided after enrollment."
-                      }
-                    </p>
-                  </div>
-                )}
+                {/* Additional Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes (Optional)</label>
+                  <textarea
+                    value={reservationData.notes || ""}
+                    onChange={(e) => setReservationData({...reservationData, notes: e.target.value})}
+                    placeholder="Any special requests or notes for your reservation..."
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                    rows={3}
+                  />
+                </div>
               </div>
             </div>
 
@@ -258,7 +196,7 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                 <input type="checkbox" className="mt-1" />
                 <div className="text-sm text-gray-600">
                   <p>I agree to the <a href="#" className="text-primary-600 hover:underline">Terms of Service</a> and <a href="#" className="text-primary-600 hover:underline">Privacy Policy</a>.</p>
-                  <p className="mt-1">I understand that I have 30 days to request a refund if I'm not satisfied with the course.</p>
+                  <p className="mt-1">I understand that this is a class reservation and payment will be processed separately. The reservation will expire in 7 days if not confirmed.</p>
                 </div>
               </div>
             </div>
@@ -268,7 +206,7 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
         <DialogFooter>
           <div className="flex justify-between items-center w-full">
             <div className="text-lg font-semibold">
-              {enrollmentData.paymentPlan === "quarterly" ? (
+              {reservationData.paymentPlan === "quarterly" ? (
                 <div>
                   <div>Per Quarter: <span className="text-primary-600">{getPaymentAmount().toLocaleString('vi-VN')}₫</span></div>
                   <div className="text-sm text-gray-600">Total: <span className="text-primary-600">{getTotalAmount().toLocaleString('vi-VN')}₫</span></div>
@@ -288,7 +226,7 @@ export default function PaymentDialog({ open, onOpenChange, course, onSubmit }: 
                 onClick={handleSubmit}
                 className="bg-primary-600 hover:bg-primary-700"
               >
-                Complete Enrollment
+                Reserve Class Spot
               </Button>
             </div>
           </div>
