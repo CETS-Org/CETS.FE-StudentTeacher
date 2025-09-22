@@ -1,5 +1,6 @@
 // src/pages/teacher/classes/[classId]/index.tsx
 
+import { useState } from "react";
 import TeacherLayout from "@/Shared/TeacherLayout";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
