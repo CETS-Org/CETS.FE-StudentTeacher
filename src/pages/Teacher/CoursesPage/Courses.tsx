@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import TeacherLayout from "@/Shared/TeacherLayout";
 import Card from "@/components/ui/Card";
 import Pagination from "@/Shared/Pagination";
+import PageHeader from "@/components/ui/PageHeader";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import CourseCard, { type TeacherCourse } from "@/pages/Teacher/CoursesPage/CourseCard";
 
@@ -87,14 +88,13 @@ export default function Courses() {
   const pageItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
   return (
-    <TeacherLayout 
-      crumbs={crumbs}
-      pageHeader={{
-        title: "My Courses",
-        subtitle: "Explore, manage, and track your classes"
-      }}
-    >
+    <TeacherLayout crumbs={crumbs}>
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <PageHeader
+          title="My Courses"
+          description="Explore, manage, and track your classes"
+          icon={<BookOpen className="w-5 h-5 text-white" />}
+        />
         {/* Search & Filters */}
         <div className="flex flex-wrap gap-3 mb-6 items-center">
           <div className="relative flex-1 min-w-[220px]">

@@ -4,9 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom"; // 1. IMPORT useParams
 import TeacherLayout from "@/Shared/TeacherLayout";
 import Button from "@/components/ui/Button";
-import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
-import { MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
 import ReportItem from "@/pages/Teacher/ReportPage/Components/ReportItem";
 import SubmitReportPopup from "@/pages/Teacher/ReportPage/Popup/CreateReportPopup";
 import ViewReportPopup, { type ReportData, type ReportStatus } from "@/pages/Teacher/ReportPage/Popup/ReportDetailPopup";

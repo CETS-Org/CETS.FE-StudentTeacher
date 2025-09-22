@@ -1,13 +1,11 @@
 // src/pages/teacher/classes/[classId]/index.tsx
 
-import React, { useState } from "react";
 import TeacherLayout from "@/Shared/TeacherLayout";
-import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
 import Card from "@/components/ui/Card";
-import PageHeader from "@/pages/Teacher/ClassDetail/Component/PageHeader";
-
+import PageHeader
+ from "@/components/ui/PageHeader";
 // Import các component cho từng tab
 
 import CourseMaterialsTab from "@/pages/Teacher/ClassDetail/Component/CourseMaterialsTab";
@@ -41,7 +39,6 @@ const tabs = [
 
 // Breadcrumbs
 const crumbs: Crumb[] = [
-  { label: "My Courses", to: "/teacher/courses" },
   { label: "Classes", to: "/teacher/classes" },
   { label: "English For Beginner", to: "/teacher/classDetail" }, 
   { label: "Session 01" }, 

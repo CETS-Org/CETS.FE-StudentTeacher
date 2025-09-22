@@ -1,7 +1,7 @@
 // src/components/modals/TechnicalReportForm.tsx
 
 import React from "react"; // Thêm import React
-import Input from "@/components/ui/input";
+import Input from "@/components/ui/Input";
 import { UploadCloud } from "lucide-react";
 
 // 1. ĐỊNH NGHĨA TYPE CHO PROPS
@@ -24,7 +24,6 @@ export default function TechnicalReportForm({
   fullName, setFullName,
   title, setTitle,
   description, setDescription,
-  attachments, setAttachments
 }: TechnicalFormProps) {
   return (
     <div className="space-y-4 animate-fade-in">

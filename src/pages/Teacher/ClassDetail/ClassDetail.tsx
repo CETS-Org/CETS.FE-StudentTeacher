@@ -1,10 +1,12 @@
 // src/pages/teacher/classes/[classId]/index.tsx
 
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import TeacherLayout from "@/Shared/TeacherLayout";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
 import Card from "@/components/ui/Card";
+import PageHeader from "@/components/ui/PageHeader";
 import { Users, Calendar } from "lucide-react";
 
 // Import các component cho từng tab
@@ -23,18 +25,18 @@ const tabs = [
 
 // Breadcrumbs
 const crumbs: Crumb[] = [
-  { label: "My Courses", to: "/teacher/courses" },
   { label: "Classes", to: "/teacher/classes" },
   { label: "English For Beginner" }, // Tên khóa học, có thể lấy động
 ];
 
 export default function ClassDetailPage() {
+  const { id: classId } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState(tabs[0].id);
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "sessions":
-        return <SessionsTab />;
+        return <SessionsTab classId={classId} />;
 
       default:
         return null;
@@ -42,32 +44,29 @@ export default function ClassDetailPage() {
   };
 
   return (
-    <TeacherLayout 
-      crumbs={crumbs}
-      pageHeader={{
-        title: "English For Beginner",
-        subtitle: "Manage class sessions, materials, and student progress",
-        actions: (
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                  <Users className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-neutral-700 font-medium">22/24 Students</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-accent-500 to-accent-600 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-neutral-700 font-medium">Mon, Wed - 18:30</span>
-              </div>
-            </div>
-          </div>
-        )
-      }}
-    >
+    <TeacherLayout crumbs={crumbs}>
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <PageHeader
+          title="English For Beginner"
+          description="Manage class sessions, materials, and student progress"
+          icon={<Users className="w-5 h-5 text-white" />}
+          controls={[
+            {
+              type: 'button',
+              label: '22/24 Students',
+              variant: 'secondary',
+              icon: <Users className="w-4 h-4" />,
+              className: 'bg-gradient-to-br from-primary-500 to-primary-600 text-white border-0'
+            },
+            {
+              type: 'button',
+              label: 'Mon, Wed - 18:30',
+              variant: 'secondary',
+              icon: <Calendar className="w-4 h-4" />,
+              className: 'bg-gradient-to-br from-accent-500 to-accent-600 text-white border-0'
+            }
+          ]}
+        />
         {/* Tabs */}
         <Card className="shadow-lg border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
           <div className="bg-white p-1 rounded-lg">

@@ -97,13 +97,19 @@ export default function Requests() {
       
       <PageHeader
         title="Service Requests"
-        subtitle="Manage and track all service requests"
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary">Export</Button>
-            <Button>New Request</Button>
-          </div>
-        }
+        description="Manage and track all service requests"
+        controls={[
+          {
+            type: 'button',
+            label: 'Export',
+            variant: 'secondary'
+          },
+          {
+            type: 'button',
+            label: 'New Request',
+            variant: 'primary'
+          }
+        ]}
       />
 
       <Card title="Request Filters" description="Filter requests by status">

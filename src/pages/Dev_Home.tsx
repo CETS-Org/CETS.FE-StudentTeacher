@@ -16,7 +16,7 @@ export default function Dev_Home() {
       
       <PageHeader
         title="Home Dashboard"
-        subtitle="Welcome to the CETS Admin Portal"
+        description="Welcome to the CETS Admin Portal"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

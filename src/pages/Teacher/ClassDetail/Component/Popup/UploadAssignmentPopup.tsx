@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/input";
+import Input from "@/components/ui/Input";
 import { X, Image as ImageIcon, FileText } from "lucide-react";
 
 type UploadedAttachment = {

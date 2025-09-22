@@ -73,8 +73,8 @@ export default function App() {
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />
             <Route path="/teacher/courses/:courseId/classes" element={<Classes />} />
-            <Route path="/teacher/classesDetail" element={<ClassesDetail />} />
-            <Route path="/teacher/sessionDetail" element={<SessionDetail />} />
+            <Route path="/teacher/class/:id" element={<ClassesDetail />} />
+            <Route path="/teacher/class/:id/session/:sessionId" element={<SessionDetail />} />
             <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
 
             

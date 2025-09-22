@@ -1,6 +1,5 @@
 // src/components/teacher/ReportItem.tsx
 
-import React from "react";
 import { Tag, Calendar } from "lucide-react";
 import Button from "@/components/ui/Button";
 import type { ReportStatus } from "@/pages/Teacher/ReportPage/Popup/ReportDetailPopup";

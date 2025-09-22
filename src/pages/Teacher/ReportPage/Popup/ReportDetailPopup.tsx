@@ -1,6 +1,5 @@
 // src/components/modals/ViewReportPopup.tsx
 
-import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 import { CheckCircle, Clock, File, Eye, Download, MessageSquare } from "lucide-react";
