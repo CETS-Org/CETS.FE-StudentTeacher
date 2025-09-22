@@ -5,7 +5,7 @@ import { Search, MessageSquare, Users, UserCheck } from "lucide-react";
 
 const mockStudents = Array.from({ length: 23 }, (_, i) => ({
   id: i + 1,
-  avatar: `/api/placeholder/40/40?text=S${i + 1}`,
+  avatar: `https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg`,
   name: `Student Name ${i + 1}`,
   email: `student${i + 1}@email.com`,
 }));

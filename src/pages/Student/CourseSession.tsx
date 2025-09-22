@@ -152,7 +152,7 @@ const mockCourseDetail: CourseDetail = {
   instructorDetails: {
     id: "instructor1",
     name: "Dr. Sarah Johnson",
-    avatar: "/api/placeholder/100/100",
+    avatar: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     rating: 4.9,
     totalReviews: 127,
     experience: "5 years experience",

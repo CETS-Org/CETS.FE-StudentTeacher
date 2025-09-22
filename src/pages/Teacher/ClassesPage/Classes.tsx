@@ -78,7 +78,7 @@ const mockClasses: TeacherClass[] = [
     attendanceRate: 92,
     rating: 4.7,
     status: "ongoing",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
   {
     id: "c-202",
@@ -100,7 +100,7 @@ const mockClasses: TeacherClass[] = [
     attendanceRate: 88,
     rating: 4.8,
     status: "ongoing",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
   {
     id: "c-303",
@@ -120,7 +120,7 @@ const mockClasses: TeacherClass[] = [
     enrolled: 12,
     capacity: 16,
     status: "upcoming",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
   {
     id: "c-404",
@@ -141,7 +141,7 @@ const mockClasses: TeacherClass[] = [
     attendanceRate: 95,
     rating: 4.9,
     status: "completed",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
   },
 ];
 

@@ -520,7 +520,7 @@ export default function CourseCatalog() {
           {/* Main Content */}
           <div className="flex-1 min-w-0">
             {/* States */}
-min        {loading && (
+       {loading && (
           <div className="flex justify-center items-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             <span className="ml-3 text-gray-600">Loading courses...</span>

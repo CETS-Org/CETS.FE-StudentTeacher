@@ -16,7 +16,7 @@ export default function HomePage() {
   const popularCourses = [
     {
       id: 1,
-      image: "/api/placeholder/300/200",
+      image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
       category: "Programming",
       title: "JavaScript from Basic to Advanced",
       description: "Learn JavaScript from the most basic concepts to advanced techniques.",
@@ -27,7 +27,7 @@ export default function HomePage() {
     },
     {
       id: 2,
-      image: "/api/placeholder/300/200", 
+      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=300&h=200&fit=crop&crop=center",
       category: "Design",
       title: "Professional UI/UX Design",
       description: "Master UI/UX design principles and professional tools.",
@@ -38,7 +38,7 @@ export default function HomePage() {
     },
     {
       id: 3,
-      image: "/api/placeholder/300/200",
+      image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=300&h=200&fit=crop&crop=center",
       category: "Marketing", 
       title: "Comprehensive Digital Marketing",
       description: "Effective digital marketing strategies for modern businesses.",

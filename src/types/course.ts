@@ -183,6 +183,7 @@ export interface MyCourse {
   price: number;
 }
 
+
 // Utility function to convert Course to SimpleCourse
 export function courseToSimpleCourse(course: Course): SimpleCourse {
   return {
