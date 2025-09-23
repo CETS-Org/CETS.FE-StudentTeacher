@@ -1,16 +1,22 @@
+import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import Button from "../../components/ui/button";
-import Card from "../../components/ui/card";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
 import HeroImage from "../../assets/Gateway1.png";
 
 export default function HomePage() {
   usePageTitle("Home - Online Learning Platform");
+  const navigate = useNavigate();
+
+  const handleExploreCourses = () => {
+    navigate("/courses");
+  };
 
   // Mock data for courses
   const popularCourses = [
     {
       id: 1,
-      image: "/api/placeholder/300/200",
+      image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
       category: "Programming",
       title: "JavaScript from Basic to Advanced",
       description: "Learn JavaScript from the most basic concepts to advanced techniques.",
@@ -21,7 +27,7 @@ export default function HomePage() {
     },
     {
       id: 2,
-      image: "/api/placeholder/300/200", 
+      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=300&h=200&fit=crop&crop=center",
       category: "Design",
       title: "Professional UI/UX Design",
       description: "Master UI/UX design principles and professional tools.",
@@ -32,7 +38,7 @@ export default function HomePage() {
     },
     {
       id: 3,
-      image: "/api/placeholder/300/200",
+      image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=300&h=200&fit=crop&crop=center",
       category: "Marketing", 
       title: "Comprehensive Digital Marketing",
       description: "Effective digital marketing strategies for modern businesses.",
@@ -89,7 +95,7 @@ export default function HomePage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="text-base px-8 py-4">
+              <Button size="lg" className="text-base px-8 py-4" onClick={handleExploreCourses}>
                 Explore Courses
               </Button>
               <Button variant="secondary" size="lg" className="text-base px-8 py-4">

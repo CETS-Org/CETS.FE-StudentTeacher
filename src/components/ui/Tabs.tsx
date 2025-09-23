@@ -1,10 +1,12 @@
-import React, { useState, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export interface Tab {
   id: string;
   label: string;
   badge?: number | string;
   disabled?: boolean;
+  color?: string;
+  icon?: React.ReactNode;
 }
 
 export interface TabsProps {
@@ -25,7 +27,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className = "" }: TabsProps
   return (
     <div className={`w-full ${className}`}>
       <div className="border-b border-neutral-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-4 pl-4 pr-4 overflow-x-auto scrollbar-hide" aria-label="Tabs">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -34,7 +36,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className = "" }: TabsProps
                 onClick={() => !tab.disabled && onTabChange(tab.id)}
                 disabled={tab.disabled}
                 className={`
-                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                  whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm lg:text-base flex-shrink-0
                   ${isActive
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
@@ -48,14 +50,15 @@ export function Tabs({ tabs, activeTab, onTabChange, className = "" }: TabsProps
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="flex items-center gap-2">
+                  {tab.icon}
                   {tab.label}
                   {tab.badge !== undefined && (
                     <span className={`
-                      inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full min-w-[1.25rem] h-5
-                      ${isActive 
+                      inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full min-w-[1.25rem] h-5 shadow-md
+                      ${tab.color || (isActive 
                         ? 'bg-primary-100 text-primary-700' 
                         : 'bg-neutral-100 text-neutral-600'
-                      }
+                      )}
                     `}>
                       {tab.badge}
                     </span>

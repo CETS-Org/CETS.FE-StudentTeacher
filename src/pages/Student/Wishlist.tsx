@@ -1,18 +1,19 @@
 import { useState } from "react";
 import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
-import Button from "@/components/ui/button";
-import Card from "@/components/ui/card";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import CourseCard, { type Course } from "@/components/ui/CourseCard";
 import Pagination from "@/Shared/Pagination";
-import { Heart } from "lucide-react";
+import { Heart, BookOpen } from "lucide-react";
 
 const mockCourses: Course[] = [
   {
     id: "1",
     title: "Advanced Business English",
     description: "Master professional communication skills for the corporate world. Learn presentations, negotiations, and business writing.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Advanced",
     format: "Online",
     timeOfDay: "Evening",
@@ -25,7 +26,7 @@ const mockCourses: Course[] = [
     id: "2", 
     title: "IELTS Test Preparation",
     description: "Comprehensive IELTS preparation covering all four skills: listening, reading, writing, and speaking with practice tests.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Intermediate",
     format: "In-person",
     timeOfDay: "Morning",
@@ -38,7 +39,7 @@ const mockCourses: Course[] = [
     id: "3",
     title: "English Conversation Club", 
     description: "Practice speaking English in a relaxed, supportive environment with native speakers and fellow learners.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Beginner",
     format: "Hybrid", 
     timeOfDay: "Weekend",
@@ -51,7 +52,7 @@ const mockCourses: Course[] = [
     id: "4",
     title: "Academic Writing Workshop",
     description: "Improve your academic writing skills with focus on essay structure, research techniques, and citation styles.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Advanced",
     format: "Online",
     timeOfDay: "Morning",
@@ -64,7 +65,7 @@ const mockCourses: Course[] = [
     id: "5",
     title: "Pronunciation Masterclass",
     description: "Perfect your English pronunciation with phonetics, stress patterns, and intonation techniques.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Intermediate",
     format: "In-person",
     timeOfDay: "Evening",
@@ -77,7 +78,7 @@ const mockCourses: Course[] = [
     id: "6",
     title: "Grammar Fundamentals",
     description: "Build a solid foundation in English grammar with clear explanations and practical exercises.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Beginner",
     format: "Online",
     timeOfDay: "Morning",
@@ -90,7 +91,7 @@ const mockCourses: Course[] = [
     id: "7",
     title: "English for Presentations",
     description: "Learn to deliver confident and effective presentations in English for professional settings.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Intermediate",
     format: "Hybrid",
     timeOfDay: "Evening",
@@ -103,7 +104,7 @@ const mockCourses: Course[] = [
     id: "8",
     title: "Travel English Essentials",
     description: "Essential English phrases and vocabulary for traveling confidently in English-speaking countries.",
-    image: "/api/placeholder/400/240",
+    image: "https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg",
     level: "Beginner",
     format: "Online",
     timeOfDay: "Weekend",
@@ -144,21 +145,30 @@ export default function Wishlist() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const breadcrumbItems = [
+    { label: "Wishlist" }
+  ];
+
   return (
     <StudentLayout>
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbItems} />
+        
         {/* Page Header */}
-        <div className="mb-8">
-          <PageHeader
-            title="My Wishlist"
-            subtitle={`Courses you've saved for later`}
-            actions={
-              <div className="text-sm text-neutral-600 bg-neutral-100 px-3 py-1 rounded-full">
-                {courses.length} course{courses.length !== 1 ? 's' : ''} saved
-              </div>
+        <PageHeader
+          title="My Wishlist"
+          description="Save and manage courses you're interested in taking. Keep track of your favorite courses and enroll when you're ready"
+          icon={<Heart className="w-5 h-5 text-white" />}
+          controls={[
+            {
+              type: 'button',
+              label: `${courses.length} Course${courses.length !== 1 ? 's' : ''} Saved`,
+              variant: 'secondary',
+              icon: <BookOpen className="w-4 h-4" />,
+              className: 'bg-accent-50 text-accent-700 border-accent-200'
             }
-          />
-        </div>
+          ]}
+        />
 
         {/* Course Grid */}
         {courses.length > 0 ? (
@@ -205,7 +215,6 @@ export default function Wishlist() {
             </div>
           </Card>
         )}
-      </div>
     </StudentLayout>
   );
 }

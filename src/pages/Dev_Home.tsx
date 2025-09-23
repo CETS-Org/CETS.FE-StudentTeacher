@@ -1,22 +1,22 @@
 import { usePageTitle } from "../hooks/usePageTitle";
 import PageHeader from "../components/ui/PageHeader";
-import Card from "../components/ui/card";
+import Card from "../components/ui/Card";
 import Breadcrumbs from "../components/ui/Breadcrumbs";
 
-export default function Home() {
-  usePageTitle("Home");
+export default function Dev_Home() {
+  usePageTitle("Dev_Home");
 
   return (
     <div className="space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Home" },
+          { label: "Dev_Home" },
         ]}
       />
       
       <PageHeader
         title="Home Dashboard"
-        subtitle="Welcome to the CETS Admin Portal"
+        description="Welcome to the CETS Admin Portal"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Form } from "@/components/ui/Form";
-import Button from "../../components/ui/button";
-import Card from "../../components/ui/card";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
 import { ArrowLeft, Shield, RotateCcw, Check } from "lucide-react";
+import { api } from "@/lib/config";
 
 // Validation schema
 const otpSchema = z.object({
@@ -28,6 +29,7 @@ export default function OtpVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email || "";
+  const token = location.state?.token || "";
   
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -94,14 +96,29 @@ export default function OtpVerification() {
     setIsLoading(true);
     try {
       console.log("OTP verification data:", data);
-      // TODO: Implement actual OTP verification API call
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
       
-      // Navigate to reset password
-      navigate("/reset-password", { state: { email, otp: data.otp } });
-    } catch (error) {
+      // Call the OTP verification API
+      const response = await api.verifyOtp({
+        email: email,
+        otp: data.otp,
+        token: token
+      });
+      console.log("OTP verification response:", response.data);
+      
+      // Store the new token from response for password reset
+      const newToken = response.data.token;
+      
+      // Navigate to reset password with email and new token
+      navigate("/resetPassword", { 
+        state: { 
+          email: email, 
+          token: newToken 
+        } 
+      });
+    } catch (error: any) {
       console.error("OTP verification error:", error);
-      alert("Invalid OTP code!");
+      const errorMessage = error.response?.data?.message || "Invalid OTP code!";
+      alert(errorMessage);
       // Reset OTP inputs
       setOtp(["", "", "", "", "", ""]);
       methods.setValue("otp", "");
@@ -115,16 +132,22 @@ export default function OtpVerification() {
     setIsResending(true);
     try {
       console.log("Resending OTP to:", email);
-      // TODO: Implement actual resend OTP API call
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      
+      // Call the forgot password API again to resend OTP
+      const response = await api.forgotPassword(email);
+      console.log("Resend OTP response:", response.data);
+      
+      // Update token for future verification
+      const newToken = response.data;
       
       // Reset countdown
       setCountdown(60);
       setCanResend(false);
       alert("Verification code sent!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Resend OTP error:", error);
-      alert("Failed to resend verification code!");
+      const errorMessage = error.response?.data?.message || "Failed to resend verification code!";
+      alert(errorMessage);
     } finally {
       setIsResending(false);
     }
@@ -133,8 +156,8 @@ export default function OtpVerification() {
   const maskedEmail = email.replace(/(.{2})(.*)(@.*)/, "$1***$3");
 
   return (
-    <div className="w-full px-70">
-      <Card className="shadow-xl border-0">
+    <div className="w-full px-70 pt-40">
+      <Card className="shadow-xl border-0 w-1/2 mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mx-auto w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">
@@ -158,7 +181,7 @@ export default function OtpVerification() {
               {otp.map((digit, index) => (
                 <input
                   key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
+                  ref={(el) => { inputRefs.current[index] = el; }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}

@@ -14,14 +14,14 @@ export type ButtonProps = ComponentPropsWithoutRef<"button"> & {
 function getVariantClasses(variant: ButtonVariant): string {
   switch (variant) {
     case "secondary":
-      return "bg-neutral-0 text-neutral-900 border border-neutral-300 hover:bg-neutral-50";
+      return "bg-secondary-600 border border-neutral-300 hover:bg-accent2-500 text-white";
     case "danger":
       return "bg-error-600 text-white hover:bg-error-700";
     case "ghost":
       return "bg-transparent text-neutral-700 hover:bg-neutral-100";
     case "primary":
     default:
-      return "bg-primary-600 text-white hover:bg-accent-500";
+      return "bg-primary-600 text-white hover:bg-accent-300";
   }
 }
 
@@ -65,5 +65,3 @@ export default function Button({
     </button>
   );
 }
-
-

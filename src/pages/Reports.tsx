@@ -1,8 +1,8 @@
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useState } from "react";
 import PageHeader from "../components/ui/PageHeader";
-import Card from "../components/ui/card";
-import Button from "../components/ui/button";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
 import Breadcrumbs from "../components/ui/Breadcrumbs";
 
 type ReportType = {
@@ -96,13 +96,19 @@ export default function Reports() {
       
       <PageHeader
         title="System Reports"
-        subtitle="Generate and access various system reports"
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary">Schedule Report</Button>
-            <Button>Generate Custom Report</Button>
-          </div>
-        }
+        description="Generate and access various system reports"
+        controls={[
+          {
+            type: 'button',
+            label: 'Schedule Report',
+            variant: 'secondary'
+          },
+          {
+            type: 'button',
+            label: 'Generate Custom Report',
+            variant: 'primary'
+          }
+        ]}
       />
 
       <Card title="Report Categories" description="Filter reports by category">

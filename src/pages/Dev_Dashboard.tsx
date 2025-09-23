@@ -1,6 +1,6 @@
 import PageHeader from "../components/ui/PageHeader";
-import Card from "../components/ui/card";
-import Button from "../components/ui/button";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
 import Table from "../components/ui/Table";
 import Form, { FormInput, FormSelect } from "../components/ui/Form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from "../components/ui/Dialog";
@@ -160,13 +160,20 @@ export default function Dev_Dashboard() {
       
       <PageHeader
         title="Dev Dashboard"
-        subtitle="Quick overview of recent activity"
-        actions={
-          <div className="flex items-center gap-2">
-            <Button onClick={handleShowDialog}>Open Dialog</Button>
-            <Button>New Request</Button>
-          </div>
-        }
+        description="Quick overview of recent activity"
+        controls={[
+          {
+            type: 'button',
+            label: 'Open Dialog',
+            variant: 'primary',
+            onClick: handleShowDialog
+          },
+          {
+            type: 'button',
+            label: 'New Request',
+            variant: 'primary'
+          }
+        ]}
       />
 
       <Card title="Quick Request" description="Create a simple request inline">
