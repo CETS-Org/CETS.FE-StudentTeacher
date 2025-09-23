@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { UserInfo } from "@/types/user"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -28,4 +29,30 @@ export function isTokenValid(): boolean {
 export function clearAuthData(): void {
   localStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
+}
+
+// User information utilities
+export function getUserInfo(): UserInfo | null {
+  try {
+    const userInfo = localStorage.getItem('userInfo');
+    return userInfo ? JSON.parse(userInfo) : null;
+  } catch (error) {
+    console.error('Error parsing user info:', error);
+    return null;
+  }
+}
+
+export function getTeacherId(): string | null {
+  const userInfo = getUserInfo();
+  return userInfo?.id || null;
+}
+
+export function getUserEmail(): string | null {
+  const userInfo = getUserInfo();
+  return userInfo?.email || null;
+}
+
+export function getUserRole(): string | null {
+  const userInfo = getUserInfo();
+  return userInfo?.roleNames?.[0] || null; // Assuming roleNames is an array
 }

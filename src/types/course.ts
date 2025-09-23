@@ -150,6 +150,50 @@ export interface TeacherCourse {
   image?: string;
 }
 
+// API response interface for teaching courses
+export interface TeachingCourseApiResponse {
+  id: string;
+  courseCode: string;
+  courseName: string;
+  courseImageUrl: string;
+  categoryName: string;
+  courseLevel: string;
+  formatName: string;
+}
+
+// Utility function to convert API response to TeacherCourse
+export function apiResponseToTeacherCourse(apiCourse: TeachingCourseApiResponse): TeacherCourse {
+  // Map Vietnamese level names to English
+  const levelMap: { [key: string]: "Beginner" | "Intermediate" | "Advanced" } = {
+    "Cơ bản": "Beginner",
+    "Trung cấp": "Intermediate", 
+    "Nâng cao": "Advanced",
+    "Beginner": "Beginner",
+    "Intermediate": "Intermediate",
+    "Advanced": "Advanced"
+  };
+
+  // Map Vietnamese format names to English
+  const formatMap: { [key: string]: "Online" | "Offline" | "Hybrid" } = {
+    "Học trực tiếp": "Offline",
+    "Học online": "Online",
+    "Học kết hợp": "Hybrid",
+    "Online": "Online",
+    "Offline": "Offline", 
+    "Hybrid": "Hybrid"
+  };
+
+  return {
+    id: apiCourse.id,
+    title: apiCourse.courseName,
+    courseCode: apiCourse.courseCode,
+    level: levelMap[apiCourse.courseLevel] || "Beginner",
+    format: formatMap[apiCourse.formatName] || "Offline",
+    category: apiCourse.categoryName,
+    image: apiCourse.courseImageUrl,
+  };
+}
+
 // Student-specific course interface for enrolled courses
 export interface MyCourse {
   id: string;
