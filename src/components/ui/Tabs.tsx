@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import type { ReactNode } from "react";
 
 export interface Tab {
@@ -7,6 +6,7 @@ export interface Tab {
   badge?: number | string;
   disabled?: boolean;
   color?: string;
+  icon?: React.ReactNode;
 }
 
 export interface TabsProps {
@@ -50,6 +50,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className = "" }: TabsProps
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="flex items-center gap-2">
+                  {tab.icon}
                   {tab.label}
                   {tab.badge !== undefined && (
                     <span className={`

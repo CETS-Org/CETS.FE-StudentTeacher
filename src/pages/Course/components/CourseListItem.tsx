@@ -1,8 +1,8 @@
-import { Star, Clock, BookOpen, ArrowRight } from "lucide-react";
+import { Star, Clock, BookOpen, ArrowRight, Heart } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import type { CourseCardProps } from "@/types/course";
 
-export default function CourseListItem({ course, onEnroll }: CourseCardProps) {
+export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false }: CourseCardProps) {
   return (
     <div className="group bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all duration-300 p-4">
       <div className="flex gap-4 h-[176px]">
@@ -27,6 +27,25 @@ export default function CourseListItem({ course, onEnroll }: CourseCardProps) {
                 </span>
                 )}
             </div>
+
+            {/* Wishlist Heart Icon */}
+            {onToggleWishlist && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleWishlist(course.id);
+                }}
+                className="absolute top-2 right-2 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white hover:scale-110 transition-all duration-200 group/heart"
+              >
+                <Heart 
+                  className={`w-4 h-4 transition-all duration-200 ${
+                    isInWishlist 
+                      ? 'text-red-500 fill-red-500 scale-110' 
+                      : 'text-gray-600 group-hover/heart:text-red-500 group-hover/heart:scale-110'
+                  }`}
+                />
+              </button>
+            )}
         </div>
 
 

@@ -3,9 +3,7 @@ import React, { useState } from "react";
 import Navbar from "./TeacherNavbar";
 import TeacherSidebar from "./TeacherSidebar";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import PageHeader from "@/components/ui/PageHeader";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
-import type { PageHeaderProps } from "@/components/ui/PageHeader";
 import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import ChatPopup from "@/pages/Teacher/ChatPage/ChatPopup"; // ⬅️ thêm import
@@ -14,10 +12,9 @@ type Props = {
   children: React.ReactNode;
   className?: string;
   crumbs?: Crumb[];
-  pageHeader?: PageHeaderProps;
 };
 
-export default function TeacherLayout({ children, className = "", crumbs, pageHeader }: Props) {
+export default function TeacherLayout({ children, className = "", crumbs }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -25,7 +22,7 @@ export default function TeacherLayout({ children, className = "", crumbs, pageHe
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50">
+    <div className="min-h-screen flex flex-col bg-neutral-50 ">
       <Navbar />
 
       <TeacherSidebar
@@ -36,37 +33,19 @@ export default function TeacherLayout({ children, className = "", crumbs, pageHe
         onNavigate={() => setMobileOpen(false)}
       />
 
-      <main
+<main
         className={cn(
-          "flex-1 pt-16 transition-[margin] duration-300",
+          "flex-1 transition-[margin] duration-300 overflow-hidden mt-16",
           collapsed ? "lg:ml-16" : "lg:ml-64"
         )}
       >
-       <div className={cn("p-6", className)}>
+        <div className={cn("p-6 max-w-full space-y-8", className)}>
           {crumbs && <Breadcrumbs items={crumbs} />}
-          {pageHeader && (
-            <div className="mb-2">
-              <PageHeader 
-                {...pageHeader}
-                title={
-                  typeof pageHeader.title === 'string' ? (
-                    <span className="bg-gradient-to-r text-primary-800 font-bold text-3xl">
-                      {pageHeader.title}
-                    </span>
-                  ) : pageHeader.title
-                }
-                subtitle={
-                  typeof pageHeader.subtitle === 'string' ? (
-                    <span className="text-sm text-neutral-600">{pageHeader.subtitle}</span>
-                  ) : pageHeader.subtitle
-                }
-              />
-            </div>
-          )}
           {children}
+        </div>
 
-          
-          {!isChatOpen && (
+             
+        {!isChatOpen && (
             <div className="fixed bottom-8 right-8">
               <button
                 onClick={() => setIsChatOpen(true)}
@@ -77,7 +56,6 @@ export default function TeacherLayout({ children, className = "", crumbs, pageHe
               </button>
             </div>
           )}
-        </div>
       </main>
 
       {/* Popup chat */}

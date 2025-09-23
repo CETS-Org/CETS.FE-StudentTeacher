@@ -1,6 +1,5 @@
 // Tạo file mới tại: src/Shared/Pagination.tsx
 
-import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Button from '@/components/ui/Button'; // Giả sử bạn có component Button
 

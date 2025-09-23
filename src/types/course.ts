@@ -109,6 +109,8 @@ export interface SimpleCourse {
 export interface CourseCardProps {
   course: Course;
   onEnroll: (course: Course) => void;
+  onToggleWishlist?: (courseId: string) => void;
+  isInWishlist?: boolean;
 }
 
 export interface SimpleCourseCardProps {

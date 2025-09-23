@@ -1,6 +1,10 @@
 import StudentLayout from "@/Shared/StudentLayout";
 import StudentWeekSchedule from "@/pages/Student/components/StudentWeekSchedule";
+import PageHeader from "@/components/ui/PageHeader";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { Calendar, BookOpen } from "lucide-react";
 import type { StudentSession } from "@/pages/Student/components/StudentWeekSchedule";
+import { useNavigate } from "react-router-dom";
 
 /* ===== Helpers: tuần hiện tại + format yyyy:MM:dd:HH:mm ===== */
 const mondayOfThisWeek = (() => {
@@ -124,32 +128,37 @@ const studentSessions: StudentSession[] = [
 ];
 
 export default function Schedule() {
+  const navigate = useNavigate();
+  
+  const breadcrumbItems = [
+    { label: "Schedule" }
+  ];
+
   return (
     <StudentLayout>
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-primary-800">My Schedule</h1>
-              <p className="text-neutral-600 mt-2">View and manage your weekly class schedule</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-accent-50 px-4 py-2 rounded-lg border border-accent-200">
-                <div className="flex items-center gap-2 text-accent-700">
-                  <div className="w-3 h-3 bg-accent-500 rounded-full"></div>
-                  <span className="text-sm font-medium">{studentSessions.length} Classes This Week</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Breadcrumbs items={breadcrumbItems} />
+        
+        <PageHeader
+          title="My Schedule"
+          description="View and manage your weekly class schedule"
+          icon={<Calendar className="w-5 h-5 text-white" />}
+          controls={[
+            {
+              type: 'button',
+              label: 'View My Classes',
+              variant: 'secondary',
+              icon: <BookOpen className="w-4 h-4" />,
+              onClick: () => {
+                navigate('/student/my-classes');
+              }
+            }
+          ]}
+        />
 
         {/* Schedule Grid */}
         <div className="bg-white rounded-xl border border-accent-200 shadow-lg">
           <StudentWeekSchedule sessions={studentSessions} startHour={8} slots={10} slotMinutes={90} />
         </div>
-      </div>
     </StudentLayout>
   );
 }

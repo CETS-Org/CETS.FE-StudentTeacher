@@ -32,6 +32,9 @@ import GoogleCallback from './pages/Common/GoogleCallback'
 import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession'
+import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
+import AcademicResults from './pages/Student/AcademicResults/AcademicResults'
+import ChoosePaidItem from './pages/Student/ChoosePaidItem/ChoosePaidItem'
 
 
 export default function App() {
@@ -60,24 +63,27 @@ export default function App() {
             <Route path="/student/my-classes" element={<MyClasses />} /> 
             <Route path="/student/class/:classId" element={<ClassSession />} />
             <Route path="/student/schedule" element={<Schedule />} />
+            <Route path="/student/attendance" element={<AttendanceReport />} />
+            <Route path="/student/academic-results" element={<AcademicResults />} />
             <Route path="/student/feedback" element={<Feedback />} />
-            <Route path="/student/materials" element={<Materials />} /> 
-            <Route path="/student/report-issue/technical" element={<TechnicalReport />} />
-            <Route path="/student/report-issue/academic" element={<AcademicReport />} />
-            <Route path="/student/report-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
+            <Route path="/student/materials" element={<Materials />} />
+            <Route path="/student/choose-paid-item" element={<ChoosePaidItem />} /> 
+            <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
+            <Route path="/student/request-issue/academic" element={<AcademicReport />} />
+            <Route path="/student/request-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
             <Route path="/student/academic-request/detail/:id" element={<AcademicChangeRequestDetail />} />
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />
             <Route path="/teacher/courses/:courseId/classes" element={<Classes />} />
-            <Route path="/teacher/classesDetail" element={<ClassesDetail />} />
-            <Route path="/teacher/sessionDetail" element={<SessionDetail />} />
+            <Route path="/teacher/class/:id" element={<ClassesDetail />} />
+            <Route path="/teacher/class/:id/session/:sessionId" element={<SessionDetail />} />
             <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
 
             
 
             
-            <Route path="/teacher/teacherSchedule" element={<TeacherSchedule />} />
-            <Route path="/teacher/TeacherReport/:category" element={<TeacherReport />} />
+            <Route path="/teacher/schedule" element={<TeacherSchedule />} />
+            <Route path="/teacher/request-issue/:category" element={<TeacherReport />} />
             
           </Routes>
         </div>

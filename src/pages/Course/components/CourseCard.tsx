@@ -1,9 +1,9 @@
-import { Star, Clock, Users, BookOpen, ArrowRight } from "lucide-react";
+import { Star, Clock, Users, BookOpen, ArrowRight, Heart } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import type { CourseCardProps } from "@/types/course";
 
-export default function CourseCard({ course, onEnroll }: CourseCardProps) {
+export default function CourseCard({ course, onEnroll, onToggleWishlist, isInWishlist = false }: CourseCardProps) {
 
   return (
     <Card className="group relative hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden h-full flex flex-col bg-white border border-gray-100 hover:border-primary-200">
@@ -20,6 +20,25 @@ export default function CourseCard({ course, onEnroll }: CourseCardProps) {
           </span>
         )}
       </div>
+
+      {/* Wishlist Heart Icon */}
+      {onToggleWishlist && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleWishlist(course.id);
+          }}
+          className="absolute top-3 right-3 z-10 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white hover:scale-110 transition-all duration-200 group/heart"
+        >
+          <Heart 
+            className={`w-5 h-5 transition-all duration-200 ${
+              isInWishlist 
+                ? 'text-red-500 fill-red-500 scale-110' 
+                : 'text-gray-600 group-hover/heart:text-red-500 group-hover/heart:scale-110'
+            }`}
+          />
+        </button>
+      )}
 
       {/* Course Image */}
       <div className="relative h-44 overflow-hidden flex-shrink-0">

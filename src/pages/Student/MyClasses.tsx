@@ -5,6 +5,8 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
+import PageHeader from "@/components/ui/PageHeader";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { 
   BookOpen, 
   Clock, 
@@ -438,7 +440,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
             <Button 
               variant="secondary" 
               iconLeft={<CheckCircle className="w-4 h-4" />}
-              className="flex-1 sm:flex-initial bg-gradient-to-r from-success-100 to-success-200 text-success-700 border-success-300 hover:from-success-200 hover:to-success-300 shadow-md hover:shadow-lg transition-all duration-200"
+              className="flex-1 sm:flex-initial bg-gradient-to-r from-success-400 to-success-500 text-success-700 border-success-300 hover:from-success-200 hover:to-success-300 shadow-md hover:shadow-lg transition-all duration-200"
             >
               Certificate
             </Button>
@@ -505,14 +507,20 @@ export default function MyClasses() {
   ];
   
 
+  const breadcrumbItems = [
+    { label: "My Classes" }
+  ];
+
   return (
     <StudentLayout>
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary-800 mb-2">My Classes</h1>
-          <p className="text-neutral-600">Manage and track your class enrollments and progress</p>
-        </div>
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbItems} />
+        
+        <PageHeader
+          title="My Classes"
+          description="Manage and track your class enrollments and progress"
+          icon={<BookOpen className="w-5 h-5 text-white" />}
+        />
 
         {/* Tabs Navigation */}
         <Card className="shadow-lg border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
@@ -592,7 +600,6 @@ export default function MyClasses() {
             </div>
           )}
         </Card>
-      </div>
     </StudentLayout>
   );
 }

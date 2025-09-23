@@ -1,7 +1,7 @@
-import { Bell, User, LogOut, KeyRound } from "lucide-react";
+import { User, LogOut, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import {
   DropdownMenu,
@@ -10,11 +10,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/Dropdown-menu";
+import NotificationDialog, { type Notification } from "@/components/ui/NotificationDialog";
+import { mockNotifications } from "@/data/mockNotifications";
 
 export default function Navbar() {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
     const navigate = useNavigate();
+
+    // Calculate unread count
+    const unreadCount = notifications.filter(n => !n.isRead).length;
     const handleLogoutClick = () => {
     setIsLogoutDialogOpen(true);
     };
@@ -36,6 +42,22 @@ export default function Navbar() {
     const handleChangePassword = () => {
         navigate('/change-password');
     };
+
+    const handleMarkAsRead = (notificationId: string) => {
+        setNotifications(prev => 
+            prev.map(notification => 
+                notification.id === notificationId 
+                    ? { ...notification, isRead: true }
+                    : notification
+            )
+        );
+    };
+
+    const handleMarkAllAsRead = () => {
+        setNotifications(prev => 
+            prev.map(notification => ({ ...notification, isRead: true }))
+        );
+    };
   return (
     // Navbar cố định, full width, đồng bộ màu với Sidebar
     <nav className="fixed top-0 left-0 right-0 z-50 flex h-16 w-full items-center justify-between border-b border-sky-100 bg-sky-50 px-4 lg:px-6 shadow-sm">
@@ -46,12 +68,12 @@ export default function Navbar() {
 
       {/* Actions bên phải */}
       <div className="flex items-center gap-4">
-        <button className="relative p-2 rounded-md hover:bg-sky-100" type="button">
-          <Bell className="h-5 w-5 text-blue-900/70" />
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-            3
-          </span>
-        </button>
+        <NotificationDialog 
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAsRead={handleMarkAsRead}
+          onMarkAllAsRead={handleMarkAllAsRead}
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8FBEDC] focus:ring-offset-2">

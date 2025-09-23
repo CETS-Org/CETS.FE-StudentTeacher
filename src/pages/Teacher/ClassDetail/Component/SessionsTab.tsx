@@ -13,7 +13,11 @@ const mockSessions = Array.from({ length: 12 }, (_, i) => ({
   name: `Session ${i + 1}`,
 }));
 
-export default function SessionsTab() {
+type Props = {
+  classId?: string;
+};
+
+export default function SessionsTab({ classId }: Props) {
   // 3. THÊM STATE VÀ LOGIC CHO PHÂN TRANG
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4; // Số buổi học trên mỗi trang
@@ -51,7 +55,7 @@ export default function SessionsTab() {
                 <Button 
                 variant="primary" 
                 className="btn-secondary"
-                onClick={() => navigate('/teacher/sessionDetail')}
+                onClick={() => navigate(`/teacher/class/${classId}/session/${session.id}`)}
               >
                 Go to Session
               </Button>
