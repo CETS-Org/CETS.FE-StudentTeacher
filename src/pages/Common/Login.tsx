@@ -142,7 +142,7 @@ export default function Login() {
       
       // Navigate based on role
       if (data.role === "student") {
-        navigate("/student/myCourses");
+        navigate("/student/my-classes");
       } else if (data.role === "teacher") {
         navigate("/teacher/courses");
       }
@@ -190,6 +190,7 @@ export default function Login() {
       
       // Listen for popup messages
       const messageListener = (event: MessageEvent) => {
+        console.log('Received message in Login:', event.data);
         if (event.origin !== window.location.origin) return;
         
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {

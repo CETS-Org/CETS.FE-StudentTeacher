@@ -136,5 +136,9 @@ export const api = {
   // Teacher Courses
   getTeachingCourses: (teacherId: string, config?: AxiosRequestConfig) => 
     apiClient.get(`/api/ACAD_CourseTeacherAssignment/teaching-courses/${teacherId}`, config),
+  
+  // Teacher Classes
+  getTeachingClasses: (teacherId: string, courseId: string, config?: AxiosRequestConfig) => 
+    apiClient.get(`/api/ACAD_CourseTeacherAssignment/teaching-classes/${teacherId}/${courseId}`, config),
 };
 
