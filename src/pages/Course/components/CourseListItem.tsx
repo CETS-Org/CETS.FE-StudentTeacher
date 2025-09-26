@@ -5,7 +5,7 @@ import type { CourseCardProps } from "@/types/course";
 export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false }: CourseCardProps) {
   return (
     <div className="group bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all duration-300 p-4">
-      <div className="flex gap-4 h-[176px]">
+      <div className="flex gap-4 h-[220px] p-4">
         {/* Course Image */}
         <div className="relative w-64 h-full flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
             <img
@@ -56,7 +56,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
             <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors duration-300 line-clamp-2 mb-1">
               {course.courseName}
             </h3>
-            <span className="inline-block bg-gradient-to-r from-accent-50 to-accent-100 text-primary-700 px-2 py-1 rounded text-xs font-semibold">
+            <span className="inline-block bg-gradient-to-r from-accent2-200 to-accent2-200 text-primary-700 px-2 py-1 rounded text-xs font-semibold">
               {course.categoryName}
             </span>
           </div>
@@ -73,7 +73,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
                 {course.teacherDetails?.[0]?.fullName?.charAt(0) || '?'}
               </span>
             </div>
-            <span className="text-xs text-gray-600">
+            <span className="text-sm text-gray-600">
               by {course.teacherDetails && course.teacherDetails.length > 0 
                 ? course.teacherDetails.length > 1 
                   ? `${course.teacherDetails[0].fullName} +${course.teacherDetails.length - 1} more`
@@ -84,7 +84,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
           </div>
 
           {/* Stats Row */}
-          <div className="flex items-center gap-4 text-xs text-gray-600 mb-auto">
+          <div className="flex items-center gap-4 text-sm text-gray-600 mb-auto">
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-500 fill-current" />
               <span className="font-semibold text-gray-900">{course.rating}</span>
@@ -112,7 +112,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
           
           <Button
             onClick={() => onEnroll(course)}
-            className="btn-primary text-sm w-full"
+            className="btn-secondary text-sm w-full"
             iconRight={<ArrowRight className="w-4 h-4" />}
           >
             View Details
