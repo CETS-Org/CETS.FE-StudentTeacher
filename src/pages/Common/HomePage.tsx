@@ -3,6 +3,7 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import HeroImage from "../../assets/Gateway1.png";
+import StudentNavbar from "../../Shared/StudentNavbar";
 
 export default function HomePage() {
   usePageTitle("Home - Online Learning Platform");
@@ -75,8 +76,10 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50" lang="en">
+      <StudentNavbar fullWidth />
+      
       {/* Hero Section */}
-      <div className="mx-auto max-w-7xl px-4 py-12 lg:py-20 hero-section">
+      <div className="mx-auto max-w-7xl px-4 py-12 lg:py-20 hero-section pt-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <div className="space-y-8">

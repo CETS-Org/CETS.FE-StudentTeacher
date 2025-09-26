@@ -1,5 +1,5 @@
 import GenericNavbar from "./GenericNavbar";
-import { studentNavbarConfig } from "./navbarConfigs";
+import { adminNavbarConfig } from "./navbarConfigs";
 
 interface NavbarProps {
     collapsed?: boolean;
@@ -7,13 +7,14 @@ interface NavbarProps {
     fullWidth?: boolean;
 }
 
-export default function Navbar({ collapsed = false, mobileOpen = false, fullWidth = false }: NavbarProps = {}) {
+// Example of how to create a new navbar for Admin users
+export default function AdminNavbar({ collapsed = false, mobileOpen = false, fullWidth = false }: NavbarProps = {}) {
     return (
         <GenericNavbar 
             collapsed={collapsed}
             mobileOpen={mobileOpen}
             fullWidth={fullWidth}
-            config={studentNavbarConfig}
+            config={adminNavbarConfig}
         />
     );
 }

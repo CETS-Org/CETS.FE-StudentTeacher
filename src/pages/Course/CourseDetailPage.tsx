@@ -79,7 +79,7 @@ export default function CourseDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <StudentNavbar />
+        <StudentNavbar fullWidth />
         <div className="flex justify-center items-center py-20 pt-36">
           <Loader />
           <span className="ml-3 text-gray-600">Loading course details...</span>
@@ -91,7 +91,7 @@ export default function CourseDetailPage() {
   if (error || !course) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <StudentNavbar />
+        <StudentNavbar fullWidth />
         <div className="max-w-4xl mx-auto px-4 py-20 pt-36">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-4">Course Not Found</h1>
@@ -117,7 +117,7 @@ export default function CourseDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <StudentNavbar />
+      <StudentNavbar fullWidth />
       
       {/* Breadcrumb Navigation */}
       <div className="bg-white border-b pt-16">

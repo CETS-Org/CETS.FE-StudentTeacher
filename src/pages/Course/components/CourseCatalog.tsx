@@ -247,75 +247,7 @@ export default function CourseCatalog() {
         <div className="absolute top-1/2 right-10 w-8 h-8 bg-gradient-to-br from-accent-500 to-primary-600 rounded-full animate-ping opacity-20"></div>
       </div>
 
-      {/* Stats */}
-      <div className="py-20 bg-gradient-to-b from-neutral-50 via-neutral-100 to-secondary-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-neutral-900 mb-4">
-                Trusted by Learners Worldwide
-              </h2>
-              <p className="text-xl text-neutral-600 max-w-4xl mx-auto leading-relaxed text-center">
-                Join thousands of students who have transformed their careers with our courses
-              </p>
-            </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center group">
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-accent-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
-                  <Users className="w-10 h-10 text-white" />
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">✓</span>
-                </div>
-              </div>
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent mb-2">50K+</div>
-              <div className="text-neutral-700 font-medium whitespace-nowrap">Happy Students</div>
-              <div className="text-sm text-neutral-500 mt-1 whitespace-nowrap">Across 150+ countries</div>
-            </div>
-            
-            <div className="text-center group">
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-success-500 to-success-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
-                  <BookOpen className="w-10 h-10 text-white" />
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-warning-400 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">★</span>
-                </div>
-              </div>
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-success-600 to-success-600 bg-clip-text text-transparent mb-2">100+</div>
-              <div className="text-neutral-700 font-medium whitespace-nowrap">Expert Courses</div>
-              <div className="text-sm text-neutral-500 mt-1 whitespace-nowrap">By industry experts</div>
-            </div>
-            
-            <div className="text-center group">
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-warning-500 to-warning-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
-                  <Star className="w-10 h-10 text-white" />
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-error-400 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">♥</span>
-                </div>
-              </div>
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-warning-600 to-warning-600 bg-clip-text text-transparent mb-2">4.8</div>
-              <div className="text-neutral-700 font-medium whitespace-nowrap">Average Rating</div>
-              <div className="text-sm text-neutral-500 mt-1 whitespace-nowrap">From 25,000+ reviews</div>
-            </div>
-            
-            <div className="text-center group">
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-info-500 to-info-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl">
-                  <Award className="w-10 h-10 text-white" />
-                </div>
-              
-              </div>
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-info-600 to-info-600 bg-clip-text text-transparent mb-2">95%</div>
-              <div className="text-neutral-700 font-medium whitespace-nowrap">Success Rate</div>
-              <div className="text-sm text-neutral-500 mt-1 whitespace-nowrap">Course completion</div>
-            </div>
-          </div>
-        </div>
-      </div>
+     
 
       {/* Filters & Grid */}
       <div className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">

@@ -18,7 +18,7 @@ export default function StudentLayout({ children, className = "", crumbs }: Prop
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
-      <Navbar/>
+      <Navbar collapsed={collapsed} mobileOpen={mobileOpen} />
       <StudentSidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
