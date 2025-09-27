@@ -136,5 +136,29 @@ export const api = {
   // Teacher Courses
   getTeachingCourses: (teacherId: string, config?: AxiosRequestConfig) => 
     apiClient.get(`/api/ACAD_CourseTeacherAssignment/teaching-courses/${teacherId}`, config),
+  
+  // Teacher Classes
+  getTeachingClasses: (teacherId: string, courseId: string, config?: AxiosRequestConfig) => 
+    apiClient.get(`/api/ACAD_CourseTeacherAssignment/teaching-classes/${teacherId}/${courseId}`, config),
+
+  // Learning Materials
+  createLearningMaterial: (materialData: { classID?: string; title: string; contentType: string; fileName: string }, config?: AxiosRequestConfig) =>
+    apiClient.post('/api/ACAD_LearningMaterial', materialData, config),
+
+  getLearningMaterialsByClass: (classId: string, config?: AxiosRequestConfig) =>
+    apiClient.get(`/api/ACAD_LearningMaterial/class/${classId}`, config),
+
+  deleteLearningMaterial: (materialId: string, config?: AxiosRequestConfig) =>
+    apiClient.delete(`/api/ACAD_LearningMaterial/${materialId}`, config),
+
+  // File upload to presigned URL (direct to Cloudflare R2)
+  uploadToPresignedUrl: (url: string, file: File, contentType: string) =>
+    fetch(url, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': contentType,
+      },
+    }),
 };
 

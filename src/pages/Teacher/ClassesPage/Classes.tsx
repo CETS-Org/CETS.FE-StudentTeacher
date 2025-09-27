@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TeacherLayout from "@/Shared/TeacherLayout";
 import Button from "@/components/ui/Button";
@@ -7,6 +7,7 @@ import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { teachingClassesService } from "@/services/teachingClassesService";
 import { 
   BookOpen, 
   Clock, 
@@ -18,7 +19,8 @@ import {
   MapPin,
   GraduationCap,
   Star,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Loader2
 } from "lucide-react";
 
 type ClassStatus = "ongoing" | "upcoming" | "completed";
@@ -57,176 +59,7 @@ interface TeacherClass {
   };
 }
 
-const mockTeacherClasses: TeacherClass[] = [
-  {
-    id: "1",
-    className: "Advanced Business English - Class A1",
-    classNum: 1,
-    description: "Master professional communication skills for the corporate world. Learn presentations, negotiations, and business writing.",
-    instructor: "You",
-    level: "Advanced",
-    classStatus: "Ongoing",
-    courseFormat: "In-person",
-    courseName: "Advanced Business English",
-    courseCode: "ABE101",
-    category: "Business English",
-    enrolledDate: "2024-01-10",
-    startDate: "2024-01-15",
-    endDate: "2024-04-15",
-    status: "ongoing",
-    capacity: 25,
-    enrolledCount: 18,
-    isActive: true,
-    certificate: true,
-    attendanceRate: 92,
-    rating: 4.7,
-    nextMeeting: {
-      id: "meeting-1",
-      startsAt: "2024-02-15T19:00:00Z",
-      endsAt: "2024-02-15T21:00:00Z",
-      roomId: "room-201",
-      roomName: "Room 201, CETS Center",
-      coveredTopic: "Business Communication Fundamentals"
-    }
-  },
-  {
-    id: "2",
-    className: "IELTS Test Preparation - Class B2",
-    classNum: 2,
-    description: "Comprehensive IELTS preparation covering all four skills: listening, reading, writing, and speaking with practice tests.",
-    instructor: "You",
-    level: "Intermediate",
-    classStatus: "Completed",
-    courseFormat: "In-person",
-    courseName: "IELTS Test Preparation",
-    courseCode: "IELTS-INT-2024.02",
-    category: "Test Preparation",
-    enrolledDate: "2023-11-05",
-    startDate: "2023-11-10",
-    endDate: "2024-01-10",
-    status: "completed",
-    capacity: 20,
-    enrolledCount: 20,
-    isActive: false,
-    certificate: true,
-    attendanceRate: 95,
-    rating: 4.9
-  },
-  {
-    id: "3",
-    className: "English Conversation Club - Class C1",
-    classNum: 1,
-    description: "Practice speaking English in a relaxed, supportive environment with native speakers and fellow learners.",
-    instructor: "You",
-    level: "Beginner",
-    classStatus: "Upcoming",
-    courseFormat: "Hybrid",
-    courseName: "English Conversation Club",
-    courseCode: "ECC101",
-    category: "Conversation",
-    enrolledDate: "2024-01-25",
-    startDate: "2024-02-15",
-    endDate: "2024-03-15",
-    status: "upcoming",
-    capacity: 15,
-    enrolledCount: 8,
-    isActive: true,
-    certificate: false,
-    nextMeeting: {
-      id: "meeting-3",
-      startsAt: "2024-02-15T14:00:00Z",
-      endsAt: "2024-02-15T16:00:00Z",
-      roomId: "room-301",
-      roomName: "Room 301, CETS Center",
-      coveredTopic: "Conversation Practice - Daily Activities"
-    }
-  },
-  {
-    id: "4",
-    className: "Academic Writing Workshop - Class D1",
-    classNum: 1,
-    description: "Improve your academic writing skills with focus on essay structure, research techniques, and citation styles.",
-    instructor: "You",
-    level: "Advanced",
-    classStatus: "Completed",
-    courseFormat: "Online",
-    courseName: "Academic Writing Workshop",
-    courseCode: "AWW301",
-    category: "Academic English",
-    enrolledDate: "2023-09-25",
-    startDate: "2023-10-01",
-    endDate: "2023-12-20",
-    status: "completed",
-    capacity: 12,
-    enrolledCount: 10,
-    isActive: false,
-    certificate: true,
-    attendanceRate: 88,
-    rating: 4.6
-  },
-  {
-    id: "5",
-    className: "Pronunciation Masterclass - Class E1",
-    classNum: 1,
-    description: "Perfect your English pronunciation with phonetics, stress patterns, and intonation techniques.",
-    instructor: "You",
-    level: "Intermediate",
-    classStatus: "Ongoing",
-    courseFormat: "Online",
-    courseName: "Pronunciation Masterclass",
-    courseCode: "PM201",
-    category: "Pronunciation",
-    enrolledDate: "2024-01-20",
-    startDate: "2024-02-01",
-    endDate: "2024-03-01",
-    status: "ongoing",
-    capacity: 16,
-    enrolledCount: 12,
-    isActive: true,
-    certificate: false,
-    attendanceRate: 85,
-    rating: 4.4,
-    nextMeeting: {
-      id: "meeting-5",
-      startsAt: "2024-02-16T20:00:00Z",
-      endsAt: "2024-02-16T21:30:00Z",
-      onlineMeetingUrl: "https://meet.google.com/abc-defg-hij",
-      passcode: "PRON123",
-      coveredTopic: "Phonetics and Sound Patterns"
-    }
-  },
-  {
-    id: "6",
-    className: "Grammar Fundamentals - Class F1",
-    classNum: 1,
-    description: "Build a solid foundation in English grammar with clear explanations and practical exercises.",
-    instructor: "You",
-    level: "Beginner",
-    classStatus: "Ongoing",
-    courseFormat: "In-person",
-    courseName: "Grammar Fundamentals",
-    courseCode: "GF101",
-    category: "Grammar",
-    enrolledDate: "2024-01-05",
-    startDate: "2024-01-10",
-    endDate: "2024-03-15",
-    status: "ongoing",
-    capacity: 22,
-    enrolledCount: 19,
-    isActive: true,
-    certificate: true,
-    attendanceRate: 90,
-    rating: 4.5,
-    nextMeeting: {
-      id: "meeting-6",
-      startsAt: "2024-02-15T17:30:00Z",
-      endsAt: "2024-02-15T19:00:00Z",
-      roomId: "room-102",
-      roomName: "Room 102, CETS Center",
-      coveredTopic: "Present Perfect Tense"
-    }
-  }
-];
+// Mock data removed - now using API data
 
 const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) => {
   const navigate = useNavigate();
@@ -288,9 +121,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
             </div>
             <div className="flex items-center gap-2">
               <p className="text-xs mt-1">
-                <span className="inline-flex items-center gap-1 bg-warning-200 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
-                  <span className="text-xs font-semibold">{classItem.courseCode}</span>
-                </span>
+
                 <span className="inline-flex items-center gap-1 bg-accent-100 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
                   <GraduationCap className="w-3 h-3" />
                   <span className="text-xs font-semibold">{classItem.level}</span>
@@ -324,7 +155,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
               {/* Meeting Time */}
               <div className="mb-3">
                 <p className="text-sm font-medium text-accent-700">
-                  {new Date(classItem.nextMeeting.startsAt).toLocaleDateString()} • {new Date(classItem.nextMeeting.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(classItem.nextMeeting.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(classItem.nextMeeting.startsAt).toLocaleDateString('vi-VN')} • {new Date(classItem.nextMeeting.startsAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(classItem.nextMeeting.endsAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
 
@@ -456,9 +287,39 @@ export default function Classes() {
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const itemsPerPage = 3; // Number of classes per page
 
+  // API state
+  const [teacherClasses, setTeacherClasses] = useState<TeacherClass[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mock teacher and course IDs - in real app, these would come from auth context
+  const teacherId = "A763A84B-4FF2-47C1-AC0B-209F1EDC2010";
+  const courseId = "30B53012-701E-4521-B246-2F7569F3A783";
+
+  // Fetch teaching classes on component mount
+  useEffect(() => {
+    const fetchTeachingClasses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const classes = await teachingClassesService.getTeachingClasses(teacherId, courseId);
+        setTeacherClasses(classes);
+      } catch (err) {
+        console.error('Error fetching teaching classes:', err);
+        setError('Failed to load teaching classes. Please try again.');
+        // Fallback to empty array
+        setTeacherClasses([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeachingClasses();
+  }, [teacherId, courseId]);
+
   // Filter classes based on active tab, search, and filters
   const filteredClasses = useMemo(() => {
-    let result = mockTeacherClasses;
+    let result = teacherClasses;
 
     // Filter by tab
     if (activeTab !== "all") {
@@ -493,7 +354,7 @@ export default function Classes() {
     }
 
     return result;
-  }, [activeTab, searchQuery, levelFilter, formatFilter, categoryFilter]);
+  }, [teacherClasses, activeTab, searchQuery, levelFilter, formatFilter, categoryFilter]);
 
   // Reset to page 1 when any filter changes
   React.useEffect(() => {
@@ -515,19 +376,19 @@ export default function Classes() {
   // Calculate tab counts
   const tabCounts = useMemo(() => {
     const counts = {
-      all: mockTeacherClasses.length,
-      ongoing: mockTeacherClasses.filter(c => c.status === "ongoing").length,
-      completed: mockTeacherClasses.filter(c => c.status === "completed").length,
-      upcoming: mockTeacherClasses.filter(c => c.status === "upcoming").length
+      all: teacherClasses.length,
+      ongoing: teacherClasses.filter(c => c.status === "ongoing").length,
+      completed: teacherClasses.filter(c => c.status === "completed").length,
+      upcoming: teacherClasses.filter(c => c.status === "upcoming").length
     };
     return counts;
-  }, []);
+  }, [teacherClasses]);
 
   // Get unique categories for filter
   const availableCategories = useMemo(() => {
-    const categories = [...new Set(mockTeacherClasses.map(c => c.category))];
+    const categories = [...new Set(teacherClasses.map(c => c.category))];
     return categories.sort();
-  }, []);
+  }, [teacherClasses]);
 
   const tabs = [
     { id: "all", label: "All Classes", badge: tabCounts.all, color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white" },
@@ -638,91 +499,132 @@ export default function Classes() {
             {(searchQuery || levelFilter !== "All" || formatFilter !== "All" || categoryFilter !== "All") && (
               <div className="mt-3 pt-3 border-t border-accent-100">
                 <p className="text-sm text-neutral-600">
-                  Showing {filteredClasses.length} of {mockTeacherClasses.length} classes
+                  Showing {filteredClasses.length} of {teacherClasses.length} classes
                 </p>
               </div>
             )}
           </Card>
         </div>
 
-        {/* Tabs Navigation */}
-        <Card className="shadow-lg border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
-          <Tabs
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-
-          {/* Tab Content */}
-          <TabContent activeTab={activeTab} tabId="all">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <TeacherClassCard key={classItem.id} classItem={classItem} />
-              ))}
-            </div>
-          </TabContent>
-
-          <TabContent activeTab={activeTab} tabId="ongoing">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <TeacherClassCard key={classItem.id} classItem={classItem} />
-              ))}
-            </div>
-          </TabContent>
-
-          <TabContent activeTab={activeTab} tabId="completed">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <TeacherClassCard key={classItem.id} classItem={classItem} />
-              ))}
-            </div>
-          </TabContent>
-
-          <TabContent activeTab={activeTab} tabId="upcoming">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <TeacherClassCard key={classItem.id} classItem={classItem} />
-              ))}
-            </div>
-          </TabContent>
-
-          {/* Empty State */}
-          {filteredClasses.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="w-12 h-12 text-accent-600" />
-              </div>
-              <h3 className="text-xl font-bold text-primary-800 mb-3">
-                No classes found
+        {/* Loading State */}
+        {loading && (
+          <Card className="p-8 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <Loader2 className="w-8 h-8 text-primary-500 animate-spin mb-4" />
+              <h3 className="text-lg font-semibold text-primary-800 mb-2">
+                Loading Classes
               </h3>
-              <p className="text-neutral-600 mb-8 max-w-md mx-auto">
-                {activeTab === "all" 
-                  ? "You don't have any classes assigned yet." 
-                  : `No ${activeTab} classes available. Check other categories or create a new class.`
-                }
+              <p className="text-neutral-600">
+                Please wait while we fetch your teaching classes...
+              </p>
+            </div>
+          </Card>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <Card className="p-8 text-center border-red-200 bg-red-50">
+            <div className="flex flex-col items-center justify-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <BookOpen className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-red-800 mb-2">
+                Error Loading Classes
+              </h3>
+              <p className="text-red-600 mb-4">
+                {error}
               </p>
               <Button 
                 variant="primary" 
                 className="btn-secondary"
+                onClick={() => window.location.reload()}
               >
-                Create New Class
+                Try Again
               </Button>
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Pagination */}
-          {filteredClasses.length > 0 && totalPages > 1 && (
-            <div className="pt-8 border-t border-accent-200">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={filteredClasses.length}
-                itemsPerPage={itemsPerPage}
-                onPageChange={handlePageChange}
-              />
-            </div>
-          )}
-        </Card>
+        {/* Main Content */}
+        {!loading && !error && (
+          <Card className="shadow-lg border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
+            <Tabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+
+            {/* Tab Content */}
+            <TabContent activeTab={activeTab} tabId="all">
+              <div className="space-y-6">
+                {paginatedClasses.map((classItem) => (
+                  <TeacherClassCard key={classItem.id} classItem={classItem} />
+                ))}
+              </div>
+            </TabContent>
+
+            <TabContent activeTab={activeTab} tabId="ongoing">
+              <div className="space-y-6">
+                {paginatedClasses.map((classItem) => (
+                  <TeacherClassCard key={classItem.id} classItem={classItem} />
+                ))}
+              </div>
+            </TabContent>
+
+            <TabContent activeTab={activeTab} tabId="completed">
+              <div className="space-y-6">
+                {paginatedClasses.map((classItem) => (
+                  <TeacherClassCard key={classItem.id} classItem={classItem} />
+                ))}
+              </div>
+            </TabContent>
+
+            <TabContent activeTab={activeTab} tabId="upcoming">
+              <div className="space-y-6">
+                {paginatedClasses.map((classItem) => (
+                  <TeacherClassCard key={classItem.id} classItem={classItem} />
+                ))}
+              </div>
+            </TabContent>
+
+            {/* Empty State */}
+            {filteredClasses.length === 0 && (
+              <div className="text-center py-16">
+                <div className="w-24 h-24 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <BookOpen className="w-12 h-12 text-accent-600" />
+                </div>
+                <h3 className="text-xl font-bold text-primary-800 mb-3">
+                  No classes found
+                </h3>
+                <p className="text-neutral-600 mb-8 max-w-md mx-auto">
+                  {activeTab === "all" 
+                    ? "You don't have any classes assigned yet." 
+                    : `No ${activeTab} classes available. Check other categories or create a new class.`
+                  }
+                </p>
+                <Button 
+                  variant="primary" 
+                  className="btn-secondary"
+                >
+                  Create New Class
+                </Button>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {filteredClasses.length > 0 && totalPages > 1 && (
+              <div className="pt-8 border-t border-accent-200">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredClasses.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </Card>
+        )}
     </TeacherLayout>
   );
 }

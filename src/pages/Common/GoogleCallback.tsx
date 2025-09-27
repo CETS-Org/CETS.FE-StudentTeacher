@@ -49,21 +49,58 @@ export default function GoogleCallback() {
               console.log('Backend Response:', backendData);
 
               // Gửi thông tin về parent window
+              console.log('Sending to parent window:', {
+                token: backendData.token,
+                userInfo: backendData.account
+              });
+              
               if (window.opener) {
                 window.opener.postMessage({
                   type: 'GOOGLE_AUTH_SUCCESS',
                   token: backendData.token, // Sử dụng token từ backend
                   userInfo: backendData.account // Sử dụng thông tin từ backend
                 }, window.location.origin);
+                console.log('Message sent to parent, closing popup...');
                 window.close();
               } else {
                 // Nếu không có parent window, lưu thông tin và redirect
+                console.log('No parent window, redirecting to gateway...');
                 localStorage.setItem("authToken", backendData.token);
                 localStorage.setItem("userInfo", JSON.stringify(backendData.account));
                 window.location.href = '/gateway';
               }
             } catch (backendError) {
-              console.error('Backend Error:', backendError);                           
+              console.error('Backend Error:', backendError);
+              
+              // Fallback: sử dụng thông tin từ Google nếu backend lỗi
+              const fallbackUserInfo = {
+                id: userInfo.id,
+                email: userInfo.email,
+                fullName: userInfo.name,
+                picture: userInfo.picture,
+                roleNames: ['user'],
+                isVerified: true
+              };
+
+              console.log('Using fallback data:', {
+                token: accessToken,
+                userInfo: fallbackUserInfo
+              });
+
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: 'GOOGLE_AUTH_SUCCESS',
+                  token: accessToken, // Sử dụng Google token làm fallback
+                  userInfo: fallbackUserInfo
+                }, window.location.origin);
+                console.log('Fallback message sent to parent, closing popup...');
+                window.close();
+              } else {
+                console.log('No parent window, using fallback data...');
+                localStorage.setItem("authToken", accessToken);
+                localStorage.setItem("userInfo", JSON.stringify(fallbackUserInfo));
+                window.location.href = '/gateway';
+              }
             }
           })
           .catch(error => {
