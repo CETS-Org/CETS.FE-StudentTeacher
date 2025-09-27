@@ -1,6 +1,6 @@
 // src/pages/Teacher/Courses.tsx
 import { useEffect, useMemo, useState } from "react";
-import TeacherLayout from "@/Shared/TeacherLayout";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Card from "@/components/ui/Card";
 import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";
@@ -90,8 +90,8 @@ export default function Courses() {
   const pageItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
   return (
-    <TeacherLayout crumbs={crumbs}>
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <Breadcrumbs items={crumbs} />
         <PageHeader
           title="My Courses"
           description="Explore, manage, and track your classes"
@@ -199,7 +199,6 @@ export default function Courses() {
             </div>
           )}
         </Card>
-      </div>
-    </TeacherLayout>
+    </div>
   );
 }

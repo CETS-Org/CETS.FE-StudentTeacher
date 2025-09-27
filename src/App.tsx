@@ -35,30 +35,35 @@ import ClassSession from './pages/Student/ClassSession'
 import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
 import AcademicResults from './pages/Student/AcademicResults/AcademicResults'
 import ChoosePaidItem from './pages/Student/ChoosePaidItem/ChoosePaidItem'
+import UniversalLayout from './Shared/UniversalLayout'
 
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50">
+    <Routes>
+      {/* Public routes - no layout */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/gateway" element={<Gateway />} />
+      <Route path="/forgotPassword" element={<ForgotPassword />} /> 
+      <Route path="/otpVerification" element={<OtpVerification />} /> 
+      <Route path="/resetPassword" element={<ResetPassword />} />
+      <Route path="/google-callback" element={<GoogleCallback />} />
       
-      <main className="flex-1">
-         <div className="px-0">
+      {/* All other routes with UniversalLayout */}
+      <Route path="/*" element={
+        <UniversalLayout>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/courses" element={<CourseAll />} />
             <Route path="/course/:courseId" element={<CourseDetailPage />} />
-            <Route path="/gateway" element={<Gateway />} />
             <Route path="/requests" element={<Requests />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/dev" element={<Dev_Home />} />
             <Route path="/dev/dashboard" element={<Dev_Dashboard />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/google-callback" element={<GoogleCallback />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgotPassword" element={<ForgotPassword />} /> 
-            <Route path="/otpVerification" element={<OtpVerification />} /> 
-            <Route path="/resetPassword" element={<ResetPassword />} />          
             <Route path="/change-password" element={<ChangePassword />} />
+            
+            {/* Student routes */}
             <Route path="/student/wishlist" element={<Wishlist />} /> 
             <Route path="/student/my-classes" element={<MyClasses />} /> 
             <Route path="/student/class/:classId" element={<ClassSession />} />
@@ -66,30 +71,26 @@ export default function App() {
             <Route path="/student/attendance" element={<AttendanceReport />} />
             <Route path="/student/academic-results" element={<AcademicResults />} />
             <Route path="/student/feedback" element={<Feedback />} />
-            <Route path="/student/materials" element={<Materials />} />
             <Route path="/student/choose-paid-item" element={<ChoosePaidItem />} /> 
+            <Route path="/student/materials" element={<Materials />} />
             <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
             <Route path="/student/request-issue/academic" element={<AcademicReport />} />
             <Route path="/student/request-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
             <Route path="/student/academic-request/detail/:id" element={<AcademicChangeRequestDetail />} />
+            
+            {/* Teacher routes */}
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />
             <Route path="/teacher/courses/:courseId/classes" element={<Classes />} />
             <Route path="/teacher/class/:id" element={<ClassesDetail />} />
             <Route path="/teacher/class/:id/session/:sessionId" element={<SessionDetail />} />
             <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
-
-            
-
-            
             <Route path="/teacher/schedule" element={<TeacherSchedule />} />
             <Route path="/teacher/request-issue/:category" element={<TeacherReport />} />
-            
           </Routes>
-        </div>
-      </main>
-      <Footer />
-    </div>
-    
+          <Footer />
+        </UniversalLayout>
+      } />
+    </Routes>
   )
 }

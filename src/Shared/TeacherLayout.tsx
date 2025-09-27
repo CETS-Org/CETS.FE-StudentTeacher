@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function TeacherLayout({ children, className = "", crumbs }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // ⬇️ state để bật/tắt chat popup

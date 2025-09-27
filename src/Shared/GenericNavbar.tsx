@@ -1,5 +1,4 @@
 import { 
-  User, 
   LogOut, 
   KeyRound, 
   Menu, 
@@ -23,54 +22,14 @@ import {
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import NotificationDialog, { type Notification } from "@/components/ui/NotificationDialog";
 import { mockNotifications } from "@/data/mockNotifications";
+import type { GenericNavbarProps } from "@/types/navbar";
 
-// Types
-interface NavigationItem {
-    name: string;
-    href: string;
-    icon: any;
-    description: string;
-}
-
-interface UserMenuItem {
-    name: string;
-    href: string;
-    icon: any;
-    description: string;
-}
-
-interface QuickStat {
-    label: string;
-    value: string | number;
-    color: string;
-}
-
-interface UserInfo {
-    name: string;
-    email: string;
-    role: string;
-    avatar?: string;
-    initials: string;
-}
-
-export interface NavbarConfig {
-    userInfo: UserInfo;
-    navigationItems: NavigationItem[];
-    userMenuItems: UserMenuItem[];
-    quickStats: QuickStat[];
-    portalName: string; // e.g., "Learning Platform", "Teacher Portal", "Admin Portal"
-}
-
-interface GenericNavbarProps {
-    collapsed?: boolean;
-    mobileOpen?: boolean;
-    fullWidth?: boolean;
-    config: NavbarConfig;
-}
+// Re-export types for backward compatibility
+export type { NavbarConfig } from "@/types/navbar";
 
 export default function GenericNavbar({ 
     collapsed = false, 
-    mobileOpen = false, 
+    mobileOpen: _mobileOpen = false, 
     fullWidth = false,
     config 
 }: GenericNavbarProps) {
@@ -179,7 +138,7 @@ export default function GenericNavbar({
 
                             {/* User Menu */}
                             <DropdownMenu>
-                                <DropdownMenuTrigger className="flex items-center space-x-3 p-2 rounded-xl hover:bg-neutral-100 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                                <DropdownMenuTrigger className="flex items-center space-x-3 p-2 rounded-xl hover:bg-neutral-100 transition-all focus:outline-none focus:ring-1 focus:ring-accent-500 focus:ring-offset-2">
                                     <div className="hidden sm:block text-right">
                                         <p className="text-sm font-semibold text-neutral-900">{config.userInfo.name}</p>
                                         <p className="text-xs text-neutral-500">{config.userInfo.role}</p>
@@ -191,11 +150,6 @@ export default function GenericNavbar({
                                                 {config.userInfo.initials}
                                             </AvatarFallback>
                                         </Avatar>
-                                        {unreadCount > 0 && (
-                                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                                                <span className="text-xs text-white font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>
-                                            </div>
-                                        )}
                                     </div>
                                     <ChevronDown className="w-4 h-4 text-neutral-400" />
                                 </DropdownMenuTrigger>
@@ -237,46 +191,51 @@ export default function GenericNavbar({
                                         <DropdownMenuItem 
                                             key={item.name}
                                             onClick={() => navigate(item.href)}
-                                            className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg cursor-pointer transition-all"
+                                            className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all"
                                         >
                                             <item.icon className="w-4 h-4" />
                                             <div>
                                                 <p className="font-medium">{item.name}</p>
-                                                <p className="text-xs text-neutral-500">{item.description}</p>
+                                                <p className="text-xs text- hover:text-white">{item.description}</p>
                                             </div>
                                         </DropdownMenuItem>
                                     ))}
 
-                                    <DropdownMenuSeparator className="bg-neutral-200 my-2" />
-                                    
-                                    {/* Settings & Help */}
-                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg cursor-pointer transition-all">
-                                        <Settings className="w-4 h-4" />
-                                        <span>Settings</span>
-                                    </DropdownMenuItem>
-                                    
-                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg cursor-pointer transition-all">
-                                        <HelpCircle className="w-4 h-4" />
-                                        <span>Help & Support</span>
-                                    </DropdownMenuItem>
+                                    {/* Show authenticated user options only if not guest */}
+                                    {config.userInfo.role !== "Guest" && (
+                                        <>
+                                            <DropdownMenuSeparator className="bg-neutral-200 my-2" />
+                                            
+                                            {/* Settings & Help */}
+                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                <Settings className="w-4 h-4" />
+                                                <span>Settings</span>
+                                            </DropdownMenuItem>
+                                            
+                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                <HelpCircle className="w-4 h-4" />
+                                                <span>Help & Support</span>
+                                            </DropdownMenuItem>
 
-                                    <DropdownMenuItem 
-                                        onClick={handleChangePassword} 
-                                        className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-lg cursor-pointer transition-all"
-                                    >
-                                        <KeyRound className="w-4 h-4" />
-                                        <span>Change Password</span>
-                                    </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                onClick={handleChangePassword} 
+                                                className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all"
+                                            >
+                                                <KeyRound className="w-4 h-4" />
+                                                <span>Change Password</span>
+                                            </DropdownMenuItem>
 
-                                    <DropdownMenuSeparator className="bg-neutral-200 my-2" />
-                                    
-                                    <DropdownMenuItem 
-                                        onClick={handleLogoutClick} 
-                                        className="flex items-center space-x-3 px-3 py-2 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer transition-all"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                        <span>Logout</span>
-                                    </DropdownMenuItem>
+                                            <DropdownMenuSeparator className="bg-neutral-200 my-2" />
+                                            
+                                            <DropdownMenuItem 
+                                                onClick={handleLogoutClick} 
+                                                className="flex items-center space-x-3 px-3 py-2 text-red-600 hover:bg-red-50 hover:text-white rounded-lg cursor-pointer transition-all"
+                                            >
+                                                <LogOut className="w-4 h-4" />
+                                                <span>Logout</span>
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
 

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
@@ -827,7 +826,7 @@ export default function ClassSession() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
       <div className="max-w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6">
@@ -1042,6 +1041,6 @@ export default function ClassSession() {
           onSubmit={handleFileSubmit}
         />
       </div>
-    </StudentLayout>
+    </div>
   );
 }

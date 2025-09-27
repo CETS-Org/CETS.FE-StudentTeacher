@@ -12,7 +12,7 @@ const webDevelopmentCourses: PaidItem[] = [
     type: "course",
     price: 1200000,
     originalPrice: 1500000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400",
     category: "Web Development",
     seriesId: "WEB_DEV_2024",
@@ -42,7 +42,7 @@ const webDevelopmentCourses: PaidItem[] = [
     type: "course",
     price: 1800000,
     originalPrice: 2200000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=400",
     category: "Web Development",
     seriesId: "WEB_DEV_2024",
@@ -72,7 +72,7 @@ const webDevelopmentCourses: PaidItem[] = [
     type: "course",
     price: 2500000,
     originalPrice: 3000000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400",
     category: "Web Development",
     seriesId: "WEB_DEV_2024",
@@ -105,7 +105,7 @@ const dataAnalyticsCourses: PaidItem[] = [
     type: "course",
     price: 1500000,
     originalPrice: 1800000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400",
     category: "Data Analytics",
     seriesId: "DATA_ANALYTICS_2024",
@@ -135,7 +135,7 @@ const dataAnalyticsCourses: PaidItem[] = [
     type: "course",
     price: 1200000,
     originalPrice: 1500000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=400",
     category: "Data Analytics",
     seriesId: "DATA_ANALYTICS_2024",
@@ -165,7 +165,7 @@ const dataAnalyticsCourses: PaidItem[] = [
     type: "course",
     price: 2200000,
     originalPrice: 2700000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400",
     category: "Data Analytics",
     seriesId: "DATA_ANALYTICS_2024",
@@ -198,7 +198,7 @@ const digitalMarketingCourses: PaidItem[] = [
     type: "course",
     price: 900000,
     originalPrice: 1200000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?w=400",
     category: "Digital Marketing",
     seriesId: "DIGITAL_MARKETING_2024",
@@ -228,7 +228,7 @@ const digitalMarketingCourses: PaidItem[] = [
     type: "course",
     price: 1100000,
     originalPrice: 1400000,
-    currency: "VND",
+    
     imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400",
     category: "Digital Marketing",
     seriesId: "DIGITAL_MARKETING_2024",
@@ -261,7 +261,7 @@ export const mockSeriesPlans: PaymentPlan[] = [
     description: "Master full-stack web development from HTML to React. Perfect for beginners to advanced developers.",
     totalPrice: 5500000,
     originalTotalPrice: 6700000,
-    currency: "VND",
+    
     items: webDevelopmentCourses,
     features: [
       "3 comprehensive courses",
@@ -303,7 +303,7 @@ export const mockSeriesPlans: PaymentPlan[] = [
     description: "Complete data analytics program covering Python, SQL, and Machine Learning for data-driven decisions.",
     totalPrice: 4900000,
     originalTotalPrice: 6000000,
-    currency: "VND",
+    
     items: dataAnalyticsCourses,
     features: [
       "3 specialized courses",
@@ -344,7 +344,7 @@ export const mockSeriesPlans: PaymentPlan[] = [
     description: "Comprehensive digital marketing training covering social media and paid advertising strategies.",
     totalPrice: 2000000,
     originalTotalPrice: 2600000,
-    currency: "VND",
+    
     items: digitalMarketingCourses,
     features: [
       "2 focused courses",

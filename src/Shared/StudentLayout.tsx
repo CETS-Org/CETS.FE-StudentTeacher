@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function StudentLayout({ children, className = "", crumbs }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (

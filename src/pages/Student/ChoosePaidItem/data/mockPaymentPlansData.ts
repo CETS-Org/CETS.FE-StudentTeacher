@@ -29,7 +29,7 @@ const allItems: PaidItem[] = [
     type: "book",
     price: 450000,
     originalPrice: 500000,
-    currency: "VND",
+    
     category: "Textbooks",
     isAvailable: true,
     stock: 25,
@@ -42,7 +42,7 @@ const allItems: PaidItem[] = [
     type: "book",
     price: 320000,
     originalPrice: 380000,
-    currency: "VND",
+    
     category: "Textbooks",
     isAvailable: true,
     stock: 18,
@@ -54,7 +54,7 @@ const allItems: PaidItem[] = [
     description: "Essential vocabulary for TOEIC test preparation with audio pronunciation.",
     type: "book",
     price: 280000,
-    currency: "VND",
+    
     category: "Textbooks",
     isAvailable: true,
     stock: 32,
@@ -67,7 +67,7 @@ const allItems: PaidItem[] = [
     type: "book",
     price: 380000,
     originalPrice: 420000,
-    currency: "VND",
+    
     category: "Textbooks",
     isAvailable: false,
     stock: 0,
@@ -81,7 +81,7 @@ const allItems: PaidItem[] = [
     description: "Complete IELTS preparation course with mock tests and personalized feedback.",
     type: "course",
     price: 2500000,
-    currency: "VND",
+    
     category: "Courses",
     isAvailable: true,
     installmentOptions: [
@@ -109,7 +109,7 @@ const allItems: PaidItem[] = [
     type: "course",
     price: 3200000,
     originalPrice: 3500000,
-    currency: "VND",
+    
     category: "Courses",
     isAvailable: true,
     installmentOptions: [
@@ -129,7 +129,7 @@ const allItems: PaidItem[] = [
     description: "Intensive TOEIC preparation course with focus on listening and reading skills.",
     type: "course",
     price: 1800000,
-    currency: "VND",
+    
     category: "Courses",
     isAvailable: true,
     installmentOptions: [
@@ -151,7 +151,7 @@ const allItems: PaidItem[] = [
     description: "Official TOEIC exam registration and certification.",
     type: "exam",
     price: 1200000,
-    currency: "VND",
+    
     category: "Certifications",
     isAvailable: true,
     availableUntil: "2024-12-31T23:59:59Z",
@@ -163,7 +163,7 @@ const allItems: PaidItem[] = [
     description: "Official IELTS Academic exam registration with speaking test.",
     type: "exam",
     price: 1500000,
-    currency: "VND",
+    
     category: "Certifications",
     isAvailable: true,
     availableUntil: "2024-11-30T23:59:59Z",
@@ -177,7 +177,7 @@ const allItems: PaidItem[] = [
     description: "Complete set of materials for Advanced Business English course including workbooks and digital resources.",
     type: "material",
     price: 350000,
-    currency: "VND",
+    
     category: "Materials",
     isAvailable: true,
     stock: 50,
@@ -189,7 +189,7 @@ const allItems: PaidItem[] = [
     description: "Complete set of IELTS practice tests with answer keys and audio files.",
     type: "material",
     price: 250000,
-    currency: "VND",
+    
     category: "Materials",
     isAvailable: true,
     stock: 75,
@@ -203,7 +203,7 @@ const allItems: PaidItem[] = [
     description: "Official certificate for course completion with digital verification.",
     type: "certificate",
     price: 200000,
-    currency: "VND",
+    
     category: "Certificates",
     isAvailable: true,
     createdAt: "2024-01-20T00:00:00Z"
@@ -214,7 +214,7 @@ const allItems: PaidItem[] = [
     description: "Digital certificate for course completion with verification code.",
     type: "certificate",
     price: 150000,
-    currency: "VND",
+    
     category: "Certificates",
     isAvailable: true,
     createdAt: "2024-01-22T00:00:00Z"
@@ -227,7 +227,7 @@ const allItems: PaidItem[] = [
     description: "Premium subscription to our language learning mobile application.",
     type: "other",
     price: 99000,
-    currency: "VND",
+    
     category: "Subscriptions",
     isAvailable: true,
     createdAt: "2024-01-17T00:00:00Z"
@@ -238,7 +238,7 @@ const allItems: PaidItem[] = [
     description: "One-on-one consultation for study abroad opportunities and applications.",
     type: "other",
     price: 500000,
-    currency: "VND",
+    
     category: "Services",
     isAvailable: true,
     createdAt: "2024-01-21T00:00:00Z"

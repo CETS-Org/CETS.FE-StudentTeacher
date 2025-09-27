@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Card from "@/components/ui/Card";
@@ -270,7 +269,7 @@ export default function Materials() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
         {/* Breadcrumbs */}
         <Breadcrumbs items={breadcrumbItems} />
         
@@ -372,6 +371,6 @@ export default function Materials() {
             </div>
           </Card>
         </div>
-    </StudentLayout>
+    </div>
   );
 }
