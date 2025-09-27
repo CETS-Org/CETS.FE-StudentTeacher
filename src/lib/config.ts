@@ -151,6 +151,13 @@ export const api = {
   deleteLearningMaterial: (materialId: string, config?: AxiosRequestConfig) =>
     apiClient.delete(`/api/ACAD_LearningMaterial/${materialId}`, config),
 
+  // Course Schedules
+  getCourseSchedules: (courseId: string, config?: AxiosRequestConfig) =>
+    apiClient.get(`/api/ACAD_CourseSchedule/course/${courseId}`, config),
+
+  getAllCourseSchedules: (config?: AxiosRequestConfig) =>
+    apiClient.get('/api/ACAD_CourseSchedule', config),
+
   // File upload to presigned URL (direct to Cloudflare R2)
   uploadToPresignedUrl: (url: string, file: File, contentType: string) =>
     fetch(url, {

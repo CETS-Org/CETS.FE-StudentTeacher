@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle } from "lucide-react";
+import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ClassReservationDialog from "./components/ClassReservationDialog";
+import RelatedCourses from "./components/RelatedCourses";
+import CourseSchedule from "@/components/ui/CourseSchedule";
+import { useCourseSchedule } from "@/hooks/useCourseSchedule";
 import type { CourseDetailProps } from "@/types/course";
 
 export default function CourseDetail({ course }: CourseDetailProps) {
   const [showEnrollmentDialog, setShowEnrollmentDialog] = useState(false);
+  const [expandedSyllabus, setExpandedSyllabus] = useState<Set<string>>(new Set());
+  const [allSyllabusExpanded, setAllSyllabusExpanded] = useState(false);
+  const { schedules, loading: schedulesLoading } = useCourseSchedule(course.id);
 
   // Function to get appropriate icon for benefit content
   const getBenefitIcon = (benefitName: string) => {
@@ -51,6 +57,28 @@ export default function CourseDetail({ course }: CourseDetailProps) {
     
     // Default icon
     return <CheckCircle className="w-4 h-4 text-success-600" />;
+  };
+
+  // Helper functions for syllabus expansion
+  const toggleSyllabusItem = (itemId: string) => {
+    const newExpanded = new Set(expandedSyllabus);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
+    } else {
+      newExpanded.add(itemId);
+    }
+    setExpandedSyllabus(newExpanded);
+  };
+
+  const toggleAllSyllabus = () => {
+    if (allSyllabusExpanded) {
+      setExpandedSyllabus(new Set());
+      setAllSyllabusExpanded(false);
+    } else {
+      const allIds = new Set(course.syllabusItems?.map(item => item.id) || []);
+      setExpandedSyllabus(allIds);
+      setAllSyllabusExpanded(true);
+    }
   };
 
   const handleEnroll = () => {
@@ -150,48 +178,143 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             )}
 
 
-            {/* Course Curriculum */}
-            <Card title="Course Syllabus">
-              <div className="space-y-4">
+            {/* Course Syllabus */}
+            <Card>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Course Syllabus</h3>
+                  {course.syllabusItems && course.syllabusItems.length > 0 && (
+                    <p className="text-gray-600 text-sm">
+                      {course.syllabusItems.length} sections • {course.syllabusItems.reduce((total, item) => total + (item.estimatedMinutes || 0), 0)} minutes total length
+                    </p>
+                  )}
+                </div>
+                {course.syllabusItems && course.syllabusItems.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={toggleAllSyllabus}
+                    className="text-primary-600 hover:text-primary-700"
+                  >
+                    {allSyllabusExpanded ? 'Collapse all sections' : 'Expand all sections'}
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 {course.syllabusItems && course.syllabusItems.length > 0 ? (
-                  course.syllabusItems.map((item, index) => (
-                    <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-accent-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-semibold">
-                            {item.sessionNumber}
+                  course.syllabusItems.map((item) => {
+                    const isExpanded = expandedSyllabus.has(item.id);
+                    const hasContent = item.objectives || item.contentSummary || item.preReadingUrl;
+                    
+                    return (
+                      <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                        {/* Section Header */}
+                        <div
+                          className={`flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                            isExpanded ? 'bg-gray-50' : 'bg-white'
+                          }`}
+                          onClick={() => toggleSyllabusItem(item.id)}
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="flex items-center gap-2">
+                              {hasContent && (
+                                <button className="text-gray-400 hover:text-gray-600">
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+                              <span className="text-sm font-medium text-gray-900">
+                                Session {item.sessionNumber}: {item.topicTitle}
+                              </span>
+                              {item.required && (
+                                <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
+                                  Required
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <span className="font-medium text-gray-900">{item.topicTitle}</span>
-                            {item.required && (
-                              <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded">Required</span>
-                            )}
+                          
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              <span>{item.estimatedMinutes ? `${item.estimatedMinutes}min` : 'N/A'}</span>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Clock className="w-4 h-4" />
-                          <span>{item.estimatedMinutes ? `${item.estimatedMinutes} min` : 'N/A'}</span>
-                        </div>
+
+                        {/* Expandable Content */}
+                        {isExpanded && hasContent && (
+                          <div className="px-4 pb-4 bg-gray-50 border-t border-gray-200">
+                            <div className="space-y-3 pt-3">
+                              {item.objectives && (
+                                <div className="flex gap-3">
+                                  <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+                                    <BookOpen className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-700 mb-1">Learning Objectives</p>
+                                    <p className="text-sm text-gray-600">{item.objectives}</p>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {item.contentSummary && (
+                                <div className="flex gap-3">
+                                  <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+                                    <FileText className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-700 mb-1">Content Summary</p>
+                                    <p className="text-sm text-gray-600">{item.contentSummary}</p>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {item.preReadingUrl && (
+                                <div className="flex gap-3">
+                                  <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+                                    <Download className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-700 mb-1">Pre-reading Material</p>
+                                    <a 
+                                      href={item.preReadingUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                                    >
+                                      Download Resource
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      {item.objectives && (
-                        <div className="mt-2 text-sm text-gray-600">
-                          <strong>Objectives:</strong> {item.objectives}
-                        </div>
-                      )}
-                      {item.contentSummary && (
-                        <div className="mt-1 text-sm text-gray-600">
-                          <strong>Summary:</strong> {item.contentSummary}
-                        </div>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No curriculum available for this course yet.</p>
+                    <p>No course content available yet.</p>
                   </div>
                 )}
               </div>
+            </Card>
+
+            {/* Course Schedule */}
+            <Card title="Class Schedule">
+              {schedulesLoading ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Loading schedule...</div>
+                </div>
+              ) : (
+                <CourseSchedule schedules={schedules} compact={false} />
+              )}
             </Card>
 
             {/* Requirements */}
@@ -305,6 +428,9 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                 </div>
               </div>
             </Card>
+
+            {/* Related Courses */}
+            <RelatedCourses currentCourse={course} />
           </div>
         </div>
 

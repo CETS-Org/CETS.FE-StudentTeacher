@@ -1,11 +1,15 @@
 import { Star, Clock, BookOpen, ArrowRight, Heart } from "lucide-react";
 import Button from "../../../components/ui/Button";
+import CourseSchedule from "@/components/ui/CourseSchedule";
+import { useCourseSchedule } from "@/hooks/useCourseSchedule";
 import type { CourseCardProps } from "@/types/course";
 
 export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false }: CourseCardProps) {
+  const { schedules, loading: schedulesLoading } = useCourseSchedule(course.id);
+  
   return (
     <div className="group bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all duration-300 p-4">
-      <div className="flex gap-4 h-[220px] p-4">
+      <div className="flex gap-4 h-[240px] p-4">
         {/* Course Image */}
         <div className="relative w-64 h-full flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
             <img
@@ -53,7 +57,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Title and Category */}
           <div className="mb-2">
-            <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors duration-300 line-clamp-2 mb-1">
+            <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors duration-300 line-clamp-1 mb-1">
               {course.courseName}
             </h3>
             <span className="inline-block bg-gradient-to-r from-accent2-200 to-accent2-200 text-primary-700 px-2 py-1 rounded text-xs font-semibold">
@@ -62,12 +66,12 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
           </div>
 
           {/* Description */}
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2 leading-relaxed">
+          <p className="text-gray-600 text-sm mb-2 leading-relaxed">
             {course.description}
           </p>
 
           {/* Teacher */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2">
             <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">
                 {course.teacherDetails?.[0]?.fullName?.charAt(0) || '?'}
@@ -84,7 +88,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
           </div>
 
           {/* Stats Row */}
-          <div className="flex items-center gap-4 text-sm text-gray-600 mb-auto">
+          <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-500 fill-current" />
               <span className="font-semibold text-gray-900">{course.rating}</span>
@@ -98,6 +102,15 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
               <BookOpen className="w-3 h-3 text-purple-500" />
               <span className="text-purple-700 font-medium">{course.courseLevel}</span>
             </div>
+          </div>
+
+          {/* Course Schedule */}
+          <div className="mb-auto">
+            {schedulesLoading ? (
+              <div className="text-sm text-gray-500">Loading schedule...</div>
+            ) : (
+              <CourseSchedule schedules={schedules} compact={true} />
+            )}
           </div>
         </div>
 

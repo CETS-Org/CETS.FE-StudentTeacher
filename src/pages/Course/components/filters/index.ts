@@ -5,6 +5,7 @@ export { default as PriceFilter } from './PriceFilter';
 export { default as SkillsFilter } from './SkillsFilter';
 export { default as RequirementsFilter } from './RequirementsFilter';
 export { default as BenefitsFilter } from './BenefitsFilter';
+export { default as ScheduleFilter } from './ScheduleFilter';
 export { default as FilterSeparator } from './FilterSeparator';
 export { default as CollapsibleFilter } from './CollapsibleFilter';
 

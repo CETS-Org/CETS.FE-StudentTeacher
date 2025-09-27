@@ -8,7 +8,8 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { api } from "@/lib/config"
 import courseBgImage from "@/assets/course-bg.png";
-import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, type FacetItem } from "./filters";
+import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
+import { useAllCourseSchedules } from "@/hooks/useCourseSchedule";
 
 import type { Course, CourseSearchResult } from "@/types/course";
 
@@ -44,6 +45,9 @@ const uiSortToServer: Record<string, string> = {
 
 export default function CourseCatalog() {
   const navigate = useNavigate();
+  
+  // Get all course schedules for filtering
+  const { schedules: allSchedules } = useAllCourseSchedules();
 
   // UI states
   const [q, setQ] = useState("");
@@ -61,6 +65,10 @@ export default function CourseCatalog() {
   const [skillIds, setSkillIds] = useState<string[]>([]);
   const [requirementIds, setRequirementIds] = useState<string[]>([]);
   const [benefitIds, setBenefitIds] = useState<string[]>([]);
+  
+  // Schedule filters
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
 
   // Data states
   const [items, setItems] = useState<Course[]>([]);
@@ -75,6 +83,36 @@ export default function CourseCatalog() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Filter items based on schedule selection
+  const filteredItems = useMemo(() => {
+    if (selectedDays.length === 0 && selectedTimeSlots.length === 0) {
+      return items; // No schedule filters applied
+    }
+
+    return items.filter((course) => {
+      // Find schedules for this course
+      const courseSchedules = allSchedules.filter(schedule => schedule.courseID === course.id);
+      
+      if (courseSchedules.length === 0) {
+        return false; // Course has no schedules, exclude it
+      }
+
+      // Check if course matches any of the selected day/time combinations
+      return courseSchedules.some(schedule => {
+        const dayMatch = selectedDays.length === 0 || selectedDays.includes(schedule.dayOfWeek);
+        const timeMatch = selectedTimeSlots.length === 0 || selectedTimeSlots.includes(schedule.timeSlotName || '');
+        
+        // Course matches if it satisfies both day and time filters (when both are selected)
+        // or satisfies the individual filter when only one type is selected
+        if (selectedDays.length > 0 && selectedTimeSlots.length > 0) {
+          return dayMatch && timeMatch; // Must match both
+        } else {
+          return dayMatch || timeMatch; // Match either
+        }
+      });
+    });
+  }, [items, allSchedules, selectedDays, selectedTimeSlots]);
 
   // Wishlist state
   const [wishlist, setWishlist] = useState<Set<string>>(new Set());
@@ -162,6 +200,8 @@ export default function CourseCatalog() {
     setSkillIds([]);
     setRequirementIds([]);
     setBenefitIds([]);
+    setSelectedDays([]);
+    setSelectedTimeSlots([]);
     setPriceMin(MIN_PRICE);
     setPriceMax(MAX_PRICE);
     setUiSort("popular");
@@ -366,7 +406,12 @@ export default function CourseCatalog() {
             <div className="flex items-center gap-4 text-sm">
              
               <p className="text-sm text-neutral-500">
-                Showing <span className="font-semibold text-primary-600">{items.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
+                Showing <span className="font-semibold text-primary-600">{filteredItems.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
+                {(selectedDays.length > 0 || selectedTimeSlots.length > 0) && (
+                  <span className="text-blue-600">
+                    (filtered by schedule)
+                  </span>
+                )}
               </p>
               {loading && (
                 <div className="flex items-center gap-2 text-primary-600">
@@ -412,7 +457,12 @@ export default function CourseCatalog() {
                  onPriceMaxChange={setPriceMax}
                  onPageChange={setPage}
                />
-
+              <ScheduleFilter 
+                 selectedDays={selectedDays}
+                 selectedTimeSlots={selectedTimeSlots}
+                 onToggleDay={(day) => toggleFacet(setSelectedDays, selectedDays, day)}
+                 onToggleTimeSlot={(timeSlot) => toggleFacet(setSelectedTimeSlots, selectedTimeSlots, timeSlot)}
+               />
                <RequirementsFilter 
                  requirementsFacet={requirementsFacet}
                  selectedRequirements={requirementIds}
@@ -424,6 +474,8 @@ export default function CourseCatalog() {
                  selectedBenefits={benefitIds}
                  onToggleBenefit={(benefitId) => toggleFacet(setBenefitIds, benefitIds, benefitId)}
                />
+
+             
             </div>
           </div>
 
@@ -450,11 +502,11 @@ export default function CourseCatalog() {
               </div>
             )}
 
-            {!loading && !err && items.length > 0 ? (
+            {!loading && !err && filteredItems.length > 0 ? (
               <>
                 {/* Course Display */}
                 <div className="space-y-4">
-                  {items.map((course, index) => (
+                  {filteredItems.map((course, index) => (
                     <div
                       key={course.id}
                       className="animate-in fade-in-0 slide-in-from-left-4"
