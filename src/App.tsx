@@ -32,6 +32,7 @@ import GoogleCallback from './pages/Common/GoogleCallback'
 import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession'
+import StudentSessionDetail from './pages/Student/SessionDetail'
 import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
 import AcademicResults from './pages/Student/AcademicResults/AcademicResults'
 import ChoosePaidItem from './pages/Student/ChoosePaidItem/ChoosePaidItem'
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/student/wishlist" element={<Wishlist />} /> 
             <Route path="/student/my-classes" element={<MyClasses />} /> 
             <Route path="/student/class/:classId" element={<ClassSession />} />
+            <Route path="/student/class/:classId/session/:sessionId" element={<StudentSessionDetail />} />
             <Route path="/student/schedule" element={<Schedule />} />
             <Route path="/student/attendance" element={<AttendanceReport />} />
             <Route path="/student/academic-results" element={<AcademicResults />} />
