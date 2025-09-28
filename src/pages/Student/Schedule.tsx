@@ -1,4 +1,3 @@
-import StudentLayout from "@/Shared/StudentLayout";
 import StudentWeekSchedule from "@/pages/Student/components/StudentWeekSchedule";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
@@ -135,7 +134,7 @@ export default function Schedule() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
         <Breadcrumbs items={breadcrumbItems} />
         
         <PageHeader
@@ -159,6 +158,6 @@ export default function Schedule() {
         <div className="bg-white rounded-xl border border-accent-200 shadow-lg">
           <StudentWeekSchedule sessions={studentSessions} startHour={8} slots={10} slotMinutes={90} />
         </div>
-    </StudentLayout>
+    </div>
   );
 }

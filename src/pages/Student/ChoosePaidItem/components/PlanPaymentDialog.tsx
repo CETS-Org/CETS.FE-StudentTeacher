@@ -37,7 +37,6 @@ export default function PlanPaymentDialog({
     seriesId: plan.seriesId,
     planName: plan.name,
     totalAmount: plan.totalPrice,
-    currency: plan.currency,
     paymentMethod: 'credit_card',
     studentInfo: {
       studentId: '',

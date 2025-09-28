@@ -125,12 +125,12 @@ export default function GenericSidebar({
                       <button
                         onClick={() => handleSubmenuToggle(item.id)}
                         className={cn(
-                          "w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sidebar-hover",
+                          "w-full flex items-center justify-between gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white transition-colors hover:bg-sidebar-hover",
                           isSubmenuActive && "bg-sidebar-active font-semibold shadow-md",
                           collapsed && "lg:justify-center lg:px-2"
                         )}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 w-full">
                           <item.icon className="h-4 w-4 shrink-0 text-white" />
                           <span className={cn("truncate", collapsed && "lg:hidden")}>{item.label}</span>
                         </div>
@@ -150,8 +150,10 @@ export default function GenericSidebar({
                                    )
                                  }
                                >
-                                 <subItem.icon className="h-4 w-4 shrink-0 text-white" />
-                                 <span>{subItem.label}</span>
+                                 <div className="flex items-center gap-3 w-full">
+                                   <subItem.icon className="h-4 w-4 shrink-0 text-white" />
+                                   <span className="truncate flex-1">{subItem.label}</span>
+                                 </div>
                                </NavLink>
                              </li>
                           ))}

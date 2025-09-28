@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
@@ -105,7 +104,7 @@ export default function ChoosePaidItem() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
       <Breadcrumbs items={breadcrumbItems} />
       
       <PageHeader
@@ -232,6 +231,6 @@ export default function ChoosePaidItem() {
           onPaymentSubmit={handlePlanPaymentSubmit}
         />
       )}
-    </StudentLayout>
+    </div>
   );
 }

@@ -13,12 +13,12 @@ type Props = {
 };
 
 export default function StudentLayout({ children, className = "", crumbs }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
-      <Navbar/>
+      <Navbar collapsed={collapsed} mobileOpen={mobileOpen} />
       <StudentSidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}

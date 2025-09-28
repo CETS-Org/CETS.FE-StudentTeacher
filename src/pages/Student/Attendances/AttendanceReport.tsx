@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
@@ -96,7 +95,7 @@ export default function AttendanceReport() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
       {/* Breadcrumbs */}
       <Breadcrumbs items={breadcrumbItems} />
       
@@ -188,6 +187,6 @@ export default function AttendanceReport() {
           classData={selectedClass}
         />
       )}
-    </StudentLayout>
+    </div>
   );
 }

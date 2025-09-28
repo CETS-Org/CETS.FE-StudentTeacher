@@ -1,8 +1,8 @@
 // src/pages/teacher/classes/[classId]/index.tsx
 
 import { useState } from "react";
-import TeacherLayout from "@/Shared/TeacherLayout";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
 import Card from "@/components/ui/Card";
 import PageHeader
@@ -65,28 +65,26 @@ export default function ClassDetailPage() {
   };
 
   return (
-  <TeacherLayout crumbs={crumbs}>
-      <div className="p-4 md:p-6">
-        {/* Page Header */}
-        <PageHeader
-          title="English for Beginer - Session 01"
-          description="Manage session content, assignments, materials, and student list."
-         
+    <div className="p-4 md:p-6">
+      <Breadcrumbs items={crumbs} />
+      {/* Page Header */}
+      <PageHeader
+        title="English for Beginer - Session 01"
+        description="Manage session content, assignments, materials, and student list."
+       
+      />
+
+      {/* Tabs + Card */}
+      <Card className="bg-white p-1 rounded-lg border border-gray-200 shadow-md ">
+        <Tabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={(tabId) => setActiveTab(tabId)}
         />
-
-        {/* Tabs + Card */}
-        <Card className="bg-white p-1 rounded-lg border border-gray-200 shadow-md ">
-          <Tabs
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabChange={(tabId) => setActiveTab(tabId)}
-          />
-          <div className="mt-4 p-4 min-h-[607px]">
-            {renderTabContent()}
-          </div>
-        </Card>
-      </div>
-    </TeacherLayout>
-
+        <div className="mt-4 p-4 min-h-[607px]">
+          {renderTabContent()}
+        </div>
+      </Card>
+    </div>
   );
 }

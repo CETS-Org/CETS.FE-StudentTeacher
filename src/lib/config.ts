@@ -59,7 +59,7 @@ export const api = {
     apiClient.get('/api/ACAD_Course', requestConfig),
   
   getCourseDetail: (courseId: string, config?: AxiosRequestConfig) => 
-    apiClient.get(`/api/ACAD_Course/${courseId}`, config),
+    apiClient.get(`/api/ACAD_Course/detail/${courseId}`, config),
   
   searchCourses: (searchParams?: any, config?: AxiosRequestConfig) => 
     apiClient.get('/api/ACAD_Course/search-basic', { ...config, params: searchParams }),
@@ -150,6 +150,42 @@ export const api = {
 
   deleteLearningMaterial: (materialId: string, config?: AxiosRequestConfig) =>
     apiClient.delete(`/api/ACAD_LearningMaterial/${materialId}`, config),
+
+  // Course Schedules
+  getCourseSchedules: (courseId: string, config?: AxiosRequestConfig) =>
+    apiClient.get(`/api/ACAD_CourseSchedule/course/${courseId}`, config),
+
+  getAllCourseSchedules: (config?: AxiosRequestConfig) =>
+    apiClient.get('/api/ACAD_CourseSchedule', config),
+
+  // Course Packages
+  getCoursePackages: (config?: AxiosRequestConfig) => 
+    apiClient.get('/api/ACAD_CoursePackage', config),
+  
+  getActiveCoursePackages: (config?: AxiosRequestConfig) => 
+    apiClient.get('/api/ACAD_CoursePackage/active', config),
+  
+  searchCoursePackages: (searchParams?: any, config?: AxiosRequestConfig) => {
+    // Custom parameter serialization for arrays to match ASP.NET Core model binding
+    const params = new URLSearchParams();
+    
+    Object.entries(searchParams || {}).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // For arrays, add each item as a separate parameter with the same key
+        value.forEach(item => params.append(key, item.toString()));
+      } else if (value !== undefined && value !== null) {
+        params.append(key, value.toString());
+      }
+    });
+    
+    return apiClient.get(`/api/ACAD_CoursePackage/search-basic?${params.toString()}`, config);
+  },
+  
+  getCoursePackageDetail: (packageId: string, config?: AxiosRequestConfig) => 
+    apiClient.get(`/api/ACAD_CoursePackage/${packageId}/detail`, config),
+  
+  getCoursePackageById: (packageId: string, config?: AxiosRequestConfig) => 
+    apiClient.get(`/api/ACAD_CoursePackage/${packageId}`, config),
 
   // File upload to presigned URL (direct to Cloudflare R2)
   uploadToPresignedUrl: (url: string, file: File, contentType: string) =>

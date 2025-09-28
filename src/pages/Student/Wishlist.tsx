@@ -1,5 +1,4 @@
 import { useState } from "react";
-import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Button from "@/components/ui/Button";
@@ -150,7 +149,7 @@ export default function Wishlist() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
         {/* Breadcrumbs */}
         <Breadcrumbs items={breadcrumbItems} />
         
@@ -215,6 +214,6 @@ export default function Wishlist() {
             </div>
           </Card>
         )}
-    </StudentLayout>
+    </div>
   );
 }

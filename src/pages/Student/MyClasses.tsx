@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
@@ -568,7 +567,7 @@ export default function MyClasses() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
         {/* Breadcrumbs */}
         <Breadcrumbs items={breadcrumbItems} />
         
@@ -674,6 +673,6 @@ export default function MyClasses() {
             </div>
           )}
         </Card>
-    </StudentLayout>
+    </div>
   );
 }
