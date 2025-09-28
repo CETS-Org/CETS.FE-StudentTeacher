@@ -306,7 +306,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
               <h3 className="text-xl font-bold text-primary-800 leading-tight">
-                {classItem.courseName} - <span className=" text-neutral-400">{classItem.className}</span>
+               {classItem.className}
               </h3>
               {/* Status Badge */}
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusColor(classItem.status)}`}>
@@ -397,7 +397,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
               {classItem.nextMeeting.coveredTopic && (
                 <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span className="font-medium">Topic: {classItem.nextMeeting.coveredTopic}</span>
+                  <span className="font-medium">Course: {classItem.nextMeeting.coveredTopic}</span>
                 </div>
               )}
 
