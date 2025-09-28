@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -13,6 +13,11 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   const [expandedSyllabus, setExpandedSyllabus] = useState<Set<string>>(new Set());
   const [allSyllabusExpanded, setAllSyllabusExpanded] = useState(false);
   const { schedules, loading: schedulesLoading } = useCourseSchedule(course.id);
+
+  // Scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [course.id]);
 
   // Function to get appropriate icon for benefit content
   const getBenefitIcon = (benefitName: string) => {

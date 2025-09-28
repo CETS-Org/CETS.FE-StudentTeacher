@@ -28,6 +28,7 @@ import TeacherSchedule from './pages/Teacher/SchedulePage/TeacherSchedule'
 import Dev_Home from './pages/Dev_Home'
 import CourseDetailPage from './pages/Course/CourseDetailPage'
 import CourseAll from './pages/Course/CourseAll'
+import CoursePackageDetail from './pages/CoursePackage/CoursePackageDetail'
 import GoogleCallback from './pages/Common/GoogleCallback'
 import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/courses" element={<CourseAll />} />
             <Route path="/course/:courseId" element={<CourseDetailPage />} />
+            <Route path="/course-package/:id" element={<CoursePackageDetail />} />
             <Route path="/requests" element={<Requests />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/dev" element={<Dev_Home />} />

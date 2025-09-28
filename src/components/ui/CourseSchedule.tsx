@@ -28,12 +28,28 @@ function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayPr
     return dayMap[day] || day;
   };
 
+  const getDayVeryShort = (day: string): string => {
+    const dayMap: Record<string, string> = {
+      'Monday': 'M',
+      'Tuesday': 'T', 
+      'Wednesday': 'W',
+      'Thursday': 'T',
+      'Friday': 'F',
+      'Saturday': 'S',
+      'Sunday': 'S'
+    };
+    return dayMap[day] || day.charAt(0);
+  };
+
   if (compact) {
     return (
-      <div className="flex items-center gap-1 text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
-        <Calendar className="w-3 h-3 text-blue-500" />
-        <span className="font-medium text-blue-700">{getDayShort(schedule.dayOfWeek)}</span>
-        <span className="text-blue-600">{timeSlot.displayTime}</span>
+      <div className="flex items-center gap-0.5 lg:gap-1 text-xs bg-blue-50 px-1 lg:px-2 py-1 rounded-md border border-blue-100 min-w-0 flex-shrink-0">
+        <Calendar className="w-3 h-3 text-blue-500 flex-shrink-0 hidden lg:block" />
+        <span className="font-medium text-blue-700 whitespace-nowrap">
+          <span className="md:hidden">{getDayVeryShort(schedule.dayOfWeek)}</span>
+          <span className="hidden md:inline">{getDayShort(schedule.dayOfWeek)}</span>
+        </span>
+        <span className="text-blue-600 text-xs truncate">{timeSlot.displayTime}</span>
       </div>
     );
   }
@@ -61,10 +77,19 @@ function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayPr
 
 export default function CourseSchedule({ schedules, className = "", compact = false }: CourseScheduleProps) {
   if (!schedules || schedules.length === 0) {
+    if (compact) {
+      return (
+        <div className={`flex items-center gap-2 text-xs text-gray-500 ${className}`}>
+          <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <span className="text-gray-600">No schedule available</span>
+        </div>
+      );
+    }
+    
     return (
-      <div className={`text-center py-8 text-gray-500 ${className}`}>
-        <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-        <p>No schedule available</p>
+      <div className={`text-center py-4 md:py-6 lg:py-8 text-gray-500 ${className}`}>
+        <Calendar className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 mx-auto mb-2 md:mb-3 text-gray-300" />
+        <p className="text-sm md:text-base">No schedule available</p>
       </div>
     );
   }
@@ -107,8 +132,8 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
 
   if (compact) {
     return (
-      <div className={`flex flex-wrap gap-2 ${className}`}>
-        {sortedSchedules.map((schedule) => {
+      <div className={`flex flex-wrap gap-1 lg:gap-2 overflow-hidden ${className}`}>
+        {sortedSchedules.slice(0, 3).map((schedule) => {
           const timeSlot = TIME_SLOTS[schedule.timeSlotName || ''];
           if (!timeSlot) return null;
           
@@ -121,6 +146,11 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
             />
           );
         })}
+        {sortedSchedules.length > 3 && (
+          <div className="flex items-center gap-1 text-xs bg-gray-50 px-1.5 lg:px-2 py-1 rounded-md border border-gray-200 min-w-0 flex-shrink-0">
+            <span className="text-gray-600 whitespace-nowrap">+{sortedSchedules.length - 3} more</span>
+          </div>
+        )}
       </div>
     );
   }

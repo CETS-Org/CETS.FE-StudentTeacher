@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, Star, Award, Users, BookOpen } from "lucide-react";
+import { Search, Filter, BookOpen } from "lucide-react";
 
 import CourseListItem from "@/pages/Course/components/CourseListItem";
 import Input from "@/components/ui/Input";
@@ -8,7 +8,6 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/lib/config"
-import courseBgImage from "@/assets/course-bg.png";
 import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
 import { useAllCourseSchedules } from "@/hooks/useCourseSchedule";
 
@@ -22,8 +21,6 @@ function useDebounce<T>(value: T, delay = 450) {
   }, [value, delay]);
   return debounced;
 }
-
-// FacetItem type is now imported from filters/index.ts
 
 const MIN_PRICE = 0;
 const MAX_PRICE = 20000000; // 20M VND
@@ -44,7 +41,7 @@ const uiSortToServer: Record<string, string> = {
   "price-high": "Price.desc",
 };
 
-export default function CourseCatalog() {
+export default function CoursesSection() {
   const navigate = useNavigate();
   
   // Get all course schedules for filtering
@@ -80,7 +77,7 @@ export default function CourseCatalog() {
   const [benefitsFacet, setBenefitsFacet] = useState<FacetItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12); // Show 12 courses per page
+  const [pageSize, setPageSize] = useState(4); 
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -104,8 +101,7 @@ export default function CourseCatalog() {
         const dayMatch = selectedDays.length === 0 || selectedDays.includes(schedule.dayOfWeek);
         const timeMatch = selectedTimeSlots.length === 0 || selectedTimeSlots.includes(schedule.timeSlotName || '');
         
-        // Course matches if it satisfies both day and time filters (when both are selected)
-        // or satisfies the individual filter when only one type is selected
+       
         if (selectedDays.length > 0 && selectedTimeSlots.length > 0) {
           return dayMatch && timeMatch; // Must match both
         } else {
@@ -230,74 +226,13 @@ export default function CourseCatalog() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Hero */}
-      <div className="relative overflow-hidden">
-          <div className="absolute inset-0">
-            <div 
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-xs"
-              style={{ backgroundImage: `url(${courseBgImage})` }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-600/40 via-primary-500/30 to-primary-500/40"></div>
-            <div className="absolute top-0 left-0 w-72 h-72 bg-primary-400/10 rounded-full blur-3xl"></div>
-            <div className="absolute top-20 right-0 w-96 h-96 bg-accent-400/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-primary-300/10 rounded-full blur-3xl"></div>
-          </div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-36">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
-              <span className="text-white drop-shadow-2xl whitespace-nowrap">
-                Learn Without Limits
-              </span>
-            </h1>
-            
-            <p className="text-xl md:text-2xl mb-12 text-white/90 max-w-5xl mx-auto leading-normal drop-shadow-lg">
-            Interactive lessons, real-world practice, and personalized feedback from expert instructors.
-            </p>
-
-            <div className="max-w-2xl mx-auto relative mb-8">
-              <div className="relative">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 w-6 h-6 " />
-                <Input
-                  type="text"
-                  placeholder="What do you want to learn today?"
-                  value={q}
-                  onChange={(e) => {
-                    setQ(e.target.value);
-                    setPage(1);
-                  }}
-                  className="pl-16 pr-6 py-5 text-lg rounded-2xl border-0 shadow-2xl bg-white/95 focus:ring-1 focus:!ring-accent-300 focus:!bg-white transition-all"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Button className="btn-secondary px-6 py-2 rounded-xl font-semibold">
-                    Search
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-          
-          </div>
-        </div>
-        
-        {/* Floating elements */}
-        <div className="absolute top-32 left-10 w-20 h-20 bg-gradient-to-br from-accent-500 to-primary-600 rounded-2xl rotate-12 animate-bounce opacity-20"></div>
-        <div className="absolute top-20 right-20 w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-600 rounded-full animate-pulse opacity-30"></div>
-        <div className="absolute bottom-32 left-1/4 w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl -rotate-12 animate-bounce delay-1000 opacity-25"></div>
-        <div className="absolute top-1/2 right-10 w-8 h-8 bg-gradient-to-br from-accent-500 to-primary-600 rounded-full animate-ping opacity-20"></div>
-      </div>
-
-     
-
-      {/* Filters & Grid */}
-      <div className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div id="courses" className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Section Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center px-4 py-2 bg-accent2-300 rounded-full text-sm font-medium mb-6 border border-primary-200">
             <BookOpen className="w-4 h-4 text-primary-600 mr-2" />
-            <span className="text-primary-700">Course Catalog</span>
+            <span className="text-primary-700">Individual Courses</span>
           </div>
           
           <h2 className="text-5xl font-bold text-neutral-900 mb-6 leading-tight">
@@ -327,9 +262,25 @@ export default function CourseCatalog() {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="max-w-2xl mx-auto relative mb-12">
+          <div className="relative">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 w-6 h-6" />
+            <Input
+              type="text"
+              placeholder="What do you want to learn today?"
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setPage(1);
+              }}
+              className="pl-16 pr-6 py-5 text-lg rounded-2xl border-0 shadow-xl bg-white focus:ring-1 focus:!ring-accent-300 transition-all"
+            />
+          </div>
+        </div>
+
         {/* Enhanced Controls */}
         <div className="bg-white rounded-3xl p-8 shadow-md border border-neutral-100 mb-12 backdrop-blur-sm">
-           
           {/* Controls */}
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
             <div className="flex flex-wrap items-center gap-3">
@@ -356,9 +307,7 @@ export default function CourseCatalog() {
                   variant="secondary"
                   onClick={() => setShowDesktopFilters((v) => !v)}
                   iconLeft={<Filter className="w-4 h-4" />}
-                  className={`border-0 shadow-md transition-all ${
-                    showDesktopFilters 
-                  }`}
+                  className="border-0 shadow-md transition-all"
                 >
                   {showDesktopFilters ? 'Hide Filters' : 'Show Filters'}
                   {activeFiltersCount > 0 && (
@@ -405,7 +354,6 @@ export default function CourseCatalog() {
 
             {/* Results Info */}
             <div className="flex items-center gap-4 text-sm">
-             
               <p className="text-sm text-neutral-500">
                 Showing <span className="font-semibold text-primary-600">{filteredItems.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
                 {(selectedDays.length > 0 || selectedTimeSlots.length > 0) && (
@@ -475,8 +423,6 @@ export default function CourseCatalog() {
                  selectedBenefits={benefitIds}
                  onToggleBenefit={(benefitId) => toggleFacet(setBenefitIds, benefitIds, benefitId)}
                />
-
-             
             </div>
           </div>
 
@@ -546,7 +492,6 @@ export default function CourseCatalog() {
               </div>
             ) : null}
           </div>
-        </div>
         </div>
       </div>
     </div>

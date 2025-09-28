@@ -161,7 +161,12 @@ export default function RelatedCourses({ currentCourse }: RelatedCoursesProps) {
         <div className="mt-6 text-center">
           <Button
             variant="primary"
-            onClick={() => navigate(`/courses?category=${encodeURIComponent(currentCourse.categoryName)}`)}
+            onClick={() => {
+              navigate(`/courses?category=${encodeURIComponent(currentCourse.categoryName)}`, { replace: false });
+              setTimeout(() => {
+                window.location.hash = '#courses';
+              }, 50);
+            }}
           >
             View All {currentCourse.categoryName} Courses
           </Button>
