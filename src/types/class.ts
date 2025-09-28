@@ -68,3 +68,17 @@ export type ClassFormat = "Online" | "In-person" | "Hybrid";
 
 // Class level types
 export type ClassLevel = "Beginner" | "Intermediate" | "Advanced";
+
+// Student Learning Class API Response Interface
+export interface StudentLearningClassResponse {
+  id: string;
+  statusName: string;
+  courseName: string;
+  className: string;
+  teacherName: string;
+  startDate: string;
+  endDate: string;
+  timeSlot: string;
+  roomCode: string;
+  isActive: boolean;
+}

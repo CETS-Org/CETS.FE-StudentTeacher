@@ -196,5 +196,9 @@ export const api = {
         'Content-Type': contentType,
       },
     }),
+
+  // Student Learning Classes
+  getStudentLearningClasses: (studentId: string, config?: AxiosRequestConfig) => 
+    apiClient.get(`/api/ACAD_Classes/learningClass?studentId=${studentId}`, config),
 };
 
