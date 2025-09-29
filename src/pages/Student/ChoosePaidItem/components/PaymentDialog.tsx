@@ -7,22 +7,23 @@ import {
   Building2,
   DollarSign,
   Shield,
-  Lock
+  Lock,
+  ExternalLink
 } from "lucide-react";
 
 import type { PaymentDialogProps, PaymentMethod } from "@/types/payment";
+import { paymentService, redirectToPayOS, handlePaymentFailure } from "@/services/paymentService";
 
 export default function PaymentDialog({ 
   open, 
   onOpenChange, 
-  item, 
-  onPaymentSubmit 
-}: PaymentDialogProps) {
+  item
+}: Omit<PaymentDialogProps, 'onPaymentSubmit'>) {
   const [paymentData, setPaymentData] = useState({
     paymentMethod: "credit_card" as PaymentMethod,
     installmentPlan: null as any,
     studentInfo: {
-      studentId: "STU001", // In real app, get from auth context
+      studentId: "8A093E30-2872-4659-BF2C-AA578E7B3A5A", // In real app, get from auth context
       fullName: "John Doe", // In real app, get from user profile
       email: "john.doe@example.com", // In real app, get from user profile
       phone: "+84 123 456 789"
@@ -81,19 +82,47 @@ export default function PaymentDialog({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const finalPaymentData = {
-        itemId: item.id,
-        itemName: item.name,
-        amount: paymentData.installmentPlan ? paymentData.installmentPlan.monthlyAmount : item.price,
-        paymentMethod: paymentData.paymentMethod,
-        installmentPlan: paymentData.installmentPlan,
-        studentInfo: paymentData.studentInfo,
-        notes: paymentData.notes
+      // Prepare payment data for API
+      const monthlyPaymentData = {
+        reservationItemId: item.id,
+        studentId: paymentData.studentInfo.studentId,
+        fullName: paymentData.studentInfo.fullName,
+        email: paymentData.studentInfo.email,
+        phoneNumber: paymentData.studentInfo.phone || "",
+        note: paymentData.notes || ""
       };
 
-      await onPaymentSubmit(finalPaymentData);
+      // Call the payment API
+      const paymentResponse = await paymentService.createMonthlyPayment(monthlyPaymentData);
+      
+      if (paymentResponse.success && paymentResponse.paymentUrl) {
+        // Store payment info for later reference
+        localStorage.setItem('currentPayment', JSON.stringify({
+          orderCode: paymentResponse.orderCode,
+          invoiceId: paymentResponse.invoiceId,
+          amount: paymentResponse.amount,
+          itemId: item.id,
+          itemName: item.name,
+          timestamp: new Date().toISOString()
+        }));
+
+        // Redirect to PAYOS payment page
+        redirectToPayOS(paymentResponse.paymentUrl);
+        
+        // Close the dialog
+        onOpenChange(false);
+        
+        // Show success message (optional)
+        console.log('Payment initiated successfully:', paymentResponse);
+      } else {
+        throw new Error('Failed to create payment session');
+      }
     } catch (error) {
       console.error("Payment submission error:", error);
+      handlePaymentFailure(error instanceof Error ? error.message : 'Unknown error occurred');
+      
+      // You can show an error message to the user here
+      alert('Payment failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -384,7 +413,7 @@ export default function PaymentDialog({
               loading={isSubmitting}
               disabled={isSubmitting || !paymentData.studentInfo.fullName || !paymentData.studentInfo.email}
               className="flex-1"
-              iconLeft={<Lock className="w-4 h-4" />}
+              iconLeft={isSubmitting ? <Lock className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
             >
               {isSubmitting ? "Processing Payment..." : `Pay ${formatPrice(getPaymentAmount())}`}
             </Button>

@@ -35,6 +35,9 @@ import ClassSession from './pages/Student/ClassSession'
 import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
 import AcademicResults from './pages/Student/AcademicResults/AcademicResults'
 import ChoosePaidItem from './pages/Student/ChoosePaidItem/ChoosePaidItem'
+import PaymentSuccess from './pages/Student/ChoosePaidItem/PaymentSuccess'
+import PaymentCancel from './pages/Student/ChoosePaidItem/PaymentCancel'
+import PaymentCallback from './pages/Common/PaymentCallback'
 
 
 export default function App() {
@@ -68,6 +71,9 @@ export default function App() {
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/materials" element={<Materials />} />
             <Route path="/student/choose-paid-item" element={<ChoosePaidItem />} /> 
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
             <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
             <Route path="/student/request-issue/academic" element={<AcademicReport />} />
             <Route path="/student/request-issue/detail/:id" element={<TechnicalIssueReportDetail />} />

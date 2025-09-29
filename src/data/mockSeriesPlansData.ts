@@ -6,7 +6,7 @@ import type { PaymentPlan, PaidItem } from "@/types/payment";
 // Mock courses for different plans (SeriesID groups)
 const webDevelopmentCourses: PaidItem[] = [
   {
-    id: "course-web-1",
+    id: "D147E303-3AD4-437F-A43A-DBFE9B8C52AD",
     name: "HTML & CSS Fundamentals",
     description: "Learn the building blocks of web development with HTML and CSS",
     type: "course",
@@ -36,7 +36,7 @@ const webDevelopmentCourses: PaidItem[] = [
     createdAt: "2024-01-15T00:00:00Z"
   },
   {
-    id: "course-web-2",
+    id: "D147E303-3AD4-437F-A43A-DBFE9B8C52AD",
     name: "JavaScript Programming",
     description: "Master JavaScript from basics to advanced concepts",
     type: "course",
@@ -66,7 +66,7 @@ const webDevelopmentCourses: PaidItem[] = [
     createdAt: "2024-01-15T00:00:00Z"
   },
   {
-    id: "course-web-3",
+    id: "D147E303-3AD4-437F-A43A-DBFE9B8C52AD",
     name: "React Development",
     description: "Build modern web applications with React and Redux",
     type: "course",
@@ -99,7 +99,7 @@ const webDevelopmentCourses: PaidItem[] = [
 
 const dataAnalyticsCourses: PaidItem[] = [
   {
-    id: "course-data-1",
+    id: "D147E303-3AD4-437F-A43A-DBFE9B8C52AD",
     name: "Python for Data Analysis",
     description: "Learn Python programming for data science and analytics",
     type: "course",
@@ -129,7 +129,7 @@ const dataAnalyticsCourses: PaidItem[] = [
     createdAt: "2024-01-20T00:00:00Z"
   },
   {
-    id: "course-data-2",
+    id: "D147E303-3AD4-437F-A43A-DBFE9B8C52AD",
     name: "SQL Database Management",
     description: "Master SQL for data querying and database management",
     type: "course",
@@ -159,7 +159,7 @@ const dataAnalyticsCourses: PaidItem[] = [
     createdAt: "2024-01-20T00:00:00Z"
   },
   {
-    id: "course-data-3",
+    id: "D147E303-3AD4-437F-A43A-DBFE9B8C52AD",
     name: "Machine Learning Fundamentals",
     description: "Introduction to machine learning algorithms and applications",
     type: "course",
