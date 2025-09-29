@@ -291,7 +291,7 @@ export default function GenericNavbar({
                 message="Are you sure you want to logout? You will be redirected to the login page."
                 confirmText="Logout"
                 cancelText="Cancel"
-                type="warning"
+                type="danger"
             />     
         </>
     );

@@ -105,7 +105,7 @@ export default function ConfirmationDialog({
             <Button
               variant="secondary"
               onClick={onClose}
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-gray-100 text-base font-medium text-gray-800 hover:bg-accent-200 hover:text-white sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
             >
               {cancelText}
             </Button>

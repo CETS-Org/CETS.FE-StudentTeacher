@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { Eye, EyeOff, UserCheck, CheckCircle, AlertCircle, BookOpen, GraduationCap, Users, Shield } from "lucide-react";
+import { Eye, EyeOff, UserCheck, CheckCircle, AlertCircle, BookOpen, GraduationCap, Users } from "lucide-react";
 import { api } from "@/lib/config";
 import "../../styles/login-animations.css";
 import GenericNavbar from "../../Shared/GenericNavbar";
@@ -69,6 +69,11 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("student");
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get return URL and message from navigation state
+  const returnUrl = location.state?.returnUrl;
+  const loginMessage = location.state?.message;
 
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -183,8 +188,10 @@ export default function Login() {
       localStorage.setItem("authToken", response.token);
       localStorage.setItem("userInfo", JSON.stringify(response.account));
       
-      // Navigate based on role
-      if (data.role === "student") {
+      // Navigate to return URL or default based on role
+      if (returnUrl) {
+        navigate(returnUrl);
+      } else if (data.role === "student") {
         navigate("/student/my-classes");
       } else if (data.role === "teacher") {
         navigate("/teacher/courses");
@@ -498,6 +505,13 @@ export default function Login() {
           </div>
 
             {/* Error Message */}
+            {loginMessage && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span>{loginMessage}</span>
+              </div>
+            )}
+            
             {errorMessage && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center space-x-2 animate-shake">
                 <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
