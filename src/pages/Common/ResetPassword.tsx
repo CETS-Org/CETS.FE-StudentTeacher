@@ -144,21 +144,21 @@ export default function ResetPassword() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-4 pt-24">
-        <div className="w-full max-w-md">
-          <Card className="shadow-2xl border-0 backdrop-blur-sm bg-white/95 animate-fade-in-up">
+      <div className="flex items-center justify-center min-h-screen pt-20 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="relative w-full max-w-md space-y-4 animate-fade-in-up">
+          <Card className="login-card shadow-2xl border-0 backdrop-blur-sm bg-white/95 transform transition-all duration-300 mt-2 hover:shadow-3xl sm:p-8 p-6">
             {/* Header */}
-            <div className="text-center mb-8">
-              <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center mb-4 shadow-lg animate-pulse-gentle">
+            <div className="text-center mb-6 animate-slide-in-left">
+              <div className="login-header-icon mx-auto w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg transform transition-transform duration-300 hover:scale-110 animate-float">
                 <KeyRound className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-neutral-900 mb-2">Reset Password</h1>
+              <h1 className="login-title text-3xl sm:text-3xl font-bold text-neutral-900 mb-2">Reset Password</h1>
               <p className="text-neutral-600 mb-4">
                 Create a new strong password for your account
               </p>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-success-200 text-primary-700 rounded-full text-sm font-medium border border-primary-200">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-200 text-primary-700 rounded-full text-sm font-medium border border-primary-200">
                 <Shield className="w-4 h-4" />
-                Password Recovery
+                Password Reset
               </div>
             </div>
 
@@ -179,29 +179,31 @@ export default function ResetPassword() {
             )}
 
             {/* Form */}
-            <Form methods={methods} onSubmit={onSubmit} className="space-y-6">
+            <Form methods={methods} onSubmit={onSubmit} className="login-form-spacing space-y-4 animate-slide-in-right animation-delay-200">
               {/* New Password Field */}
-              <div className="relative">
-                <FormInput
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  label="New Password"
-                  placeholder="Enter your new password"
-                  autoComplete="new-password"
-                  className="focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <FormInput
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    label="New Password"
+                    placeholder="Enter your new password"
+                    autoComplete="new-password"
+                    className="focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Password Strength Indicator */}
@@ -244,27 +246,29 @@ export default function ResetPassword() {
               )}
 
               {/* Confirm Password Field */}
-              <div className="relative">
-                <FormInput
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  label="Confirm Password"
-                  placeholder="Confirm your new password"
-                  autoComplete="new-password"
-                  className="focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
-                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <FormInput
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    label="Confirm Password"
+                    placeholder="Confirm your new password"
+                    autoComplete="new-password"
+                    className="focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Submit Button */}
@@ -274,7 +278,7 @@ export default function ResetPassword() {
                 size="lg"
                 loading={isLoading}
                 disabled={isLoading || !!successMessage}
-                className="w-full mt-8 transition-all duration-300 hover:shadow-lg"
+                className="w-full transform transition-all duration-300 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50"
                 iconLeft={<KeyRound className="w-4 h-4" />}
               >
                 {isLoading ? "Resetting Password..." : successMessage ? "Password Reset!" : "Reset Password"}
@@ -282,7 +286,7 @@ export default function ResetPassword() {
             </Form>
 
             {/* Footer Links */}
-            <div className="mt-8 pt-6 border-t border-neutral-200 text-center space-y-3">
+            <div className="mt-8 pt-6 border-t border-neutral-100 text-center space-y-3">
               <Link
                 to="/login"
                 className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium hover:underline transition-colors"
@@ -303,7 +307,7 @@ export default function ResetPassword() {
           </Card>
 
           {/* Additional Security Info */}
-          <div className="mt-8 text-center space-y-4">
+          <div className="mt-6 text-center space-y-4">
             <div className="flex items-center justify-center gap-6 text-xs text-neutral-500">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-green-500" />

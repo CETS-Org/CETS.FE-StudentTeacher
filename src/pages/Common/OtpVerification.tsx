@@ -265,14 +265,16 @@ export default function OtpVerification() {
             <p className="text-neutral-600 text-sm sm:text-base transition-all duration-500 mb-2">
               We've sent a 6-digit verification code to
             </p>
-            <p className="text-neutral-900 font-semibold text-sm bg-neutral-100 px-3 py-1 rounded-full inline-block">
+            <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 bg-success-200 text-primary-700 rounded-full text-sm font-medium border border-primary-200">
+              <Shield className="w-4 h-4" />
+              Email Verification
+            </div>
+            <br></br>
+            <p className="text-neutral-900 font-semibold text-sm bg-neutral-100 px-3 py-1 rounded-full inline-block ">
               {maskedEmail}
             </p>
             
-            {/* Verification badge */}
-            <div className="mt-3 px-3 py-1 rounded-full text-xs font-medium transition-all duration-500 bg-purple-100 text-purple-700">
-              Email Verification
-            </div>
+          
           </div>
 
           {/* Verification attempts warning */}
@@ -375,7 +377,7 @@ export default function OtpVerification() {
               size="lg"
               loading={isLoading}
               disabled={otp.join("").length !== 6 || successMessage !== ""}
-              className="w-full bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 transform transition-all duration-300 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50"
+              className="w-full bg-success-600 hover:bg-success-700 focus:ring-success-500 transform transition-all duration-300 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50"
               iconLeft={isLoading ? undefined : <Check className="w-5 h-5" />}
             >
               {isLoading ? (

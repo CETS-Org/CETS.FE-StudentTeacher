@@ -219,10 +219,10 @@ export default function ForgotPassword() {
               Enter your email address and we'll send you a verification code
             </p>
             
-            {/* Reset badge */}
-            <div className="mt-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-500 bg-orange-100 text-orange-700">
-              Password Recovery
-            </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium border border-primary-200 mt-4">
+                <Shield className="w-4 h-4" />
+                Password Recovery
+              </div>
           </div>
 
           {/* Reset attempts warning - TEMPORARILY DISABLED */}

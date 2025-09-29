@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { Eye, EyeOff, UserCheck, CheckCircle, AlertCircle, BookOpen, GraduationCap, Users } from "lucide-react";
+import { Eye, EyeOff, UserCheck, CheckCircle, AlertCircle, BookOpen, GraduationCap, Users, Shield } from "lucide-react";
 import { api } from "@/lib/config";
 import "../../styles/login-animations.css";
 import GenericNavbar from "../../Shared/GenericNavbar";
@@ -67,9 +67,6 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState(0);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [blockTimeRemaining, setBlockTimeRemaining] = useState(0);
   const [selectedRole, setSelectedRole] = useState<string>("student");
   const navigate = useNavigate();
 
@@ -108,37 +105,6 @@ export default function Login() {
       }
     }
 
-    // Check for login blocking
-    const blockEndTime = localStorage.getItem('loginBlockEnd');
-    if (blockEndTime) {
-      const remaining = parseInt(blockEndTime) - Date.now();
-      if (remaining > 0) {
-        setIsBlocked(true);
-        setBlockTimeRemaining(Math.ceil(remaining / 1000));
-        
-        const interval = setInterval(() => {
-          const newRemaining = parseInt(blockEndTime) - Date.now();
-          if (newRemaining <= 0) {
-            setIsBlocked(false);
-            setBlockTimeRemaining(0);
-            localStorage.removeItem('loginBlockEnd');
-            localStorage.removeItem('loginAttempts');
-            clearInterval(interval);
-          } else {
-            setBlockTimeRemaining(Math.ceil(newRemaining / 1000));
-          }
-        }, 1000);
-
-        return () => clearInterval(interval);
-      } else {
-        localStorage.removeItem('loginBlockEnd');
-        localStorage.removeItem('loginAttempts');
-      }
-    }
-
-    // Load login attempts
-    const attempts = parseInt(localStorage.getItem('loginAttempts') || '0');
-    setLoginAttempts(attempts);
   }, [methods]);
 
   const callLoginAPI = async (data: LoginFormData): Promise<LoginResponse> => {
@@ -182,10 +148,6 @@ export default function Login() {
   };
 
   const onSubmit = async (data: LoginFormData) => {
-    if (isBlocked) {
-      setErrorMessage(`Too many failed attempts. Please wait ${blockTimeRemaining} seconds.`);
-      return;
-    }
 
     setIsLoading(true);
     setErrorMessage("");
@@ -195,10 +157,6 @@ export default function Login() {
       
       const response = await callLoginAPI(data);
       
-      // Reset login attempts on successful login
-      setLoginAttempts(0);
-      localStorage.removeItem('loginAttempts');
-      localStorage.removeItem('loginBlockEnd');
       
       // Handle remember me
       if (rememberMe) {
@@ -235,22 +193,7 @@ export default function Login() {
     } catch (error) {
       console.error("Login error:", error);
       
-      // Handle failed login attempts
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-      localStorage.setItem('loginAttempts', newAttempts.toString());
-      
-      // Block after 5 failed attempts for 5 minutes
-      if (newAttempts >= 5) {
-        const blockEndTime = Date.now() + (5 * 60 * 1000); // 5 minutes
-        localStorage.setItem('loginBlockEnd', blockEndTime.toString());
-        setIsBlocked(true);
-        setBlockTimeRemaining(300); // 5 minutes in seconds
-        setErrorMessage("Too many failed attempts. Account temporarily locked for 5 minutes.");
-      } else {
-        const remainingAttempts = 5 - newAttempts;
-        setErrorMessage(`${error instanceof Error ? error.message : "Login failed!"} (${remainingAttempts} attempts remaining)`);
-      }
+      setErrorMessage(error instanceof Error ? error.message : "Login failed!");
     } finally {
       setIsLoading(false);
     }
@@ -411,38 +354,22 @@ export default function Login() {
             </p>
             
             {/* Role-based subtitle */}
-            <div className={`mt-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-500 ${
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border transition-all duration-500 mt-2 ${
               selectedRole === 'student' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'bg-green-100 text-green-700'
+                ? 'bg-blue-100 text-blue-700 border-blue-200' 
+                : 'bg-green-100 text-green-700 border-green-200'
             }`}>
+              {selectedRole === 'student' ? (
+                <GraduationCap className="w-4 h-4" />
+              ) : (
+                <Users className="w-4 h-4" />
+              )}
               {selectedRole === 'student' ? 'Student Portal' : 'Teacher Dashboard'}
             </div>
            
           </div>
 
-          {/* Login attempts warning */}
-          {loginAttempts > 0 && loginAttempts < 5 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-yellow-600" />
-              <span className="text-sm text-yellow-700">
-                {5 - loginAttempts} attempts remaining before temporary lockout
-              </span>
-            </div>
-          )}
 
-          {/* Blocked account warning */}
-          {isBlocked && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <div>
-                <p className="text-sm font-medium text-red-800">Account Temporarily Locked</p>
-                <p className="text-xs text-red-600 mt-1">
-                  Please wait {Math.floor(blockTimeRemaining / 60)}:{(blockTimeRemaining % 60).toString().padStart(2, '0')} minutes
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Role Tabs */}
           <div className="space-y-2 animate-slide-in-right animation-delay-200 mb-4">
@@ -584,7 +511,7 @@ export default function Login() {
             variant="primary"
             size="lg"
             loading={isLoading}
-              disabled={isBlocked}
+              disabled={isLoading}
               className={`w-full transform transition-all duration-300 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50 ${
                 selectedRole === 'student' 
                   ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' 
@@ -597,8 +524,6 @@ export default function Login() {
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Signing in...</span>
                 </div>
-              ) : isBlocked ? (
-                `Locked (${Math.floor(blockTimeRemaining / 60)}:${(blockTimeRemaining % 60).toString().padStart(2, '0')})`
               ) : (
                 `Sign In as ${selectedRole === 'student' ? 'Student' : 'Teacher'}`
               )}
@@ -620,7 +545,7 @@ export default function Login() {
           type="button"        
           size="lg"
           loading={isGoogleLoading}
-            disabled={isBlocked}
+            disabled={isGoogleLoading}
           onClick={handleGoogleLogin}
             className="w-full bg-white border-2 border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300 transform transition-all duration-200 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50"
           iconLeft={
