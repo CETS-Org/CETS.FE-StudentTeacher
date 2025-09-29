@@ -7,6 +7,7 @@ export interface UserInfo {
   roleNames: string[];
   isVerified?: boolean;
   picture?: string;
+  avatarUrl?: string;
   googleId?: string;
   createdAt?: string;
   updatedAt?: string;

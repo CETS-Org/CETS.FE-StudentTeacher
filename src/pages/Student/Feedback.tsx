@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import StudentLayout from "@/Shared/StudentLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -103,57 +102,55 @@ export default function Feedback() {
   };
 
   return (
-    <StudentLayout>
-      <div className="mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <PageHeader
-            title="Feedback"
-            description="Share your feedback to help us improve your learning experience"
-          />
-        </div>
-
-        {/* Course List */}
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-md">
-                <MessageSquare className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-primary-800">Course Feedback</h3>
-                <p className="text-sm text-accent-600">Share your learning experience</p>
-              </div>
-            </div>
-            <div className="bg-info-50 border border-info-200 rounded-lg p-3 mb-6">
-              <p className="text-sm text-info-700 flex items-center gap-2">
-                <div className="w-4 h-4 bg-info-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white">!</span>
-                </div>
-                Select a course below to provide detailed feedback and help us improve
-              </p>
-            </div>
-            
-            <div className="space-y-4">
-              {mockCourses.map((course) => (
-                <CourseListItem
-                  key={course.id}
-                  course={course}
-                  onClick={() => handleCourseSelect(course)}
-                />
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Feedback Dialog */}
-        <FeedbackDialog
-          open={openFeedbackDialog}
-          onOpenChange={setOpenFeedbackDialog}
-          course={selectedCourse}
-          onComplete={handleFeedbackComplete}
+    <div className="mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      {/* Page Header */}
+      <div className="mb-8">
+        <PageHeader
+          title="Feedback"
+          description="Share your feedback to help us improve your learning experience"
         />
       </div>
-    </StudentLayout>
+
+      {/* Course List */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-md">
+              <MessageSquare className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-primary-800">Course Feedback</h3>
+              <p className="text-sm text-accent-600">Share your learning experience</p>
+            </div>
+          </div>
+          <div className="bg-info-50 border border-info-200 rounded-lg p-3 mb-6">
+            <p className="text-sm text-info-700 flex items-center gap-2">
+              <div className="w-4 h-4 bg-info-500 rounded-full flex items-center justify-center">
+                <span className="text-xs text-white">!</span>
+              </div>
+              Select a course below to provide detailed feedback and help us improve
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            {mockCourses.map((course) => (
+              <CourseListItem
+                key={course.id}
+                course={course}
+                onClick={() => handleCourseSelect(course)}
+              />
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Feedback Dialog */}
+      <FeedbackDialog
+        open={openFeedbackDialog}
+        onOpenChange={setOpenFeedbackDialog}
+        course={selectedCourse}
+        onComplete={handleFeedbackComplete}
+      />
+    </div>
   );
 }

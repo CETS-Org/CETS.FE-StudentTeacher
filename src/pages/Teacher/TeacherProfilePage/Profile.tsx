@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TeacherLayout from "@/Shared/TeacherLayout";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
@@ -83,7 +83,8 @@ export default function TeacherProfilePage() {
   );
 
   return (
-    <TeacherLayout crumbs={crumbs}>
+    <div className="p-6 max-w-full space-y-8">
+      <Breadcrumbs items={crumbs} />
     
       <div className="p-4 md:p-6 mx-6 md:mx-48">
         {/* Page Title */}
@@ -321,6 +322,6 @@ export default function TeacherProfilePage() {
         </Card>
       </div>
      
-    </TeacherLayout>
+    </div>
   );
 }

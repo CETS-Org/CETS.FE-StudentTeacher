@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom"; // 1. IMPORT useParams
-import TeacherLayout from "@/Shared/TeacherLayout";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Button from "@/components/ui/Button";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import ReportItem from "@/pages/Teacher/ReportPage/Components/ReportItem";
@@ -73,9 +73,8 @@ export default function ReportIssuesPage() {
   const handlePageChange = (page: number) => setCurrentPage(page);
 
   return (
-    <TeacherLayout crumbs={crumbs}>
-      
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <Breadcrumbs items={crumbs} />
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Issues List</h1>
           <Button onClick={() => setSubmitOpen(true)}>Report Issue</Button>
@@ -128,7 +127,6 @@ export default function ReportIssuesPage() {
         
         <SubmitReportPopup open={isSubmitOpen} onOpenChange={setSubmitOpen} onSubmit={handleReportSubmit} />
         <ViewReportPopup open={isViewOpen} onOpenChange={setViewOpen} report={selectedReport} />
-      </div>
-    </TeacherLayout>
-  );
+    </div>
+  );
 }

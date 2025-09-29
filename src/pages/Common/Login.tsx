@@ -3,17 +3,29 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
-import { Form, FormInput, FormSelect } from "@/components/ui/Form";
+import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { Eye, EyeOff, LogIn, UserCheck } from "lucide-react";
+import { Eye, EyeOff, UserCheck, CheckCircle, AlertCircle, BookOpen, GraduationCap, Users, Shield } from "lucide-react";
 import { api } from "@/lib/config";
+import "../../styles/login-animations.css";
+import GenericNavbar from "../../Shared/GenericNavbar";
+import { guestNavbarConfig } from "../../Shared/navbarConfigs";
 
-// Role options
+// Role options for tabs
 const roleOptions = [
-  { value: "", label: "Select your role" },
-  { value: "student", label: "Student" },
-  { value: "teacher", label: "Teacher" },
+  { 
+    value: "student", 
+    label: "Student", 
+    icon: GraduationCap,
+    color: "blue"
+  },
+  { 
+    value: "teacher", 
+    label: "Teacher", 
+    icon: Users,
+    color: "green"
+  },
 ];
 
 // Validation schema
@@ -54,25 +66,46 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>("student");
   const navigate = useNavigate();
-
-  // Xử lý lỗi từ URL parameters (khi redirect từ Google)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const error = urlParams.get('error');
-    if (error) {
-      setErrorMessage(decodeURIComponent(error));
-    }
-  }, []);
 
   const methods = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
-      role: "",
+      role: "student",
     },
   });
+
+  // Update form when role tab changes
+  const handleRoleChange = (role: string) => {
+    setSelectedRole(role);
+    methods.setValue('role', role);
+    setErrorMessage(""); // Clear any existing errors when switching roles
+  };
+
+  // Load remember me preference and handle URL errors
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+      setErrorMessage(decodeURIComponent(error));
+    }
+
+    // Load remember me preference
+    const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
+    setRememberMe(savedRememberMe);
+    
+    if (savedRememberMe) {
+      const savedEmail = localStorage.getItem('rememberedEmail');
+      if (savedEmail) {
+        methods.setValue('email', savedEmail);
+      }
+    }
+
+  }, [methods]);
 
   const callLoginAPI = async (data: LoginFormData): Promise<LoginResponse> => {
     const { email, password, role } = data;
@@ -115,18 +148,28 @@ export default function Login() {
   };
 
   const onSubmit = async (data: LoginFormData) => {
+
     setIsLoading(true);
     setErrorMessage("");
+    
     try {
       console.log("Login data:", data);
       
       const response = await callLoginAPI(data);
       
+      
+      // Handle remember me
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('rememberedEmail', data.email);
+      } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('rememberedEmail');
+      }
+      
       // Check if account is verified
-      // For testing: if email is "test.unverified@example.com", simulate unverified account
       const isVerified = response.account.isVerified ?? true;
       if (!isVerified) {
-        // Account not verified - navigate to Gateway with verification state
         navigate("/gateway", {
           state: {
             showVerification: true,
@@ -149,6 +192,7 @@ export default function Login() {
       
     } catch (error) {
       console.error("Login error:", error);
+      
       setErrorMessage(error instanceof Error ? error.message : "Login failed!");
     } finally {
       setIsLoading(false);
@@ -254,41 +298,157 @@ export default function Login() {
 
 
   return (
-    <div className="w-full px-70 pt-20">
-      <Card className="shadow-xl border-0 w-1/2 mx-auto">
+    <div className="login-container min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 relative">
+      {/* Guest Navbar */}
+      <GenericNavbar 
+        config={guestNavbarConfig}
+        fullWidth={true}
+        collapsed={false}
+      />
+      
+      {/* Dynamic Background Pattern */}
+      <div className="fixed inset-0 overflow-hidden -z-10">
+        {/* Primary floating orbs */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-slow"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-reverse"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-50 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse-slow"></div>
+        
+        {/* Additional dynamic elements */}
+        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-100 rounded-full mix-blend-multiply filter blur-lg opacity-50 animate-drift-1"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-indigo-200 rounded-full mix-blend-multiply filter blur-md opacity-60 animate-drift-2"></div>
+        <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-primary-50 rounded-full mix-blend-multiply filter blur-lg opacity-40 animate-drift-3"></div>
+        <div className="absolute top-1/4 right-1/4 w-28 h-28 bg-blue-200 rounded-full mix-blend-multiply filter blur-md opacity-50 animate-drift-4"></div>
+        
+        {/* Gradient waves */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/20 to-transparent animate-wave-1"></div>
+        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-indigo-50/15 to-transparent animate-wave-2"></div>
+        
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-grid-pattern opacity-5 animate-grid-shift"></div>
+        
+        {/* Floating particles */}
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-300 rounded-full animate-particle-1"></div>
+        <div className="absolute top-3/4 right-1/3 w-1 h-1 bg-indigo-400 rounded-full animate-particle-2"></div>
+        <div className="absolute top-1/2 left-3/4 w-1.5 h-1.5 bg-accent-100 rounded-full animate-particle-3"></div>
+        <div className="absolute top-1/3 right-1/2 w-1 h-1 bg-blue-400 rounded-full animate-particle-4"></div>
+        <div className="absolute bottom-1/4 left-1/2 w-2 h-2 bg-indigo-300 rounded-full animate-particle-5"></div>
+      </div>
+      
+      <div className="flex items-center justify-center min-h-screen pt-20 pb-12 px-4 sm:px-6 lg:px-8">
+      
+      <div className="relative w-full max-w-md space-y-4 animate-fade-in-up">
+        <Card className="login-card shadow-2xl border-0 backdrop-blur-sm bg-white/95 transform transition-all duration-300 mt-2 hover:shadow-3xl sm:p-8 p-6">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center mb-4">
-            <LogIn className="w-6 h-6 text-white" />
+          <div className="text-center mb-6 animate-slide-in-left">
+            <div className="login-header-icon mx-auto w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg transform transition-transform duration-300 hover:scale-110 animate-float">
+              <BookOpen className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="login-title text-3xl sm:text-3xl font-bold text-neutral-900 mb-2">
+              Welcome Back
+            </h1>
+            <p className="text-neutral-600 text-sm sm:text-base transition-all duration-500">
+              {selectedRole === 'student' 
+                ? 'Sign in to access your courses and assignments' 
+                : 'Sign in to manage your classes and students'
+              }
+            </p>
+            
+            {/* Role-based subtitle */}
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border transition-all duration-500 mt-2 ${
+              selectedRole === 'student' 
+                ? 'bg-blue-100 text-blue-700 border-blue-200' 
+                : 'bg-green-100 text-green-700 border-green-200'
+            }`}>
+              {selectedRole === 'student' ? (
+                <GraduationCap className="w-4 h-4" />
+              ) : (
+                <Users className="w-4 h-4" />
+              )}
+              {selectedRole === 'student' ? 'Student Portal' : 'Teacher Dashboard'}
+            </div>
+           
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900">Login</h1>
-          <p className="text-sm text-neutral-600 mt-2">
-            Welcome back! Please sign in to continue.
-          </p>
-        </div>
 
-        {/* Form */}
-        <Form methods={methods} onSubmit={onSubmit} className="space-y-6">{/*[!!! KEEP CHANGES BELOW]*/}
-          {/* Role Selection */}
-          <div className="w-40">
-            <FormSelect
-              name="role"
-              label="Role"
-              options={roleOptions}
-              className="text-sm py-1.5 px-2"
-            />
+
+
+          {/* Role Tabs */}
+          <div className="space-y-2 animate-slide-in-right animation-delay-200 mb-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-neutral-700 text-center block">Choose Your Role</label>
+              <div className="grid grid-cols-2 gap-2">
+                {roleOptions.map((role) => {
+                  const IconComponent = role.icon;
+                  const isSelected = selectedRole === role.value;
+                  return (
+                    <button
+                      key={role.value}
+                      type="button"
+                      onClick={() => handleRoleChange(role.value)}
+                      className={`
+                        role-tab relative px-4 py-2.5 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${isSelected 
+                          ? `role-tab-selected ${role.color === 'blue' 
+                            ? 'role-tab-student-selected border-blue-500 bg-blue-50 text-blue-700 shadow-md ring-2 ring-blue-200' 
+                            : 'role-tab-teacher-selected border-green-500 bg-green-50 text-green-700 shadow-md ring-2 ring-green-200'}`
+                          : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:shadow-sm'
+                        }
+                      `}
+                      aria-pressed={isSelected}
+                      aria-label={`Select ${role.label} role`}
+                    >
+                      {/* Selection indicator */}
+                      {isSelected && (
+                        <div className={`role-checkmark absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${
+                          role.color === 'blue' ? 'bg-blue-500' : 'bg-green-500'
+                        } animate-pulse-gentle`}>
+                          <CheckCircle className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center space-x-2.5">
+                        <div className={`p-2 rounded-md transition-all duration-300 ${
+                          isSelected 
+                            ? role.color === 'blue' ? 'bg-blue-100' : 'bg-green-100'
+                            : 'bg-neutral-100'
+                        }`}>
+                          <IconComponent className={`w-5 h-5 transition-all duration-300 ${
+                            isSelected 
+                              ? `role-icon-pulse ${role.color === 'blue' ? 'text-blue-600' : 'text-green-600'}`
+                              : 'text-neutral-500'
+                          }`} />
+                        </div>
+                        <div className="text-left flex-1">
+                          <p className={`font-medium text-sm transition-colors duration-300 ${
+                            isSelected ? 'text-current' : 'text-neutral-700'
+                          }`}>
+                            {role.label}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
+
+          {/* Form */}
+          <Form methods={methods} onSubmit={onSubmit} className="login-form-spacing space-y-4">
 
           {/* Email Field */}
+            <div className="space-y-2">
           <FormInput
             name="email"
             type="email"
-            label="Email"
-            placeholder="Enter your email"
+                label="Email Address"
+                placeholder="Enter your email address"
             autoComplete="email"
+                className="transition-all duration-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus-ring-custom"
           />
+            </div>
 
           {/* Password Field */}
+            <div className="space-y-2">
           <div className="relative">
             <FormInput
               name="password"
@@ -296,11 +456,13 @@ export default function Login() {
               label="Password"
               placeholder="Enter your password"
               autoComplete="current-password"
+                  className="pr-12 transition-all duration-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus-ring-custom"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-colors"
+                  className="absolute right-3 top-8 text-neutral-400 hover:text-neutral-600 transition-all duration-200 hover:scale-110"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
                 <EyeOff className="w-5 h-5" />
@@ -309,23 +471,39 @@ export default function Login() {
               )}
             </button>
           </div>
-
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-              {errorMessage}
             </div>
-          )}
 
-          {/* Forgot Password */}
-          <div className="text-right">
+            {/* Remember Me */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded transition-colors"
+                />
+                <label htmlFor="remember-me" className="ml-2 text-sm text-neutral-700 cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+              
             <Link
               to="/forgotPassword"
-              className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                className="text-sm text-primary-600 hover:text-primary-700 hover:underline transition-colors"
             >
               Forgot password?
             </Link>
           </div>
+
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center space-x-2 animate-shake">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
           {/* Submit Button */}
           <Button
@@ -333,20 +511,32 @@ export default function Login() {
             variant="primary"
             size="lg"
             loading={isLoading}
-            className="w-full"
-            iconLeft={<UserCheck className="w-4 h-4" />}
-          >
-            {isLoading ? "Signing in..." : "Sign in"}
+              disabled={isLoading}
+              className={`w-full transform transition-all duration-300 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50 ${
+                selectedRole === 'student' 
+                  ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' 
+                  : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+              }`}
+              iconLeft={isLoading ? undefined : <UserCheck className="w-5 h-5" />}
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                `Sign In as ${selectedRole === 'student' ? 'Student' : 'Teacher'}`
+              )}
           </Button>
         </Form>
 
         {/* Divider */}
-        <div className="relative my-6">
+          <div className="relative my-8">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-neutral-300" />
+              <div className="w-full border-t border-neutral-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-neutral-500">Or continue with</span>
+              <span className="px-4 bg-white text-neutral-500 font-medium">Or continue with</span>
           </div>
         </div>
 
@@ -355,9 +545,11 @@ export default function Login() {
           type="button"        
           size="lg"
           loading={isGoogleLoading}
+            disabled={isGoogleLoading}
           onClick={handleGoogleLogin}
-          className="w-full border-neutral-300 "
+            className="w-full bg-white border-2 border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300 transform transition-all duration-200 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50"
           iconLeft={
+              !isGoogleLoading && (
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
@@ -376,37 +568,50 @@ export default function Login() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-          }
-        >
-          {isGoogleLoading ? "Signing in with Google..." : "Continue with Google"}
+              )
+            }
+          >
+            {isGoogleLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin"></div>
+                <span>Signing in with Google...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2 text-primary">
+                Sign in with Google account
+              </div>
+            )}
         </Button>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-neutral-200 text-center">
+          <div className="mt-8 pt-6 border-t border-neutral-100 text-center">
           <p className="text-sm text-neutral-600">
             Don't have an account?{" "}
             <Link
               to="/register"
-              className="text-primary-600 hover:text-primary-700 font-medium hover:underline"
+                className="text-primary-600 hover:text-primary-700 font-semibold hover:underline transition-colors"
             >
-              Register now
+                Create Account
             </Link>
           </p>
         </div>
       </Card>
 
       {/* Additional Info */}
-      <div className="mt-8 text-center">
-        <p className="text-xs text-neutral-500">
+        <div className="mt-6 text-center space-y-4">
+          
+          <p className="text-xs text-neutral-500 max-w-sm mx-auto">
           By signing in, you agree to our{" "}
-          <a href="#" className="text-primary-600 hover:underline">
+            <a href="#" className="text-primary-600 hover:underline font-medium">
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="#" className="text-primary-600 hover:underline">
+            <a href="#" className="text-primary-600 hover:underline font-medium">
             Privacy Policy
           </a>
         </p>
+        </div>
+      </div>
       </div>
     </div>
   );

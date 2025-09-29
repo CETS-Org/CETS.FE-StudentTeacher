@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function TeacherLayout({ children, className = "", crumbs }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // ⬇️ state để bật/tắt chat popup
@@ -23,7 +23,7 @@ export default function TeacherLayout({ children, className = "", crumbs }: Prop
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 ">
-      <Navbar />
+      <Navbar collapsed={collapsed} mobileOpen={mobileOpen} />
 
       <TeacherSidebar
         collapsed={collapsed}

@@ -1,12 +1,12 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import Spinner from "@/components/ui/Spinner";
 import { 
   BookOpen, 
   Clock, 
@@ -14,13 +14,19 @@ import {
   ExternalLink,
   MoreVertical,
   CheckCircle,
-  Users,
   MapPin,
-  GraduationCap
+  GraduationCap,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 
 import type { MyClass } from "@/types/class";
+import { studentLearningClassesService } from "@/services/studentLearningClassesService";
 
+// Mock student ID - in real app, this would come from authentication context
+const MOCK_STUDENT_ID = "77437eae-7b33-4858-b8e2-522776b2475a";
+
+// Fallback mock data for development/testing
 const mockMyClasses: MyClass[] = [
   {
     id: "1",
@@ -299,7 +305,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
               <h3 className="text-xl font-bold text-primary-800 leading-tight">
-                {classItem.className}
+               {classItem.className}
               </h3>
               {/* Status Badge */}
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusColor(classItem.status)}`}>
@@ -315,7 +321,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-xs mt-1">
+              {/* <p className="text-xs mt-1">
                 <span className="inline-flex items-center gap-1 bg-warning-200 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
                   <span className="text-xs font-semibold">{classItem.courseCode}</span>
                 </span>
@@ -324,10 +330,9 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
                   <span className="text-xs font-semibold">{classItem.level}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 bg-secondary-200 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
-                  <Users className="w-3 h-3 text-accent-600" />
                   <span className="text-xs font-semibold text-accent-700">{classItem.courseFormat || 'N/A'}</span>
                 </span>
-              </p>
+              </p> */}
 
             </div>
 
@@ -351,14 +356,14 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
         {classItem.nextMeeting && (
           <div className="mb-6">
             <div className="bg-gradient-to-r from-secondary-200 to-secondary-300 border border-accent-200 p-4 rounded-xl">
-              <div className="flex items-center gap-3 mb-3">
+              {/* <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 bg-accent-400 rounded-lg flex items-center justify-center">
                   <Clock className="w-4 h-4 text-white" />
                 </div>
                 <span className="font-semibold text-accent-800 text-sm">
                   Next Meeting
                 </span>
-              </div>
+              </div> */}
               
               {/* Meeting Time */}
               <div className="mb-3">
@@ -391,15 +396,10 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
               {classItem.nextMeeting.coveredTopic && (
                 <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span className="font-medium">Topic: {classItem.nextMeeting.coveredTopic}</span>
+                  <span className="font-medium">Course: {classItem.nextMeeting.coveredTopic}</span>
                 </div>
               )}
 
-              {/* Enrollment Count */}
-              <div className="flex items-center gap-2 text-xs text-accent-600 mt-3">
-                <Users className="w-3.5 h-3.5" />
-                <span className="font-medium">{classItem.enrolledCount}/{classItem.capacity} students</span>
-              </div>
             </div>
           </div>
         )}
@@ -415,10 +415,6 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
                 <span className="font-semibold text-neutral-700 text-sm">
                   No Upcoming Meetings
                 </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-neutral-600">
-                <Users className="w-3.5 h-3.5" />
-                <span className="font-medium">{classItem.enrolledCount}/{classItem.capacity} students</span>
               </div>
             </div>
           </div>
@@ -454,22 +450,81 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
 export default function MyClasses() {
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [myClasses, setMyClasses] = useState<MyClass[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const itemsPerPage = 3; // Number of classes per page
+
+  // Fetch student learning classes from API
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data, error: fetchError } = await studentLearningClassesService.getStudentLearningClassesSafe(MOCK_STUDENT_ID);
+        
+        if (fetchError) {
+          setError(fetchError);
+          // Fallback to mock data if API fails
+          setMyClasses(mockMyClasses);
+        } else {
+          setMyClasses(data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching classes:', err);
+        setError('Failed to load classes');
+        // Fallback to mock data
+        setMyClasses(mockMyClasses);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClasses();
+  }, []);
+
+  // Retry function
+  const handleRetry = () => {
+    const fetchClasses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data, error: fetchError } = await studentLearningClassesService.getStudentLearningClassesSafe(MOCK_STUDENT_ID);
+        
+        if (fetchError) {
+          setError(fetchError);
+          setMyClasses(mockMyClasses);
+        } else {
+          setMyClasses(data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching classes:', err);
+        setError('Failed to load classes');
+        setMyClasses(mockMyClasses);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClasses();
+  };
 
   // Filter classes based on active tab
   const filteredClasses = useMemo(() => {
     switch (activeTab) {
       case "active":
-        return mockMyClasses.filter(classItem => classItem.status === "active");
+        return myClasses.filter(classItem => classItem.status === "active");
       case "completed":
-        return mockMyClasses.filter(classItem => classItem.status === "completed");
+        return myClasses.filter(classItem => classItem.status === "completed");
       case "upcoming":
-        return mockMyClasses.filter(classItem => classItem.status === "upcoming");
+        return myClasses.filter(classItem => classItem.status === "upcoming");
       case "all":
       default:
-        return mockMyClasses;
+        return myClasses;
     }
-  }, [activeTab]);
+  }, [activeTab, myClasses]);
 
   // Reset to page 1 when tab changes
   React.useEffect(() => {
@@ -491,13 +546,13 @@ export default function MyClasses() {
   // Calculate tab counts
   const tabCounts = useMemo(() => {
     const counts = {
-      all: mockMyClasses.length,
-      active: mockMyClasses.filter(c => c.status === "active").length,
-      completed: mockMyClasses.filter(c => c.status === "completed").length,
-      upcoming: mockMyClasses.filter(c => c.status === "upcoming").length
+      all: myClasses.length,
+      active: myClasses.filter(c => c.status === "active").length,
+      completed: myClasses.filter(c => c.status === "completed").length,
+      upcoming: myClasses.filter(c => c.status === "upcoming").length
     };
     return counts;
-  }, []);
+  }, [myClasses]);
 
   const tabs = [
     { id: "all", label: "All Classes", badge: tabCounts.all, color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white" },
@@ -512,7 +567,7 @@ export default function MyClasses() {
   ];
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
         {/* Breadcrumbs */}
         <Breadcrumbs items={breadcrumbItems} />
         
@@ -530,65 +585,83 @@ export default function MyClasses() {
             onTabChange={setActiveTab}
           />
 
-          {/* Tab Content */}
-          <TabContent activeTab={activeTab} tabId="all">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <MyClassCard key={classItem.id} classItem={classItem} />
-              ))}
+          {/* Loading State */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Spinner size="lg" />
+              <p className="mt-4 text-neutral-600">Loading your classes...</p>
             </div>
-          </TabContent>
+          )}
 
-          <TabContent activeTab={activeTab} tabId="active">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <MyClassCard key={classItem.id} classItem={classItem} />
-              ))}
-            </div>
-          </TabContent>
-
-          <TabContent activeTab={activeTab} tabId="completed">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <MyClassCard key={classItem.id} classItem={classItem} />
-              ))}
-            </div>
-          </TabContent>
-
-          <TabContent activeTab={activeTab} tabId="upcoming">
-            <div className="space-y-6">
-              {paginatedClasses.map((classItem) => (
-                <MyClassCard key={classItem.id} classItem={classItem} />
-              ))}
-            </div>
-          </TabContent>
-
-          {/* Empty State */}
-          {filteredClasses.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="w-12 h-12 text-accent-600" />
-              </div>
-              <h3 className="text-xl font-bold text-primary-800 mb-3">
-                No classes found
-              </h3>
-              <p className="text-neutral-600 mb-8 max-w-md mx-auto">
-                {activeTab === "all" 
-                  ? "Start your learning journey by enrolling in available classes." 
-                  : `No ${activeTab} classes available. Check other categories or browse available classes.`
-                }
-              </p>
-              <Button 
-                variant="primary" 
-                className="btn-secondary"
+          {/* Error State */}
+          {error && !loading && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <AlertCircle className="w-12 h-12 text-error-500 mb-4" />
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Failed to Load Classes</h3>
+              <p className="text-neutral-600 text-center mb-4">{error}</p>
+              <Button
+                onClick={handleRetry}
+                iconLeft={<RefreshCw className="w-4 h-4" />}
+                className="bg-primary-500 hover:bg-primary-600 text-white"
               >
-                Browse Classes
+                Try Again
               </Button>
             </div>
           )}
 
+          {/* Empty State */}
+          {!loading && !error && filteredClasses.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <BookOpen className="w-12 h-12 text-neutral-400 mb-4" />
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">No Classes Found</h3>
+              <p className="text-neutral-600 text-center">
+                {activeTab === "all" 
+                  ? "You haven't enrolled in any classes yet." 
+                  : `You don't have any ${activeTab} classes.`
+                }
+              </p>
+            </div>
+          )}
+
+          {/* Tab Content */}
+          {!loading && !error && filteredClasses.length > 0 && (
+            <>
+              <TabContent activeTab={activeTab} tabId="all">
+                <div className="space-y-6">
+                  {paginatedClasses.map((classItem) => (
+                    <MyClassCard key={classItem.id} classItem={classItem} />
+                  ))}
+                </div>
+              </TabContent>
+
+              <TabContent activeTab={activeTab} tabId="active">
+                <div className="space-y-6">
+                  {paginatedClasses.map((classItem) => (
+                    <MyClassCard key={classItem.id} classItem={classItem} />
+                  ))}
+                </div>
+              </TabContent>
+
+              <TabContent activeTab={activeTab} tabId="completed">
+                <div className="space-y-6">
+                  {paginatedClasses.map((classItem) => (
+                    <MyClassCard key={classItem.id} classItem={classItem} />
+                  ))}
+                </div>
+              </TabContent>
+
+              <TabContent activeTab={activeTab} tabId="upcoming">
+                <div className="space-y-6">
+                  {paginatedClasses.map((classItem) => (
+                    <MyClassCard key={classItem.id} classItem={classItem} />
+                  ))}
+                </div>
+              </TabContent>
+            </>
+          )}
+
           {/* Pagination */}
-          {filteredClasses.length > 0 && totalPages > 1 && (
+          {!loading && !error && filteredClasses.length > 0 && totalPages > 1 && (
             <div className="pt-8 border-t border-accent-200">
               <Pagination
                 currentPage={currentPage}
@@ -600,6 +673,6 @@ export default function MyClasses() {
             </div>
           )}
         </Card>
-    </StudentLayout>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, User } from "lucide-react";
-import StudentLayout from "../../Shared/StudentLayout";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface AcademicRequestDetailData {
@@ -65,7 +64,7 @@ const AcademicChangeRequestDetail: React.FC = () => {
   };
 
   return (
-    <StudentLayout>
+    <div className="p-6 max-w-full space-y-8">
       <div className="p-6">
         <div className="mx-auto">
           {/* Header */}
@@ -203,7 +202,7 @@ const AcademicChangeRequestDetail: React.FC = () => {
           </div>
         </div>
       </div>
-    </StudentLayout>
+    </div>
   );
 };
 

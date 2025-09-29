@@ -127,6 +127,72 @@ export interface CourseDetailProps {
   course: Course;
 }
 
+// Course Schedule interfaces
+export interface CourseSchedule {
+  id: string;
+  courseID: string;
+  timeSlotID: string;
+  dayOfWeek: string;
+  courseName?: string;
+  timeSlotName?: string;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface TimeSlot {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  displayTime: string;
+}
+
+// Time slot mappings
+export const TIME_SLOTS: Record<string, TimeSlot> = {
+  "Slot 1": {
+    id: "slot1",
+    name: "Slot 1",
+    startTime: "09:00",
+    endTime: "10:30",
+    displayTime: "9h - 10h30"
+  },
+  "Slot 2": {
+    id: "slot2", 
+    name: "Slot 2",
+    startTime: "13:30",
+    endTime: "15:00",
+    displayTime: "13h30 - 15h"
+  },
+  "Slot 3": {
+    id: "slot3",
+    name: "Slot 3", 
+    startTime: "15:30",
+    endTime: "17:00",
+    displayTime: "15h30 - 17h"
+  },
+  "Slot 4": {
+    id: "slot4",
+    name: "Slot 4",
+    startTime: "18:00", 
+    endTime: "19:30",
+    displayTime: "18h - 19h30"
+  },
+  "Slot 5": {
+    id: "slot5",
+    name: "Slot 5",
+    startTime: "20:00",
+    endTime: "21:30", 
+    displayTime: "20h - 21h30"
+  }
+};
+
+// Days of week mapping
+export const DAYS_OF_WEEK = [
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+] as const;
+
+export type DayOfWeek = typeof DAYS_OF_WEEK[number];
+
 // Teacher-specific course interface
 export interface TeacherCourse {
   id: string;

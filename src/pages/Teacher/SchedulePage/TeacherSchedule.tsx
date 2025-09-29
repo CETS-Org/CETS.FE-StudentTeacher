@@ -1,6 +1,6 @@
 // src/pages/Teacher/SchedulePage.tsx
 import { useState } from "react";
-import TeacherLayout from "@/Shared/TeacherLayout";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import TeacherWeekSchedule from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
 import ScheduleRegistrationDialog, { type DaySchedule } from "@/pages/Teacher/SchedulePage/Component/ScheduleRegistrationDialog";
 import PageHeader from "@/components/ui/PageHeader";
@@ -84,7 +84,8 @@ export default function SchedulePage() {
   };
 
   return (
-    <TeacherLayout crumbs={breadcrumbItems}>
+    <div className="p-6 max-w-full space-y-8">
+      <Breadcrumbs items={breadcrumbItems} />
 
         
         <PageHeader
@@ -120,7 +121,7 @@ export default function SchedulePage() {
           onClose={handleRegistrationDialogClose}
           onSubmit={handleRegistrationSubmit}
         />
-    </TeacherLayout>
+    </div>
   );
 }
 
