@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import { getUserInfo } from "@/lib/utils";
 import type { Course } from "@/types/course";
 
 interface ClassReservationData {
@@ -24,20 +25,44 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
     fullName: "",
     email: "",
     phone: "",
-    paymentPlan: "one_time", // "one_time" or "quarterly"
+    paymentPlan: "one_time", // "one_time" or "two_time"
     notes: ""
   });
 
+  // Auto-populate user data when dialog opens and reset when closed
+  useEffect(() => {
+    if (open) {
+      const userInfo = getUserInfo();
+      if (userInfo) {
+        setReservationData(prev => ({
+          ...prev,
+          fullName: userInfo.fullName || "",
+          email: userInfo.email || "",
+          phone: userInfo.phone || "",
+        }));
+      }
+    } else {
+      // Reset form when dialog closes
+      setReservationData({
+        fullName: "",
+        email: "",
+        phone: "",
+        paymentPlan: "one_time",
+        notes: ""
+      });
+    }
+  }, [open]);
+
   // Calculate payment amounts
   const getPaymentAmount = () => {
-    if (reservationData.paymentPlan === "quarterly") {
-      return Math.round(course.standardPrice / 4);
+    if (reservationData.paymentPlan === "two_time") {
+      return Math.round(course.standardPrice / 2);
     }
     return course.standardPrice;
   };
 
   const getTotalAmount = () => {
-    if (reservationData.paymentPlan === "quarterly") {
+    if (reservationData.paymentPlan === "two_time") {
       return course.standardPrice;
     }
     return course.standardPrice;
@@ -89,6 +114,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
             {/* Personal Information */}
             <div>
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+              <p className="text-sm text-gray-600 mb-4">Your profile information has been automatically filled. Please review and update if needed.</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -130,7 +156,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
                     <div 
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                         reservationData.paymentPlan === "one_time" 
-                          ? "border-primary-600 bg-primary-50" 
+                          ? "border-accent-100 bg-secondary-200" 
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                       onClick={() => setReservationData({...reservationData, paymentPlan: "one_time"})}
@@ -152,25 +178,25 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
                     
                     <div 
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        reservationData.paymentPlan === "quarterly" 
-                          ? "border-primary-600 bg-primary-50" 
+                        reservationData.paymentPlan === "two_time" 
+                          ? "border-accent-100 bg-secondary-200" 
                           : "border-gray-200 hover:border-gray-300"
                       }`}
-                      onClick={() => setReservationData({...reservationData, paymentPlan: "quarterly"})}
+                      onClick={() => setReservationData({...reservationData, paymentPlan: "two_time"})}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <input 
                           type="radio" 
-                          checked={reservationData.paymentPlan === "quarterly"}
+                          checked={reservationData.paymentPlan === "two_time"}
                           onChange={() => {}}
                           className="text-primary-600"
                         />
-                        <span className="font-semibold text-gray-900">Quarterly Payment</span>
+                        <span className="font-semibold text-gray-900">Two-time Payment</span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <div className="font-medium text-lg text-primary-600">{getPaymentAmount().toLocaleString('vi-VN')}₫/quarter</div>
-                        <div>4 payments of {getPaymentAmount().toLocaleString('vi-VN')}₫ each</div>
-                        <div className="text-xs text-gray-500 mt-1">Total: {getTotalAmount().toLocaleString('vi-VN')}₫</div>
+                        <div className="font-medium text-lg text-primary-600">{Math.round(course.standardPrice / 2).toLocaleString('vi-VN')}₫/payment</div>
+                        <div>2 payments of {Math.round(course.standardPrice / 2).toLocaleString('vi-VN')}₫ each</div>
+                        <div className="text-xs text-gray-500 mt-1">Total: {course.standardPrice.toLocaleString('vi-VN')}₫</div>
                       </div>
                     </div>
                   </div>
@@ -183,7 +209,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
                     value={reservationData.notes || ""}
                     onChange={(e) => setReservationData({...reservationData, notes: e.target.value})}
                     placeholder="Any special requests or notes for your reservation..."
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-accent-200 focus:border-accent-300 resize-none"
                     rows={3}
                   />
                 </div>
@@ -206,9 +232,9 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
         <DialogFooter>
           <div className="flex justify-between items-center w-full">
             <div className="text-lg font-semibold">
-              {reservationData.paymentPlan === "quarterly" ? (
+              {reservationData.paymentPlan === "two_time" ? (
                 <div>
-                  <div>Per Quarter: <span className="text-primary-600">{getPaymentAmount().toLocaleString('vi-VN')}₫</span></div>
+                  <div>Per Payment: <span className="text-primary-600">{getPaymentAmount().toLocaleString('vi-VN')}₫</span></div>
                   <div className="text-sm text-gray-600">Total: <span className="text-primary-600">{getTotalAmount().toLocaleString('vi-VN')}₫</span></div>
                 </div>
               ) : (
@@ -224,7 +250,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
               </Button>
               <Button
                 onClick={handleSubmit}
-                className="bg-primary-600 hover:bg-primary-700"
+                className="bg-primary-600 hover:bg-secondary-700"
               >
                 Reserve Class Spot
               </Button>

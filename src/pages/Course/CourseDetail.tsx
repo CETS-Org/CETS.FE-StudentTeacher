@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -6,9 +7,11 @@ import ClassReservationDialog from "./components/ClassReservationDialog";
 import RelatedCourses from "./components/RelatedCourses";
 import CourseSchedule from "@/components/ui/CourseSchedule";
 import { useCourseSchedule } from "@/hooks/useCourseSchedule";
+import { isTokenValid } from "@/lib/utils";
 import type { CourseDetailProps } from "@/types/course";
 
 export default function CourseDetail({ course }: CourseDetailProps) {
+  const navigate = useNavigate();
   const [showEnrollmentDialog, setShowEnrollmentDialog] = useState(false);
   const [expandedSyllabus, setExpandedSyllabus] = useState<Set<string>>(new Set());
   const [allSyllabusExpanded, setAllSyllabusExpanded] = useState(false);
@@ -87,6 +90,19 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   };
 
   const handleEnroll = () => {
+    // Check if user is logged in
+    if (!isTokenValid()) {
+      // Redirect to login page
+      navigate('/login', { 
+        state: { 
+          returnUrl: `/course/${course.id}`,
+          message: 'Please log in to enroll in this course'
+        }
+      });
+      return;
+    }
+    
+    // User is logged in, show enrollment dialog
     setShowEnrollmentDialog(true);
   };
 
@@ -122,12 +138,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                     </span>
                   )}
                 </div>
-                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                  <Button className="bg-white/90 hover:bg-white text-gray-900">
-                    <Play className="w-5 h-5 mr-2" />
-                    Preview Course
-                  </Button>
-                </div>
+               
               </div>
               
               <div className="p-6">
@@ -190,7 +201,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Course Syllabus</h3>
                   {course.syllabusItems && course.syllabusItems.length > 0 && (
                     <p className="text-gray-600 text-sm">
-                      {course.syllabusItems.length} sections • {course.syllabusItems.reduce((total, item) => total + (item.estimatedMinutes || 0), 0)} minutes total length
+                      {course.syllabusItems.length} sections • {course.syllabusItems.reduce((total, item) => total + (item.totalSlots || 0), 0)} slots total
                     </p>
                   )}
                 </div>
@@ -245,7 +256,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <div className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
-                              <span>{item.estimatedMinutes ? `${item.estimatedMinutes}min` : 'N/A'}</span>
+                              <span>{item.totalSlots ? `${item.totalSlots} slot${item.totalSlots > 1 ? 's' : ''}` : 'N/A'}</span>
                             </div>
                           </div>
                         </div>
@@ -378,12 +389,88 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                 </div>
               </Card>
             )}
+
+            {/* Student Feedback */}
+            {course.feedbacks && course.feedbacks.length > 0 && (
+              <Card title="Student Feedback">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                        <span className="text-2xl font-bold text-gray-900">{course.rating}</span>
+                        <span className="text-gray-600">({course.studentsCount} reviews)</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {course.feedbacks.slice(0, 5).map((feedback) => (
+                      <div key={feedback.id} className="border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            {feedback.studentAvatar ? (
+                              <img 
+                                src={feedback.studentAvatar} 
+                                alt={feedback.studentName} 
+                                className="w-full h-full object-cover rounded-full" 
+                              />
+                            ) : (
+                              <span className="text-white text-lg font-bold">
+                                {feedback.studentName.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-semibold text-gray-900">{feedback.studentName}</h4>
+                              {feedback.isVerified && (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                  Verified Purchase
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="flex items-center">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`w-4 h-4 ${
+                                      star <= feedback.rating
+                                        ? 'text-yellow-400 fill-current'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-sm text-gray-500">{feedback.date}</span>
+                            </div>
+                            
+                            <p className="text-gray-700">{feedback.comment}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {course.feedbacks.length > 5 && (
+                    <div className="text-center pt-4">
+                      <Button variant="secondary" className="text-primary-600 hover:text-primary-700">
+                        Show More Reviews ({course.feedbacks.length - 5} more)
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Enrollment Card */}
-            <Card className="sticky top-8">
+            <Card className="sticky top-20">
               <div className="text-center mb-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <span className="text-3xl font-bold text-gray-900">{course.standardPrice.toLocaleString('vi-VN')} ₫</span>

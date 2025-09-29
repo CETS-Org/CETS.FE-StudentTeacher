@@ -5,6 +5,7 @@ import { ArrowLeft, Package, BookOpen, Star, CheckCircle, Users, ChevronDown, Ch
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import RelatedPackages from "./components/RelatedPackages";
+import PackageEnrollmentDialog from "./components/PackageEnrollmentDialog";
 import { api } from "@/lib/config";
 import type { CoursePackageDetail } from "@/types/coursePackage";
 
@@ -17,6 +18,7 @@ export default function CoursePackageDetail() {
   const [error, setError] = useState<string | null>(null);
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [allCoursesExpanded, setAllCoursesExpanded] = useState(false);
+  const [enrollmentDialogOpen, setEnrollmentDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -26,7 +28,77 @@ export default function CoursePackageDetail() {
         setLoading(true);
         setError(null);
         const response = await api.getCoursePackageDetail(id);
-        setPackageDetail(response.data);
+        
+        // Add mock feedback data since APIs don't exist yet
+        const packageWithFeedback = {
+          ...response.data,
+          rating: 4.6,
+          studentsCount: 89,
+          feedbacks: [
+            {
+              id: "1",
+              studentName: "Alex Thompson",
+              studentAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
+              rating: 5,
+              comment: "This package is incredible value! I learned so much from all the courses. The progression from basic to advanced topics was perfect. Highly recommend for anyone serious about mastering these skills.",
+              date: "1 week ago",
+              isVerified: true
+            },
+            {
+              id: "2",
+              studentName: "Maria Garcia",
+              studentAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
+              rating: 5,
+              comment: "Amazing package deal! Each course builds upon the previous one beautifully. The instructors are top-notch and the content is always up-to-date. Worth every penny!",
+              date: "2 weeks ago",
+              isVerified: true
+            },
+            {
+              id: "3",
+              studentName: "John Chen",
+              rating: 4,
+              comment: "Great comprehensive learning path. The package saved me a lot of money compared to buying courses individually. Some courses were better than others, but overall very satisfied.",
+              date: "3 weeks ago",
+              isVerified: true
+            },
+            {
+              id: "4",
+              studentName: "Sophie Williams",
+              studentAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
+              rating: 5,
+              comment: "Perfect for career advancement! This package gave me all the skills I needed for my new role. The structured approach and practical projects were exactly what I was looking for.",
+              date: "1 month ago",
+              isVerified: true
+            },
+            {
+              id: "5",
+              studentName: "Robert Kim",
+              rating: 4,
+              comment: "Solid package with good variety. I appreciated how the courses complemented each other. The community support and resources were also very helpful throughout my learning journey.",
+              date: "3 days ago",
+              isVerified: false
+            },
+            {
+              id: "6",
+              studentName: "Emma Davis",
+              studentAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+              rating: 5,
+              comment: "Exceeded my expectations! The package format allowed me to learn at my own pace while following a logical progression. The instructors clearly put a lot of thought into the curriculum design.",
+              date: "4 days ago",
+              isVerified: true
+            },
+            {
+              id: "7",
+              studentName: "Daniel Brown",
+              rating: 4,
+              comment: "Good value for money. The courses are well-structured and the content is practical. I was able to apply what I learned immediately in my work projects.",
+              date: "1 week ago",
+              isVerified: true
+            }
+          ]
+        };
+        
+        setPackageDetail(packageWithFeedback);
       } catch (err: any) {
         console.error("Failed to fetch package detail:", err);
         setError("Failed to load package details. Please try again later.");
@@ -63,6 +135,14 @@ export default function CoursePackageDetail() {
       setExpandedCourses(allIds);
       setAllCoursesExpanded(true);
     }
+  };
+
+  // Enrollment handler
+  const handleEnrollmentSubmit = (enrollmentData: any) => {
+    // TODO: Implement enrollment logic
+    console.log("Enrollment data:", enrollmentData);
+    console.log("Package:", packageDetail?.id);
+    // Here you would typically send the enrollment data to your API
   };
 
   if (loading) {
@@ -398,12 +478,88 @@ export default function CoursePackageDetail() {
               </div>
             </div>
           </Card>
+
+          {/* Package Feedback */}
+          {packageDetail.feedbacks && packageDetail.feedbacks.length > 0 && (
+            <Card title="Student Feedback">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                      <span className="text-2xl font-bold text-gray-900">{packageDetail.rating || 0}</span>
+                      <span className="text-gray-600">({packageDetail.studentsCount || 0} reviews)</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-6">
+                  {packageDetail.feedbacks.slice(0, 5).map((feedback) => (
+                    <div key={feedback.id} className="border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          {feedback.studentAvatar ? (
+                            <img 
+                              src={feedback.studentAvatar} 
+                              alt={feedback.studentName} 
+                              className="w-full h-full object-cover rounded-full" 
+                            />
+                          ) : (
+                            <span className="text-white text-lg font-bold">
+                              {feedback.studentName.charAt(0)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-semibold text-gray-900">{feedback.studentName}</h4>
+                            {feedback.isVerified && (
+                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                Verified Purchase
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="flex items-center">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-4 h-4 ${
+                                    star <= feedback.rating
+                                      ? 'text-yellow-400 fill-current'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-500">{feedback.date}</span>
+                          </div>
+                          
+                          <p className="text-gray-700">{feedback.comment}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {packageDetail.feedbacks.length > 5 && (
+                  <div className="text-center pt-4">
+                    <Button variant="secondary" className="text-primary-600 hover:text-primary-700">
+                      Show More Reviews ({packageDetail.feedbacks.length - 5} more)
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Enrollment Card */}
-          <Card className="sticky top-8">
+          <Card className="sticky top-20">
             <div className="text-center mb-6">
               {/* Show original total if there's a discount */}
               {packageDetail.totalIndividualPrice > packageDetail.totalPrice && (
@@ -424,10 +580,7 @@ export default function CoursePackageDetail() {
             </div>
 
             <Button
-              onClick={() => {
-                // TODO: Implement enrollment logic
-                console.log("Enroll in package:", packageDetail.id);
-              }}
+              onClick={() => setEnrollmentDialogOpen(true)}
               className="w-full font-semibold mb-4"
             >
               Enroll in Package
@@ -477,6 +630,16 @@ export default function CoursePackageDetail() {
           <RelatedPackages currentPackage={packageDetail} />
         </div>
       </div>
+
+      {/* Enrollment Dialog */}
+      {packageDetail && (
+        <PackageEnrollmentDialog
+          open={enrollmentDialogOpen}
+          onOpenChange={setEnrollmentDialogOpen}
+          coursePackage={packageDetail}
+          onSubmit={handleEnrollmentSubmit}
+        />
+      )}
     </div>
   );
 }
