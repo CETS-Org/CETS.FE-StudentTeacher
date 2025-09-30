@@ -1,13 +1,7 @@
 
+import type { ReservationItem } from "@/types/payment"; // Used in return type of getMockReservationDetails
+
 // Mock reservation item data - replace with actual API call
-export interface ReservationItem {
-  id: string;
-  name: string;
-  type: string;
-  price: number;
-  description: string;
-  status: string;
-}
 
 export const getMockReservationDetails = (reservationId: string) => {
   // Different mock data based on reservation ID
