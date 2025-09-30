@@ -54,5 +54,10 @@ export function getUserEmail(): string | null {
 
 export function getUserRole(): string | null {
   const userInfo = getUserInfo();
-  return userInfo?.roleNames?.[0] || null; // Assuming roleNames is an array
+  return userInfo?.roleNames?.[0] || null; 
+}
+
+export function getUserPhone(): string | null {
+  const userInfo = getUserInfo();
+  return userInfo?.phone || null;
 }

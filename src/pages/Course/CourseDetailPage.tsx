@@ -40,7 +40,7 @@ export default function CourseDetailPage() {
               id: (item.id ) as string,
               sessionNumber: (item.sessionNumber || 1) as number,
               topicTitle: (item.topicTitle || "Untitled Topic") as string,
-              estimatedMinutes: item.estimatedMinutes as number | undefined,
+              totalSlots: item.totalSlots as number | undefined,
               required: item.required !== undefined ? item.required as boolean : true,
               objectives: item.objectives as string | undefined,
               contentSummary: item.contentSummary as string | undefined,
@@ -48,7 +48,60 @@ export default function CourseDetailPage() {
             })) : [],
           benefits: data.benefits || [],
           requirements: data.requirements || [],
-          teacherDetails: data.teacherDetails || []
+          teacherDetails: data.teacherDetails || [],
+          feedbacks: [
+            {
+              id: "1",
+              studentName: "Sarah Johnson",
+              studentAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
+              rating: 5,
+              comment: "This course exceeded my expectations! The instructor's teaching style is engaging and the content is well-structured. I learned so much and feel confident applying these skills in real projects.",
+              date: "2 weeks ago",
+              isVerified: true
+            },
+            {
+              id: "2",
+              studentName: "Michael Chen",
+              rating: 4,
+              comment: "Great course overall. The practical examples really helped me understand the concepts better. Would recommend to anyone looking to improve their skills in this area.",
+              date: "1 month ago",
+              isVerified: true
+            },
+            {
+              id: "3",
+              studentName: "Emily Rodriguez",
+              studentAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
+              rating: 5,
+              comment: "Absolutely fantastic! The step-by-step approach made complex topics easy to understand. The assignments were challenging but fair, and the feedback was constructive.",
+              date: "3 weeks ago",
+              isVerified: true
+            },
+            {
+              id: "4",
+              studentName: "David Kim",
+              rating: 4,
+              comment: "Solid course with good content. The instructor is knowledgeable and explains things clearly. The pace was perfect for me as a beginner.",
+              date: "1 week ago",
+              isVerified: false
+            },
+            {
+              id: "5",
+              studentName: "Lisa Thompson",
+              studentAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+              rating: 5,
+              comment: "One of the best online courses I've taken! The material is up-to-date, relevant, and presented in an engaging way. Definitely worth the investment.",
+              date: "2 days ago",
+              isVerified: true
+            },
+            {
+              id: "6",
+              studentName: "James Wilson",
+              rating: 4,
+              comment: "Very informative course. I appreciated the real-world examples and practical exercises. The community support was also excellent.",
+              date: "5 days ago",
+              isVerified: true
+            }
+          ]
         };
         
         setCourse(mappedCourse);

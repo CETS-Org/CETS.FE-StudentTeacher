@@ -30,7 +30,7 @@ interface CourseSession {
   submissionTasks: SubmissionTask[];
   // Session Context fields
   topicTitle: string;
-  estimatedMinutes: number;
+  totalSlots: number;
   required: boolean;
   objectives: string[];
   contentSummary: string;
@@ -147,7 +147,7 @@ const mockCourseDetail: CourseDetail = {
         }
       ],
       topicTitle: "Basic Greetings and Self-Introduction",
-      estimatedMinutes: 105,
+      totalSlots: 2, // 2 slots = 90 minutes
       required: true,
       objectives: [
         "Learn basic greeting phrases in English",
@@ -174,7 +174,7 @@ const mockCourseDetail: CourseDetail = {
         }
       ],
       topicTitle: "Numbers, Time, and Daily Schedules",
-      estimatedMinutes: 105,
+      totalSlots: 2, // 2 slots = 90 minutes
       required: true,
       objectives: [
         "Master numbers 1-100 in English",
@@ -194,7 +194,7 @@ const mockCourseDetail: CourseDetail = {
       isCompleted: false,
       submissionTasks: [],
       topicTitle: "Family Members and Relationships",
-      estimatedMinutes: 105,
+      totalSlots: 2, // 2 slots = 90 minutes
       required: true,
       objectives: [
         "Learn family member vocabulary",
@@ -331,7 +331,7 @@ export default function SessionDetail() {
                     </div>
                     <h4 className="font-semibold text-accent-800">Duration</h4>
                   </div>
-                  <p className="text-accent-700 font-medium">{session.estimatedMinutes} minutes</p>
+                  <p className="text-accent-700 font-medium">{session.totalSlots} slot{session.totalSlots > 1 ? 's' : ''}</p>
                 </div>
                 
                 <div className="p-4 bg-gradient-to-br from-warning-50 to-warning-100 border border-warning-200 rounded-xl">

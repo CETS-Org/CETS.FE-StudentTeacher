@@ -23,7 +23,7 @@ interface CourseSession {
   submissionTasks: SubmissionTask[];
   // Session Context fields
   topicTitle: string;
-  estimatedMinutes: number;
+  totalSlots: number;
   required: boolean;
   objectives: string[];
   contentSummary: string;
@@ -140,7 +140,7 @@ const mockCourseDetail: CourseDetail = {
         }
       ],
       topicTitle: "Basic Greetings and Self-Introduction",
-      estimatedMinutes: 105,
+      totalSlots: 2, 
       required: true,
       objectives: [
         "Learn basic greeting phrases in English",
@@ -167,7 +167,7 @@ const mockCourseDetail: CourseDetail = {
         }
       ],
       topicTitle: "Numbers, Time, and Daily Schedules",
-      estimatedMinutes: 105,
+      totalSlots: 2, // 2 slots = 90 minutes
       required: true,
       objectives: [
         "Master numbers 1-100 in English",
@@ -187,7 +187,7 @@ const mockCourseDetail: CourseDetail = {
       isCompleted: false,
       submissionTasks: [],
       topicTitle: "Family Members and Relationships",
-      estimatedMinutes: 105,
+      totalSlots: 2, // 2 slots = 90 minutes
       required: true,
       objectives: [
         "Learn family member vocabulary",

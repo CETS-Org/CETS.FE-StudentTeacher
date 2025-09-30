@@ -26,8 +26,21 @@ export interface CourseInPackage {
   studentsCount: number;
 }
 
+export interface PackageFeedback {
+  id: string;
+  studentName: string;
+  studentAvatar?: string;
+  rating: number;
+  comment: string;
+  date: string;
+  isVerified?: boolean;
+}
+
 export interface CoursePackageDetail extends CoursePackage {
   courses: CourseInPackage[];
+  feedbacks?: PackageFeedback[];
+  rating?: number;
+  studentsCount?: number;
 }
 
 export interface CoursePackageCardProps {

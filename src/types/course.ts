@@ -5,7 +5,7 @@ export interface SyllabusItem {
   id: string;
   sessionNumber: number;
   topicTitle: string;
-  estimatedMinutes?: number;
+  totalSlots?: number;
   required: boolean;
   objectives?: string;
   contentSummary?: string;
@@ -26,6 +26,16 @@ export interface Requirement {
   courseName: string;
   requirementID: string;
   requirementName: string;
+}
+
+export interface CourseFeedback {
+  id: string;
+  studentName: string;
+  studentAvatar?: string;
+  rating: number;
+  comment: string;
+  date: string;
+  isVerified?: boolean;
 }
 
 export interface CourseSkill {
@@ -78,6 +88,7 @@ export interface Course {
   syllabusItems?: SyllabusItem[];
   requirements?: Requirement[];
   courseSkills?: CourseSkill[];
+  feedbacks?: CourseFeedback[];
   
   // Status flags
   isPopular?: boolean;

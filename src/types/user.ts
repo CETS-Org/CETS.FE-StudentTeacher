@@ -4,9 +4,9 @@ export interface UserInfo {
   id: string;
   email: string;
   fullName?: string;
+  phone?: string;
   roleNames: string[];
   isVerified?: boolean;
-  picture?: string;
   avatarUrl?: string;
   googleId?: string;
   createdAt?: string;
