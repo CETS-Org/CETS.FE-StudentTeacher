@@ -166,3 +166,25 @@ export interface PaymentPlanCardProps {
   onPayDirectly?: (plan: PaymentPlan) => void; // For direct plan payment
   className?: string;
 }
+
+// Class reservation response interface (from backend)
+export interface ClassReservationResponse {
+  id: string;
+  studentID: string;
+  coursePackageID?: string;
+  packageCode?: string;
+  packageName?: string;
+  packageImageUrl?: string;
+  totalPrice: number;
+  description?: string;
+  reservationStatus?: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+// Reservation item props for list display
+export interface ReservationItemProps {
+  reservation: ClassReservationResponse;
+  onSelect: (reservation: ClassReservationResponse) => void;
+  className?: string;
+}

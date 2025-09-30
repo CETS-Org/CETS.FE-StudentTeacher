@@ -40,6 +40,7 @@ import ChoosePaidItem from './pages/Student/ChoosePaidItem/ChoosePaidItem'
 import PaymentSuccess from './pages/Student/ChoosePaidItem/PaymentSuccess'
 import PaymentCancel from './pages/Student/ChoosePaidItem/PaymentCancel'
 import PaymentCallback from './pages/Common/PaymentCallback'
+import ClassReservationDetails from './pages/Student/ChoosePaidItem/ClassReservationDetails/ClassReservationDetails'
 import UniversalLayout from './Shared/UniversalLayout'
 
 
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/payment/callback" element={<PaymentCallback />} />
+            <Route path="/student/choose-paid-item/reservations/:reservationId" element={<ClassReservationDetails />} />
             <Route path="/student/materials" element={<Materials />} />
             <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
             <Route path="/student/request-issue/academic" element={<AcademicReport />} />

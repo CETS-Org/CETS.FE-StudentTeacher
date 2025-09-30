@@ -1,0 +1,342 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import PageHeader from "@/components/ui/PageHeader";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { 
+  ArrowLeft,
+  Package,
+  Calendar,
+  Clock,
+  CreditCard,
+  BookOpen,
+  AlertCircle,
+  CheckCircle,
+  User,
+  DollarSign
+} from "lucide-react";
+
+import type { ClassReservationResponse } from "@/types/payment";
+import { getMockReservationDetails, type ReservationItem } from "./data/mockReservationDetailsData";
+import ClassReservationPaymentDialog, { type ReservationPaymentRequest } from "./components/ClassReservationPaymentDialog";
+
+export default function ClassReservationDetails() {
+  const { reservationId } = useParams<{ reservationId: string }>();
+  const navigate = useNavigate();
+  const [reservation, setReservation] = useState<ClassReservationResponse | null>(null);
+  const [reservationItems, setReservationItems] = useState<ReservationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+
+  useEffect(() => {
+    // Mock data - replace with actual API call
+    const fetchReservationDetails = async () => {
+      try {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Get mock data from separate file
+        const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId || "1");
+
+        setReservation(mockReservation);
+        setReservationItems(mockItems);
+      } catch (error) {
+        console.error("Error fetching reservation details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (reservationId) {
+      fetchReservationDetails();
+    }
+  }, [reservationId]);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN').format(price) + ' VND';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status?.toLowerCase()) {
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "confirmed": return "bg-green-100 text-green-800";
+      case "expired": return "bg-red-100 text-red-800";
+      case "cancelled": return "bg-gray-100 text-gray-800";
+      default: return "bg-blue-100 text-blue-800";
+    }
+  };
+
+  const getItemIcon = (type: string) => {
+    switch (type) {
+      case "course": return <BookOpen className="w-5 h-5" />;
+      case "material": return <Package className="w-5 h-5" />;
+      case "certificate": return <CheckCircle className="w-5 h-5" />;
+      default: return <BookOpen className="w-5 h-5" />;
+    }
+  };
+
+  const isExpired = () => {
+    return !!reservation && new Date(reservation.expiresAt) < new Date();
+  };
+
+  const isExpiringSoon = () => {
+    if (!reservation) return false;
+    const expiryDate = new Date(reservation.expiresAt);
+    const now = new Date();
+    const timeDiff = expiryDate.getTime() - now.getTime();
+    const daysDiff = timeDiff / (1000 * 3600 * 24);
+    return daysDiff <= 1 && daysDiff > 0;
+  };
+
+  const isPackage = () => {
+    return reservation?.coursePackageID && reservation?.packageCode;
+  };
+
+  const getReservationType = () => {
+    return isPackage() ? "Course Package" : "Individual Course";
+  };
+
+  const getReservationTypeColor = () => {
+    return isPackage() ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
+  };
+
+  const handleBack = () => {
+    navigate('/student/choose-paid-item');
+  };
+
+  const handleProceedToPayment = () => {
+    setShowPaymentDialog(true);
+  };
+
+  const handlePaymentSubmit = (paymentData: ReservationPaymentRequest) => {
+    console.log("Payment submitted:", paymentData);
+    setShowPaymentDialog(false);
+    // Here you would typically send the payment data to your backend
+    alert(`Payment successful! Paid ${paymentData.totalAmount.toLocaleString('vi-VN')} VND for ${paymentData.packageName}`);
+    // Optionally navigate to a success page or refresh the data
+    // navigate('/student/payment-success');
+  };
+
+  const breadcrumbItems = [
+    { label: "Class Reservations", href: "/student/choose-paid-item" },
+    { label: reservation?.packageName || "Reservation Details" }
+  ];
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-full space-y-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!reservation) {
+    return (
+      <div className="p-6 max-w-full space-y-8">
+        <Card className="text-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <AlertCircle className="w-12 h-12 text-gray-400" />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Reservation not found
+              </h3>
+              <p className="text-gray-600">
+                The requested reservation could not be found.
+              </p>
+            </div>
+            <Button variant="secondary" onClick={handleBack}>
+              Back to Reservations
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-full space-y-8">
+      <Breadcrumbs items={breadcrumbItems} />
+      
+      <PageHeader
+        title={`Reservation Details`}
+        description={`View details and items for your class reservation`}
+        icon={<Package className="w-5 h-5 text-white" />}
+        controls={[
+          {
+            type: 'button',
+            label: 'Back to Reservations',
+            variant: 'secondary',
+            icon: <ArrowLeft className="w-4 h-4" />,
+            onClick: handleBack
+          }
+        ]}
+      />
+
+      {/* Reservation Overview */}
+      <Card>
+        <div className="flex items-start justify-between gap-6">
+          {/* Left Section: Basic Info */}
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-blue-200 rounded-xl text-primary-600">
+                <Package className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-2xl font-bold text-gray-900">{reservation.packageName}</h2>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getReservationTypeColor()}`}>
+                    {getReservationType()}
+                  </span>
+                </div>
+                {reservation.packageCode && (
+                  <p className="text-gray-600">Code: {reservation.packageCode}</p>
+                )}
+              </div>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(reservation.reservationStatus)}`}>
+                {reservation.reservationStatus}
+              </span>
+            </div>
+
+            <p className="text-gray-700 mb-6">{reservation.description}</p>
+
+            {/* Dates and Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar className="w-4 h-4" />
+                <span>Reserved: {formatDate(reservation.createdAt)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4" />
+                <span className={isExpired() ? 'text-red-600 font-medium' : isExpiringSoon() ? 'text-orange-600 font-medium' : 'text-gray-600'}>
+                  Expires: {formatDate(reservation.expiresAt)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <User className="w-4 h-4" />
+                <span>Student ID: {reservation.studentID}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <DollarSign className="w-4 h-4" />
+                <span>Total: {formatPrice(reservation.totalPrice)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Section: Action */}
+          <div className="flex-shrink-0">
+            <div className="text-right mb-4">
+              <div className="text-3xl font-bold text-primary-600 mb-1">
+                {formatPrice(reservation.totalPrice)}
+              </div>
+              <p className="text-sm text-gray-600">Total Package Price</p>
+            </div>
+
+            {/* Status Warnings */}
+            {isExpired() && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">Reservation Expired</span>
+                </div>
+              </div>
+            )}
+
+            {isExpiringSoon() && !isExpired() && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-orange-700">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">Expires Soon</span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              variant={isExpired() ? "secondary" : "primary"}
+              disabled={isExpired()}
+              iconLeft={<CreditCard className="w-4 h-4" />}
+              onClick={handleProceedToPayment}
+              className="w-full"
+            >
+              {isExpired() ? "Expired" : "Proceed to Payment"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Reservation Items */}
+      <Card>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          {isPackage() ? 'Package Items' : 'Course Items'} ({reservationItems.length})
+        </h3>
+        
+        <div className="space-y-3">
+          {reservationItems.map((item) => (
+            <div key={item.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+              <div className="flex items-center justify-between gap-4">
+                {/* Item Info */}
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="p-2 bg-secondary-200 rounded-lg text-primary-600">
+                    {getItemIcon(item.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900">{item.name}</h4>
+                    <p className="text-sm text-gray-600 line-clamp-1">{item.description}</p>
+                    <span className="text-xs text-primary-600 bg-accent2-200 px-2 py-1 rounded-full capitalize">
+                      {item.type}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Item Price */}
+                <div className="text-right">
+                  <div className="font-semibold text-gray-900">{formatPrice(item.price)}</div>
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    {item.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Items Summary */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">Total Items: {reservationItems.length}</span>
+            <div className="text-right">
+              <div className="text-lg font-bold text-gray-900">
+                {formatPrice(reservationItems.reduce((sum, item) => sum + item.price, 0))}
+              </div>
+              <div className="text-xs text-gray-500">Sum of individual prices</div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Payment Dialog */}
+      {reservation && (
+        <ClassReservationPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          reservation={reservation}
+          reservationItems={reservationItems}
+          onPaymentSubmit={handlePaymentSubmit}
+        />
+      )}
+    </div>
+  );
+}
