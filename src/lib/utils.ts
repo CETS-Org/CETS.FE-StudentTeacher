@@ -59,5 +59,5 @@ export function getUserRole(): string | null {
 
 export function getUserPhone(): string | null {
   const userInfo = getUserInfo();
-  return userInfo?.phone || null;
+  return userInfo?.phoneNumber || null;
 }

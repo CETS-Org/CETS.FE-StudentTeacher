@@ -37,6 +37,7 @@ import StudentSessionDetail from './pages/Student/SessionDetail'
 import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
 import AcademicResults from './pages/Student/AcademicResults/AcademicResults'
 import ChoosePaidItem from './pages/Student/ChoosePaidItem/ChoosePaidItem'
+import ClassReservationDetails from './pages/Student/ChoosePaidItem/ClassReservationDetails/ClassReservationDetails'
 import UniversalLayout from './Shared/UniversalLayout'
 
 
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="/student/academic-results" element={<AcademicResults />} />
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/choose-paid-item" element={<ChoosePaidItem />} /> 
+            <Route path="/student/choose-paid-item/reservations/:reservationId" element={<ClassReservationDetails />} />
             <Route path="/student/materials" element={<Materials />} />
             <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
             <Route path="/student/request-issue/academic" element={<AcademicReport />} />
