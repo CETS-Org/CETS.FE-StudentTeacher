@@ -1,16 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
-import Tabs, { TabContent } from "@/components/ui/Tabs";
-import { 
+import {
   Calendar,
   Clock,
   CheckCircle,
-  Play,
   ArrowLeft,
-  User
+  Circle
 } from "lucide-react";
+import { getClassMeetingsByClassId, type ClassMeeting } from "@/services/teachingClassesService";
+import type { MyClass } from "@/types/class";
 
 // Session interface
 interface CourseSession {
@@ -20,6 +18,7 @@ interface CourseSession {
   date: string;
   duration: string;
   isCompleted: boolean;
+  isStudy: boolean;
   submissionTasks: SubmissionTask[];
   // Session Context fields
   topicTitle: string;
@@ -37,169 +36,32 @@ interface SubmissionTask {
   isSubmitted: boolean;
 }
 
-interface CourseMaterial {
-  id: string;
-  title: string;
-  fileName: string;
-  uploadDate: string;
-  size?: string;
-}
+// CourseMaterial type removed (not used)
 
-interface Assignment {
-  id: string;
-  title: string;
-  dueDate: string;
-  status: "pending" | "late" | "submitted" | "graded" | "locked";
-  score?: string;
-  submittedFile?: {
-    name: string;
-    size: string;
+// Assignment type removed (not used)
+
+// Minimal course detail removed; sessions are directly derived from meetings
+
+// Helper to map API meeting to UI session
+function mapMeetingToCourseSession(meeting: ClassMeeting, index: number): CourseSession {
+  const title = meeting.passcode || `Session ${index + 1}`;
+  const dateDisplay = meeting.date && meeting.date !== "0001-01-01" ? meeting.date : "N/A";
+  return {
+    id: `${meeting.id}`,
+    title,
+    topic: meeting.isStudy ? "Study Session" : "Non-study Day",
+    date: dateDisplay,
+    duration: "",
+    isCompleted: !meeting.isActive,
+    isStudy: !!meeting.isStudy,
+    submissionTasks: [],
+    topicTitle: "",
+    totalSlots: 0,
+    required: true,
+    objectives: [],
+    contentSummary: "",
   };
-  instructorRemarks?: string;
-  availableDate?: string;
 }
-
-interface CourseDetail {
-  id: string;
-  title: string;
-  instructor: string;
-  duration: string;
-  nextClass: string;
-  progress: number;
-  status: "Registered" | "In Progress" | "Completed";
-  sessions: CourseSession[];
-  materials: CourseMaterial[];
-  assignments: Assignment[];
-}
-
-// Mock data
-const mockCourseDetail: CourseDetail = {
-  id: "1",
-  title: "English For Beginner",
-  instructor: "Sarah Johnson",
-  duration: "12 weeks", 
-  nextClass: "Jan 28, 2025",
-  progress: 95,
-  status: "Registered",
-  materials: [
-    {
-      id: "material1",
-      title: "English for Beginners.pdf",
-      fileName: "English for Beginners.pdf",
-      uploadDate: "Jan 30, 2025",
-      size: "2.4 MB"
-    },
-    {
-      id: "material2", 
-      title: "Grammar Basics.pdf",
-      fileName: "Grammar Basics.pdf",
-      uploadDate: "Jan 30, 2025",
-      size: "1.8 MB"
-    }
-  ],
-  assignments: [
-    {
-      id: "assignment1",
-      title: "Assignment First Term - Unit 1, 2, 3",
-      dueDate: "Jan 29, 2025",
-      status: "graded",
-      score: "95/100",
-      submittedFile: {
-        name: "project_v2.pdf",
-        size: "2.4 MB"
-      },
-      instructorRemarks: "Good work on the responsive design! The JavaScript functionality is well implemented."
-    },
-    {
-      id: "assignment2",
-      title: "Assignment First Term - Unit 4, 5, 6", 
-      dueDate: "Jan 30, 2025",
-      status: "pending"
-    }
-  ],
-  sessions: [
-    {
-      id: "session1",
-      title: "Session 1",
-      topic: "Greetings and Introduction",
-      date: "09-30 23/08/2025 - 11:45 23/08/2025",
-      duration: "1h 45m",
-      isCompleted: true,
-      submissionTasks: [
-        {
-          id: "task1-1",
-          title: "Submit: exercise 1 session 1",
-          sessionId: "session1",
-          isSubmitted: true
-        },
-        {
-          id: "task1-2", 
-          title: "Submit: exercise 2 session 1",
-          sessionId: "session1",
-          isSubmitted: true
-        }
-      ],
-      topicTitle: "Basic Greetings and Self-Introduction",
-      totalSlots: 2, 
-      required: true,
-      objectives: [
-        "Learn basic greeting phrases in English",
-        "Practice introducing yourself and others",
-        "Understand cultural differences in greetings",
-        "Build confidence in speaking English"
-      ],
-      contentSummary: "This session covers fundamental English greetings, including formal and informal ways to say hello, goodbye, and introduce yourself. Students will practice pronunciation and learn about cultural context.",
-      preReadingUrl: "https://example.com/greetings-reading"
-    },
-    {
-      id: "session2",
-      title: "Session 2",
-      topic: "Numbers and Time",
-      date: "09-30 25/08/2025 - 11:45 25/08/2025",
-      duration: "1h 45m",
-      isCompleted: false,
-      submissionTasks: [
-        {
-          id: "task2-1",
-          title: "Submit: exercise 1 session 2", 
-          sessionId: "session2",
-          isSubmitted: false
-        }
-      ],
-      topicTitle: "Numbers, Time, and Daily Schedules",
-      totalSlots: 2, // 2 slots = 90 minutes
-      required: true,
-      objectives: [
-        "Master numbers 1-100 in English",
-        "Learn to tell time in different formats",
-        "Practice describing daily routines",
-        "Understand time-related vocabulary"
-      ],
-      contentSummary: "Students will learn cardinal and ordinal numbers, how to tell time using both 12-hour and 24-hour formats, and vocabulary related to daily schedules and routines.",
-      preReadingUrl: "https://example.com/numbers-time-reading"
-    },
-    {
-      id: "session3",
-      title: "Session 3",
-      topic: "Family and Relationships",
-      date: "09-30 27/08/2025 - 11:45 27/08/2025",
-      duration: "1h 45m",
-      isCompleted: false,
-      submissionTasks: [],
-      topicTitle: "Family Members and Relationships",
-      totalSlots: 2, // 2 slots = 90 minutes
-      required: true,
-      objectives: [
-        "Learn family member vocabulary",
-        "Practice describing family relationships",
-        "Understand possessive forms",
-        "Discuss family traditions and customs"
-      ],
-      contentSummary: "This session introduces vocabulary for family members, teaches possessive forms (my, your, his, her), and provides practice in describing family relationships and traditions.",
-      preReadingUrl: "https://example.com/family-reading"
-    }
-  ]
-};
 
 // Simple Session Card Component
 const SessionCard: React.FC<{ 
@@ -208,20 +70,16 @@ const SessionCard: React.FC<{
 }> = ({ session, onNavigate }) => {
   return (
     <div 
-      className="mb-4 border border-accent-200 bg-white hover:bg-accent-25 hover:shadow-lg transition-all duration-200 cursor-pointer rounded-lg"
+      className={`mb-4 border ${session.isStudy ? 'border-success-300 bg-success-50 hover:bg-success-100' : 'border-accent-200 bg-white hover:bg-accent-25'} hover:shadow-lg transition-all duration-200 cursor-pointer rounded-lg`}
       onClick={() => onNavigate(session.id)}
     >
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md ${
-            session.isCompleted 
-              ? 'bg-success-500' 
-              : 'bg-accent-500'
-          }`}>
-            {session.isCompleted ? (
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md ${session.isStudy ? 'bg-success-500' : 'bg-accent-500'}`}>
+            {session.isStudy ? (
               <CheckCircle className="w-5 h-5 text-white" />
             ) : (
-              <Play className="w-4 h-4 text-white" />
+              <Circle className="w-5 h-5 text-white" />
             )}
           </div>
           
@@ -232,18 +90,7 @@ const SessionCard: React.FC<{
           </div>
         </div>
         
-        <div className="flex items-center gap-4 ">
-          <div className="flex flex-col  text-sm ">
-            <div className="flex items-center gap-2 bg-accent-100 px-3 py-1.5 rounded-lg">
-              <Calendar className="w-4 h-4 text-primary-600" />
-              <span className="font-medium text-primary-700">{session.date}</span>
-            </div>
-            <div className="flex items-center ml-auto gap-2 bg-neutral-100 px-3 py-1 rounded-lg mt-2 w-fit">
-              <Clock className="w-4 h-4 text-neutral-600" />
-              <span className="font-medium text-neutral-700">{session.duration}</span>
-            </div>
-          </div>
-        </div>
+        <div />
       </div>
     </div>
   );
@@ -251,12 +98,66 @@ const SessionCard: React.FC<{
 
 export default function ClassSession() {
   const navigate = useNavigate();
-  
-  // In real app, fetch course data based on classId
-  const course = mockCourseDetail;
-  
+  const { classId } = useParams<{ classId: string }>();
+  const [meetings, setMeetings] = useState<ClassMeeting[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [classNameHeader, setClassNameHeader] = useState<string | null>(null);
+  const [courseTitleHeader, setCourseTitleHeader] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      if (!classId) {
+        setError("Missing classId");
+        setLoading(false);
+        return;
+      }
+      try {
+        const data = await getClassMeetingsByClassId(classId);
+        if (isMounted) {
+          setMeetings(data);
+        }
+      } catch (e: any) {
+        if (isMounted) setError(e?.message || "Failed to load sessions");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [classId]);
+
+  // Load class name from localStorage cache `selectedClass`
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('selectedClass');
+      if (!cached) return;
+      if (cached.startsWith('{')) {
+        const parsed = JSON.parse(cached) as Partial<MyClass>;
+        if (parsed && typeof parsed.className === 'string' && parsed.className) {
+          setClassNameHeader(parsed.className);
+        }
+        if (parsed && typeof parsed.courseName === 'string' && parsed.courseName) {
+          setCourseTitleHeader(parsed.courseName);
+        }
+      } else {
+        setClassNameHeader(cached);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  const sessions: CourseSession[] = useMemo(() => {
+    if (!meetings) return [];
+    return meetings.map((m, idx) => mapMeetingToCourseSession(m, idx));
+  }, [meetings]);
+
   const handleSessionClick = (sessionId: string) => {
-    navigate(`/student/class/${course.id}/session/${sessionId}`);
+    navigate(`/student/class/${classId}/session/${sessionId}`);
   };
 
   const goBack = () => {
@@ -275,33 +176,50 @@ export default function ClassSession() {
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">My Classes</span>
           </button>
-          <span className="text-neutral-400">›</span>
-          <span className="text-sm text-neutral-900 font-medium">{course.title}</span>
         </div>
 
-        {/* Course Header */}
+        {/* Class Header (mirrors session header style) */}
         <div className="flex items-center justify-between mb-8 p-6 border border-accent-200 rounded-xl bg-white">
-          <div>
-            <h1 className="text-3xl font-bold text-primary-800 mb-3">
-              {course.title}
-            </h1>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-accent-50 px-3 py-2 rounded-lg">
-                <User className="w-4 h-4 text-primary-600" />
-                <span className="text-sm font-medium text-primary-700">{course.instructor}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-success-50 px-3 py-2 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-success-600" />
-                <span className="text-sm font-medium text-success-700">Verified</span>
-              </div>
+          <div className="flex items-start gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-primary-800 mb-1">
+                {classNameHeader ?? 'Class Sessions'}
+              </h1>
+              {courseTitleHeader && (
+                <p className="text-accent-600 text-base">{courseTitleHeader}</p>
+              )}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-2 bg-accent-100 px-3 py-2 rounded-lg mb-2">
+              <Calendar className="w-4 h-4 text-primary-600" />
+              <span className="font-medium text-primary-700">
+                {(() => {
+                  const next = (meetings || []).find(m => m.date && m.date !== '0001-01-01');
+                  return next ? next.date : 'N/A';
+                })()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 bg-neutral-100 px-3 py-2 rounded-lg w-fit ml-auto">
+              <Clock className="w-4 h-4 text-neutral-600" />
+              <span className="font-medium text-neutral-700">{sessions.length} session{sessions.length === 1 ? '' : 's'}</span>
             </div>
           </div>
         </div>
 
         {/* Sessions List */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-primary-800 mb-4">Course Sessions</h2>
-          {course.sessions.map((session) => (
+          <h2 className="text-xl font-semibold text-primary-800 mb-4">Class Sessions</h2>
+          {loading && (
+            <div className="text-sm text-neutral-600">Loading sessions...</div>
+          )}
+          {error && !loading && (
+            <div className="text-sm text-danger-600">{error}</div>
+          )}
+          {!loading && !error && sessions.length === 0 && (
+            <div className="text-sm text-neutral-600">No sessions found.</div>
+          )}
+          {sessions.map((session) => (
             <SessionCard
               key={session.id}
               session={session}

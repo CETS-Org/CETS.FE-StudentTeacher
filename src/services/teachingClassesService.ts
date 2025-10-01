@@ -1,5 +1,70 @@
 import { api } from '@/lib/config';
 
+// Class Meetings (Sessions) for a given class
+export interface ClassMeeting {
+  id: string;
+  classID: string;
+  date: string; // ISO date (may be "0001-01-01" from API)
+  isStudy: boolean;
+  roomID: string;
+  onlineMeetingUrl?: string | null;
+  passcode?: string | null;
+  recordingUrl?: string | null;
+  progressNote?: string | null;
+  isActive: boolean;
+  isDeleted: boolean;
+}
+
+export const getClassMeetingsByClassId = async (classId: string): Promise<ClassMeeting[]> => {
+  const res = await api.getClassMeetingsByClassId(classId);
+  return res.data as ClassMeeting[];
+};
+
+// Covered Topic (Session Context)
+export interface CoveredTopic {
+  id: string;
+  sessionNumber: number;
+  topicTitle: string;
+  totalSlots: number; // minutes
+  required: boolean;
+  objectives: string[] | null;
+  contentSummary: string | null;
+  preReadingUrl: string | null;
+}
+
+export const getCoveredTopicByMeetingId = async (classMeetingId: string): Promise<CoveredTopic> => {
+  const res = await api.getClassMeetingCoveredTopic(classMeetingId);
+  return res.data as CoveredTopic;
+};
+
+// Assignments for meeting + student
+export interface AssignmentSubmission {
+  id: string;
+  assignmentID: string;
+  studentID: string;
+  storeUrl: string | null;
+  content: string | null;
+  score: number | null;
+  feedback: string | null;
+  createdAt: string;
+}
+
+export interface MeetingAssignment {
+  id: string;
+  classMeetingId: string;
+  teacherId: string;
+  title: string;
+  description: string | null;
+  dueDate: string;
+  createdAt: string;
+  submissions: AssignmentSubmission[];
+}
+
+export const getAssignmentsByMeetingAndStudent = async (classMeetingId: string, studentId: string): Promise<MeetingAssignment[]> => {
+  const res = await api.getAssignmentsByMeetingAndStudent(classMeetingId, studentId);
+  return res.data as MeetingAssignment[];
+};
+
 // API Response Types
 export interface ClassSession {
   classMeetingsId: string;

@@ -266,6 +266,9 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
   const navigate = useNavigate();
   
   const handleOpenClass = () => {
+    try {
+      localStorage.setItem('selectedClass', JSON.stringify(classItem));
+    } catch {}
     navigate(`/student/class/${classItem.id}`);
   };
   const getStatusColor = (status: string) => {

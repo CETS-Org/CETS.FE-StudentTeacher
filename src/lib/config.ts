@@ -228,5 +228,17 @@ export const api = {
   // Plan Types
   getPlanTypes: (config?: AxiosRequestConfig) => 
     apiClient.get('/api/CORE_LookUp/type/code/PlanType', config),
+
+  // Class Meetings
+  getClassMeetingsByClassId: (classId: string, config?: AxiosRequestConfig) =>
+    apiClient.get(`/api/ACAD_ClassMeetings/${classId}`, config),
+
+  // Class Meeting Covered Topic
+  getClassMeetingCoveredTopic: (classMeetingId: string, config?: AxiosRequestConfig) =>
+    apiClient.get(`/api/ACAD_ClassMeetings/${classMeetingId}/covered-topic`, config),
+
+  // Class Meeting Assignments by student
+  getAssignmentsByMeetingAndStudent: (classMeetingId: string, studentId: string, config?: AxiosRequestConfig) =>
+    apiClient.get(`/api/ACAD_Assignments/class-meeting/${classMeetingId}/student/${studentId}/assignments`, config),
 };
 
