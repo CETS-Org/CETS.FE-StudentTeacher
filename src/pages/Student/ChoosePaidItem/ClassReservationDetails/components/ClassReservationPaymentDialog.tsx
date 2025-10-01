@@ -11,8 +11,7 @@ import {
 import { getUserInfo } from "@/lib/utils";
 import { paymentService, redirectToPayOS, handlePaymentFailure } from "@/services/paymentService";
 import type { 
-  ClassReservationPaymentDialogProps, 
-  InstallmentScheduleItem,
+  ClassReservationPaymentDialogProps,
   InstallmentInfo
 } from "@/types/payment";
 
@@ -23,9 +22,7 @@ export default function ClassReservationPaymentDialog({
   reservationItems
 }: Omit<ClassReservationPaymentDialogProps, 'onPaymentSubmit'>) {
   const [paymentMethod, setPaymentMethod] = useState("credit_card");
-  const [installmentType, setInstallmentType] = useState<'full' | 'two_payments'>('full');
-  const [paymentScope, setPaymentScope] = useState<'full_package' | 'selected_items'>('full_package');
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [paymentPlan, setPaymentPlan] = useState<'one_time' | 'two_time'>('one_time');
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
@@ -123,21 +120,14 @@ export default function ClassReservationPaymentDialog({
     return isPackage() ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
   };
 
-  // Calculate selected items total
-  const selectedItemsTotal = useMemo(() => {
-    if (paymentScope === 'selected_items') {
-      return reservationItems
-        .filter(item => selectedItemIds.includes(item.id))
-        .reduce((sum, item) => sum + item.price, 0);
-    }
+  // Calculate total from all reservation items
+  const totalAmount = useMemo(() => {
     return reservation.totalPrice;
-  }, [paymentScope, selectedItemIds, reservationItems, reservation.totalPrice]);
+  }, [reservation.totalPrice]);
 
   // Calculate installment info for the currently selected type
   const installmentInfo = useMemo((): InstallmentInfo => {
-    const totalAmount = selectedItemsTotal;
-    
-    if (installmentType === 'two_payments') {
+    if (paymentPlan === 'two_time') {
       return {
         numberOfInstallments: 2,
         installmentAmount: Math.ceil(totalAmount / 2),
@@ -150,58 +140,12 @@ export default function ClassReservationPaymentDialog({
       installmentAmount: totalAmount,
       description: 'Full payment'
     };
-  }, [installmentType, selectedItemsTotal]);
+  }, [paymentPlan, totalAmount]);
 
-  // Calculate amounts for each payment option (independent of selection)
+  // Calculate amounts for each payment option
   const twoPaymentAmount = useMemo(() => {
-    return Math.ceil(selectedItemsTotal / 2);
-  }, [selectedItemsTotal]);
-
-  const installmentSchedule = useMemo((): InstallmentScheduleItem[] => {
-    const { numberOfInstallments, installmentAmount } = installmentInfo;
-    const schedule: InstallmentScheduleItem[] = [];
-    const today = new Date();
-    
-    for (let i = 0; i < numberOfInstallments; i++) {
-      const dueDate = new Date(today);
-      dueDate.setMonth(today.getMonth() + i);
-      
-      // For the last installment, calculate the remainder to handle rounding
-      const isLastInstallment = i === numberOfInstallments - 1;
-      const amount = isLastInstallment 
-        ? selectedItemsTotal - (installmentAmount * (numberOfInstallments - 1))
-        : installmentAmount;
-      
-      schedule.push({
-        installmentNumber: i + 1,
-        amount: amount,
-        dueDate: dueDate.toISOString(),
-        status: 'pending'
-      });
-    }
-    
-    return schedule;
-  }, [installmentInfo, selectedItemsTotal]);
-
-  // Handle item selection
-  const handleItemToggle = (itemId: string) => {
-    setSelectedItemIds(prev => {
-      if (prev.includes(itemId)) {
-        return prev.filter(id => id !== itemId);
-      } else {
-        return [...prev, itemId];
-      }
-    });
-  };
-
-  // Handle select all items
-  const handleSelectAllItems = () => {
-    if (selectedItemIds.length === reservationItems.length) {
-      setSelectedItemIds([]);
-    } else {
-      setSelectedItemIds(reservationItems.map(item => item.id));
-    }
-  };
+    return Math.ceil(totalAmount / 2);
+  }, [totalAmount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,26 +169,14 @@ export default function ClassReservationPaymentDialog({
         return;
       }
 
-      // Determine which reservation item to pay for
+      // Use the first reservation item for payment
       let reservationItemId: string;
       
-      if (paymentScope === 'selected_items' && selectedItemIds.length > 0) {
-        // Use the first selected item ID
-        // TODO: Backend might need to support multiple items or we need to call API multiple times
-        reservationItemId = selectedItemIds[0];
-        console.log(`Paying for ${selectedItemIds.length} items, using first item ID:`, reservationItemId);
-        
-        if (selectedItemIds.length > 1) {
-          console.warn(`Multiple items selected (${selectedItemIds.length}), but API only supports one reservationItemId. Using first item.`);
-        }
+      if (reservationItems.length > 0) {
+        reservationItemId = reservationItems[0].id;
+        console.log('Processing payment for reservation item ID:', reservationItemId);
       } else {
-        // For full package or default, use the first item from reservationItems
-        if (reservationItems.length > 0) {
-          reservationItemId = reservationItems[0].id;
-          console.log('Full package payment, using first reservation item ID:', reservationItemId);
-        } else {
-          throw new Error('No reservation items available');
-        }
+        throw new Error('No reservation items available');
       }
 
       // Prepare payment data for API
@@ -427,173 +359,57 @@ export default function ClassReservationPaymentDialog({
               </div>
             </div>
 
-            {/* Installment Plan */}
+            {/* Payment Plan */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Payment Plan
               </label>
               <div className="space-y-3">
-                {/* Full Payment */}
+                {/* One-time Payment */}
                 <label className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                  installmentType === 'full' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
+                  paymentPlan === 'one_time' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
                 }`}>
                   <input
                     type="radio"
-                    name="installmentType"
-                    value="full"
-                    checked={installmentType === 'full'}
-                    onChange={(e) => setInstallmentType(e.target.value as 'full')}
+                    name="paymentPlan"
+                    value="one_time"
+                    checked={paymentPlan === 'one_time'}
+                    onChange={(e) => setPaymentPlan(e.target.value as 'one_time')}
                     className="sr-only"
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">Full Payment</span>
-                      <span className="text-lg font-bold text-primary-600">{formatPrice(selectedItemsTotal)}</span>
+                      <span className="text-sm font-medium text-gray-900">One-time Payment</span>
+                      <span className="text-lg font-bold text-primary-600">{formatPrice(totalAmount)}</span>
                     </div>
                     <p className="text-xs text-gray-600">Pay the entire amount now</p>
                   </div>
                 </label>
 
-                {/* Two Payments */}
+                {/* Two-time Payment */}
                 <label className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                  installmentType === 'two_payments' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
+                  paymentPlan === 'two_time' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
                 }`}>
                   <input
                     type="radio"
-                    name="installmentType"
-                    value="two_payments"
-                    checked={installmentType === 'two_payments'}
-                    onChange={(e) => setInstallmentType(e.target.value as 'two_payments')}
+                    name="paymentPlan"
+                    value="two_time"
+                    checked={paymentPlan === 'two_time'}
+                    onChange={(e) => setPaymentPlan(e.target.value as 'two_time')}
                     className="sr-only"
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">2 Monthly Payments</span>
-                      <span className="text-lg font-bold text-primary-600">{formatPrice(twoPaymentAmount)}/month</span>
+                      <span className="text-sm font-medium text-gray-900">Two-time Payment</span>
+                      <span className="text-lg font-bold text-primary-600">{formatPrice(twoPaymentAmount)}/payment</span>
                     </div>
-                    <p className="text-xs text-gray-600">Split into 2 equal monthly payments</p>
+                    <p className="text-xs text-gray-600">Split into 2 equal payments</p>
                     <div className="text-xs text-gray-500 mt-1">
-                      Total: {formatPrice(selectedItemsTotal)}
+                      Total: {formatPrice(totalAmount)}
                     </div>
                   </div>
                 </label>
               </div>
-
-              {/* Installment Schedule Preview */}
-              {installmentType !== 'full' && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <h5 className="text-sm font-medium text-gray-900 mb-2">Payment Schedule</h5>
-                  <div className="space-y-2">
-                    {installmentSchedule.map((installment, index) => (
-                      <div key={index} className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">
-                          Payment {installment.installmentNumber} - {formatDate(installment.dueDate).split(',')[0]}
-                        </span>
-                        <span className="font-medium text-gray-900">
-                          {formatPrice(installment.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Payment Scope Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                What would you like to pay for?
-              </label>
-              <div className="space-y-3">
-                {/* Full Package */}
-                <label className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                  paymentScope === 'full_package' ? 'border-primary-500 bg-accent-200' : 'border-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="paymentScope"
-                    value="full_package"
-                    checked={paymentScope === 'full_package'}
-                    onChange={(e) => setPaymentScope(e.target.value as 'full_package')}
-                    className="sr-only"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">Full Package</span>
-                      <span className="text-lg font-bold text-primary-600">{formatPrice(reservation.totalPrice)}</span>
-                    </div>
-                    <p className="text-xs text-gray-600">Pay for all {reservationItems.length} items in this package</p>
-                  </div>
-                </label>
-
-                {/* Selected Items */}
-                <label className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                  paymentScope === 'selected_items' ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="paymentScope"
-                    value="selected_items"
-                    checked={paymentScope === 'selected_items'}
-                    onChange={(e) => setPaymentScope(e.target.value as 'selected_items')}
-                    className="sr-only"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">Selected Items Only</span>
-                      <span className="text-lg font-bold text-primary-600">
-                        {paymentScope === 'selected_items' ? formatPrice(selectedItemsTotal) : formatPrice(0)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600">
-                      Pay for specific items ({selectedItemIds.length} selected)
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              {/* Item Selection */}
-              {paymentScope === 'selected_items' && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h5 className="text-sm font-medium text-gray-900">Select Items to Pay For</h5>
-                    <button
-                      type="button"
-                      onClick={handleSelectAllItems}
-                      className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      {selectedItemIds.length === reservationItems.length ? 'Deselect All' : 'Select All'}
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {reservationItems.map((item) => (
-                      <label key={item.id} className="flex items-center justify-between p-2 bg-white rounded border cursor-pointer hover:bg-gray-50">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedItemIds.includes(item.id)}
-                            onChange={() => handleItemToggle(item.id)}
-                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                          />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{item.courseName}</div>
-                            <div className="text-xs text-gray-600 capitalize">{item.category}</div>
-                          </div>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</span>
-                      </label>
-                    ))}
-                  </div>
-                  {selectedItemIds.length > 0 && (
-                    <div className="mt-3 pt-2 border-t border-gray-200">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">Total for selected items:</span>
-                        <span className="font-bold text-gray-900">{formatPrice(selectedItemsTotal)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Student Information */}
@@ -694,12 +510,12 @@ export default function ClassReservationPaymentDialog({
                 type="submit"
                 variant="primary"
                 className="flex-1"
-                disabled={isProcessing || isLoadingProfile || (paymentScope === 'selected_items' && selectedItemIds.length === 0)}
+                disabled={isProcessing || isLoadingProfile}
                 iconLeft={isProcessing ? undefined : <CreditCard className="w-4 h-4" />}
               >
                 {isLoadingProfile ? "Loading..." : isProcessing ? "Processing..." : 
-                  installmentType === 'full' 
-                    ? `Pay ${formatPrice(selectedItemsTotal)}` 
+                  paymentPlan === 'one_time' 
+                    ? `Pay ${formatPrice(totalAmount)}` 
                     : `Pay First Installment ${formatPrice(installmentInfo.installmentAmount)}`
                 }
               </Button>

@@ -13,7 +13,6 @@ import {
   BookOpen,
   AlertCircle,
   CheckCircle,
-  User,
   DollarSign
 } from "lucide-react";
 
@@ -30,6 +29,7 @@ export default function ClassReservationDetails() {
   const [reservationItems, setReservationItems] = useState<ReservationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedItemForPayment, setSelectedItemForPayment] = useState<ReservationItem | null>(null);
 
   useEffect(() => {
     const fetchReservationDetails = async () => {
@@ -225,6 +225,14 @@ export default function ClassReservationDetails() {
   };
 
   const handleProceedToPayment = () => {
+    // Pay for all items
+    setSelectedItemForPayment(null);
+    setShowPaymentDialog(true);
+  };
+
+  const handlePayForItem = (item: ReservationItem) => {
+    // Pay for a specific item
+    setSelectedItemForPayment(item);
     setShowPaymentDialog(true);
   };
 
@@ -404,21 +412,40 @@ export default function ClassReservationDetails() {
                    </div>
                  </div>
 
-                 {/* Item Price */}
-                 <div className="text-right">
-                   <div className="font-semibold text-gray-900">{formatPrice(item.price)}</div>
-                   <div className="text-xs text-gray-600 mt-1">
-                     {item.invoiceStatus ? (
-                       <span className={`flex items-center gap-1 ${
-                         item.invoiceStatus === 'Paid' ? 'text-green-600' : 'text-yellow-600'
-                       }`}>
-                         <CheckCircle className="w-3 h-3" />
-                         {item.invoiceStatus}
-                       </span>
-                     ) : (
-                       <span className="text-gray-500">Not invoiced</span>
-                     )}
+                 {/* Item Price and Action */}
+                 <div className="flex items-center gap-4">
+                   <div className="text-right">
+                     <div className="font-semibold text-gray-900">{formatPrice(item.price)}</div>
+                     <div className="text-xs text-gray-600 mt-1">
+                       {item.invoiceStatus ? (
+                         <span className={`flex items-center gap-1 ${
+                           item.invoiceStatus === 'Paid' ? 'text-green-600' : 'text-yellow-600'
+                         }`}>
+                           <CheckCircle className="w-3 h-3" />
+                           {item.invoiceStatus}
+                         </span>
+                       ) : (
+                         <span className="text-gray-500">Not Paid</span>
+                       )}
+                     </div>
                    </div>
+                   
+                   {/* Pay Button */}
+                   {!item.invoiceStatus || item.invoiceStatus !== 'Paid' ? (
+                     <Button
+                       variant="primary"
+                       size="sm"
+                       iconLeft={<CreditCard className="w-3 h-3" />}
+                       onClick={() => handlePayForItem(item)}
+                       disabled={isExpired()}
+                     >
+                       Pay Now
+                     </Button>
+                   ) : (
+                     <div className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                       Paid
+                     </div>
+                   )}
                  </div>
               </div>
             </div>
@@ -445,7 +472,7 @@ export default function ClassReservationDetails() {
           open={showPaymentDialog}
           onOpenChange={setShowPaymentDialog}
           reservation={reservation}
-          reservationItems={reservationItems}
+          reservationItems={selectedItemForPayment ? [selectedItemForPayment] : reservationItems}
         />
       )}
     </div>

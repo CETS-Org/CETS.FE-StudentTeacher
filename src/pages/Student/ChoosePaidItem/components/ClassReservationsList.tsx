@@ -70,7 +70,7 @@ export default function ClassReservationsList({
 
   const filteredReservations = reservations
     // Filter by status: only show "Đang xử lý"
-    .filter(reservation => reservation.reservationStatus === "Chờ xử lý")
+    .filter(reservation => reservation.reservationStatus === "Paying")
     // Filter by search term
     .filter(reservation =>
       (reservation.packageName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
