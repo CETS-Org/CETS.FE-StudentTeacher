@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Clock, Users, BookOpen, CheckCircle, Play, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Star, Clock, Users, BookOpen, CheckCircle, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ClassReservationDialog from "./components/ClassReservationDialog";
 import RelatedCourses from "./components/RelatedCourses";
 import CourseSchedule from "@/components/ui/CourseSchedule";
+import Toast from "@/components/ui/Toast";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useCourseSchedule } from "@/hooks/useCourseSchedule";
-import { isTokenValid } from "@/lib/utils";
+import { useToast } from "@/hooks/useToast";
+import { isTokenValid, getUserInfo } from "@/lib/utils";
+import { api } from "@/lib/config";
+import { planTypeService } from "@/services/planTypeService";
 import type { CourseDetailProps } from "@/types/course";
 
 export default function CourseDetail({ course }: CourseDetailProps) {
@@ -15,7 +20,9 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   const [showEnrollmentDialog, setShowEnrollmentDialog] = useState(false);
   const [expandedSyllabus, setExpandedSyllabus] = useState<Set<string>>(new Set());
   const [allSyllabusExpanded, setAllSyllabusExpanded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { schedules, loading: schedulesLoading } = useCourseSchedule(course.id);
+  const { toasts, hideToast, success, error } = useToast();
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -106,10 +113,54 @@ export default function CourseDetail({ course }: CourseDetailProps) {
     setShowEnrollmentDialog(true);
   };
 
-  const handleEnrollmentSubmit = (enrollmentData: unknown) => {
-    // Handle enrollment submission
-    console.log("Enrollment data:", enrollmentData);
-    // You can add success notification here
+  const handleEnrollmentSubmit = async (enrollmentData: any) => {
+    setIsLoading(true);
+    
+    try {
+      // Get current user info
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        error("User not found. Please login again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Get plan type ID dynamically
+      const planTypeID = await planTypeService.getPlanTypeId(enrollmentData.paymentPlan || 'one_time');
+
+      // Create complete reservation with item in single transaction
+      const response = await api.createCompleteReservation({
+        studentID: userInfo.id,
+        coursePackageID: null, // Individual course, not a package
+        items: [
+          {
+            courseID: course.id,
+            invoiceID: null,
+            paymentSequence: 1,
+            planTypeID: planTypeID
+          }
+        ]
+      });
+
+      console.log("Reservation created successfully:", response.data);
+      
+      setIsLoading(false);
+      
+      success("Class reservation created successfully! Redirecting...");
+      
+      // Navigate to reservations page after a short delay
+      setTimeout(() => {
+        navigate('/student/choose-paid-item');
+      }, 1500);
+      
+    } catch (err: any) {
+      console.error("Error creating class reservation:", err);
+      
+      setIsLoading(false);
+      
+      const errorMessage = err.response?.data?.message || err.message || "Failed to create class reservation. Please try again.";
+      error(errorMessage);
+    }
   };
 
   return (
@@ -533,6 +584,19 @@ export default function CourseDetail({ course }: CourseDetailProps) {
         course={course}
         onSubmit={handleEnrollmentSubmit}
       />
+
+      {/* Loading Overlay */}
+      {isLoading && <LoadingOverlay message="Creating reservation..." />}
+
+      {/* Toast Notifications */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+        />
+      ))}
     </div>
   );
 }

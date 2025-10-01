@@ -200,5 +200,22 @@ export const api = {
   // Student Learning Classes
   getStudentLearningClasses: (studentId: string, config?: AxiosRequestConfig) => 
     apiClient.get(`/api/ACAD_Classes/learningClass?studentId=${studentId}`, config),
+
+  // Class Reservations (Complete - with items in single transaction)
+  createCompleteReservation: (reservationData: {
+    studentID: string;
+    coursePackageID?: string | null;
+    items: Array<{
+      courseID: string;
+      invoiceID?: string | null;
+      paymentSequence?: number;
+      planTypeID?: string;
+    }>;
+  }, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/class-reservations/items', reservationData, config),
+
+  // Plan Types
+  getPlanTypes: (config?: AxiosRequestConfig) => 
+    apiClient.get('/api/CORE_LookUp/type/code/PlanType', config),
 };
 
