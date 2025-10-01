@@ -68,12 +68,15 @@ export default function ClassReservationsList({
     fetchReservations();
   }, []);
 
-  const filteredReservations = reservations.filter(reservation =>
-    (reservation.packageName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-    (reservation.packageCode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-    (reservation.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-    (reservation.reservationStatus?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
-  );
+  const filteredReservations = reservations
+    // Filter by status: only show "Đang xử lý"
+    .filter(reservation => reservation.reservationStatus === "Chờ xử lý")
+    // Filter by search term
+    .filter(reservation =>
+      (reservation.packageName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (reservation.packageCode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (reservation.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+    );
 
   if (loading) {
     return (

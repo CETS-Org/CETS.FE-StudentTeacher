@@ -225,15 +225,39 @@ export default function ClassReservationPaymentDialog({
         return;
       }
 
+      // Determine which reservation item to pay for
+      let reservationItemId: string;
+      
+      if (paymentScope === 'selected_items' && selectedItemIds.length > 0) {
+        // Use the first selected item ID
+        // TODO: Backend might need to support multiple items or we need to call API multiple times
+        reservationItemId = selectedItemIds[0];
+        console.log(`Paying for ${selectedItemIds.length} items, using first item ID:`, reservationItemId);
+        
+        if (selectedItemIds.length > 1) {
+          console.warn(`Multiple items selected (${selectedItemIds.length}), but API only supports one reservationItemId. Using first item.`);
+        }
+      } else {
+        // For full package or default, use the first item from reservationItems
+        if (reservationItems.length > 0) {
+          reservationItemId = reservationItems[0].id;
+          console.log('Full package payment, using first reservation item ID:', reservationItemId);
+        } else {
+          throw new Error('No reservation items available');
+        }
+      }
+
       // Prepare payment data for API
       const monthlyPaymentData = {
-        reservationItemId: reservation.id, // Use reservation ID as item ID
+        reservationItemId: reservationItemId, // Use actual reservation item ID
         studentId: studentId, // Get from localStorage
         fullName: studentName.trim(),
         email: studentEmail.trim(),
         phoneNumber: studentPhone.trim(),
         note: notes || ""
       };
+      
+      console.log('Monthly payment data:', monthlyPaymentData);
 
       // Call the payment API
       const paymentResponse = await paymentService.createMonthlyPayment(monthlyPaymentData);
@@ -245,6 +269,7 @@ export default function ClassReservationPaymentDialog({
           invoiceId: paymentResponse.invoiceId,
           amount: paymentResponse.amount,
           itemId: reservation.id,
+          reservationItemId: reservationItemId, // Add reservationItemId for callback
           itemName: reservation.packageName || 'Class Reservation',
           studentId: studentId, // Use studentId from localStorage
           timestamp: new Date().toISOString()

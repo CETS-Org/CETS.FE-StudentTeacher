@@ -24,21 +24,23 @@ export default function PaymentCallback() {
         // Check if this is a backend callback with redirect URL
         if (code && id) {
           try {
-            // Get invoiceId and studentId from localStorage if available
+            // Get invoiceId, studentId, and reservationItemId from localStorage if available
             const storedPayment = localStorage.getItem('currentPayment');
             let invoiceId = '';
             let studentId = '';
+            let reservationItemId = '';
             if (storedPayment) {
               try {
                 const payment = JSON.parse(storedPayment);
                 invoiceId = payment.invoiceId || '';
                 studentId = payment.studentId || '';
+                reservationItemId = payment.reservationItemId || '';
               } catch (e) {
                 console.warn('Error parsing stored payment data:', e);
               }
             }
 
-            // Build API URL with invoiceId and studentId parameters
+            // Build API URL with invoiceId, studentId, and reservationItemId parameters
             const params = new URLSearchParams({
               code: code || '',
               id: id || '',
@@ -49,6 +51,7 @@ export default function PaymentCallback() {
             
             if (invoiceId) params.append('invoiceId', invoiceId);
             if (studentId) params.append('studentId', studentId);
+            if (reservationItemId) params.append('reservationItemId', reservationItemId);
             
             const apiUrl = `/api/FIN_Payment/success?${params.toString()}`;
             

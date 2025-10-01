@@ -325,10 +325,7 @@ export default function ClassReservationDetails() {
                   Expires: {formatDate(reservation.expiresAt)}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <User className="w-4 h-4" />
-                <span>Student ID: {reservation.studentID}</span>
-              </div>
+              
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <DollarSign className="w-4 h-4" />
                 <span>Total: {formatPrice(reservation.totalPrice)}</span>
@@ -402,9 +399,7 @@ export default function ClassReservationDetails() {
                        <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
                          {item.category}
                        </span>
-                       <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                         {item.planType}
-                       </span>
+                       
                      </div>
                    </div>
                  </div>
