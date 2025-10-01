@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFoo
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { getUserInfo } from "@/lib/utils";
-import { Package, BookOpen, ChevronDown, ChevronUp, Clock, Users, Star } from "lucide-react";
+import { Package, BookOpen, ChevronDown, ChevronUp, Users, Star } from "lucide-react";
 import type { CoursePackageDetail } from "@/types/coursePackage";
 
 interface PackageEnrollmentData {
@@ -46,7 +46,7 @@ export default function PackageEnrollmentDialog({
           ...prev,
           fullName: userInfo.fullName || "",
           email: userInfo.email || "",
-          phone: userInfo.phone || "",
+          phone: userInfo.phoneNumber || "",
         }));
       }
     } else {
@@ -81,10 +81,6 @@ export default function PackageEnrollmentDialog({
   const getTotalAmount = () => {
     const firstCourse = getFirstCourse();
     return firstCourse ? firstCourse.standardPrice : 0;
-  };
-
-  const getSavingsAmount = () => {
-    return coursePackage.totalIndividualPrice - coursePackage.totalPrice;
   };
 
   const toggleCourseExpansion = (courseId: string) => {
@@ -252,14 +248,15 @@ export default function PackageEnrollmentDialog({
             {/* Personal Information */}
             <div>
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
-              <p className="text-sm text-gray-600 mb-4">Your profile information has been automatically filled. Please review and update if needed.</p>
+              <p className="text-sm text-gray-600 mb-4">Your profile information has been automatically filled and cannot be edited here.</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                   <Input
                     type="text"
                     value={enrollmentData.fullName}
-                    onChange={(e) => setEnrollmentData({...enrollmentData, fullName: e.target.value})}
+                    readOnly
+                    className="bg-gray-100 cursor-not-allowed"
                     placeholder="Enter your full name"
                   />
                 </div>
@@ -268,7 +265,8 @@ export default function PackageEnrollmentDialog({
                   <Input
                     type="email"
                     value={enrollmentData.email}
-                    onChange={(e) => setEnrollmentData({...enrollmentData, email: e.target.value})}
+                    readOnly
+                    className="bg-gray-100 cursor-not-allowed"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -277,7 +275,8 @@ export default function PackageEnrollmentDialog({
                   <Input
                     type="tel"
                     value={enrollmentData.phone}
-                    onChange={(e) => setEnrollmentData({...enrollmentData, phone: e.target.value})}
+                    readOnly
+                    className="bg-gray-100 cursor-not-allowed"
                     placeholder="Enter your phone number"
                   />
                 </div>

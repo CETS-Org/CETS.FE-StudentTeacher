@@ -6,7 +6,12 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import RelatedPackages from "./components/RelatedPackages";
 import PackageEnrollmentDialog from "./components/PackageEnrollmentDialog";
+import Toast from "@/components/ui/Toast";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { api } from "@/lib/config";
+import { getUserInfo } from "@/lib/utils";
+import { useToast } from "@/hooks/useToast";
+import { planTypeService } from "@/services/planTypeService";
 import type { CoursePackageDetail } from "@/types/coursePackage";
 
 export default function CoursePackageDetail() {
@@ -19,6 +24,8 @@ export default function CoursePackageDetail() {
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [allCoursesExpanded, setAllCoursesExpanded] = useState(false);
   const [enrollmentDialogOpen, setEnrollmentDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toasts, hideToast, success, error: showError } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -138,11 +145,60 @@ export default function CoursePackageDetail() {
   };
 
   // Enrollment handler
-  const handleEnrollmentSubmit = (enrollmentData: any) => {
-    // TODO: Implement enrollment logic
-    console.log("Enrollment data:", enrollmentData);
-    console.log("Package:", packageDetail?.id);
-    // Here you would typically send the enrollment data to your API
+  const handleEnrollmentSubmit = async (enrollmentData: any) => {
+    setIsSubmitting(true);
+    
+    try {
+      // Get current user info
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        showError("User not found. Please login again.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!packageDetail) {
+        showError("Package details not found. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Get plan type ID dynamically
+      const planTypeID = await planTypeService.getPlanTypeId(enrollmentData.paymentPlan || 'one_time');
+
+      // Create complete reservation with all items in single transaction
+      const response = await api.createCompleteReservation({
+        studentID: userInfo.id,
+        coursePackageID: packageDetail.id,
+        items: packageDetail.courses.map((course, index) => ({
+          courseID: course.courseId,
+          invoiceID: null,
+          paymentSequence: index + 1, // Sequential payment sequence for each course
+          planTypeID: planTypeID
+        }))
+      });
+
+      console.log("Package reservation created successfully:", response.data);
+      
+      setIsSubmitting(false);
+      
+      // Show success message
+      success(`Course package reservation created successfully! ${packageDetail.courses.length} courses reserved. Redirecting...`);
+      
+      // Navigate to reservations page after a short delay
+      setTimeout(() => {
+        navigate('/student/choose-paid-item');
+      }, 1500);
+      
+    } catch (err: any) {
+      console.error("Error creating package reservation:", err);
+      
+      setIsSubmitting(false);
+      
+      // Show specific error message if available
+      const errorMessage = err.response?.data?.message || err.message || "Failed to create package reservation. Please try again.";
+      showError(errorMessage);
+    }
   };
 
   if (loading) {
@@ -640,6 +696,19 @@ export default function CoursePackageDetail() {
           onSubmit={handleEnrollmentSubmit}
         />
       )}
+
+      {/* Loading Overlay */}
+      {isSubmitting && <LoadingOverlay message="Creating package reservation..." />}
+
+      {/* Toast Notifications */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+        />
+      ))}
     </div>
   );
 }
