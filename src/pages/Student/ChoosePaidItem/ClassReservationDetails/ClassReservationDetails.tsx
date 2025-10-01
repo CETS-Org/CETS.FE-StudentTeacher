@@ -17,9 +17,9 @@ import {
   DollarSign
 } from "lucide-react";
 
-import type { ClassReservationResponse } from "@/types/payment";
-import { getMockReservationDetails, type ReservationItem } from "./data/mockReservationDetailsData";
-import ClassReservationPaymentDialog, { type ReservationPaymentRequest } from "./components/ClassReservationPaymentDialog";
+import type { ClassReservationResponse, ReservationPaymentRequest, ReservationItem } from "@/types/payment";
+import { getMockReservationDetails } from "./data/mockReservationDetailsData";
+import ClassReservationPaymentDialog from "./components/ClassReservationPaymentDialog";
 
 export default function ClassReservationDetails() {
   const { reservationId } = useParams<{ reservationId: string }>();
@@ -122,8 +122,18 @@ export default function ClassReservationDetails() {
   const handlePaymentSubmit = (paymentData: ReservationPaymentRequest) => {
     console.log("Payment submitted:", paymentData);
     setShowPaymentDialog(false);
+    
+    // Create success message based on installment plan
+    let successMessage = "";
+    if (paymentData.installmentPlan.type === 'full') {
+      successMessage = `Payment successful! Paid ${paymentData.totalAmount.toLocaleString('vi-VN')} VND for ${paymentData.packageName}`;
+    } else {
+      const { numberOfInstallments, installmentAmount } = paymentData.installmentPlan;
+      successMessage = `First installment payment successful! Paid ${installmentAmount.toLocaleString('vi-VN')} VND (1 of ${numberOfInstallments} payments) for ${paymentData.packageName}`;
+    }
+    
     // Here you would typically send the payment data to your backend
-    alert(`Payment successful! Paid ${paymentData.totalAmount.toLocaleString('vi-VN')} VND for ${paymentData.packageName}`);
+    alert(successMessage);
     // Optionally navigate to a success page or refresh the data
     // navigate('/student/payment-success');
   };

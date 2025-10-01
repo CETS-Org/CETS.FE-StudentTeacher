@@ -188,3 +188,62 @@ export interface ReservationItemProps {
   onSelect: (reservation: ClassReservationResponse) => void;
   className?: string;
 }
+
+// Class Reservation Payment Dialog Props
+export interface ClassReservationPaymentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  reservation: ClassReservationResponse;
+  reservationItems: ReservationItem[];
+  onPaymentSubmit: (paymentData: ReservationPaymentRequest) => void;
+}
+
+// Reservation Payment Request
+export interface ReservationPaymentRequest {
+  reservationId: string;
+  packageName: string;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentScope: {
+    type: 'full_package' | 'selected_items';
+    selectedItemIds?: string[];
+  };
+  installmentPlan: {
+    type: 'full' | 'two_payments';
+    installmentAmount: number;
+    numberOfInstallments: number;
+    installmentSchedule?: InstallmentScheduleItem[];
+  };
+  studentInfo: {
+    studentId: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  };
+  notes?: string;
+}
+
+// Installment Schedule Item
+export interface InstallmentScheduleItem {
+  installmentNumber: number;
+  amount: number;
+  dueDate: string;
+  status: 'pending' | 'paid' | 'overdue';
+}
+
+// Installment Info Helper
+export interface InstallmentInfo {
+  numberOfInstallments: number;
+  installmentAmount: number;
+  description: string;
+}
+
+// Reservation Item (for details page)
+export interface ReservationItem {
+  id: string;
+  name: string;
+  type: string;
+  price: number;
+  description: string;
+  status: string;
+}
