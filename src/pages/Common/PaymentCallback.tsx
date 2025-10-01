@@ -24,49 +24,75 @@ export default function PaymentCallback() {
         // Check if this is a backend callback with redirect URL
         if (code && id) {
           try {
-            // Get invoiceId from localStorage if available
+            // Get invoiceId and studentId from localStorage if available
             const storedPayment = localStorage.getItem('currentPayment');
             let invoiceId = '';
+            let studentId = '';
             if (storedPayment) {
               try {
                 const payment = JSON.parse(storedPayment);
                 invoiceId = payment.invoiceId || '';
+                studentId = payment.studentId || '';
               } catch (e) {
                 console.warn('Error parsing stored payment data:', e);
               }
             }
 
-            // Build API URL with invoiceId parameter
-            const apiUrl = `/api/FIN_Payment/success?code=${code}&id=${id}&cancel=${cancel}&status=${status}&orderCode=${orderCode}${invoiceId ? `&invoiceId=${invoiceId}` : ''}`;
+            // Build API URL with invoiceId and studentId parameters
+            const params = new URLSearchParams({
+              code: code || '',
+              id: id || '',
+              cancel: cancel || 'false',
+              status: status || '',
+              orderCode: orderCode || ''
+            });
+            
+            if (invoiceId) params.append('invoiceId', invoiceId);
+            if (studentId) params.append('studentId', studentId);
+            
+            const apiUrl = `/api/FIN_Payment/success?${params.toString()}`;
             
             // Call backend API to get payment status and redirect URL
+            console.log('Calling backend API:', apiUrl);
             const response = await fetch(apiUrl);
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
+            console.log('Backend API response:', data);
 
             if (data.success && data.redirectUrl) {
               // Backend provided a redirect URL, navigate to it
+              console.log('Redirecting to backend URL:', data.redirectUrl);
               window.location.href = data.redirectUrl;
               return;
             } else if (data.success) {
               // Payment successful, redirect to success page
               const successInvoiceId = data.invoiceId || invoiceId || '';
               const successUrl = `/payment/success?orderCode=${data.orderCode}&status=${data.status}&amount=${data.amount || ''}&invoiceId=${successInvoiceId}`;
+              console.log('Redirecting to success page:', successUrl);
               navigate(successUrl);
               return;
             } else {
               // Payment failed, redirect to cancel page
               const cancelUrl = `/payment/cancel?orderCode=${orderCode}&status=${status}&reason=${data.message || 'Payment failed'}`;
+              console.log('Redirecting to cancel page:', cancelUrl);
               navigate(cancelUrl);
               return;
             }
           } catch (apiError) {
             console.error('Error calling backend API:', apiError);
+            console.log('Falling back to direct URL parameter handling');
             // Fallback to direct URL parameter handling
           }
         }
 
         // Fallback: Handle direct URL parameters (for cases where backend doesn't provide redirect URL)
         if (orderCode && status) {
+          console.log('Using fallback URL parameter handling');
+          
           // Get stored payment info for invoiceId
           const storedPayment = localStorage.getItem('currentPayment');
 
@@ -92,6 +118,7 @@ export default function PaymentCallback() {
 
           // Determine payment status based on the response
           if (status === 'success' || code === '00') {
+            console.log('Payment successful via fallback');
             setPaymentStatus('success');
             handlePaymentSuccess(webhookData.orderCode, webhookData.paymentLinkId);
             
@@ -102,12 +129,14 @@ export default function PaymentCallback() {
               localStorage.removeItem('currentPayment');
             }
           } else {
+            console.log('Payment failed via fallback');
             setPaymentStatus('failed');
             handlePaymentFailure(webhookData.desc || 'Payment failed');
             setError(webhookData.desc || 'Payment was not successful');
           }
         } else {
           // No valid payment data, redirect to home
+          console.log('No valid payment data found, redirecting to home');
           navigate('/');
         }
       } catch (error) {

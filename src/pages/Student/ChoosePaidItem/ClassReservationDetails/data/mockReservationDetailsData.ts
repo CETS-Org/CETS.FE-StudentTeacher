@@ -5,12 +5,12 @@ import type { ReservationItem } from "@/types/payment"; // Used in return type o
 
 export const getMockReservationDetails = (reservationId: string) => {
   // Different mock data based on reservation ID
-  switch (reservationId) {
-    case "res-1":
+  switch ("A9126010-4FF5-4F98-B085-CFD3E7D8BFA6") {
+    case "A9126010-4FF5-4F98-B085-CFD3E7D8BFA6":
       // Package reservation (multiple courses)
       return {
         reservation: {
-          id: reservationId,
+          id: "A9126010-4FF5-4F98-B085-CFD3E7D8BFA6",
           studentID: "student-123",
           coursePackageID: "package-456",
           packageCode: "WEB-DEV-2024",

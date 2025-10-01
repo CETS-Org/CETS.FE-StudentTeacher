@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 
 import { getUserInfo } from "@/lib/utils";
+import { paymentService, redirectToPayOS, handlePaymentFailure } from "@/services/paymentService";
 import type { 
   ClassReservationPaymentDialogProps, 
-  ReservationPaymentRequest, 
   InstallmentScheduleItem,
   InstallmentInfo
 } from "@/types/payment";
@@ -20,9 +20,8 @@ export default function ClassReservationPaymentDialog({
   open,
   onOpenChange,
   reservation,
-  reservationItems,
-  onPaymentSubmit
-}: ClassReservationPaymentDialogProps) {
+  reservationItems
+}: Omit<ClassReservationPaymentDialogProps, 'onPaymentSubmit'>) {
   const [paymentMethod, setPaymentMethod] = useState("credit_card");
   const [installmentType, setInstallmentType] = useState<'full' | 'two_payments'>('full');
   const [paymentScope, setPaymentScope] = useState<'full_package' | 'selected_items'>('full_package');
@@ -209,36 +208,65 @@ export default function ClassReservationPaymentDialog({
     setIsProcessing(true);
 
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Validate required fields
+      if (!studentName.trim() || !studentEmail.trim() || !studentPhone.trim()) {
+        alert('Please fill in all required student information fields.');
+        setIsProcessing(false);
+        return;
+      }
 
-      const paymentData: ReservationPaymentRequest = {
-        reservationId: reservation.id,
-        packageName: reservation.packageName || '',
-        totalAmount: selectedItemsTotal,
-        paymentMethod,
-        paymentScope: {
-          type: paymentScope,
-          selectedItemIds: paymentScope === 'selected_items' ? selectedItemIds : undefined
-        },
-        installmentPlan: {
-          type: installmentType,
-          installmentAmount: installmentInfo.installmentAmount,
-          numberOfInstallments: installmentInfo.numberOfInstallments,
-          installmentSchedule: installmentSchedule
-        },
-        studentInfo: {
-          studentId: reservation.studentID,
-          fullName: studentName,
-          email: studentEmail,
-          phone: studentPhone
-        },
-        notes: notes || undefined
+      // Get studentId from localStorage
+      const userInfo = getUserInfo();
+      const studentId = userInfo?.id;
+      
+      if (!studentId) {
+        alert('Student ID not found. Please login again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Prepare payment data for API
+      const monthlyPaymentData = {
+        reservationItemId: reservation.id, // Use reservation ID as item ID
+        studentId: studentId, // Get from localStorage
+        fullName: studentName.trim(),
+        email: studentEmail.trim(),
+        phoneNumber: studentPhone.trim(),
+        note: notes || ""
       };
 
-      onPaymentSubmit(paymentData);
+      // Call the payment API
+      const paymentResponse = await paymentService.createMonthlyPayment(monthlyPaymentData);
+      
+      if (paymentResponse.success && paymentResponse.paymentUrl) {
+        // Store payment info for later reference
+        localStorage.setItem('currentPayment', JSON.stringify({
+          orderCode: paymentResponse.orderCode,
+          invoiceId: paymentResponse.invoiceId,
+          amount: paymentResponse.amount,
+          itemId: reservation.id,
+          itemName: reservation.packageName || 'Class Reservation',
+          studentId: studentId, // Use studentId from localStorage
+          timestamp: new Date().toISOString()
+        }));
+
+        // Redirect to PAYOS payment page
+        redirectToPayOS(paymentResponse.paymentUrl);
+        
+        // Close the dialog
+        onOpenChange(false);
+        
+        // Show success message (optional)
+        console.log('Payment initiated successfully:', paymentResponse);
+      } else {
+        throw new Error('Failed to create payment session');
+      }
     } catch (error) {
-      console.error("Payment failed:", error);
+      console.error("Payment submission error:", error);
+      handlePaymentFailure(error instanceof Error ? error.message : 'Unknown error occurred');
+      
+      // You can show an error message to the user here
+      alert('Payment failed. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -523,8 +551,8 @@ export default function ClassReservationPaymentDialog({
                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                            <div className="text-xs text-gray-600 capitalize">{item.type}</div>
+                            <div className="text-sm font-medium text-gray-900">{item.courseName}</div>
+                            <div className="text-xs text-gray-600 capitalize">{item.category}</div>
                           </div>
                         </div>
                         <span className="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</span>

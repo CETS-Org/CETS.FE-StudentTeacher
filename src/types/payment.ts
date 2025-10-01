@@ -241,9 +241,15 @@ export interface InstallmentInfo {
 // Reservation Item (for details page)
 export interface ReservationItem {
   id: string;
-  name: string;
-  type: string;
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  courseImageUrl?: string;
+  description?: string;
   price: number;
-  description: string;
-  status: string;
+  category: string;
+  invoiceId?: string;
+  invoiceStatus?: string;
+  planType: string;
+  classReservationId: string;
 }

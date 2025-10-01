@@ -3,6 +3,8 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ClassReservationItem from "./ClassReservationItem";
 import { Package, Search } from "lucide-react";
+import { api } from "@/lib/config";
+import { getUserInfo } from "@/lib/utils";
 
 import type { ClassReservationResponse } from "@/types/payment";
 
@@ -18,71 +20,46 @@ export default function ClassReservationsList({
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    // Mock data - replace with actual API call
     const fetchReservations = async () => {
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoading(true);
         
-        // Mock reservations data
-        const mockReservations: ClassReservationResponse[] = [
-          {
-            id: "res-1",
-            studentID: "student-123",
-            coursePackageID: "package-web-dev",
-            packageCode: "WEB-DEV-2024",
-            packageName: "Complete Web Development",
-            packageImageUrl: "",
-            totalPrice: 5500000,
-            description: "Master full-stack web development from HTML to React. Perfect for beginners to advanced developers.",
-            reservationStatus: "pending",
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: "res-2",
-            studentID: "student-123",
-            coursePackageID: undefined,
-            packageCode: undefined,
-            packageName: "Python for Data Science",
-            packageImageUrl: "",
-            totalPrice: 1800000,
-            description: "Complete Python programming course focused on data science applications, libraries, and real-world projects.",
-            reservationStatus: "pending",
-            expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: "res-3",
-            studentID: "student-123",
-            coursePackageID: undefined,
-            packageCode: undefined,
-            packageName: "Digital Marketing Fundamentals",
-            packageImageUrl: "",
-            totalPrice: 1200000,
-            description: "Learn essential digital marketing strategies including social media, SEO, and online advertising.",
-            reservationStatus: "confirmed",
-            expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: "res-4",
-            studentID: "student-123",
-            coursePackageID: undefined,
-            packageCode: undefined,
-            packageName: "Mobile App Development",
-            packageImageUrl: "",
-            totalPrice: 2200000,
-            description: "Learn to build mobile applications for iOS and Android platforms using React Native.",
-            reservationStatus: "expired",
-            expiresAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-          }
-        ];
+        // Get studentId from localStorage
+        const userInfo = getUserInfo();
+        const studentId = userInfo?.id;
+        
+        if (!studentId) {
+          console.error('Student ID not found in localStorage');
+          setReservations([]);
+          return;
+        }
 
-        setReservations(mockReservations);
+        // Call API to get class reservations
+        const response = await api.getClassReservations(studentId);
+        const apiReservations = response.data;
+        
+        console.log('Class Reservations API Response:', apiReservations);
+        
+        // Transform API response to ClassReservationResponse format
+        const transformedReservations: ClassReservationResponse[] = apiReservations.map((res: any) => ({
+          id: res.id,
+          studentID: res.studentID,
+          coursePackageID: res.coursePackageID,
+          packageCode: res.packageCode,
+          packageName: res.packageName,
+          packageImageUrl: res.packageImageUrl,
+          totalPrice: res.totalPrice,
+          description: res.description,
+          reservationStatus: res.reservationStatus,
+          expiresAt: res.expiresAt,
+          createdAt: res.createdAt
+        }));
+        
+        setReservations(transformedReservations);
       } catch (error) {
         console.error("Error fetching reservations:", error);
+        // Fallback to empty array on error
+        setReservations([]);
       } finally {
         setLoading(false);
       }
@@ -92,9 +69,10 @@ export default function ClassReservationsList({
   }, []);
 
   const filteredReservations = reservations.filter(reservation =>
-    reservation.packageName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reservation.packageCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reservation.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    (reservation.packageName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+    (reservation.packageCode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+    (reservation.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+    (reservation.reservationStatus?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
   );
 
   if (loading) {
@@ -148,7 +126,7 @@ export default function ClassReservationsList({
               <p className="text-gray-600">
                 {searchTerm 
                   ? "Try adjusting your search terms"
-                  : "You don't have any class reservations yet"
+                  : "You don't have any class reservations yet. Create a reservation to get started."
                 }
               </p>
             </div>

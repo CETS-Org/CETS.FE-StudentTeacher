@@ -200,6 +200,14 @@ export const api = {
   // Payment
   createMonthlyPayment: (paymentData: any, config?: AxiosRequestConfig) => 
     apiClient.post('/api/FIN_Payment/monthlyPay', paymentData, config),
+
+  // Reservation Items
+  getReservationItems: (reservationId: string, config?: AxiosRequestConfig) => 
+    apiClient.get(`/api/reservation-items/by-reservation/${reservationId}`, config),
+
+  // Class Reservations
+  getClassReservations: (studentId: string, config?: AxiosRequestConfig) => 
+    apiClient.get(`/api/class-reservations/student/${studentId}`, config),
   // Student Learning Classes
   getStudentLearningClasses: (studentId: string, config?: AxiosRequestConfig) => 
     apiClient.get(`/api/ACAD_Classes/learningClass?studentId=${studentId}`, config),

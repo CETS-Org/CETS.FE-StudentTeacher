@@ -17,9 +17,11 @@ import {
   DollarSign
 } from "lucide-react";
 
-import type { ClassReservationResponse, ReservationPaymentRequest, ReservationItem } from "@/types/payment";
+import type { ClassReservationResponse, ReservationItem } from "@/types/payment";
 import { getMockReservationDetails } from "./data/mockReservationDetailsData";
 import ClassReservationPaymentDialog from "./components/ClassReservationPaymentDialog";
+import { api } from "@/lib/config";
+import { getUserInfo } from "@/lib/utils";
 
 export default function ClassReservationDetails() {
   const { reservationId } = useParams<{ reservationId: string }>();
@@ -30,19 +32,134 @@ export default function ClassReservationDetails() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   useEffect(() => {
-    // Mock data - replace with actual API call
     const fetchReservationDetails = async () => {
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoading(true);
         
-        // Get mock data from separate file
-        const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId || "1");
+        if (reservationId) {
+          // Get studentId from localStorage
+          const userInfo = getUserInfo();
+          const studentId = userInfo?.id;
+          
+          if (!studentId) {
+            console.error('Student ID not found in localStorage');
+            // Fallback to mock data
+            const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId);
+            setReservation(mockReservation);
+            // Transform mock items to match ReservationItem interface
+            const transformedMockItems: ReservationItem[] = mockItems.map((item: any) => ({
+              id: item.id,
+              courseId: item.id, // Use id as courseId for mock data
+              courseCode: item.name.substring(0, 6), // Generate course code from name
+              courseName: item.name,
+              courseImageUrl: undefined,
+              description: item.description,
+              price: item.price,
+              category: item.type,
+              invoiceId: undefined,
+              invoiceStatus: item.status,
+              planType: 'Full',
+              classReservationId: reservationId || ''
+            }));
+            setReservationItems(transformedMockItems);
+            return;
+          }
 
-        setReservation(mockReservation);
-        setReservationItems(mockItems);
+          // Call API to get class reservations
+          const reservationsResponse = await api.getClassReservations(studentId);
+          const reservations = reservationsResponse.data;
+          
+          console.log('Class Reservations API Response:', reservations);
+          
+          // Find the specific reservation by ID
+          const foundReservation = reservations.find((res: any) => res.id === reservationId);
+          
+          if (foundReservation) {
+            // Transform API response to ClassReservationResponse format
+            const transformedReservation: ClassReservationResponse = {
+              id: foundReservation.id,
+              studentID: foundReservation.studentID,
+              coursePackageID: foundReservation.coursePackageID,
+              packageCode: foundReservation.packageCode,
+              packageName: foundReservation.packageName,
+              packageImageUrl: foundReservation.packageImageUrl,
+              totalPrice: foundReservation.totalPrice,
+              description: foundReservation.description,
+              reservationStatus: foundReservation.reservationStatus,
+              expiresAt: foundReservation.expiresAt,
+              createdAt: foundReservation.createdAt
+            };
+            
+            setReservation(transformedReservation);
+            
+            // Call API to get reservation items
+            const itemsResponse = await api.getReservationItems(reservationId);
+            const apiItems = itemsResponse.data;
+            
+            console.log('Reservation Items API Response:', apiItems);
+            
+            // Transform API response to ReservationItem format
+            const transformedItems: ReservationItem[] = apiItems.map((item: any) => ({
+              id: item.id,
+              courseId: item.courseId,
+              courseCode: item.courseCode,
+              courseName: item.courseName,
+              courseImageUrl: item.courseImageUrl,
+              description: item.description,
+              price: item.standardPrice,
+              category: item.categoryName,
+              invoiceId: item.invoiceId,
+              invoiceStatus: item.invoiceStatus,
+              planType: item.planType,
+              classReservationId: item.classReservationId
+            }));
+            
+            setReservationItems(transformedItems);
+          } else {
+            console.error('Reservation not found');
+            // Fallback to mock data
+            const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId);
+            setReservation(mockReservation);
+            // Transform mock items to match ReservationItem interface
+            const transformedMockItems: ReservationItem[] = mockItems.map((item: any) => ({
+              id: item.id,
+              courseId: item.id, // Use id as courseId for mock data
+              courseCode: item.name.substring(0, 6), // Generate course code from name
+              courseName: item.name,
+              courseImageUrl: undefined,
+              description: item.description,
+              price: item.price,
+              category: item.type,
+              invoiceId: undefined,
+              invoiceStatus: item.status,
+              planType: 'Full',
+              classReservationId: reservationId || ''
+            }));
+            setReservationItems(transformedMockItems);
+          }
+        }
       } catch (error) {
         console.error("Error fetching reservation details:", error);
+        
+        // Fallback to mock data on error
+        const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId || "1");
+        setReservation(mockReservation);
+        // Transform mock items to match ReservationItem interface
+        const transformedMockItems: ReservationItem[] = mockItems.map((item: any) => ({
+          id: item.id,
+          courseId: item.id, // Use id as courseId for mock data
+          courseCode: item.name.substring(0, 6), // Generate course code from name
+          courseName: item.name,
+          courseImageUrl: undefined,
+          description: item.description,
+          price: item.price,
+          category: item.type,
+          invoiceId: undefined,
+          invoiceStatus: item.status,
+          planType: 'Full',
+          classReservationId: reservationId || ''
+        }));
+        setReservationItems(transformedMockItems);
       } finally {
         setLoading(false);
       }
@@ -77,14 +194,6 @@ export default function ClassReservationDetails() {
     }
   };
 
-  const getItemIcon = (type: string) => {
-    switch (type) {
-      case "course": return <BookOpen className="w-5 h-5" />;
-      case "material": return <Package className="w-5 h-5" />;
-      case "certificate": return <CheckCircle className="w-5 h-5" />;
-      default: return <BookOpen className="w-5 h-5" />;
-    }
-  };
 
   const isExpired = () => {
     return !!reservation && new Date(reservation.expiresAt) < new Date();
@@ -119,24 +228,6 @@ export default function ClassReservationDetails() {
     setShowPaymentDialog(true);
   };
 
-  const handlePaymentSubmit = (paymentData: ReservationPaymentRequest) => {
-    console.log("Payment submitted:", paymentData);
-    setShowPaymentDialog(false);
-    
-    // Create success message based on installment plan
-    let successMessage = "";
-    if (paymentData.installmentPlan.type === 'full') {
-      successMessage = `Payment successful! Paid ${paymentData.totalAmount.toLocaleString('vi-VN')} VND for ${paymentData.packageName}`;
-    } else {
-      const { numberOfInstallments, installmentAmount } = paymentData.installmentPlan;
-      successMessage = `First installment payment successful! Paid ${installmentAmount.toLocaleString('vi-VN')} VND (1 of ${numberOfInstallments} payments) for ${paymentData.packageName}`;
-    }
-    
-    // Here you would typically send the payment data to your backend
-    alert(successMessage);
-    // Optionally navigate to a success page or refresh the data
-    // navigate('/student/payment-success');
-  };
 
   const breadcrumbItems = [
     { label: "Class Reservations", href: "/student/choose-paid-item" },
@@ -297,27 +388,43 @@ export default function ClassReservationDetails() {
             <div key={item.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
               <div className="flex items-center justify-between gap-4">
                 {/* Item Info */}
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="p-2 bg-secondary-200 rounded-lg text-primary-600">
-                    {getItemIcon(item.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900">{item.name}</h4>
-                    <p className="text-sm text-gray-600 line-clamp-1">{item.description}</p>
-                    <span className="text-xs text-primary-600 bg-accent2-200 px-2 py-1 rounded-full capitalize">
-                      {item.type}
-                    </span>
-                  </div>
-                </div>
+                 <div className="flex items-center gap-3 flex-1">
+                   <div className="p-2 bg-secondary-200 rounded-lg text-primary-600">
+                     <BookOpen className="w-5 h-5" />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <h4 className="font-medium text-gray-900">{item.courseName}</h4>
+                     <p className="text-sm text-gray-600 line-clamp-1">{item.description || 'No description available'}</p>
+                     <div className="flex items-center gap-2 mt-1">
+                       <span className="text-xs text-primary-600 bg-accent2-200 px-2 py-1 rounded-full">
+                         {item.courseCode}
+                       </span>
+                       <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                         {item.category}
+                       </span>
+                       <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                         {item.planType}
+                       </span>
+                     </div>
+                   </div>
+                 </div>
 
-                {/* Item Price */}
-                <div className="text-right">
-                  <div className="font-semibold text-gray-900">{formatPrice(item.price)}</div>
-                  <span className="text-xs text-green-600 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
-                    {item.status}
-                  </span>
-                </div>
+                 {/* Item Price */}
+                 <div className="text-right">
+                   <div className="font-semibold text-gray-900">{formatPrice(item.price)}</div>
+                   <div className="text-xs text-gray-600 mt-1">
+                     {item.invoiceStatus ? (
+                       <span className={`flex items-center gap-1 ${
+                         item.invoiceStatus === 'Paid' ? 'text-green-600' : 'text-yellow-600'
+                       }`}>
+                         <CheckCircle className="w-3 h-3" />
+                         {item.invoiceStatus}
+                       </span>
+                     ) : (
+                       <span className="text-gray-500">Not invoiced</span>
+                     )}
+                   </div>
+                 </div>
               </div>
             </div>
           ))}
@@ -344,7 +451,6 @@ export default function ClassReservationDetails() {
           onOpenChange={setShowPaymentDialog}
           reservation={reservation}
           reservationItems={reservationItems}
-          onPaymentSubmit={handlePaymentSubmit}
         />
       )}
     </div>
