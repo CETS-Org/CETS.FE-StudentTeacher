@@ -1,6 +1,5 @@
-import { Calendar, Clock, MapPin, Users, BookOpen } from "lucide-react";
+import { Calendar, Clock, MapPin, Users } from "lucide-react";
 import type { CourseSchedule, TimeSlot } from "@/types/course";
-import { TIME_SLOTS } from "@/types/course";
 
 interface CourseScheduleProps {
   schedules: CourseSchedule[];
@@ -76,6 +75,34 @@ function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayPr
 }
 
 export default function CourseSchedule({ schedules, className = "", compact = false }: CourseScheduleProps) {
+  // Helper function to create TimeSlot from start time (timeSlotName is the start time like "18:00")
+  const createTimeSlot = (startTime: string | undefined): TimeSlot | null => {
+    if (!startTime) return null;
+    
+    try {
+      // Add 90 minutes to get end time
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const startDate = new Date();
+      startDate.setHours(hours, minutes, 0, 0);
+      
+      const endDate = new Date(startDate);
+      endDate.setMinutes(endDate.getMinutes() + 90);
+      
+      const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+      
+      return {
+        id: startTime,
+        name: startTime,
+        startTime,
+        endTime,
+        displayTime: `${startTime} - ${endTime}`
+      };
+    } catch (error) {
+      console.error('Error creating time slot from:', startTime, error);
+      return null;
+    }
+  };
+
   if (!schedules || schedules.length === 0) {
     if (compact) {
       return (
@@ -105,8 +132,8 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
     }
     
     // If same day, sort by time slot
-    const aTimeSlot = TIME_SLOTS[a.timeSlotName || ''];
-    const bTimeSlot = TIME_SLOTS[b.timeSlotName || ''];
+    const aTimeSlot = createTimeSlot(a.timeSlotName);
+    const bTimeSlot = createTimeSlot(b.timeSlotName);
     
     if (aTimeSlot && bTimeSlot) {
       return aTimeSlot.startTime.localeCompare(bTimeSlot.startTime);
@@ -117,7 +144,7 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
 
   // Calculate total hours per week
   const totalMinutesPerWeek = sortedSchedules.reduce((total, schedule) => {
-    const timeSlot = TIME_SLOTS[schedule.timeSlotName || ''];
+    const timeSlot = createTimeSlot(schedule.timeSlotName);
     if (timeSlot) {
       const start = new Date(`2000-01-01 ${timeSlot.startTime}`);
       const end = new Date(`2000-01-01 ${timeSlot.endTime}`);
@@ -134,7 +161,7 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
     return (
       <div className={`flex flex-wrap gap-1 lg:gap-2 overflow-hidden ${className}`}>
         {sortedSchedules.slice(0, 3).map((schedule) => {
-          const timeSlot = TIME_SLOTS[schedule.timeSlotName || ''];
+          const timeSlot = createTimeSlot(schedule.timeSlotName);
           if (!timeSlot) return null;
           
           return (
@@ -195,7 +222,7 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
         
         <div className="grid gap-3">
           {sortedSchedules.map((schedule, index) => {
-            const timeSlot = TIME_SLOTS[schedule.timeSlotName || ''];
+            const timeSlot = createTimeSlot(schedule.timeSlotName);
             if (!timeSlot) return null;
             
             const slotColor = index % 3 === 0 ? 'blue' : index % 3 === 1 ? 'green' : 'purple';
