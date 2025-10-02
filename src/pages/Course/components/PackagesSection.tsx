@@ -9,6 +9,7 @@ import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/lib/config";
 import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, ScheduleFilter } from "./filters";
+import { useAllCourseSchedules } from "@/hooks/useCourseSchedule";
 
 import type { CoursePackage, CoursePackageSearchResult, CoursePackageSearchQuery, CoursePackageFacetItem } from "@/types/coursePackage";
 
@@ -33,6 +34,9 @@ const sortOptions = [
 
 export default function PackagesSection() {
   const navigate = useNavigate();
+  
+  // Get all course schedules for filtering
+  const { schedules: allSchedules } = useAllCourseSchedules();
 
   // UI states
   const [q, setQ] = useState("");
@@ -341,6 +345,7 @@ export default function PackagesSection() {
                  selectedTimeSlots={selectedTimeSlots}
                  onToggleDay={(day: string) => toggleFacet(setSelectedDays, selectedDays, day)}
                  onToggleTimeSlot={(timeSlot: string) => toggleFacet(setSelectedTimeSlots, selectedTimeSlots, timeSlot)}
+                 allSchedules={allSchedules}
                />
 
                <PriceFilter 
