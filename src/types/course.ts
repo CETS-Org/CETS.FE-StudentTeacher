@@ -150,8 +150,14 @@ export interface CourseSchedule {
   updatedAt?: string | null;
 }
 
-// Re-export TimeSlot from service for backward compatibility
-export type { TimeSlot } from '@/services/timeSlotService';
+// Time slot interface
+export interface TimeSlot {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  displayTime: string;
+}
 
 // Days of week mapping
 export const DAYS_OF_WEEK = [

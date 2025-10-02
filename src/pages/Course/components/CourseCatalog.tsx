@@ -463,6 +463,7 @@ export default function CourseCatalog() {
                  selectedTimeSlots={selectedTimeSlots}
                  onToggleDay={(day) => toggleFacet(setSelectedDays, selectedDays, day)}
                  onToggleTimeSlot={(timeSlot) => toggleFacet(setSelectedTimeSlots, selectedTimeSlots, timeSlot)}
+                 allSchedules={allSchedules}
                />
                <RequirementsFilter 
                  requirementsFacet={requirementsFacet}

@@ -228,9 +228,5 @@ export const api = {
   // Plan Types
   getPlanTypes: (config?: AxiosRequestConfig) => 
     apiClient.get('/api/CORE_LookUp/type/code/PlanType', config),
-
-  // Time Slots
-  getTimeSlots: (config?: AxiosRequestConfig) => 
-    apiClient.get('/api/CORE_LookUp/type/code/TimeSlot', config),
 };
 

@@ -1,23 +1,55 @@
 import { Calendar, Clock } from 'lucide-react';
 import CollapsibleFilter from './CollapsibleFilter';
 import { DAYS_OF_WEEK } from '@/types/course';
-import type { DayOfWeek } from '@/types/course';
-import { useTimeSlots } from '@/hooks/useTimeSlots';
+import type { CourseSchedule } from '@/types/course';
+import { useMemo } from 'react';
 
 interface ScheduleFilterProps {
   selectedDays: string[];
   selectedTimeSlots: string[];
   onToggleDay: (day: string) => void;
   onToggleTimeSlot: (timeSlot: string) => void;
+  allSchedules?: CourseSchedule[]; // Get from parent component
 }
 
 export default function ScheduleFilter({ 
   selectedDays, 
   selectedTimeSlots,
   onToggleDay,
-  onToggleTimeSlot
+  onToggleTimeSlot,
+  allSchedules = []
 }: ScheduleFilterProps) {
-  const { timeSlots, loading } = useTimeSlots();
+  // Extract unique time slots from all schedules
+  const timeSlots = useMemo(() => {
+    const uniqueTimeSlots = new Map<string, { startTime: string; displayTime: string }>();
+    
+    allSchedules.forEach(schedule => {
+      if (schedule.timeSlotName && !uniqueTimeSlots.has(schedule.timeSlotName)) {
+        const startTime = schedule.timeSlotName;
+        
+        // Calculate end time (start + 90 minutes)
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const startDate = new Date();
+        startDate.setHours(hours, minutes, 0, 0);
+        const endDate = new Date(startDate);
+        endDate.setMinutes(endDate.getMinutes() + 90);
+        const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+        
+        uniqueTimeSlots.set(startTime, {
+          startTime,
+          displayTime: `${startTime} - ${endTime}`
+        });
+      }
+    });
+    
+    // Sort by start time
+    return Array.from(uniqueTimeSlots.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, { startTime: string; displayTime: string }>);
+  }, [allSchedules]);
   
   const icon = (
     <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
@@ -66,9 +98,9 @@ export default function ScheduleFilter({
             Time Slots
           </h4>
           <div className="space-y-2 max-h-40 overflow-auto">
-            {loading ? (
+            {Object.keys(timeSlots).length === 0 ? (
               <div className="text-center py-2 text-sm text-gray-500">
-                Loading time slots...
+                No time slots available
               </div>
             ) : (
               Object.entries(timeSlots).map(([slotName, slot]) => (
@@ -80,10 +112,7 @@ export default function ScheduleFilter({
                     className="w-4 h-4 text-green-600 rounded focus:ring-green-500 focus:ring-1"
                   />
                   <div className="flex-1">
-                    <span className="text-neutral-700 text-sm font-medium">
-                      {slotName}
-                    </span>
-                    <span className="text-neutral-500 text-xs ml-2">
+                    <span className="text-neutral-700 text-sm ">
                       {slot.displayTime}
                     </span>
                   </div>

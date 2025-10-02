@@ -90,21 +90,12 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
       
       const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
       
-      // Format display time
-      const formatTime = (time: string): string => {
-        const [h, m] = time.split(':');
-        if (m === '00') {
-          return `${parseInt(h)}h`;
-        }
-        return `${parseInt(h)}h${m}`;
-      };
-      
       return {
         id: startTime,
         name: startTime,
         startTime,
         endTime,
-        displayTime: `${formatTime(startTime)} - ${formatTime(endTime)}`
+        displayTime: `${startTime} - ${endTime}`
       };
     } catch (error) {
       console.error('Error creating time slot from:', startTime, error);
