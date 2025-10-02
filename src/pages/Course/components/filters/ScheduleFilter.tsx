@@ -1,7 +1,8 @@
 import { Calendar, Clock } from 'lucide-react';
 import CollapsibleFilter from './CollapsibleFilter';
-import { TIME_SLOTS, DAYS_OF_WEEK } from '@/types/course';
+import { DAYS_OF_WEEK } from '@/types/course';
 import type { DayOfWeek } from '@/types/course';
+import { useTimeSlots } from '@/hooks/useTimeSlots';
 
 interface ScheduleFilterProps {
   selectedDays: string[];
@@ -16,6 +17,8 @@ export default function ScheduleFilter({
   onToggleDay,
   onToggleTimeSlot
 }: ScheduleFilterProps) {
+  const { timeSlots, loading } = useTimeSlots();
+  
   const icon = (
     <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
       <Calendar className="w-3 h-3 text-white" />
@@ -63,24 +66,30 @@ export default function ScheduleFilter({
             Time Slots
           </h4>
           <div className="space-y-2 max-h-40 overflow-auto">
-            {Object.entries(TIME_SLOTS).map(([slotName, slot]) => (
-              <label key={slotName} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-neutral-50 transition-colors cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedTimeSlots.includes(slotName)}
-                  onChange={() => onToggleTimeSlot(slotName)}
-                  className="w-4 h-4 text-green-600 rounded focus:ring-green-500 focus:ring-1"
-                />
-                <div className="flex-1">
-                  <span className="text-neutral-700 text-sm font-medium">
-                    {slotName}
-                  </span>
-                  <span className="text-neutral-500 text-xs ml-2">
-                    {slot.displayTime}
-                  </span>
-                </div>
-              </label>
-            ))}
+            {loading ? (
+              <div className="text-center py-2 text-sm text-gray-500">
+                Loading time slots...
+              </div>
+            ) : (
+              Object.entries(timeSlots).map(([slotName, slot]) => (
+                <label key={slotName} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-neutral-50 transition-colors cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedTimeSlots.includes(slotName)}
+                    onChange={() => onToggleTimeSlot(slotName)}
+                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500 focus:ring-1"
+                  />
+                  <div className="flex-1">
+                    <span className="text-neutral-700 text-sm font-medium">
+                      {slotName}
+                    </span>
+                    <span className="text-neutral-500 text-xs ml-2">
+                      {slot.displayTime}
+                    </span>
+                  </div>
+                </label>
+              ))
+            )}
           </div>
         </div>
 
