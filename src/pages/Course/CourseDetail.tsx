@@ -21,7 +21,11 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   const [expandedSyllabus, setExpandedSyllabus] = useState<Set<string>>(new Set());
   const [allSyllabusExpanded, setAllSyllabusExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { schedules, loading: schedulesLoading } = useCourseSchedule(course.id);
+  
+  // Use schedules from course if available, otherwise fetch them
+  const shouldFetchSchedules = !course.schedules || course.schedules.length === 0;
+  const { schedules: fetchedSchedules, loading: schedulesLoading } = useCourseSchedule(shouldFetchSchedules ? course.id : undefined);
+  const schedules = course.schedules || fetchedSchedules;
   const { toasts, hideToast, success, error } = useToast();
 
   // Scroll to top on component mount

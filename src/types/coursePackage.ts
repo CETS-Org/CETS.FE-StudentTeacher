@@ -66,6 +66,8 @@ export interface CoursePackageSearchResult {
     levels?: CoursePackageFacetItem[];
     categories?: CoursePackageFacetItem[];
     skills?: CoursePackageFacetItem[];
+    daysOfWeek?: CoursePackageFacetItem[];
+    timeSlots?: CoursePackageFacetItem[];
   };
 }
 
