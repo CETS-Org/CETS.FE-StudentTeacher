@@ -10,10 +10,8 @@ import {
 
 import { getUserInfo } from "@/lib/utils";
 import { paymentService, redirectToPayOS, handlePaymentFailure } from "@/services/paymentService";
-import type { 
-  ClassReservationPaymentDialogProps,
-  InstallmentInfo
-} from "@/types/payment";
+import type { ClassReservationPaymentDialogProps } from "@/types/payment";
+import type { FullPaymentRequest } from "@/services/paymentService";
 
 export default function ClassReservationPaymentDialog({
   open,
@@ -21,8 +19,7 @@ export default function ClassReservationPaymentDialog({
   reservation,
   reservationItems
 }: Omit<ClassReservationPaymentDialogProps, 'onPaymentSubmit'>) {
-  const [paymentMethod, setPaymentMethod] = useState("credit_card");
-  const [paymentPlan, setPaymentPlan] = useState<'one_time' | 'two_time'>('one_time');
+  const [paymentPlan, setPaymentPlan] = useState<'full' | 'monthly'>('full');
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
@@ -120,32 +117,21 @@ export default function ClassReservationPaymentDialog({
     return isPackage() ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800";
   };
 
-  // Calculate total from all reservation items
+  // Calculate total from reservation items (for the item being paid)
   const totalAmount = useMemo(() => {
-    return reservation.totalPrice;
-  }, [reservation.totalPrice]);
+    return reservationItems.reduce((sum, item) => sum + item.price, 0);
+  }, [reservationItems]);
 
-  // Calculate installment info for the currently selected type
-  const installmentInfo = useMemo((): InstallmentInfo => {
-    if (paymentPlan === 'two_time') {
-      return {
-        numberOfInstallments: 2,
-        installmentAmount: Math.ceil(totalAmount / 2),
-        description: '2 equal payments'
-      };
+  // Get the item name for display
+  const itemName = useMemo(() => {
+    if (reservationItems.length === 1) {
+      return reservationItems[0].courseName;
     }
-    
-    return {
-      numberOfInstallments: 1,
-      installmentAmount: totalAmount,
-      description: 'Full payment'
-    };
-  }, [paymentPlan, totalAmount]);
+    return reservation.packageName;
+  }, [reservationItems, reservation.packageName]);
 
-  // Calculate amounts for each payment option
-  const twoPaymentAmount = useMemo(() => {
-    return Math.ceil(totalAmount / 2);
-  }, [totalAmount]);
+  // Check if paying for single item
+  const isSingleItem = reservationItems.length === 1;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,19 +166,24 @@ export default function ClassReservationPaymentDialog({
       }
 
       // Prepare payment data for API
-      const monthlyPaymentData = {
-        reservationItemId: reservationItemId, // Use actual reservation item ID
-        studentId: studentId, // Get from localStorage
+      const paymentData = {
+        reservationItemId: reservationItemId,
+        studentId: studentId,
         fullName: studentName.trim(),
         email: studentEmail.trim(),
         phoneNumber: studentPhone.trim(),
         note: notes || ""
       };
       
-      console.log('Monthly payment data:', monthlyPaymentData);
+      console.log(`${paymentPlan === 'full' ? 'Full' : 'Monthly'} payment data:`, paymentData);
 
-      // Call the payment API
-      const paymentResponse = await paymentService.createMonthlyPayment(monthlyPaymentData);
+      // Call the appropriate payment API based on payment plan
+      let paymentResponse;
+      if (paymentPlan === 'full') {
+        paymentResponse = await paymentService.createFullPayment(paymentData as FullPaymentRequest);
+      } else {
+        paymentResponse = await paymentService.createMonthlyPayment(paymentData);
+      }
       
       if (paymentResponse.success && paymentResponse.paymentUrl) {
         // Store payment info for later reference
@@ -201,9 +192,10 @@ export default function ClassReservationPaymentDialog({
           invoiceId: paymentResponse.invoiceId,
           amount: paymentResponse.amount,
           itemId: reservation.id,
-          reservationItemId: reservationItemId, // Add reservationItemId for callback
-          itemName: reservation.packageName || 'Class Reservation',
-          studentId: studentId, // Use studentId from localStorage
+          reservationItemId: reservationItemId,
+          itemName: itemName,
+          studentId: studentId,
+          paymentPlan: paymentPlan,
           timestamp: new Date().toISOString()
         }));
 
@@ -265,29 +257,66 @@ export default function ClassReservationPaymentDialog({
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Reservation Summary */}
+          {/* Payment Item Summary */}
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-3">
               <Package className="w-5 h-5 text-primary-600" />
-              <h3 className="font-semibold text-gray-900">Reservation Summary</h3>
+              <h3 className="font-semibold text-gray-900">
+                {isSingleItem ? 'Item Details' : 'Package Summary'}
+              </h3>
             </div>
             
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Package Name:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{reservation.packageName}</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getReservationTypeColor()}`}>
-                    {getReservationType()}
-                  </span>
-                </div>
-              </div>
-              
-              {reservation.packageCode && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Package Code:</span>
-                  <span className="font-medium">{reservation.packageCode}</span>
-                </div>
+              {isSingleItem ? (
+                // Single Item View
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Course Name:</span>
+                    <span className="font-medium">{reservationItems[0].courseName}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Course Code:</span>
+                    <span className="font-medium">{reservationItems[0].courseCode}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Category:</span>
+                    <span className="font-medium">{reservationItems[0].category}</span>
+                  </div>
+
+                  {reservationItems[0].description && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-gray-600">Description:</span>
+                      <span className="text-sm text-gray-700">{reservationItems[0].description}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Multiple Items / Package View
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Package Name:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{reservation.packageName}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getReservationTypeColor()}`}>
+                        {getReservationType()}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {reservation.packageCode && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Package Code:</span>
+                      <span className="font-medium">{reservation.packageCode}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Items:</span>
+                    <span className="font-medium">{reservationItems.length} items</span>
+                  </div>
+                </>
               )}
               
               <div className="flex items-center justify-between">
@@ -298,114 +327,72 @@ export default function ClassReservationPaymentDialog({
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Reserved:</span>
-                <span className="font-medium">{formatDate(reservation.createdAt)}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
                 <span className="text-gray-600">Expires:</span>
                 <span className="font-medium">{formatDate(reservation.expiresAt)}</span>
               </div>
               
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Items:</span>
-                <span className="font-medium">{reservationItems.length} items</span>
-              </div>
-              
               <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
-                <span className="text-xl font-bold text-primary-600">{formatPrice(reservation.totalPrice)}</span>
+                <span className="text-lg font-semibold text-gray-900">Payment Amount:</span>
+                <span className="text-xl font-bold text-primary-600">{formatPrice(totalAmount)}</span>
               </div>
             </div>
           </div>
 
           {/* Payment Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Payment Method */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Method
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                  paymentMethod === 'credit_card' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="credit_card"
-                    checked={paymentMethod === 'credit_card'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="sr-only"
-                  />
-                  <CreditCard className="w-4 h-4 mr-2 text-primary-600" />
-                  <span className="text-sm font-medium">Credit Card</span>
-                </label>
-                
-                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                  paymentMethod === 'bank_transfer' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="bank_transfer"
-                    checked={paymentMethod === 'bank_transfer'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="sr-only"
-                  />
-                  <DollarSign className="w-4 h-4 mr-2 text-primary-600" />
-                  <span className="text-sm font-medium">Bank Transfer</span>
-                </label>
-              </div>
-            </div>
-
             {/* Payment Plan */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Payment Plan
               </label>
               <div className="space-y-3">
-                {/* One-time Payment */}
-                <label className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                  paymentPlan === 'one_time' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
+                {/* Full Payment */}
+                <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  paymentPlan === 'full' ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-gray-300 hover:border-gray-400'
                 }`}>
                   <input
                     type="radio"
                     name="paymentPlan"
-                    value="one_time"
-                    checked={paymentPlan === 'one_time'}
-                    onChange={(e) => setPaymentPlan(e.target.value as 'one_time')}
+                    value="full"
+                    checked={paymentPlan === 'full'}
+                    onChange={(e) => setPaymentPlan(e.target.value as 'full')}
                     className="sr-only"
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">One-time Payment</span>
-                      <span className="text-lg font-bold text-primary-600">{formatPrice(totalAmount)}</span>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className={`w-5 h-5 ${paymentPlan === 'full' ? 'text-primary-600' : 'text-gray-500'}`} />
+                        <span className="text-base font-semibold text-gray-900">Full Payment</span>
+                      </div>
+                      <span className="text-xl font-bold text-primary-600">{formatPrice(totalAmount)}</span>
                     </div>
-                    <p className="text-xs text-gray-600">Pay the entire amount now</p>
+                    <p className="text-sm text-gray-600">Pay the entire amount at once</p>
                   </div>
                 </label>
 
-                {/* Two-time Payment */}
-                <label className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-                  paymentPlan === 'two_time' ? 'border-primary-500 bg-secondary-200' : 'border-gray-300'
+                {/* Monthly Payment */}
+                <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  paymentPlan === 'monthly' ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-gray-300 hover:border-gray-400'
                 }`}>
                   <input
                     type="radio"
                     name="paymentPlan"
-                    value="two_time"
-                    checked={paymentPlan === 'two_time'}
-                    onChange={(e) => setPaymentPlan(e.target.value as 'two_time')}
+                    value="monthly"
+                    checked={paymentPlan === 'monthly'}
+                    onChange={(e) => setPaymentPlan(e.target.value as 'monthly')}
                     className="sr-only"
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">Two-time Payment</span>
-                      <span className="text-lg font-bold text-primary-600">{formatPrice(twoPaymentAmount)}/payment</span>
+                      <div className="flex items-center gap-2">
+                        <Package className={`w-5 h-5 ${paymentPlan === 'monthly' ? 'text-primary-600' : 'text-gray-500'}`} />
+                        <span className="text-base font-semibold text-gray-900">Monthly Payment</span>
+                      </div>
+                      <span className="text-xl font-bold text-primary-600">{formatPrice(Math.ceil(totalAmount / 2))}</span>
                     </div>
-                    <p className="text-xs text-gray-600">Split into 2 equal payments</p>
+                    <p className="text-sm text-gray-600">First installment payment</p>
                     <div className="text-xs text-gray-500 mt-1">
-                      Total: {formatPrice(totalAmount)}
+                      Total amount: {formatPrice(totalAmount)}
                     </div>
                   </div>
                 </label>
@@ -514,9 +501,9 @@ export default function ClassReservationPaymentDialog({
                 iconLeft={isProcessing ? undefined : <CreditCard className="w-4 h-4" />}
               >
                 {isLoadingProfile ? "Loading..." : isProcessing ? "Processing..." : 
-                  paymentPlan === 'one_time' 
+                  paymentPlan === 'full' 
                     ? `Pay ${formatPrice(totalAmount)}` 
-                    : `Pay First Installment ${formatPrice(installmentInfo.installmentAmount)}`
+                    : `Pay First Installment ${formatPrice(Math.ceil(totalAmount / 2))}`
                 }
               </Button>
             </div>

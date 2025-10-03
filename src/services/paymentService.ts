@@ -18,6 +18,25 @@ export interface MonthlyPaymentResponse {
   invoiceId: string;
 }
 
+export interface FullPaymentRequest {
+  reservationItemId: string;
+  studentId: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  note: string;
+}
+
+export interface FullPaymentResponse {
+  success: boolean;
+  paymentUrl: string;
+  orderCode: number;
+  amount: number;
+  invoiceId: string;
+  paymentType: string;
+  message: string;
+}
+
 export interface PaymentWebhookData {
   orderCode: number;
   amount: number;
@@ -44,6 +63,17 @@ export const paymentService = {
       return response.data;
     } catch (error) {
       console.error('Error creating monthly payment:', error);
+      throw error;
+    }
+  },
+
+  // Create full payment and get PAYOS redirect URL
+  createFullPayment: async (paymentData: FullPaymentRequest): Promise<FullPaymentResponse> => {
+    try {
+      const response = await api.createFullPayment(paymentData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating full payment:', error);
       throw error;
     }
   },

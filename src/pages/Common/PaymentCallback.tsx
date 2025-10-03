@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { handlePaymentSuccess, handlePaymentFailure } from '@/services/paymentService';
+import { apiClient } from '@/lib/config';
 
 export default function PaymentCallback() {
   const [searchParams] = useSearchParams();
@@ -57,13 +58,9 @@ export default function PaymentCallback() {
             
             // Call backend API to get payment status and redirect URL
             console.log('Calling backend API:', apiUrl);
-            const response = await fetch(apiUrl);
+            const response = await apiClient.get(apiUrl);
             
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
+            const data = response.data;
             console.log('Backend API response:', data);
 
             if (data.success && data.redirectUrl) {
@@ -120,7 +117,12 @@ export default function PaymentCallback() {
           console.log('Processing webhook data:', webhookData);
 
           // Determine payment status based on the response
-          if (status === 'success' || code === '00') {
+          const isSuccess = status?.toUpperCase() === 'PAID' || 
+                           status?.toLowerCase() === 'success' || 
+                           code === '00' || 
+                           cancel === 'false';
+          
+          if (isSuccess) {
             console.log('Payment successful via fallback');
             setPaymentStatus('success');
             handlePaymentSuccess(webhookData.orderCode, webhookData.paymentLinkId);

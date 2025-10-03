@@ -175,10 +175,10 @@ export default function Login() {
       // Check if account is verified
       const isVerified = response.account.isVerified ?? true;
       if (!isVerified) {
-        navigate("/gateway", {
+        // Redirect to home page for unverified accounts
+        navigate("/", {
           state: {
-            showVerification: true,
-            email: response.account.email
+            message: "Please verify your email address to access all features"
           }
         });
         return;
@@ -254,25 +254,20 @@ export default function Login() {
           localStorage.setItem("userInfo", JSON.stringify(userInfo));
           
           // Navigate based on user role from backend response
-          if (userInfo.roleNames && userInfo.roleNames.includes('student')) {
-            navigate("/student/myCourses");
-          } else if (userInfo.roleNames && userInfo.roleNames.includes('teacher')) {
+          if (!userInfo.isVerified) {
+            // Account not verified - redirect to home page
+            navigate("/", {
+              state: {
+                message: "Please verify your email address to access all features"
+              }
+            });
+          } else if (userInfo.roleNames && userInfo.roleNames.includes('Student')) {
+            navigate("/student/my-classes");
+          } else if (userInfo.roleNames && userInfo.roleNames.includes('Teacher')) {
             navigate("/teacher/courses");
           } else {
-            // Default navigation if role not determined
-            if(!userInfo.isVerified){
-
-            }
-            if (!userInfo.isVerified) {
-                  // Account not verified - navigate to Gateway with verification state
-                  navigate("/gateway", {
-                    state: {
-                      showVerification: true,
-                      email: userInfo.email
-                    }
-                  });
-                  return;
-            }
+            // Default navigation for verified users without specific role
+            navigate("/");
           }
           
           popup.close();

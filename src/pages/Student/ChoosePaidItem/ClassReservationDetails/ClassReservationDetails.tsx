@@ -224,12 +224,6 @@ export default function ClassReservationDetails() {
     navigate('/student/choose-paid-item');
   };
 
-  const handleProceedToPayment = () => {
-    // Pay for all items
-    setSelectedItemForPayment(null);
-    setShowPaymentDialog(true);
-  };
-
   const handlePayForItem = (item: ReservationItem) => {
     // Pay for a specific item
     setSelectedItemForPayment(item);
@@ -341,7 +335,7 @@ export default function ClassReservationDetails() {
             </div>
           </div>
 
-          {/* Right Section: Action */}
+          {/* Right Section: Summary */}
           <div className="flex-shrink-0">
             <div className="text-right mb-4">
               <div className="text-3xl font-bold text-primary-600 mb-1">
@@ -352,7 +346,7 @@ export default function ClassReservationDetails() {
 
             {/* Status Warnings */}
             {isExpired() && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                 <div className="flex items-center gap-2 text-red-700">
                   <AlertCircle className="w-4 h-4" />
                   <span className="text-sm font-medium">Reservation Expired</span>
@@ -361,23 +355,14 @@ export default function ClassReservationDetails() {
             )}
 
             {isExpiringSoon() && !isExpired() && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                 <div className="flex items-center gap-2 text-orange-700">
                   <AlertCircle className="w-4 h-4" />
                   <span className="text-sm font-medium">Expires Soon</span>
                 </div>
+                <p className="text-xs text-orange-600 mt-1">Please pay for items before expiry</p>
               </div>
             )}
-
-            <Button
-              variant={isExpired() ? "secondary" : "primary"}
-              disabled={isExpired()}
-              iconLeft={<CreditCard className="w-4 h-4" />}
-              onClick={handleProceedToPayment}
-              className="w-full"
-            >
-              {isExpired() ? "Expired" : "Proceed to Payment"}
-            </Button>
           </div>
         </div>
       </Card>

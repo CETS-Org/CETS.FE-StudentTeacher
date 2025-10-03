@@ -63,11 +63,21 @@ export default function GoogleCallback() {
                 console.log('Message sent to parent, closing popup...');
                 window.close();
               } else {
-                // Nếu không có parent window, lưu thông tin và redirect
-                console.log('No parent window, redirecting to gateway...');
+                // Nếu không có parent window, lưu thông tin và redirect theo role
+                console.log('No parent window, redirecting based on role...');
                 localStorage.setItem("authToken", backendData.token);
                 localStorage.setItem("userInfo", JSON.stringify(backendData.account));
-                window.location.href = '/gateway';
+                
+                // Navigate based on user role and verification status
+                if (!backendData.account.isVerified) {
+                  window.location.href = '/';
+                } else if (backendData.account.roleNames && backendData.account.roleNames.includes('Student')) {
+                  window.location.href = '/student/my-classes';
+                } else if (backendData.account.roleNames && backendData.account.roleNames.includes('Teacher')) {
+                  window.location.href = '/teacher/courses';
+                } else {
+                  window.location.href = '/';
+                }
               }
             } catch (backendError) {
               console.error('Backend Error:', backendError);
@@ -99,7 +109,17 @@ export default function GoogleCallback() {
                 console.log('No parent window, using fallback data...');
                 localStorage.setItem("authToken", accessToken);
                 localStorage.setItem("userInfo", JSON.stringify(fallbackUserInfo));
-                window.location.href = '/gateway';
+                
+                // Navigate based on fallback user role
+                if (!fallbackUserInfo.isVerified) {
+                  window.location.href = '/';
+                } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Student')) {
+                  window.location.href = '/student/my-classes';
+                } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Teacher')) {
+                  window.location.href = '/teacher/courses';
+                } else {
+                  window.location.href = '/';
+                }
               }
             }
           })

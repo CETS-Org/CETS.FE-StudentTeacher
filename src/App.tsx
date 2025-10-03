@@ -30,6 +30,8 @@ import CourseDetailPage from './pages/Course/CourseDetailPage'
 import CourseAll from './pages/Course/CourseAll'
 import CoursePackageDetail from './pages/CoursePackage/CoursePackageDetail'
 import GoogleCallback from './pages/Common/GoogleCallback'
+import VerificationSuccess from './pages/Common/VerificationSuccess'
+import VerificationError from './pages/Common/VerificationError'
 import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession'
@@ -55,6 +57,8 @@ export default function App() {
       <Route path="/otpVerification" element={<OtpVerification />} /> 
       <Route path="/resetPassword" element={<ResetPassword />} />
       <Route path="/google-callback" element={<GoogleCallback />} />
+      <Route path="/verification-success" element={<VerificationSuccess />} />
+      <Route path="/verification-error" element={<VerificationError />} />
       
       {/* All other routes with UniversalLayout */}
       <Route path="/*" element={

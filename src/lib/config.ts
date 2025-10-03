@@ -200,6 +200,9 @@ export const api = {
   // Payment
   createMonthlyPayment: (paymentData: any, config?: AxiosRequestConfig) => 
     apiClient.post('/api/FIN_Payment/monthlyPay', paymentData, config),
+  
+  createFullPayment: (paymentData: any, config?: AxiosRequestConfig) => 
+    apiClient.post('/api/FIN_Payment/fullPay', paymentData, config),
 
   // Reservation Items
   getReservationItems: (reservationId: string, config?: AxiosRequestConfig) => 
