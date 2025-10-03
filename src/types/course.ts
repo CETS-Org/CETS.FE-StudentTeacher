@@ -89,6 +89,7 @@ export interface Course {
   requirements?: Requirement[];
   courseSkills?: CourseSkill[];
   feedbacks?: CourseFeedback[];
+  schedules?: CourseSchedule[];
   
   // Status flags
   isPopular?: boolean;
@@ -292,7 +293,7 @@ export interface FeedbackCourse {
 
 export interface FacetItem {
   key: string;
-  label: string;
+  label?: string | null;
   count: number;
   selected: boolean;
 }
@@ -303,8 +304,13 @@ export interface CourseSearchResult {
   total: number;
   items: Course[];
   facets: {
-    levels: FacetItem[];
-    categories: FacetItem[];
+    levels?: FacetItem[];
+    categories?: FacetItem[];
+    skills?: FacetItem[];
+    requirements?: FacetItem[];
+    benefits?: FacetItem[];
+    daysOfWeek?: FacetItem[];
+    timeSlots?: FacetItem[];
   };
 }
 

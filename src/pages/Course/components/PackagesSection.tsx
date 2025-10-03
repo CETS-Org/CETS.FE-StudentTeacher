@@ -9,7 +9,6 @@ import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/lib/config";
 import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, ScheduleFilter } from "./filters";
-import { useAllCourseSchedules } from "@/hooks/useCourseSchedule";
 
 import type { CoursePackage, CoursePackageSearchResult, CoursePackageSearchQuery, CoursePackageFacetItem } from "@/types/coursePackage";
 
@@ -34,9 +33,6 @@ const sortOptions = [
 
 export default function PackagesSection() {
   const navigate = useNavigate();
-  
-  // Get all course schedules for filtering
-  const { schedules: allSchedules } = useAllCourseSchedules();
 
   // UI states
   const [q, setQ] = useState("");
@@ -63,62 +59,79 @@ export default function PackagesSection() {
   // Data states
   const [packageItems, setPackageItems] = useState<CoursePackage[]>([]);
   const [packageTotal, setPackageTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [err, setErr] = useState<string | null>(null);
 
   // Facet states
   const [levelsFacet, setLevelsFacet] = useState<CoursePackageFacetItem[]>([]);
   const [categoriesFacet, setCategoriesFacet] = useState<CoursePackageFacetItem[]>([]);
   const [skillsFacet, setSkillsFacet] = useState<CoursePackageFacetItem[]>([]);
+  const [daysOfWeekFacet, setDaysOfWeekFacet] = useState<CoursePackageFacetItem[]>([]);
+  const [timeSlotsFacet, setTimeSlotsFacet] = useState<CoursePackageFacetItem[]>([]);
 
-  // Search query parameters
-  const searchQuery = useMemo((): CoursePackageSearchQuery => ({
-    q: qDebounced || undefined,
-    sort,
-    page,
-    pageSize,
-    levelIds: levelIds.length > 0 ? levelIds : undefined,
-    categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
-    skillIds: skillIds.length > 0 ? skillIds : undefined,
-    daysOfWeek: selectedDays.length > 0 ? selectedDays : undefined,
-    timeSlotNames: selectedTimeSlots.length > 0 ? selectedTimeSlots : undefined,
-    priceMin: priceMin > MIN_PRICE ? priceMin : undefined,
-    priceMax: priceMax < PACKAGE_MAX_PRICE ? priceMax : undefined,
-    isActive: true, 
-  }), [qDebounced, sort, page, pageSize, levelIds, categoryIds, skillIds, selectedDays, selectedTimeSlots, priceMin, priceMax]);
+  // Search query parameters - memoized to prevent unnecessary re-fetches
+  const searchQuery = useMemo((): CoursePackageSearchQuery => {
+    const query: CoursePackageSearchQuery = {
+      sort,
+      page,
+      pageSize,
+      isActive: true,
+    };
+    
+    // Only add optional params if they have values
+    if (qDebounced) query.q = qDebounced;
+    if (levelIds.length > 0) query.levelIds = levelIds;
+    if (categoryIds.length > 0) query.categoryIds = categoryIds;
+    if (skillIds.length > 0) query.skillIds = skillIds;
+    if (selectedDays.length > 0) query.daysOfWeek = selectedDays;
+    if (selectedTimeSlots.length > 0) query.timeSlotNames = selectedTimeSlots;
+    if (priceMin > MIN_PRICE) query.priceMin = priceMin;
+    if (priceMax < PACKAGE_MAX_PRICE) query.priceMax = priceMax;
+    
+    return query;
+  }, [qDebounced, sort, page, pageSize, levelIds, categoryIds, skillIds, selectedDays, selectedTimeSlots, priceMin, priceMax]);
 
   // Wishlist state
   const [wishlist, setWishlist] = useState<Set<string>>(new Set());
 
-  // Fetch course packages with search
+  // Fetch handler
+  const fetchPackages = async (query: CoursePackageSearchQuery, signal?: AbortSignal) => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const response = await api.searchCoursePackages(query, { signal });
+      const data: CoursePackageSearchResult = response.data;
+
+      setPackageItems(data.items || []);
+      setPackageTotal(data.total || 0);
+      
+      // Update facets
+      const facets = data.facets || {};
+      setLevelsFacet(facets.levels || []);
+      setCategoriesFacet(facets.categories || []);
+      setSkillsFacet(facets.skills || []);
+      setDaysOfWeekFacet(facets.daysOfWeek || []);
+      setTimeSlotsFacet(facets.timeSlots || []);
+    } catch (e: any) {
+      if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") return;
+      console.error("Failed to fetch course packages:", e);
+      setErr("Failed to load course packages. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const abort = new AbortController();
-    (async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const response = await api.searchCoursePackages(searchQuery, { signal: abort.signal });
-        const data: CoursePackageSearchResult = response.data;
-
-        setPackageItems(data.items || []);
-        setPackageTotal(data.total || 0);
-        
-        // Update facets
-        const facets = data.facets || {};
-        setLevelsFacet(facets.levels || []);
-        setCategoriesFacet(facets.categories || []);
-        setSkillsFacet(facets.skills || []);
-        
-      } catch (e: any) {
-        if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") return;
-        console.error("Failed to fetch course packages:", e);
-        setErr("Failed to load course packages. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-    return () => abort.abort();
-  }, [searchQuery]);
+    const timeoutId = setTimeout(() => {
+      fetchPackages(searchQuery, abort.signal);
+    }, 100); // Small delay to batch rapid changes
+    
+    return () => {
+      clearTimeout(timeoutId);
+      abort.abort();
+    };
+  }, [qDebounced, sort, page, pageSize, levelIds, categoryIds, skillIds, selectedDays, selectedTimeSlots, priceMin, priceMax]);
 
   // Helpers Facet
   const toggleFacet = (setter: (v: string[]) => void, current: string[], key: string) => {
@@ -345,7 +358,8 @@ export default function PackagesSection() {
                  selectedTimeSlots={selectedTimeSlots}
                  onToggleDay={(day: string) => toggleFacet(setSelectedDays, selectedDays, day)}
                  onToggleTimeSlot={(timeSlot: string) => toggleFacet(setSelectedTimeSlots, selectedTimeSlots, timeSlot)}
-                 allSchedules={allSchedules}
+                 daysOfWeekFacet={daysOfWeekFacet}
+                 timeSlotsFacet={timeSlotsFacet}
                />
 
                <PriceFilter 

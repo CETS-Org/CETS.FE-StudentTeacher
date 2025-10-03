@@ -1,11 +1,12 @@
 import { Star, Clock, BookOpen, ArrowRight, Heart } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import CourseSchedule from "@/components/ui/CourseSchedule";
-import { useCourseSchedule } from "@/hooks/useCourseSchedule";
 import type { CourseCardProps } from "@/types/course";
 
 export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false }: CourseCardProps) {
-  const { schedules, loading: schedulesLoading } = useCourseSchedule(course.id);
+  // Use schedules from course prop (already loaded from search API)
+  const schedules = course.schedules || [];
+  const schedulesLoading = false;
   
   return (
     <div className="group bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all duration-300 p-3 md:p-4">

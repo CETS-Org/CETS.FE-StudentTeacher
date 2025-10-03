@@ -9,7 +9,6 @@ import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/lib/config"
 import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
-import { useAllCourseSchedules } from "@/hooks/useCourseSchedule";
 
 import type { Course, CourseSearchResult } from "@/types/course";
 
@@ -43,9 +42,6 @@ const uiSortToServer: Record<string, string> = {
 
 export default function CoursesSection() {
   const navigate = useNavigate();
-  
-  // Get all course schedules for filtering
-  const { schedules: allSchedules } = useAllCourseSchedules();
 
   // UI states
   const [q, setQ] = useState("");
@@ -75,100 +71,90 @@ export default function CoursesSection() {
   const [skillsFacet, setSkillsFacet] = useState<FacetItem[]>([]);
   const [requirementsFacet, setRequirementsFacet] = useState<FacetItem[]>([]);
   const [benefitsFacet, setBenefitsFacet] = useState<FacetItem[]>([]);
+  const [daysOfWeekFacet, setDaysOfWeekFacet] = useState<FacetItem[]>([]);
+  const [timeSlotsFacet, setTimeSlotsFacet] = useState<FacetItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(4); 
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [err, setErr] = useState<string | null>(null);
-
-  // Filter items based on schedule selection
-  const filteredItems = useMemo(() => {
-    if (selectedDays.length === 0 && selectedTimeSlots.length === 0) {
-      return items; // No schedule filters applied
-    }
-
-    return items.filter((course) => {
-      // Find schedules for this course
-      const courseSchedules = allSchedules.filter(schedule => schedule.courseID === course.id);
-      
-      if (courseSchedules.length === 0) {
-        return false; // Course has no schedules, exclude it
-      }
-
-      // Check if course matches any of the selected day/time combinations
-      return courseSchedules.some(schedule => {
-        const dayMatch = selectedDays.length === 0 || selectedDays.includes(schedule.dayOfWeek);
-        const timeMatch = selectedTimeSlots.length === 0 || selectedTimeSlots.includes(schedule.timeSlotName || '');
-        
-       
-        if (selectedDays.length > 0 && selectedTimeSlots.length > 0) {
-          return dayMatch && timeMatch; // Must match both
-        } else {
-          return dayMatch || timeMatch; // Match either
-        }
-      });
-    });
-  }, [items, allSchedules, selectedDays, selectedTimeSlots]);
 
   // Wishlist state
   const [wishlist, setWishlist] = useState<Set<string>>(new Set());
 
-  // Build querystring
-  function buildSearchParams() {
+  // Build querystring - always include all params to prevent re-fetches
+  const buildSearchParams = () => {
     const s = new URLSearchParams();
+    s.set("Sort", uiSortToServer[uiSort] ?? "Relevance");
+    s.set("Page", String(page));
+    s.set("PageSize", String(pageSize));
+    
+    // Always set these to avoid conditional logic causing re-renders
     if (qDebounced) s.set("Q", qDebounced);
+    if (priceMin > MIN_PRICE) s.set("PriceMin", String(priceMin));
+    if (priceMax < MAX_PRICE) s.set("PriceMax", String(priceMax));
+    
+    // Arrays - only add if not empty
     if (levelIds.length) s.set("LevelIds", levelIds.join(","));
     if (categoryIds.length) s.set("CategoryIds", categoryIds.join(","));
     if (skillIds.length) s.set("SkillIds", skillIds.join(","));
     if (requirementIds.length) s.set("RequirementIds", requirementIds.join(","));
     if (benefitIds.length) s.set("BenefitIds", benefitIds.join(","));
-    if (priceMin > MIN_PRICE || priceMax < MAX_PRICE) {
-      s.set("PriceMin", String(priceMin));
-      s.set("PriceMax", String(priceMax));
-    }
-    s.set("Sort", uiSortToServer[uiSort] ?? "Relevance");
-    s.set("Page", String(page));
-    s.set("PageSize", String(pageSize));
+    
+    selectedDays.forEach(day => s.append("DaysOfWeek", day));
+    selectedTimeSlots.forEach(slot => s.append("TimeSlotNames", slot));
+    
     return s;
-  }
+  };
 
-  // Fetch
+  // Fetch handler
+  const fetchCourses = async (signal?: AbortSignal) => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const searchParams = buildSearchParams();
+      const paramsObject = Object.fromEntries(searchParams.entries());
+
+      const response = await api.searchCourses(paramsObject, { signal });
+      const data: CourseSearchResult = response.data;
+
+      const arr = Array.isArray((data as any).items) ? (data.items as Course[]) : [];
+      setItems(arr);
+
+      setTotal((data as any).total ?? 0);
+      setPageSize((data as any).pageSize ?? pageSize);
+
+      const facets = (data as any).facets || {};
+      setLevelsFacet((facets.levels as FacetItem[]) ?? []);
+      setCategoriesFacet((facets.categories as FacetItem[]) ?? []);
+      setSkillsFacet((facets.skills as FacetItem[]) ?? []);
+      setRequirementsFacet((facets.requirements as FacetItem[]) ?? []);
+      setBenefitsFacet((facets.benefits as FacetItem[]) ?? []);
+      setDaysOfWeekFacet((facets.daysOfWeek as FacetItem[]) ?? []);
+      setTimeSlotsFacet((facets.timeSlots as FacetItem[]) ?? []);
+    } catch (e: any) {
+      if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") return;
+      console.error("Failed to fetch courses:", e);
+      setErr("Failed to load courses. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch on mount and when filters change (batched 100ms)
   useEffect(() => {
     const abort = new AbortController();
-    (async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const searchParams = buildSearchParams();
-        const paramsObject = Object.fromEntries(searchParams.entries());
-
-        const response = await api.searchCourses(paramsObject, { signal: abort.signal });
-        const data: CourseSearchResult = response.data;
-
-        const arr = Array.isArray((data as any).items) ? (data.items as Course[]) : [];
-        setItems(arr);
-
-        setTotal((data as any).total ?? 0);
-        setPageSize((data as any).pageSize ?? pageSize);
-
-        const facets = (data as any).facets || {};
-        setLevelsFacet((facets.levels as FacetItem[]) ?? []);
-        setCategoriesFacet((facets.categories as FacetItem[]) ?? []);
-        setSkillsFacet((facets.skills as FacetItem[]) ?? []);
-        setRequirementsFacet((facets.requirements as FacetItem[]) ?? []);
-        setBenefitsFacet((facets.benefits as FacetItem[]) ?? []);
-      } catch (e: any) {
-        if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") return;
-        console.error("Failed to fetch courses:", e);
-        setErr("Failed to load courses. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-    return () => abort.abort();
+    const timeoutId = setTimeout(() => {
+      fetchCourses(abort.signal);
+    }, 100); // Small delay to batch rapid changes
+    
+    return () => {
+      clearTimeout(timeoutId);
+      abort.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, levelIds.join(","), categoryIds.join(","), skillIds.join(","), requirementIds.join(","), benefitIds.join(","), priceMin, priceMax, uiSort, page]);
+  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax, uiSort, page]);
 
   // Helpers Facet
   const toggleFacet = (setter: (v: string[]) => void, current: string[], key: string) => {
@@ -186,9 +172,11 @@ export default function CoursesSection() {
     if (skillIds.length) n++;
     if (requirementIds.length) n++;
     if (benefitIds.length) n++;
+    if (selectedDays.length) n++;
+    if (selectedTimeSlots.length) n++;
     if (priceMin > MIN_PRICE || priceMax < MAX_PRICE) n++;
     return n;
-  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, priceMin, priceMax]);
+  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax]);
 
   const clearAll = () => {
     setQ("");
@@ -355,7 +343,7 @@ export default function CoursesSection() {
             {/* Results Info */}
             <div className="flex items-center gap-4 text-sm">
               <p className="text-sm text-neutral-500">
-                Showing <span className="font-semibold text-primary-600">{filteredItems.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
+                Showing <span className="font-semibold text-primary-600">{items.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
                 {(selectedDays.length > 0 || selectedTimeSlots.length > 0) && (
                   <span className="text-blue-600">
                     (filtered by schedule)
@@ -411,7 +399,8 @@ export default function CoursesSection() {
                  selectedTimeSlots={selectedTimeSlots}
                  onToggleDay={(day) => toggleFacet(setSelectedDays, selectedDays, day)}
                  onToggleTimeSlot={(timeSlot) => toggleFacet(setSelectedTimeSlots, selectedTimeSlots, timeSlot)}
-                 allSchedules={allSchedules}
+                 daysOfWeekFacet={daysOfWeekFacet}
+                 timeSlotsFacet={timeSlotsFacet}
                />
                <RequirementsFilter 
                  requirementsFacet={requirementsFacet}
@@ -450,11 +439,11 @@ export default function CoursesSection() {
               </div>
             )}
 
-            {!loading && !err && filteredItems.length > 0 ? (
+            {!loading && !err && items.length > 0 ? (
               <>
                 {/* Course Display */}
                 <div className="space-y-4">
-                  {filteredItems.map((course, index) => (
+                  {items.map((course, index) => (
                     <div
                       key={course.id}
                       className="animate-in fade-in-0 slide-in-from-left-4"

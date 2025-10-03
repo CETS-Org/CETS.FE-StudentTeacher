@@ -1,15 +1,22 @@
 import { Calendar, Clock } from 'lucide-react';
 import CollapsibleFilter from './CollapsibleFilter';
-import { DAYS_OF_WEEK } from '@/types/course';
-import type { CourseSchedule } from '@/types/course';
 import { useMemo } from 'react';
+
+// Generic facet item type that works with both course and package facets
+interface FacetItemType {
+  key: string;
+  label?: string | null;
+  count: number;
+  selected?: boolean;
+}
 
 interface ScheduleFilterProps {
   selectedDays: string[];
   selectedTimeSlots: string[];
   onToggleDay: (day: string) => void;
   onToggleTimeSlot: (timeSlot: string) => void;
-  allSchedules?: CourseSchedule[]; // Get from parent component
+  daysOfWeekFacet?: FacetItemType[];
+  timeSlotsFacet?: FacetItemType[];
 }
 
 export default function ScheduleFilter({ 
@@ -17,39 +24,34 @@ export default function ScheduleFilter({
   selectedTimeSlots,
   onToggleDay,
   onToggleTimeSlot,
-  allSchedules = []
+  daysOfWeekFacet = [],
+  timeSlotsFacet = []
 }: ScheduleFilterProps) {
-  // Extract unique time slots from all schedules
+  // Convert time slots from facets
   const timeSlots = useMemo(() => {
-    const uniqueTimeSlots = new Map<string, { startTime: string; displayTime: string }>();
-    
-    allSchedules.forEach(schedule => {
-      if (schedule.timeSlotName && !uniqueTimeSlots.has(schedule.timeSlotName)) {
-        const startTime = schedule.timeSlotName;
+    return timeSlotsFacet.reduce((acc, facet) => {
+      if (facet.key) {
+        const startTime = facet.key;
         
         // Calculate end time (start + 90 minutes)
         const [hours, minutes] = startTime.split(':').map(Number);
-        const startDate = new Date();
-        startDate.setHours(hours, minutes, 0, 0);
-        const endDate = new Date(startDate);
-        endDate.setMinutes(endDate.getMinutes() + 90);
-        const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
-        
-        uniqueTimeSlots.set(startTime, {
-          startTime,
-          displayTime: `${startTime} - ${endTime}`
-        });
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          const startDate = new Date();
+          startDate.setHours(hours, minutes, 0, 0);
+          const endDate = new Date(startDate);
+          endDate.setMinutes(endDate.getMinutes() + 90);
+          const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+          
+          acc[startTime] = {
+            startTime,
+            displayTime: `${startTime} - ${endTime}`,
+            count: facet.count
+          };
+        }
       }
-    });
-    
-    // Sort by start time
-    return Array.from(uniqueTimeSlots.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .reduce((acc, [key, value]) => {
-        acc[key] = value;
-        return acc;
-      }, {} as Record<string, { startTime: string; displayTime: string }>);
-  }, [allSchedules]);
+      return acc;
+    }, {} as Record<string, { startTime: string; displayTime: string; count: number }>);
+  }, [timeSlotsFacet]);
   
   const icon = (
     <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
@@ -75,19 +77,26 @@ export default function ScheduleFilter({
             Days of Week
           </h4>
           <div className="space-y-2 max-h-32 overflow-auto">
-            {DAYS_OF_WEEK.map((day) => (
-              <label key={day} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-neutral-50 transition-colors cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedDays.includes(day)}
-                  onChange={() => onToggleDay(day)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-1"
-                />
-                <span className="text-neutral-700 flex-1 text-sm">
-                  {day}
-                </span>
-              </label>
-            ))}
+            {daysOfWeekFacet.length === 0 ? (
+              <div className="text-center py-2 text-sm text-gray-500">
+                No days available
+              </div>
+            ) : (
+              daysOfWeekFacet.map((facet) => (
+                <label key={facet.key} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-neutral-50 transition-colors cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedDays.includes(facet.key)}
+                    onChange={() => onToggleDay(facet.key)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-1"
+                  />
+                  <span className="text-neutral-700 flex-1 text-sm">
+                    {facet.label || facet.key}
+                  </span>
+                  <span className="text-xs text-gray-500">({facet.count})</span>
+                </label>
+              ))
+            )}
           </div>
         </div>
 
@@ -116,6 +125,7 @@ export default function ScheduleFilter({
                       {slot.displayTime}
                     </span>
                   </div>
+                  <span className="text-xs text-gray-500">({slot.count})</span>
                 </label>
               ))
             )}
