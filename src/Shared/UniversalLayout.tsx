@@ -145,7 +145,7 @@ export default function UniversalLayout({
 
       <main
         className={cn(
-          "flex-1 transition-[margin] duration-300 mt-16",
+          "flex-1 flex flex-col transition-[margin] duration-300 mt-16",
           shouldShowSidebar ? (collapsed ? "lg:ml-16" : "lg:ml-64") : "lg:ml-0"
         )}
       >

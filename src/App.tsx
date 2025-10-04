@@ -63,8 +63,9 @@ export default function App() {
       {/* All other routes with UniversalLayout */}
       <Route path="/*" element={
         <UniversalLayout>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
+          <div className="flex-1 flex flex-col min-h-[calc(100vh-5rem)]">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
             <Route path="/courses" element={<CourseAll />} />
             <Route path="/course/:courseId" element={<CourseDetailPage />} />
             <Route path="/course-package/:id" element={<CoursePackageDetail />} />
@@ -103,7 +104,8 @@ export default function App() {
             <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
             <Route path="/teacher/schedule" element={<TeacherSchedule />} />
             <Route path="/teacher/request-issue/:category" element={<TeacherReport />} />
-          </Routes>
+            </Routes>
+          </div>
           <Footer />
         </UniversalLayout>
       } />
