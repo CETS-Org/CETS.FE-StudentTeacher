@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
@@ -7,6 +7,7 @@ import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { teachingClassesService } from "@/services/teachingClassesService";
+import { getTeacherId } from "@/lib/utils";
 import { 
   BookOpen, 
   Clock, 
@@ -278,6 +279,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
 
 export default function Classes() {
   const navigate = useNavigate();
+  const { courseId } = useParams<{ courseId: string }>();
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -291,9 +293,8 @@ export default function Classes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock teacher and course IDs - in real app, these would come from auth context
-  const teacherId = "A763A84B-4FF2-47C1-AC0B-209F1EDC2010";
-  const courseId = "30B53012-701E-4521-B246-2F7569F3A783";
+  // Get teacher ID from localStorage
+  const teacherId = getTeacherId();
 
   // Fetch teaching classes on component mount
   useEffect(() => {
@@ -301,7 +302,23 @@ export default function Classes() {
       try {
         setLoading(true);
         setError(null);
+
+        // Validate required IDs
+        if (!teacherId) {
+          setError('Teacher ID not found. Please login again.');
+          setLoading(false);
+          return;
+        }
+
+        if (!courseId) {
+          setError('Course ID not found. Please select a course.');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Fetching teaching classes for:', { teacherId, courseId });
         const classes = await teachingClassesService.getTeachingClasses(teacherId, courseId);
+        console.log('Fetched classes:', classes);
         setTeacherClasses(classes);
       } catch (err) {
         console.error('Error fetching teaching classes:', err);
