@@ -156,7 +156,12 @@ export default function Schedule() {
 
         {/* Schedule Grid */}
         <div className="bg-white rounded-xl border border-accent-200 shadow-lg">
-          <StudentWeekSchedule sessions={studentSessions} startHour={8} slots={10} slotMinutes={90} />
+          <StudentWeekSchedule
+            sessions={studentSessions}
+            startHour={9}
+            slots={5}
+            slotMinutes={90}
+          />
         </div>
     </div>
   );
