@@ -24,7 +24,7 @@ import type { MyClass } from "@/types/class";
 import { studentLearningClassesService } from "@/services/studentLearningClassesService";
 
 // Mock student ID - in real app, this would come from authentication context
-const MOCK_STUDENT_ID = "834FFC99-ADEA-4FB9-A11B-2609475F7BD3";
+const MOCK_STUDENT_ID = "77437eae-7b33-4858-b8e2-522776b2475a";
 
 // Fallback mock data for development/testing
 const mockMyClasses: MyClass[] = [
