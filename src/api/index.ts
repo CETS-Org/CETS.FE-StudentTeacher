@@ -32,7 +32,14 @@ import {
   createCompleteReservation,
 } from './reservation.api';
 import { getStudentLearningClasses } from './classes.api';
-import { getPlanTypes } from './lookup.api';
+import { getPlanTypes, getTimeSlots } from './lookup.api';
+import {
+  createTeacherAvailability,
+  updateTeacherAvailability,
+  deleteTeacherAvailability,
+  getTeacherAvailabilityByTeacher,
+  getTeacherAvailabilityByTeacherAndDate,
+} from './teacherAvailability.api';
 import {
   getClassMeetingsByClassId,
   getClassMeetingCoveredTopic,
@@ -97,11 +104,18 @@ export const api = {
 
   // Lookups
   getPlanTypes,
+  getTimeSlots,
 
   // Class meetings and assignments
   getClassMeetingsByClassId,
   getClassMeetingCoveredTopic,
   getAssignmentsByMeetingAndStudent,
+  // HR Teacher Availability
+  createTeacherAvailability,
+  updateTeacherAvailability,
+  deleteTeacherAvailability,
+  getTeacherAvailabilityByTeacher,
+  getTeacherAvailabilityByTeacherAndDate,
 };
 
 // Also export individual functions for direct import usage
@@ -137,9 +151,15 @@ export {
   createCompleteReservation,
   getStudentLearningClasses,
   getPlanTypes,
+  getTimeSlots,
   getClassMeetingsByClassId,
   getClassMeetingCoveredTopic,
   getAssignmentsByMeetingAndStudent,
+  createTeacherAvailability,
+  updateTeacherAvailability,
+  deleteTeacherAvailability,
+  getTeacherAvailabilityByTeacher,
+  getTeacherAvailabilityByTeacherAndDate,
 };
 
 

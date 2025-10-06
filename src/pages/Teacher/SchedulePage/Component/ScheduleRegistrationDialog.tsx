@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 
 export type DaySchedule = {
-  [dayValue: string]: string[]; // day -> array of selected time slots
+  [dayValue: string]: string[]; // day -> array of selected time slot IDs (GUIDs)
 };
 
 interface ScheduleRegistrationDialogProps {
@@ -30,14 +31,24 @@ export default function ScheduleRegistrationDialog({
     { label: 'Sunday', value: 'sunday' }
   ];
 
-  // Available time slots
-  const timeSlotOptions = [
-    { label: '09:00 - 10:30', value: '09:00-10:30' },
-    { label: '13:00 - 15:00', value: '13:00-15:00' },
-    { label: '15:30 - 17:00', value: '15:30-17:00' },
-    { label: '18:00 - 19:30', value: '18:00-19:30' },
-    { label: '20:00 - 21:30', value: '20:00-21:30' }
-  ];
+  // Time slots from backend lookups
+  const [timeSlots, setTimeSlots] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.getTimeSlots();
+        // Controller returns list with LookUpId/Name; normalize
+        const data = (res.data || []).map((x: any) => ({
+          id: x.lookUpId ?? x.id ?? x.LookUpId ?? x.LookUpID,
+          name: x.name ?? x.Name,
+        })).filter((x: any) => !!x.id && !!x.name);
+        setTimeSlots(data);
+      } catch (e) {
+        console.error('Failed to load time slots', e);
+      }
+    })();
+  }, []);
+  const timeSlotOptions = useMemo(() => timeSlots.map(ts => ({ label: ts.name, value: ts.id })), [timeSlots]);
 
   const handleDialogClose = () => {
     setDaySchedules({});

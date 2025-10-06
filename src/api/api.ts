@@ -26,6 +26,7 @@ export const endpoint = {
   coreLookup: '/api/CORE_LookUp',
   classMeetings: '/api/ACAD_ClassMeetings',
   assignments: '/api/ACAD_Assignments',
+  teacherAvailability: '/api/HR_TeacherAvailability',
 };
 
 // Request interceptor to add auth token
