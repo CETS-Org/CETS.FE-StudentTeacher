@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/config';
+import { api } from '@/api';
 import type { CourseSchedule } from '@/types/course';
 
 export function useCourseSchedule(courseId?: string) {

@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import Loader from "@/components/ui/Loader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import CourseDetail from "./CourseDetail";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import type { Course } from "@/types/course";
 
 export default function CourseDetailPage() {

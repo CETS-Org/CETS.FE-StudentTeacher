@@ -1,4 +1,4 @@
-import { api } from '@/lib/config';
+import { api } from '@/api';
 
 // Plan Type interface based on the API response
 export interface PlanType {

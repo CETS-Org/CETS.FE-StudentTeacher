@@ -6,7 +6,7 @@ import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import CourseCard, { type TeacherCourse } from "@/pages/Teacher/CoursesPage/CourseCard";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import { apiResponseToTeacherCourse, type TeachingCourseApiResponse } from "@/types/course";
 import { getTeacherId } from "@/lib/utils";
 

@@ -141,7 +141,7 @@ export default function PaymentCancel() {
                 </Button>
                 
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={handleContactSupport}
                   className="w-full"
                   iconLeft={<ExternalLink className="w-5 h-5" />}

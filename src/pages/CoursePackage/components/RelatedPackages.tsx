@@ -3,7 +3,7 @@ import { Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import type { CoursePackageDetail, CoursePackage } from "@/types/coursePackage";
 
 interface RelatedPackagesProps {

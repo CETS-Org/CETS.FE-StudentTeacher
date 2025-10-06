@@ -7,7 +7,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
-import { api } from "@/lib/config"
+import { api } from "@/api"
 import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
 
 import type { Course, CourseSearchResult } from "@/types/course";

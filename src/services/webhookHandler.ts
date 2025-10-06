@@ -84,7 +84,7 @@ export class WebhookHandler {
       }
 
       // Process the webhook
-      const result = await processWebhookData(webhookData);
+      const result = await this.processWebhookData(webhookData);
 
       // Log webhook processing
       console.log('Webhook processed successfully:', {

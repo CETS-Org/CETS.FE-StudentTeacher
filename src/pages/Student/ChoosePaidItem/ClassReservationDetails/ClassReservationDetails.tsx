@@ -17,9 +17,8 @@ import {
 } from "lucide-react";
 
 import type { ClassReservationResponse, ReservationItem } from "@/types/payment";
-import { getMockReservationDetails } from "./data/mockReservationDetailsData";
 import ClassReservationPaymentDialog from "./components/ClassReservationPaymentDialog";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import { getUserInfo } from "@/lib/utils";
 
 export default function ClassReservationDetails() {
@@ -43,25 +42,6 @@ export default function ClassReservationDetails() {
           
           if (!studentId) {
             console.error('Student ID not found in localStorage');
-            // Fallback to mock data
-            const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId);
-            setReservation(mockReservation);
-            // Transform mock items to match ReservationItem interface
-            const transformedMockItems: ReservationItem[] = mockItems.map((item: any) => ({
-              id: item.id,
-              courseId: item.id, // Use id as courseId for mock data
-              courseCode: item.name.substring(0, 6), // Generate course code from name
-              courseName: item.name,
-              courseImageUrl: undefined,
-              description: item.description,
-              price: item.price,
-              category: item.type,
-              invoiceId: undefined,
-              invoiceStatus: item.status,
-              planType: 'Full',
-              classReservationId: reservationId || ''
-            }));
-            setReservationItems(transformedMockItems);
             return;
           }
 
@@ -117,49 +97,10 @@ export default function ClassReservationDetails() {
             setReservationItems(transformedItems);
           } else {
             console.error('Reservation not found');
-            // Fallback to mock data
-            const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId);
-            setReservation(mockReservation);
-            // Transform mock items to match ReservationItem interface
-            const transformedMockItems: ReservationItem[] = mockItems.map((item: any) => ({
-              id: item.id,
-              courseId: item.id, // Use id as courseId for mock data
-              courseCode: item.name.substring(0, 6), // Generate course code from name
-              courseName: item.name,
-              courseImageUrl: undefined,
-              description: item.description,
-              price: item.price,
-              category: item.type,
-              invoiceId: undefined,
-              invoiceStatus: item.status,
-              planType: 'Full',
-              classReservationId: reservationId || ''
-            }));
-            setReservationItems(transformedMockItems);
           }
         }
       } catch (error) {
         console.error("Error fetching reservation details:", error);
-        
-        // Fallback to mock data on error
-        const { reservation: mockReservation, items: mockItems } = getMockReservationDetails(reservationId || "1");
-        setReservation(mockReservation);
-        // Transform mock items to match ReservationItem interface
-        const transformedMockItems: ReservationItem[] = mockItems.map((item: any) => ({
-          id: item.id,
-          courseId: item.id, // Use id as courseId for mock data
-          courseCode: item.name.substring(0, 6), // Generate course code from name
-          courseName: item.name,
-          courseImageUrl: undefined,
-          description: item.description,
-          price: item.price,
-          category: item.type,
-          invoiceId: undefined,
-          invoiceStatus: item.status,
-          planType: 'Full',
-          classReservationId: reservationId || ''
-        }));
-        setReservationItems(transformedMockItems);
       } finally {
         setLoading(false);
       }

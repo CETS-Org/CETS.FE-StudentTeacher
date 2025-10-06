@@ -8,7 +8,7 @@ import RelatedPackages from "./components/RelatedPackages";
 import PackageEnrollmentDialog from "./components/PackageEnrollmentDialog";
 import Toast from "@/components/ui/Toast";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import { getUserInfo } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import { planTypeService } from "@/services/planTypeService";
