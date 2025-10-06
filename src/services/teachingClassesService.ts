@@ -1,4 +1,4 @@
-import { api } from '@/lib/config';
+import { api } from '@/api';
 
 // Class Meetings (Sessions) for a given class
 export interface ClassMeeting {

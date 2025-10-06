@@ -7,7 +7,7 @@ import { FileText, Upload, Edit, Trash2 } from "lucide-react";
 import UploadMaterialsPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadMaterialsPopup"; 
 import UpdateMaterialPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UpdateMaterialPopup";
 import Pagination from "@/Shared/Pagination";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import type { LearningMaterial } from "@/types/learningMaterial";
 
 export default function CourseMaterialsTab() {
