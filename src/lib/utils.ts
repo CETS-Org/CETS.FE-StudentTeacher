@@ -61,3 +61,8 @@ export function getUserPhone(): string | null {
   const userInfo = getUserInfo();
   return userInfo?.phoneNumber || null;
 }
+
+export function getStudentId(): string | null {
+  const userInfo = getUserInfo();
+  return userInfo?.id || null;
+}

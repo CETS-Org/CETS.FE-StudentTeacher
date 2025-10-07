@@ -243,5 +243,9 @@ export const api = {
   // Class Meeting Assignments by student
   getAssignmentsByMeetingAndStudent: (classMeetingId: string, studentId: string, config?: AxiosRequestConfig) =>
     apiClient.get(`/api/ACAD_Assignments/class-meeting/${classMeetingId}/student/${studentId}/assignments`, config),
+
+  // Student Attendance Report
+  getStudentAttendanceReport: (studentId: string, config?: AxiosRequestConfig) =>
+    apiClient.get(`/api/ACAD_Attendance/students/${studentId}/attendance-report`, config),
 };
 

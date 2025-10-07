@@ -19,7 +19,7 @@ import {
   CheckSquare
 } from "lucide-react";
 import { getCoveredTopicByMeetingId, getAssignmentsByMeetingAndStudent, getClassMeetingsByClassId, type CoveredTopic, type MeetingAssignment, type ClassMeeting } from "@/services/teachingClassesService";
-// import { getUserInfo } from "@/lib/utils";
+import { getStudentId } from "@/lib/utils";
 
 // Session interface
 interface CourseSession {
@@ -269,9 +269,15 @@ export default function SessionDetail() {
     let mounted = true;
     async function loadAssignments() {
       if (!sessionId) { setErrorAssignments("Missing sessionId"); setLoadingAssignments(false); return; }
-      // const studentId = getUserInfo()?.id;
-      const studentId = '77437eae-7b33-4858-b8e2-522776b2475a';
-      if (!studentId) { setErrorAssignments("Missing studentId"); setLoadingAssignments(false); return; }
+      
+      // Get student ID from authentication
+      const studentId = getStudentId();
+      if (!studentId) { 
+        setErrorAssignments("User not authenticated. Please login again."); 
+        setLoadingAssignments(false); 
+        return; 
+      }
+      
       try {
         const data = await getAssignmentsByMeetingAndStudent(sessionId, studentId);
         if (mounted) setAssignments(data);
@@ -307,7 +313,7 @@ export default function SessionDetail() {
 
   const goBack = () => {
     navigate(`/student/class/${classId}`);
-  };
+  }
 
   const tabs = [
     { id: "context", label: "Session Context", badge: null, color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white" },
