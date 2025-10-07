@@ -1,9 +1,13 @@
+import React, { useState, useEffect } from "react";
 import StudentWeekSchedule from "@/pages/Student/components/StudentWeekSchedule";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { Calendar, BookOpen } from "lucide-react";
+import Spinner from "@/components/ui/Spinner";
+import { Calendar, BookOpen, AlertCircle, RefreshCw } from "lucide-react";
 import type { StudentSession } from "@/pages/Student/components/StudentWeekSchedule";
 import { useNavigate } from "react-router-dom";
+import { scheduleService } from "@/services/scheduleService";
+import { getStudentId } from "@/lib/utils";
 
 /* ===== Helpers: tuần hiện tại + format yyyy:MM:dd:HH:mm ===== */
 const mondayOfThisWeek = (() => {
@@ -28,110 +32,88 @@ function fmtCustom(d: Date) {
   )}`;
 }
 
-/* ===== Student Schedule Data (Tuần hiện tại) ===== */
-const studentSessions: StudentSession[] = [
-  // Chủ nhật tuần trước (past day for demo)
-  { 
-    id: "0", 
-    title: "Weekend Review", 
-    classCode: "WR001", 
-    room: "Online", 
-    instructor: "Self Study",
-    start: fmtCustom(dateOfThisWeek(-1, 10, 0)),
-    attendanceStatus: "attended"
-  },
-
-  // Thứ 2 (Mon=0)
-  { 
-    id: "1", 
-    title: "Basic English Grammar", 
-    classCode: "BE101", 
-    room: "A-201", 
-    instructor: "Ms. Johnson",
-    start: fmtCustom(dateOfThisWeek(0, 8, 0)),
-    attendanceStatus: "attended"
-  },
-  { 
-    id: "2", 
-    title: "English Conversation",  
-    classCode: "EC102", 
-    room: "A-201", 
-    instructor: "Mr. Smith",
-    start: fmtCustom(dateOfThisWeek(0, 14, 0)),
-    attendanceStatus: "absent"
-  },
-
-  // Thứ 3
-  { 
-    id: "3", 
-    title: "Reading Comprehension", 
-    classCode: "RC201", 
-    room: "B-102", 
-    instructor: "Dr. Wilson",
-    start: fmtCustom(dateOfThisWeek(1, 9, 30)),
-    attendanceStatus: "attended"
-  },
-  { 
-    id: "4", 
-    title: "Writing Skills", 
-    classCode: "WS201", 
-    room: "B-102", 
-    instructor: "Prof. Davis",
-    start: fmtCustom(dateOfThisWeek(1, 15, 30)),
-    attendanceStatus: "attended"
-  },
-
-  // Thứ 4
-  { 
-    id: "5", 
-    title: "Listening Practice", 
-    classCode: "LP301", 
-    room: "C-301", 
-    instructor: "Ms. Brown",
-    start: fmtCustom(dateOfThisWeek(2, 10, 0)),
-    attendanceStatus: "upcoming"
-  },
-
-  // Thứ 5
-  { 
-    id: "6", 
-    title: "Vocabulary Building", 
-    classCode: "VB401", 
-    room: "A-105", 
-    instructor: "Mr. Miller",
-    start: fmtCustom(dateOfThisWeek(3, 13, 0)),
-    attendanceStatus: "upcoming"
-  },
-
-  // Thứ 6
-  { 
-    id: "7", 
-    title: "Pronunciation Class", 
-    classCode: "PC501", 
-    room: "D-202", 
-    instructor: "Dr. Taylor",
-    start: fmtCustom(dateOfThisWeek(4, 11, 0)),
-    attendanceStatus: "upcoming"
-  },
-
-  // Thứ 7
-  { 
-    id: "8", 
-    title: "Study Group Session", 
-    classCode: "SG601", 
-    room: "Library", 
-    instructor: "Peer Tutor",
-    start: fmtCustom(dateOfThisWeek(5, 14, 0)),
-    attendanceStatus: "upcoming"
-  },
-];
+// Empty sessions array - will be populated from API
+const emptySessions: StudentSession[] = [];
 
 export default function Schedule() {
   const navigate = useNavigate();
+  const [sessions, setSessions] = useState<StudentSession[]>(emptySessions);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const breadcrumbItems = [
     { label: "Schedule" }
   ];
+
+  // Fetch schedule data from API
+  useEffect(() => {
+    const fetchScheduleData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get student ID from authentication
+        const studentId = getStudentId();
+        if (!studentId) {
+          setError('User not authenticated. Please login again.');
+          setSessions(emptySessions);
+          return;
+        }
+        
+        const { data, error: fetchError } = await scheduleService.getStudentScheduleSafe(studentId);
+        
+        if (fetchError) {
+          setError(fetchError);
+          setSessions(emptySessions);
+        } else {
+          setSessions(data || emptySessions);
+        }
+      } catch (err) {
+        console.error('Error fetching schedule data:', err);
+        setError('Failed to load schedule data');
+        setSessions(emptySessions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchScheduleData();
+  }, []);
+
+  // Retry function
+  const handleRetry = () => {
+    const fetchScheduleData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get student ID from authentication
+        const studentId = getStudentId();
+        if (!studentId) {
+          setError('User not authenticated. Please login again.');
+          setSessions(emptySessions);
+          return;
+        }
+        
+        const { data, error: fetchError } = await scheduleService.getStudentScheduleSafe(studentId);
+        
+        if (fetchError) {
+          setError(fetchError);
+          setSessions(emptySessions);
+        } else {
+          setSessions(data || emptySessions);
+        }
+      } catch (err) {
+        console.error('Error fetching schedule data:', err);
+        setError('Failed to load schedule data');
+        setSessions(emptySessions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchScheduleData();
+  };
 
   return (
     <div className="p-6 max-w-full space-y-8">
@@ -154,15 +136,50 @@ export default function Schedule() {
           ]}
         />
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Spinner size="lg" />
+            <p className="mt-4 text-neutral-600">Loading your schedule...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="w-12 h-12 text-error-500 mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">Failed to Load Schedule</h3>
+            <p className="text-neutral-600 text-center mb-4">{error}</p>
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </button>
+          </div>
+        )}
+
         {/* Schedule Grid */}
-        <div className="bg-white rounded-xl border border-accent-200 shadow-lg">
-          <StudentWeekSchedule
-            sessions={studentSessions}
-            startHour={9}
-            slots={5}
-            slotMinutes={90}
-          />
-        </div>
+        {!loading && !error && (
+          <div className="bg-white rounded-xl border border-accent-200 shadow-lg">
+            <StudentWeekSchedule
+              sessions={sessions}
+              startHour={9}
+              slots={5}
+              slotMinutes={90}
+            />
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && sessions.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Calendar className="w-12 h-12 text-neutral-400 mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">No Schedule Found</h3>
+            <p className="text-neutral-600 text-center">You don't have any scheduled classes yet.</p>
+          </div>
+        )}
     </div>
   );
 }
