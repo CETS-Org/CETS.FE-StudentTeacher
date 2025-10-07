@@ -1,4 +1,4 @@
-import { api } from '@/lib/config';
+import { api } from '@/api';
 import type { StudentLearningClassResponse, MyClass } from '@/types/class';
 
 // Time slot mapping function (reused from teachingClassesService)

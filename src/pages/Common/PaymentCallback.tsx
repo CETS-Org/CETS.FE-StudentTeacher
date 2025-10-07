@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { handlePaymentSuccess, handlePaymentFailure } from '@/services/paymentService';
-import { apiClient } from '@/lib/config';
+import { apiClient } from '@/api';
 
 export default function PaymentCallback() {
   const [searchParams] = useSearchParams();

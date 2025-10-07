@@ -1,0 +1,145 @@
+import { api as axiosInstance } from './api';
+import {
+  loginStudent,
+  loginTeacher,
+  googleLogin,
+  register,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
+  changePassword,
+} from './account.api';
+import { getCourses, getCourseDetail, searchCourses } from './course.api';
+import { getTeachingCourses, getTeachingClasses } from './teacher.api';
+import {
+  createLearningMaterial,
+  getLearningMaterialsByClass,
+  deleteLearningMaterial,
+} from './learningMaterial.api';
+import { getCourseSchedules, getAllCourseSchedules } from './courseSchedule.api';
+import {
+  getCoursePackages,
+  getActiveCoursePackages,
+  searchCoursePackages,
+  getCoursePackageDetail,
+  getCoursePackageById,
+} from './coursePackage.api';
+import { uploadToPresignedUrl } from './file.api';
+import { createMonthlyPayment, createFullPayment } from './payment.api';
+import {
+  getReservationItems,
+  getClassReservations,
+  createCompleteReservation,
+} from './reservation.api';
+import { getStudentLearningClasses } from './classes.api';
+import { getPlanTypes } from './lookup.api';
+import {
+  getClassMeetingsByClassId,
+  getClassMeetingCoveredTopic,
+} from './classMeetings.api';
+import { getAssignmentsByMeetingAndStudent } from './assignments.api';
+
+// Export axios instance under a clear name for direct HTTP usage
+export const apiClient = axiosInstance;
+export { endpoint } from './api';
+
+// Backward-compatible API facade matching previous usage: api.someMethod()
+export const api = {
+  // Courses
+  getCourses,
+  getCourseDetail,
+  searchCourses,
+
+  // Authentication
+  loginStudent,
+  loginTeacher,
+  googleLogin,
+  register,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
+  changePassword,
+
+  // Teacher
+  getTeachingCourses,
+  getTeachingClasses,
+
+  // Learning Materials
+  createLearningMaterial,
+  getLearningMaterialsByClass,
+  deleteLearningMaterial,
+
+  // Course Schedules
+  getCourseSchedules,
+  getAllCourseSchedules,
+
+  // Course Packages
+  getCoursePackages,
+  getActiveCoursePackages,
+  searchCoursePackages,
+  getCoursePackageDetail,
+  getCoursePackageById,
+
+  // File upload
+  uploadToPresignedUrl,
+
+  // Payments
+  createMonthlyPayment,
+  createFullPayment,
+
+  // Reservations
+  getReservationItems,
+  getClassReservations,
+  createCompleteReservation,
+
+  // Student classes
+  getStudentLearningClasses,
+
+  // Lookups
+  getPlanTypes,
+
+  // Class meetings and assignments
+  getClassMeetingsByClassId,
+  getClassMeetingCoveredTopic,
+  getAssignmentsByMeetingAndStudent,
+};
+
+// Also export individual functions for direct import usage
+export {
+  loginStudent,
+  loginTeacher,
+  googleLogin,
+  register,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
+  changePassword,
+  getCourses,
+  getCourseDetail,
+  searchCourses,
+  getTeachingCourses,
+  getTeachingClasses,
+  createLearningMaterial,
+  getLearningMaterialsByClass,
+  deleteLearningMaterial,
+  getCourseSchedules,
+  getAllCourseSchedules,
+  getCoursePackages,
+  getActiveCoursePackages,
+  searchCoursePackages,
+  getCoursePackageDetail,
+  getCoursePackageById,
+  uploadToPresignedUrl,
+  createMonthlyPayment,
+  createFullPayment,
+  getReservationItems,
+  getClassReservations,
+  createCompleteReservation,
+  getStudentLearningClasses,
+  getPlanTypes,
+  getClassMeetingsByClassId,
+  getClassMeetingCoveredTopic,
+  getAssignmentsByMeetingAndStudent,
+};
+
+

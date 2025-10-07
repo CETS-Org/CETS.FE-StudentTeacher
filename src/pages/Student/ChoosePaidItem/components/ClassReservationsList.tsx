@@ -3,7 +3,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ClassReservationItem from "./ClassReservationItem";
 import { Package, Search } from "lucide-react";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import { getUserInfo } from "@/lib/utils";
 
 import type { ClassReservationResponse } from "@/types/payment";

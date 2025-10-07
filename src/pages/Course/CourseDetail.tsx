@@ -11,7 +11,7 @@ import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useCourseSchedule } from "@/hooks/useCourseSchedule";
 import { useToast } from "@/hooks/useToast";
 import { isTokenValid, getUserInfo } from "@/lib/utils";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import { planTypeService } from "@/services/planTypeService";
 import type { CourseDetailProps } from "@/types/course";
 

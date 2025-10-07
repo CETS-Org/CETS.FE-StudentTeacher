@@ -7,7 +7,7 @@ import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { ArrowLeft, Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield, KeyRound } from "lucide-react";
-import { api } from "@/lib/config";
+import { api } from "@/api";
 import "../../styles/login-animations.css";
 import GenericNavbar from "../../Shared/GenericNavbar";
 import { guestNavbarConfig } from "../../Shared/navbarConfigs";

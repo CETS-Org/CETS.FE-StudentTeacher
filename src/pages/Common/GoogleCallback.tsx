@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { api } from '@/lib/config';
+import { api } from '@/api';
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
