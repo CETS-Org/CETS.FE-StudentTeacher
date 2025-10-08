@@ -7,4 +7,7 @@ export const getClassMeetingsByClassId = (classId: string, config?: AxiosRequest
 export const getClassMeetingCoveredTopic = (classMeetingId: string, config?: AxiosRequestConfig) =>
   api.get(`${endpoint.classMeetings}/${classMeetingId}/covered-topic`, config);
 
+export const getTeacherSchedule = (teacherId: string, config?: AxiosRequestConfig) =>
+  api.get(`${endpoint.classMeetings}/Schedule/Teacher/${teacherId}`, config);
+
 

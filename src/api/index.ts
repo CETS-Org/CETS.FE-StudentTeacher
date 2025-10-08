@@ -36,6 +36,7 @@ import { getPlanTypes } from './lookup.api';
 import {
   getClassMeetingsByClassId,
   getClassMeetingCoveredTopic,
+  getTeacherSchedule,
 } from './classMeetings.api';
 import { getAssignmentsByMeetingAndStudent } from './assignments.api';
 
@@ -101,6 +102,7 @@ export const api = {
   // Class meetings and assignments
   getClassMeetingsByClassId,
   getClassMeetingCoveredTopic,
+  getTeacherSchedule,
   getAssignmentsByMeetingAndStudent,
 };
 
@@ -139,6 +141,7 @@ export {
   getPlanTypes,
   getClassMeetingsByClassId,
   getClassMeetingCoveredTopic,
+  getTeacherSchedule,
   getAssignmentsByMeetingAndStudent,
 };
 

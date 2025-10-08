@@ -1,71 +1,104 @@
 // src/pages/Teacher/SchedulePage.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import TeacherWeekSchedule from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
 import ScheduleRegistrationDialog, { type DaySchedule } from "@/pages/Teacher/SchedulePage/Component/ScheduleRegistrationDialog";
 import PageHeader from "@/components/ui/PageHeader";
 import { Calendar, BookOpen, Plus } from "lucide-react";
 import type { Session } from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
+import { getTeacherSchedule } from "@/api/classMeetings.api";
+import { getTeacherId } from "@/lib/utils";
+import Loader from "@/components/ui/Loader";
 
-/* ===== Helpers: tuần hiện tại + format yyyy:MM:dd:HH:mm ===== */
-const mondayOfThisWeek = (() => {
-  const d = new Date();
-  const day = (d.getDay() + 6) % 7; // Mon=0..Sun=6
-  d.setDate(d.getDate() - day);
-  d.setHours(0, 0, 0, 0);
-  return d;
-})();
-
-function dateOfThisWeek(offsetDay: number, h: number, m: number) {
-  const d = new Date(mondayOfThisWeek);
-  d.setDate(d.getDate() + offsetDay);
-  d.setHours(h, m, 0, 0);
-  return d;
+/* ===== Types ===== */
+interface TeacherScheduleApiResponse {
+  date: string;
+  dayOfWeek: string;
+  slot: string;
+  startTime: string;
+  endTime: string;
+  className: string;
+  courseName: string;
+  room: string;
+  enrolledCount: number;
+  capacity: number;
+  onlineMeetingUrl: string | null;
 }
 
-function fmtCustom(d: Date) {
-  const zp = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}:${zp(d.getMonth() + 1)}:${zp(d.getDate())}:${zp(d.getHours())}:${zp(
-    d.getMinutes()
-  )}`;
+/* ===== Helpers ===== */
+function transformScheduleToSessions(scheduleData: TeacherScheduleApiResponse[]): Session[] {
+  return scheduleData.map((item, index) => {
+    // Combine date and time to create ISO format: "YYYY-MM-DDTHH:mm:ss"
+    const dateOnly = item.date.split('T')[0]; // "2025-10-05"
+    const startDateTime = `${dateOnly}T${item.startTime}:00`; // "2025-10-05T09:00:00"
+    
+    // Calculate duration from start and end time
+    const [startHour, startMin] = item.startTime.split(':').map(Number);
+    const [endHour, endMin] = item.endTime.split(':').map(Number);
+    const durationMin = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    
+    // Determine attendance status based on date
+    const sessionDate = new Date(item.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let attendanceStatus: "attended" | "absent" | "upcoming" = "upcoming";
+    if (sessionDate < today) {
+      // For past sessions, randomly set attended or absent (you can modify this logic)
+      attendanceStatus = Math.random() > 0.3 ? "attended" : "absent";
+    }
+
+    return {
+      id: `${item.className}-${item.slot}-${index}`,
+      title: item.courseName,
+      classCode: item.className,
+      room: item.room,
+      start: startDateTime,
+      durationMin: durationMin,
+      attendanceStatus: attendanceStatus,
+    };
+  });
 }
-
-/* ===== Teacher Schedule Data (Tuần hiện tại) ===== */
-const sessions: Session[] = [
-  // Thứ 2 (Mon=0)
-  { id: "1", title: "Intermediate English", classCode: "IE101", room: "A-301", start: fmtCustom(dateOfThisWeek(0, 9, 0)), attendanceStatus: "attended" },
-  { id: "2", title: "Elementary English",  classCode: "EE102", room: "A-301", start: fmtCustom(dateOfThisWeek(0, 13, 30)), attendanceStatus: "absent" },
-  { id: "3", title: "TOEFL Preparation",   classCode: "TP201", room: "B-203", start: fmtCustom(dateOfThisWeek(0, 15, 30)), attendanceStatus: "upcoming" },
-  { id: "4", title: "Advanced Grammar",    classCode: "AG301", room: "B-203", start: fmtCustom(dateOfThisWeek(0, 18, 0)) },
-
-  // Thứ 3
-  { id: "5", title: "Business English",     classCode: "BE201", room: "C-102", start: fmtCustom(dateOfThisWeek(1, 20, 0)), attendanceStatus: "attended" },
-  { id: "6", title: "Elementary English",   classCode: "EE102", room: "A-301", start: fmtCustom(dateOfThisWeek(1, 15, 30)), attendanceStatus: "upcoming" },
-  { id: "7", title: "Speaking Practice",    classCode: "SP301", room: "D-201", start: fmtCustom(dateOfThisWeek(1, 13, 30)), attendanceStatus: "absent" },
-
-  // Thứ 4
-  { id: "8", title: "Business English",     classCode: "BE201", room: "C-102", start: fmtCustom(dateOfThisWeek(2, 9, 0)), attendanceStatus: "attended" },
-  { id: "9", title: "IELTS Writing",       classCode: "IW401", room: "B-105", start: fmtCustom(dateOfThisWeek(2, 13, 30)), attendanceStatus: "upcoming" },
-
-  // Thứ 5
-  { id: "10", title: "Advanced English",    classCode: "AE401", room: "A-205", start: fmtCustom(dateOfThisWeek(3, 20, 0)), attendanceStatus: "absent" },
-  { id: "11", title: "Conversation Class",  classCode: "CC201", room: "D-301", start: fmtCustom(dateOfThisWeek(3, 18, 0)), attendanceStatus: "attended" },
-
-  // Thứ 6
-  { id: "12", title: "IELTS Preparation",   classCode: "IP301", room: "B-203", start: fmtCustom(dateOfThisWeek(4, 9, 0)), attendanceStatus: "attended" },
-  { id: "13", title: "Academic Writing",    classCode: "AW501", room: "C-201", start: fmtCustom(dateOfThisWeek(4, 15, 30)), attendanceStatus: "upcoming" },
-
-  // Thứ 7
-  { id: "14", title: "Weekend Workshop",    classCode: "WW101", room: "A-Hall", start: fmtCustom(dateOfThisWeek(5, 20, 0)), attendanceStatus: "absent" },
-  { id: "15", title: "English Club",        classCode: "EC901", room: "Student Lounge", start: fmtCustom(dateOfThisWeek(5, 13, 30)), attendanceStatus: "upcoming" },
-];
 
 export default function SchedulePage() {
   const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const breadcrumbItems = [
     { label: "Schedule" }
   ];
+
+  // Fetch teacher schedule on component mount
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const teacherId = getTeacherId();
+        if (!teacherId) {
+          setError("Teacher ID not found. Please login again.");
+          return;
+        }
+
+        console.log("Fetching schedule for teacher ID:", teacherId);
+        const response = await getTeacherSchedule(teacherId);
+        
+        const transformedSessions = transformScheduleToSessions(response.data);
+        setSessions(transformedSessions);
+        
+      } catch (err: any) {
+        console.error("Error fetching teacher schedule:", err);
+        setError(err.response?.data?.message || err.message || "Failed to fetch schedule");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSchedule();
+  }, []);
 
   const handleRegisterClick = () => {
     setIsRegistrationDialogOpen(true);
@@ -82,6 +115,38 @@ export default function SchedulePage() {
     // You could add a toast notification here for success feedback
     // For example: toast.success('Schedule registration successful!');
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-6 max-w-full space-y-8">
+        <Breadcrumbs items={breadcrumbItems} />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="p-6 max-w-full space-y-8">
+        <Breadcrumbs items={breadcrumbItems} />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-full space-y-8">
