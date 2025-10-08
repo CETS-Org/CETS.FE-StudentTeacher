@@ -33,7 +33,9 @@ function svgPlaceholder(title: string, w = 400, h = 240) {
 const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
   const navigate = useNavigate();
 
-  const openCourse = () => {navigate("/teacher/classes");};
+  const openCourse = () => {
+    navigate(`/teacher/courses/${course.id}/classes`);
+  };
   // extra navigations removed as they're unused
   
 

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { getClassMeetingsByClassId, type ClassMeeting } from "@/services/teachingClassesService";
 import type { MyClass } from "@/types/class";
+import { getStudentId } from "@/lib/utils";
 
 // Session interface
 interface CourseSession {
@@ -113,6 +114,15 @@ export default function ClassSession() {
         setLoading(false);
         return;
       }
+      
+      // Check if user is authenticated
+      const studentId = getStudentId();
+      if (!studentId) {
+        setError("User not authenticated. Please login again.");
+        setLoading(false);
+        return;
+      }
+      
       try {
         const data = await getClassMeetingsByClassId(classId);
         if (isMounted) {

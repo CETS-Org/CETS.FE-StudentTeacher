@@ -47,11 +47,16 @@ const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
             <h3 className="text-lg font-bold text-primary-800 mb-1">
               {summary.className}
             </h3>
-            <div className="flex items-center gap-2 text-sm text-accent-600">
+            <div className="flex items-center gap-2 text-sm text-accent-600 mb-2">
               <span className="bg-accent2-300 text-primary-700 px-2 py-1 rounded-md font-medium">
                 {summary.courseCode}
               </span>
               <span className="text-accent-600">by {summary.instructor}</span>
+            </div>
+            {/* Course Name - More Prominent */}
+            <div className="bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-primary-700 mb-1">Course:</p>
+              <p className="text-base font-semibold text-primary-800">{summary.courseName}</p>
             </div>
           </div>
         </div>
@@ -70,24 +75,26 @@ const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
               </div>
             </div>
 
-            {/* Present/Absent Counts */}
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-success-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-4 h-4 text-success-600" />
+            {/* Present/Absent Counts - Enhanced */}
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-success-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-success-600" />
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-medium text-success-700">Present</p>
-                  <p className="text-lg font-bold text-success-600">{summary.attendedSessions}</p>
+                  <p className="text-sm font-semibold text-success-700">Present</p>
+                  <p className="text-2xl font-bold text-success-600">{summary.attendedSessions}</p>
+                  <p className="text-xs text-success-600">sessions</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-error-100 rounded-full flex items-center justify-center">
-                  <XCircle className="w-4 h-4 text-error-600" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-error-100 rounded-full flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-error-600" />
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-medium text-error-700">Absent</p>
-                  <p className="text-lg font-bold text-error-600">{summary.absentSessions}</p>
+                  <p className="text-sm font-semibold text-error-700">Absent</p>
+                  <p className="text-2xl font-bold text-error-600">{summary.absentSessions}</p>
+                  <p className="text-xs text-error-600">sessions</p>
                 </div>
               </div>
             </div>

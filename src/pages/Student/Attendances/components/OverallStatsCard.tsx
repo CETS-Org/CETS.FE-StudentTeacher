@@ -56,13 +56,15 @@ const OverallStatsCard: React.FC<OverallStatsCardProps> = ({ stats }) => {
           </div>
           <div className="text-center p-4 bg-gradient-to-r from-success-50 to-success-100 rounded-xl border border-success-200">
             <CheckCircle className="w-8 h-8 text-success-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-success-700">Attended</p>
+            <p className="text-sm font-medium text-success-700">Present</p>
             <p className="text-2xl font-bold text-success-600">{stats.totalAttended}</p>
+            <p className="text-xs text-success-600">sessions</p>
           </div>
-          <div className="text-center p-4 bg-error-50 rounded-xl border border-error-200">
+          <div className="text-center p-4 bg-gradient-to-r from-error-50 to-error-100 rounded-xl border border-error-200">
             <XCircle className="w-8 h-8 text-error-600 mx-auto mb-2" />
             <p className="text-sm font-medium text-error-700">Absent</p>
             <p className="text-2xl font-bold text-error-600">{stats.totalAbsent}</p>
+            <p className="text-xs text-error-600">sessions</p>
           </div>
           <div className={`text-center p-4 rounded-xl border bg-gradient-to-r ${getOverallColor(stats.overallAttendanceRate)} text-white`}>
             {getOverallIcon(stats.overallAttendanceRate)}

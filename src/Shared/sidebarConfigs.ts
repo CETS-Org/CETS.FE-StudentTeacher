@@ -1,7 +1,7 @@
 // src/Shared/sidebarConfigs.ts
 import {
   BookOpen, Calendar, ClipboardCheck, MessageCircle,
-  FileText, ListChecks, Heart, AlertTriangle, Wrench, BookText, Clock, GraduationCap, CreditCard
+  FileText, Heart, AlertTriangle, Wrench, BookText, Clock, GraduationCap, CreditCard
 } from "lucide-react";
 import type { SidebarConfig } from "./GenericSidebar";
 
@@ -34,10 +34,10 @@ export const teacherSidebarConfig: SidebarConfig = {
   title: "Teacher",
   submenuPathPrefix: "/teacher/request-issue",
   items: [
-    { id: "classes", label: "Classes", icon: BookOpen, path: "/teacher/classes" },
+    { id: "courses", label: "My Courses", icon: BookOpen, path: "/teacher/courses" },
     { id: "schedule", label: "Schedule", icon: Calendar, path: "/teacher/schedule" },
     { id: "attendance", label: "Attendance", icon: ClipboardCheck, path: "/teacher/attendance" },
-    { id: "materials", label: "Materials", icon: BookOpen, path: "/teacher/materials" },
+    { id: "materials", label: "Materials", icon: FileText, path: "/teacher/materials" },
     { id: "feedback", label: "Feedback", icon: MessageCircle, path: "/teacher/feedback" },
     {
       id: "request",

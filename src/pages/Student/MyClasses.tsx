@@ -15,16 +15,13 @@ import {
   MoreVertical,
   CheckCircle,
   MapPin,
-  GraduationCap,
   AlertCircle,
   RefreshCw
 } from "lucide-react";
 
 import type { MyClass } from "@/types/class";
 import { studentLearningClassesService } from "@/services/studentLearningClassesService";
-
-// Mock student ID - in real app, this would come from authentication context
-const MOCK_STUDENT_ID = "77437eae-7b33-4858-b8e2-522776b2475a";
+import { getStudentId } from "@/lib/utils";
 
 // Fallback mock data for development/testing
 const mockMyClasses: MyClass[] = [
@@ -465,7 +462,15 @@ export default function MyClasses() {
         setLoading(true);
         setError(null);
         
-        const { data, error: fetchError } = await studentLearningClassesService.getStudentLearningClassesSafe(MOCK_STUDENT_ID);
+        // Get student ID from authentication
+        const studentId = getStudentId();
+        if (!studentId) {
+          setError('User not authenticated. Please login again.');
+          setMyClasses([]);
+          return;
+        }
+        
+        const { data, error: fetchError } = await studentLearningClassesService.getStudentLearningClassesSafe(studentId);
         
         if (fetchError) {
           setError(fetchError);
@@ -494,7 +499,15 @@ export default function MyClasses() {
         setLoading(true);
         setError(null);
         
-        const { data, error: fetchError } = await studentLearningClassesService.getStudentLearningClassesSafe(MOCK_STUDENT_ID);
+        // Get student ID from authentication
+        const studentId = getStudentId();
+        if (!studentId) {
+          setError('User not authenticated. Please login again.');
+          setMyClasses([]);
+          return;
+        }
+        
+        const { data, error: fetchError } = await studentLearningClassesService.getStudentLearningClassesSafe(studentId);
         
         if (fetchError) {
           setError(fetchError);
