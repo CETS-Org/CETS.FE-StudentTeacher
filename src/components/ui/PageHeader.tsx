@@ -44,7 +44,7 @@ export default function PageHeader({
   );
 
   return (
-    <div className={`bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 mt-4 ${className}`}>
+    <div className={`bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/50 mt-4 ${className}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3">

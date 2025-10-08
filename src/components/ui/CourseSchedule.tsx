@@ -13,8 +13,17 @@ interface ScheduleDisplayProps {
   compact?: boolean;
 }
 
+const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const normalizeDay = (day: string | number): string => {
+  if (typeof day === 'number') {
+    return dayNames[day] ?? String(day);
+  }
+  return String(day);
+}
+
 function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayProps) {
-  const getDayShort = (day: string): string => {
+  const getDayShort = (day: string | number): string => {
+    const dayStr = normalizeDay(day);
     const dayMap: Record<string, string> = {
       'Monday': 'Mon',
       'Tuesday': 'Tue', 
@@ -24,10 +33,11 @@ function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayPr
       'Saturday': 'Sat',
       'Sunday': 'Sun'
     };
-    return dayMap[day] || day;
+    return dayMap[dayStr] || dayStr;
   };
 
-  const getDayVeryShort = (day: string): string => {
+  const getDayVeryShort = (day: string | number): string => {
+    const dayStr = normalizeDay(day);
     const dayMap: Record<string, string> = {
       'Monday': 'M',
       'Tuesday': 'T', 
@@ -37,7 +47,7 @@ function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayPr
       'Saturday': 'S',
       'Sunday': 'S'
     };
-    return dayMap[day] || day.charAt(0);
+    return dayMap[dayStr] || dayStr.charAt(0);
   };
 
   if (compact) {
@@ -45,8 +55,8 @@ function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayPr
       <div className="flex items-center gap-0.5 lg:gap-1 text-xs bg-blue-50 px-1 lg:px-2 py-1 rounded-md border border-blue-100 min-w-0 flex-shrink-0">
         <Calendar className="w-3 h-3 text-blue-500 flex-shrink-0 hidden lg:block" />
         <span className="font-medium text-blue-700 whitespace-nowrap">
-          <span className="md:hidden">{getDayVeryShort(schedule.dayOfWeek)}</span>
-          <span className="hidden md:inline">{getDayShort(schedule.dayOfWeek)}</span>
+          <span className="md:hidden">{getDayVeryShort(schedule.dayOfWeek as unknown as string)}</span>
+          <span className="hidden md:inline">{getDayShort(schedule.dayOfWeek as unknown as string)}</span>
         </span>
         <span className="text-blue-600 text-xs truncate">{timeSlot.displayTime}</span>
       </div>
@@ -58,7 +68,7 @@ function ScheduleItem({ schedule, timeSlot, compact = false }: ScheduleDisplayPr
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-blue-500" />
-          <span className="font-semibold text-gray-800">{schedule.dayOfWeek}</span>
+          <span className="font-semibold text-gray-800">{normalizeDay(schedule.dayOfWeek as unknown as string)}</span>
         </div>
         <div className="flex items-center gap-1">
           <Clock className="w-4 h-4 text-green-500" />
@@ -124,8 +134,10 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
   // Group schedules by day and sort
   const sortedSchedules = schedules.sort((a, b) => {
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const aDayIndex = dayOrder.indexOf(a.dayOfWeek);
-    const bDayIndex = dayOrder.indexOf(b.dayOfWeek);
+    const aName = normalizeDay(a.dayOfWeek as unknown as string);
+    const bName = normalizeDay(b.dayOfWeek as unknown as string);
+    const aDayIndex = dayOrder.indexOf(aName);
+    const bDayIndex = dayOrder.indexOf(bName);
     
     if (aDayIndex !== bDayIndex) {
       return aDayIndex - bDayIndex;
@@ -241,7 +253,7 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      <span className="font-semibold text-lg">{schedule.dayOfWeek}</span>
+                      <span className="font-semibold text-lg">{normalizeDay(schedule.dayOfWeek as unknown as string)}</span>
                     </div>
                   </div>
                   

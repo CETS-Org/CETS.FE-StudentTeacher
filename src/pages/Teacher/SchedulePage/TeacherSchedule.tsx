@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import TeacherWeekSchedule from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
 import ScheduleRegistrationDialog, { type DaySchedule } from "@/pages/Teacher/SchedulePage/Component/ScheduleRegistrationDialog";
+import { api } from "@/api";
+import { getTeacherId } from "@/lib/utils";
 import PageHeader from "@/components/ui/PageHeader";
 import { Calendar, BookOpen, Plus } from "lucide-react";
 import type { Session } from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
@@ -108,12 +110,44 @@ export default function SchedulePage() {
     setIsRegistrationDialogOpen(false);
   };
 
-  const handleRegistrationSubmit = (daySchedules: DaySchedule) => {
-    // Here you would typically make an API call to register for the schedule
-    console.log('Registering for schedule:', daySchedules);
-    
-    // You could add a toast notification here for success feedback
-    // For example: toast.success('Schedule registration successful!');
+  const handleRegistrationSubmit = async (daySchedules: DaySchedule) => {
+    const teacherId = getTeacherId();
+    if (!teacherId) {
+      console.error('Missing teacher id');
+      return;
+    }
+
+    // Map dialog values -> backend payloads
+    const toDayOfWeekEnum = (label: string): number => {
+      const map: Record<string, number> = {
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6,
+        sunday: 0,
+      };
+      return map[label.toLowerCase()] ?? 0;
+    };
+
+    try {
+      const entries = Object.entries(daySchedules);
+      for (const [day, slots] of entries) {
+        const dayEnum = toDayOfWeekEnum(day);
+        // For each selected slot, create an availability. In a real app, slots should be TimeSlot IDs
+        for (const timeSlotId of slots) {
+          await api.createTeacherAvailability({
+            teacherID: teacherId,
+            teachDay: dayEnum,
+            timeSlotID: timeSlotId,
+          });
+        }
+      }
+      console.log('Schedule registration submitted');
+    } catch (err) {
+      console.error('Failed to register schedule', err);
+    }
   };
 
   // Show loading state
