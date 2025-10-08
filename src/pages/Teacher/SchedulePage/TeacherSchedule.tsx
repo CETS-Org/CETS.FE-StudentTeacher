@@ -9,7 +9,6 @@ import PageHeader from "@/components/ui/PageHeader";
 import { Calendar, BookOpen, Plus } from "lucide-react";
 import type { Session } from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
 import { getTeacherSchedule } from "@/api/classMeetings.api";
-import { getTeacherId } from "@/lib/utils";
 import Loader from "@/components/ui/Loader";
 
 /* ===== Types ===== */
