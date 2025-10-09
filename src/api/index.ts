@@ -46,6 +46,7 @@ import {
   getTeacherSchedule,
 } from './classMeetings.api';
 import { getAssignmentsByMeetingAndStudent } from './assignments.api';
+import { getStudentsInClass } from './attendance.api';
 
 // Export axios instance under a clear name for direct HTTP usage
 export const apiClient = axiosInstance;
@@ -118,6 +119,8 @@ export const api = {
   deleteTeacherAvailability,
   getTeacherAvailabilityByTeacher,
   getTeacherAvailabilityByTeacherAndDate,
+  // Attendance
+  getStudentsInClass,
 };
 
 // Also export individual functions for direct import usage
@@ -163,6 +166,7 @@ export {
   deleteTeacherAvailability,
   getTeacherAvailabilityByTeacher,
   getTeacherAvailabilityByTeacherAndDate,
+  getStudentsInClass,
 };
 
 

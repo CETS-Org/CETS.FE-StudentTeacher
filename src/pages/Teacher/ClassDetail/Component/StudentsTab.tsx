@@ -1,44 +1,157 @@
 // src/pages/teacher/classes/[classId]/StudentsTab.tsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { Search, MessageSquare, Users, UserCheck } from "lucide-react";
+import { Search, Users, UserCheck, CheckCircle2, XCircle } from "lucide-react";
+import { getStudentsInClass, bulkMarkAttendance } from "@/api/attendance.api";
+import type { StudentInClass } from "@/api/attendance.api";
+import Loader from "@/components/ui/Loader";
+import { getTeacherId } from "@/lib/utils";
 
-const mockStudents = Array.from({ length: 23 }, (_, i) => ({
-  id: i + 1,
-  avatar: `https://static.vecteezy.com/system/resources/previews/049/855/259/non_2x/nature-background-high-resolution-wallpaper-for-a-serene-and-stunning-view-photo.jpg`,
-  name: `Student Name ${i + 1}`,
-  email: `student${i + 1}@email.com`,
-}));
+interface StudentsTabProps {
+  classId: string;
+  classMeetingId?: string;
+  className?: string;
+}
 
-export default function StudentsTab() {
+export default function StudentsTab({ 
+  classId, 
+  classMeetingId,
+  className = "SE17D05" 
+}: StudentsTabProps) {
+  const [students, setStudents] = useState<StudentInClass[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isTaking, setIsTaking] = useState(false);
-  const [absent, setAbsent] = useState<Record<number, boolean>>({});
+  const [absent, setAbsent] = useState<Record<string, boolean>>({});
+
+  // Fetch students when component mounts or classId/classMeetingId changes
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Pass classMeetingId to get attendance status
+        const data = await getStudentsInClass(classId, classMeetingId);
+        setStudents(data);
+      } catch (err) {
+        console.error('Error fetching students:', err);
+        setError('Failed to load students. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (classId) {
+      fetchStudents();
+    }
+  }, [classId, classMeetingId]);
 
   // Lọc sinh viên theo search
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return mockStudents;
+    if (!searchQuery.trim()) return students;
     const q = searchQuery.toLowerCase();
-    return mockStudents.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
+    return students.filter(
+      (s) => 
+        s.studentName.toLowerCase().includes(q) || 
+        s.email.toLowerCase().includes(q) ||
+        s.studentCode.toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [searchQuery, students]);
 
-  const toggleAbsent = (id: number, checked: boolean) => {
+  const toggleAbsent = (id: string, checked: boolean) => {
     setAbsent((prev) => ({ ...prev, [id]: checked }));
   };
 
-  const startTaking = () => setIsTaking(true);
+  const startTaking = () => {
+    // Pre-fill absent checkboxes based on current attendance status
+    const preFilledAbsent: Record<string, boolean> = {};
+    students.forEach((student) => {
+      if (student.attendanceStatus === "Absent") {
+        preFilledAbsent[student.studentId] = true;
+      }
+    });
+    setAbsent(preFilledAbsent);
+    setIsTaking(true);
+  };
+  
   const cancelTaking = () => {
     setIsTaking(false);
     setAbsent({});
   };
 
-  const saveAttendance = () => {
-    const absentList = Object.keys(absent).filter((id) => absent[+id]);
-    alert(`Absent students: ${absentList.join(", ") || "None"}`);
-    setIsTaking(false);
+  const saveAttendance = async () => {
+    try {
+      // Get teacher ID from authentication
+      const teacherId = getTeacherId();
+      
+      // Validate required fields
+      if (!classMeetingId) {
+        alert("Class meeting ID is required to save attendance.");
+        return;
+      }
+
+      if (!teacherId) {
+        alert("Teacher ID is not available. Please log in again.");
+        return;
+      }
+
+      // Lấy danh sách studentId của những người vắng (checked = true)
+      const absentStudentIds = Object.keys(absent).filter((id) => absent[id]);
+
+      // Call bulk-mark API
+      const response = await bulkMarkAttendance({
+        classMeetingId,
+        teacherId,
+        absentStudentIds,
+        notes: "", // Optional notes
+      });
+
+      // Refetch students to get updated attendance status
+      const updatedStudents = await getStudentsInClass(classId, classMeetingId);
+      setStudents(updatedStudents);
+
+      // Hiển thị thông báo thành công
+      alert(
+        `Attendance saved successfully!\n` +
+        `Total Students: ${response.totalStudents}\n` +
+        `Present: ${response.presentCount}\n` +
+        `Absent: ${response.absentCount}\n` +
+        `Marked by: ${response.markedByTeacher}`
+      );
+      
+      setIsTaking(false);
+      setAbsent({});
+    } catch (error) {
+      console.error("Error saving attendance:", error);
+      alert("Failed to save attendance. Please try again.");
+    }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader />
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-warning-50 border border-warning-200 rounded-lg p-6 text-center">
+        <p className="text-warning-700 font-medium">{error}</p>
+        <Button
+          variant="primary"
+          onClick={() => window.location.reload()}
+          className="mt-4"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -49,7 +162,7 @@ export default function StudentsTab() {
             <Users className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-primary-800">Class: SE17D05</h2>
+            <h2 className="text-xl font-bold text-primary-800">Class: {className}</h2>
             <p className="text-sm text-neutral-600">{filtered.length} students enrolled</p>
           </div>
         </div>
@@ -107,63 +220,92 @@ export default function StudentsTab() {
               Email
             </th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
-              {isTaking ? "Mark Absent" : "Actions"}
+              {isTaking ? "Mark Absent" : "Status"}
             </th>
           </tr>
         </thead>
 
             <tbody className="divide-y divide-accent-100 bg-white">
-              {filtered.map((s, idx) => {
-                const isAbsent = !!absent[s.id];
-                return (
-                  <tr key={s.id} className="hover:bg-accent-25/50 transition-colors duration-200">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-primary-700">
-                        {idx + 1}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="relative">
-                        <img
-                          src={s.avatar}
-                          alt={s.name}
-                          className="w-10 h-10 rounded-full bg-neutral-200 ring-2 ring-accent-200"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-semibold text-primary-800">{s.name}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-neutral-600">{s.email}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {!isTaking ? (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          iconLeft={<MessageSquare className="w-4 h-4" />}
-                          className="btn-primary"
-                        >
-                          Message
-                        </Button>
-                      ) : (
-                        <label className="inline-flex items-center gap-3 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={isAbsent}
-                            onChange={(e) =>
-                              toggleAbsent(s.id, e.target.checked)
-                            }
-                            className="w-4 h-4 text-warning-600 border-2 border-neutral-300 rounded focus:ring-warning-500 focus:ring-2"
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center">
+                    <p className="text-neutral-500">
+                      {searchQuery ? 'No students found matching your search' : 'No students enrolled in this class'}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((s, idx) => {
+                  const isAbsent = !!absent[s.studentId];
+                  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.studentName)}&background=random`;
+                  
+                  return (
+                    <tr key={s.studentId} className="hover:bg-accent-25/50 transition-colors duration-200">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-primary-700">
+                          {idx + 1}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="relative">
+                          <img
+                            src={s.avatarUrl || defaultAvatar}
+                            alt={s.studentName}
+                            className="w-10 h-10 rounded-full bg-neutral-200 ring-2 ring-accent-200 object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = defaultAvatar;
+                            }}
                           />
-                          <span className="text-sm font-medium text-warning-700">Absent</span>
-                        </label>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-primary-800">{s.studentName}</span>
+                          <span className="text-xs text-neutral-500">{s.studentCode}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-neutral-600">{s.email}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {!isTaking ? (
+                          // Hiển thị trạng thái attendance từ API
+                          <div className="flex items-center gap-2">
+                            {s.attendanceStatus === "Present" ? (
+                              <>
+                                <CheckCircle2 className="w-5 h-5 text-success-600" />
+                                <span className="text-sm font-semibold text-success-700">Present</span>
+                              </>
+                            ) : s.attendanceStatus === "Absent" ? (
+                              <>
+                                <XCircle className="w-5 h-5 text-warning-600" />
+                                <span className="text-sm font-semibold text-warning-700">Absent</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-5 h-5 text-neutral-400" />
+                                <span className="text-sm font-medium text-neutral-500">Not Marked</span>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isAbsent}
+                              onChange={(e) =>
+                                toggleAbsent(s.studentId, e.target.checked)
+                              }
+                              className="w-4 h-4 text-warning-600 border-2 border-neutral-300 rounded focus:ring-warning-500 focus:ring-2"
+                            />
+                            <span className="text-sm font-medium text-warning-700">Absent</span>
+                          </label>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
