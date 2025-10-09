@@ -1,12 +1,12 @@
 // src/pages/teacher/classes/[classId]/index.tsx
 
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
 import Card from "@/components/ui/Card";
-import PageHeader
- from "@/components/ui/PageHeader";
+import PageHeader from "@/components/ui/PageHeader";
 // Import các component cho từng tab
 
 import CourseMaterialsTab from "@/pages/Teacher/ClassDetail/Component/CourseMaterialsTab";
@@ -46,7 +46,11 @@ const crumbs: Crumb[] = [
 ];
 
 export default function ClassDetailPage() {
+  const { id: classId, sessionId: classMeetingId } = useParams<{ id: string; sessionId: string }>();
   const [activeTab, setActiveTab] = useState(tabs[0].id);
+
+  // Debug: Log để kiểm tra
+  console.log("SessionDetail - classId:", classId, "classMeetingId:", classMeetingId);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -58,7 +62,30 @@ export default function ClassDetailPage() {
       case "materials":
         return <CourseMaterialsTab />;
       case "students":
-        return <StudentsTab />;
+        // Kiểm tra classId và classMeetingId có tồn tại không
+        if (!classId) {
+          return (
+            <div className="flex items-center justify-center py-12">
+              <div className="bg-warning-50 border border-warning-200 rounded-lg p-6 text-center">
+                <p className="text-warning-700 font-medium">
+                  Class ID is missing. Please check the URL.
+                </p>
+              </div>
+            </div>
+          );
+        }
+        if (!classMeetingId) {
+          return (
+            <div className="flex items-center justify-center py-12">
+              <div className="bg-warning-50 border border-warning-200 rounded-lg p-6 text-center">
+                <p className="text-warning-700 font-medium">
+                  Class Meeting ID is missing. Please check the URL.
+                </p>
+              </div>
+            </div>
+          );
+        }
+        return <StudentsTab classId={classId} classMeetingId={classMeetingId} />;
       default:
         return null;
     }
