@@ -58,7 +58,7 @@ export default function ClassDetailPage() {
       case "sessionContent":
         return <SessionContentTab content={mockSessionContent} />
       case "sessionAssignment":
-        return <SessionAssignmentsTab />
+        return <SessionAssignmentsTab classMeetingId={classMeetingId} />
       case "materials":
         return <CourseMaterialsTab />;
       case "students":
