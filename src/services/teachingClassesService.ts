@@ -84,7 +84,7 @@ export interface TeachingClassResponse {
   classFormatName: string;
   className: string;
   classNumber: string;
-  classSession: ClassSession;
+  classSession: ClassSession | null;
 }
 
 // Time slot mapping function
@@ -108,8 +108,6 @@ export const calculateTimeSlot = (slot: string): { startTime: string; endTime: s
 
 // Transform API response to component format
 export const transformTeachingClass = (apiClass: TeachingClassResponse) => {
-  const { startTime, endTime } = calculateTimeSlot(apiClass.classSession.slot);
-  
   // Determine class status based on statusName
   const getClassStatus = (statusName: string): 'ongoing' | 'upcoming' | 'completed' => {
     switch (statusName.toLowerCase()) {
@@ -147,21 +145,29 @@ export const transformTeachingClass = (apiClass: TeachingClassResponse) => {
   const classStatus = getClassStatus(apiClass.statusName);
   const classFormat = getClassFormat(apiClass.classFormatName);
 
-  // Create next meeting info if class is active
-  const nextMeeting = apiClass.isActive ? {
-    id: apiClass.classSession.classMeetingsId,
-    startsAt: `${apiClass.classSession.date}T${startTime}:00`,
-    endsAt: `${apiClass.classSession.date}T${endTime}:00`,
-    roomId: apiClass.classSession.roomCode,
-    roomName: `Room ${apiClass.classSession.roomCode}`,
-    coveredTopic: apiClass.classSession.topicName
-  } : undefined;
+  // Create next meeting info if class is active and has classSession
+  let nextMeeting = undefined;
+  if (apiClass.isActive && apiClass.classSession) {
+    const { startTime, endTime } = calculateTimeSlot(apiClass.classSession.slot);
+    nextMeeting = {
+      id: apiClass.classSession.classMeetingsId,
+      startsAt: `${apiClass.classSession.date}T${startTime}:00`,
+      endsAt: `${apiClass.classSession.date}T${endTime}:00`,
+      roomId: apiClass.classSession.roomCode,
+      roomName: `Room ${apiClass.classSession.roomCode}`,
+      coveredTopic: apiClass.classSession.topicName
+    };
+  }
+
+  // Get date info safely
+  const sessionDate = apiClass.classSession?.date || new Date().toISOString().split('T')[0];
+  const topicName = apiClass.classSession?.topicName || 'No topic assigned';
 
   return {
     id: apiClass.classId,
     className: apiClass.className || `Class ${apiClass.classNumber}`,
     classNum: parseInt(apiClass.classNumber) || 1,
-    description: `Class for ${apiClass.classSession.topicName}`,
+    description: `Class for ${topicName}`,
     instructor: "You",
     level: "Intermediate" as const, // Default level, can be enhanced later
     classStatus: apiClass.statusName,
@@ -169,9 +175,9 @@ export const transformTeachingClass = (apiClass: TeachingClassResponse) => {
     courseName: apiClass.className || "Course",
     courseCode: apiClass.classNumber || "N/A",
     category: "General", // Default category, can be enhanced later
-    enrolledDate: apiClass.classSession.date,
-    startDate: apiClass.classSession.date,
-    endDate: apiClass.classSession.date,
+    enrolledDate: sessionDate,
+    startDate: sessionDate,
+    endDate: sessionDate,
     status: classStatus,
     capacity: apiClass.capacity,
     enrolledCount: apiClass.enrolledCount,
