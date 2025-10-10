@@ -13,7 +13,7 @@ import { getCourses, getCourseDetail, searchCourses } from './course.api';
 import { getTeachingCourses, getTeachingClasses } from './teacher.api';
 import {
   createLearningMaterial,
-  getLearningMaterialsByClass,
+  getLearningMaterialsByClassMeeting,
   deleteLearningMaterial,
 } from './learningMaterial.api';
 import { getCourseSchedules, getAllCourseSchedules } from './courseSchedule.api';
@@ -75,7 +75,7 @@ export const api = {
 
   // Learning Materials
   createLearningMaterial,
-  getLearningMaterialsByClass,
+  getLearningMaterialsByClassMeeting,
   deleteLearningMaterial,
 
   // Course Schedules
@@ -139,7 +139,7 @@ export {
   getTeachingCourses,
   getTeachingClasses,
   createLearningMaterial,
-  getLearningMaterialsByClass,
+  getLearningMaterialsByClassMeeting,
   deleteLearningMaterial,
   getCourseSchedules,
   getAllCourseSchedules,

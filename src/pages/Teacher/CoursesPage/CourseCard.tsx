@@ -51,7 +51,7 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border border-primary-200 shadow-lg bg-white/90 backdrop-blur-sm">
       <div className="flex flex-col lg:flex-row">
         {/* Image + gradients */}
-        <div className="lg:w-64 h-48 lg:h-auto relative flex-shrink-0">
+        <div className="lg:w-64 h-48 lg:h-48 relative flex-shrink-0">
           <img
             src={imgSrc}
             alt={course.title}

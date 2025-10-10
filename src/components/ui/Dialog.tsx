@@ -54,6 +54,7 @@ export function DialogContent({ size = "md", className = "", children, ...props 
           "max-h-[85vh] overflow-auto",
           className,
         ].join(" ")}
+        aria-describedby={undefined}
         {...props}
       >
         {children}

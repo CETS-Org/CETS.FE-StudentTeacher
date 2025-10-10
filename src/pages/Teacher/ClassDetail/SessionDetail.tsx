@@ -1,12 +1,13 @@
 // src/pages/teacher/classes/[classId]/index.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
+import { getClassMeetingCoveredTopic } from "@/api/classMeetings.api";
 // Import các component cho từng tab
 
 import CourseMaterialsTab from "@/pages/Teacher/ClassDetail/Component/CourseMaterialsTab";
@@ -16,18 +17,11 @@ import SessionContentTab from "@/pages/Teacher/ClassDetail/Component/SessionCont
 import SessionAssignmentsTab from "@/pages/Teacher/ClassDetail/Component/SessionAssignmentsTab";
 
 
-const mockSessionContent = {
-  topicTitle: "Unit 3: Introduction to Present Perfect Tense",
-  objectives: [
-    "Understand the structure of the present perfect tense.",
-    "Differentiate between present perfect and simple past.",
-    "Use 'for' and 'since' correctly.",
-    "Apply the tense in real-life conversation scenarios."
-  ],
-  contentSummary: `This session will cover the fundamentals of the present perfect tense. 
-We will start with the basic formula (have/has + past participle) and explore common use cases. 
-Key activities will include interactive exercises, group discussions, and role-playing to practice conversational English.`,
-  preReadingUrl: "https://www.example-english-grammar.com/present-perfect"
+type SessionContent = {
+  topicTitle: string;
+  objectives: string[];
+  contentSummary: string;
+  preReadingUrl?: string;
 };
 
 
@@ -48,15 +42,75 @@ const crumbs: Crumb[] = [
 export default function ClassDetailPage() {
   const { id: classId, sessionId: classMeetingId } = useParams<{ id: string; sessionId: string }>();
   const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const [loadingContext, setLoadingContext] = useState(false);
+  const [errorContext, setErrorContext] = useState<string | null>(null);
+  const [sessionContent, setSessionContent] = useState<SessionContent | null>(null);
 
   // Debug: Log để kiểm tra
-  console.log("SessionDetail - classId:", classId, "classMeetingId:", classMeetingId);
+  // console.log("SessionDetail - classId:", classId, "classMeetingId:", classMeetingId);
+
+  // Helper to parse objectives string from API to string[]
+  const parseObjectives = (raw?: string | null): string[] => {
+    if (!raw) return [];
+    const trimmed = raw.trim();
+    try {
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+      }
+    } catch {}
+    return trimmed
+      .split(/\r?\n|;|•|,/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  };
+
+  // Fetch covered topic for this session
+  useEffect(() => {
+    const loadCoveredTopic = async () => {
+      if (!classMeetingId) return;
+      try {
+        setLoadingContext(true);
+        setErrorContext(null);
+        const res = await getClassMeetingCoveredTopic(classMeetingId);
+        const data = res.data as any;
+        const content: SessionContent = {
+          topicTitle: data?.topicTitle ?? "",
+          objectives: parseObjectives(data?.objectives),
+          contentSummary: data?.contentSummary ?? "",
+          preReadingUrl: data?.preReadingUrl ?? undefined,
+        };
+        setSessionContent(content);
+      } catch (err) {
+        console.error("Failed to load covered topic:", err);
+        setErrorContext("Failed to load session content. Please try again later.");
+        setSessionContent(null);
+      } finally {
+        setLoadingContext(false);
+      }
+    };
+
+    loadCoveredTopic();
+  }, [classMeetingId]);
 
   const renderTabContent = () => {
     switch (activeTab) {
         
       case "sessionContent":
-        return <SessionContentTab content={mockSessionContent} />
+        if (loadingContext) {
+          return (
+            <div className="text-sm text-neutral-600">Loading session content...</div>
+          );
+        }
+        if (errorContext) {
+          return (
+            <div className="text-sm text-danger-600">{errorContext}</div>
+          );
+        }
+        if (sessionContent) {
+          return <SessionContentTab content={sessionContent} />
+        }
+        return null;
       case "sessionAssignment":
         return <SessionAssignmentsTab classMeetingId={classMeetingId} />
       case "materials":
@@ -92,7 +146,7 @@ export default function ClassDetailPage() {
   };
 
   return (
-    <div className="p-4 md:p-6">
+    <div className=" px-4 py-6 sm:px-6 lg:px-8 space-y-8 ">
       <Breadcrumbs items={crumbs} />
       {/* Page Header */}
       <PageHeader

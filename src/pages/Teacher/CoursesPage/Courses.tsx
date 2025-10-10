@@ -90,7 +90,7 @@ export default function Courses() {
   const pageItems = filtered.slice(startIdx, startIdx + itemsPerPage);
 
   return (
-    <div className="px-4 py-6 sm:px-6 lg:px-8">
+    <div className="px-4 py-6 space-y-4 sm:px-6 lg:px-8">
       <Breadcrumbs items={crumbs} />
         <PageHeader
           title="My Courses"
@@ -98,7 +98,7 @@ export default function Courses() {
           icon={<BookOpen className="w-5 h-5 text-white" />}
         />
         {/* Search & Filters */}
-        <div className="flex flex-wrap gap-3 mb-6 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[220px]">
             <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-primary-400" />
             <input

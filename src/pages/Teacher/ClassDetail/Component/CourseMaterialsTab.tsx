@@ -1,17 +1,25 @@
-// src/pages/teacher/classes/[classId]/CourseMaterialsTab.tsx
-
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import { FileText, Upload, Edit, Trash2 } from "lucide-react";
-import UploadMaterialsPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadMaterialsPopup"; 
+import UploadMaterialsPopup, { type FileWithTitle } from "@/pages/Teacher/ClassDetail/Component/Popup/UploadMaterialsPopup"; 
 import UpdateMaterialPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UpdateMaterialPopup";
 import Pagination from "@/Shared/Pagination";
 import { api } from "@/api";
 import type { LearningMaterial } from "@/types/learningMaterial";
 
 export default function CourseMaterialsTab() {
-  const { classId } = useParams<{ classId: string }>();
+  // Normalize route params across teacher and student routes
+  const { id, sessionId, classId: classIdParam, classMeetingId: classMeetingIdParam } = useParams<{
+    id?: string;
+    sessionId?: string;
+    classId?: string;
+    classMeetingId?: string;
+  }>();
+
+  const classId = classIdParam || id;
+  const classMeetingId = classMeetingIdParam || sessionId;
+  const [resolvedMeetingId, setResolvedMeetingId] = useState<string | undefined>(classMeetingId);
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPopupOpen, setPopupOpen] = useState(false);
@@ -33,71 +41,113 @@ export default function CourseMaterialsTab() {
     return materials.slice(startIndex, endIndex);
   }, [currentPage, materials]);
 
-  // Load materials when component mounts or classId changes
+  // Keep resolvedMeetingId in sync with route param; if it's missing, attempt to resolve from classId
   useEffect(() => {
-    if (classId) {
-      loadMaterials();
-    }
-  }, [classId]);
+    let cancelled = false;
+    const syncMeeting = async () => {
+      if (classMeetingId) {
+        setResolvedMeetingId(classMeetingId);
+        return;
+      }
+      if (!classId) {
+        setResolvedMeetingId(undefined);
+        return;
+      }
+      try {
+        // Fallback: pick the earliest upcoming or first meeting
+        const list = await api.getClassMeetingsByClassId(classId);
+        if (cancelled) return;
+        if (list.length > 0) {
+          const first = list[0];
+          setResolvedMeetingId(first.id || (first as any).meetingID);
+        } else {
+          setResolvedMeetingId(undefined);
+        }
+      } catch {
+        if (!cancelled) setResolvedMeetingId(undefined);
+      }
+    };
+    syncMeeting();
+    return () => {
+      cancelled = true;
+    };
+  }, [classId, classMeetingId]);
 
-  const loadMaterials = async () => {
-    if (!classId) return;
-    
-    try {
-      setLoading(true);
-      const response = await api.getLearningMaterialsByClass(classId);
-      setMaterials(response.data || []);
-    } catch (error) {
-      console.error('Error loading materials:', error);
-      alert('Failed to load learning materials');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Load materials whenever the resolved meeting changes
+  useEffect(() => {
+    const load = async () => {
+      if (!resolvedMeetingId) {
+        setMaterials([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const response = await api.getLearningMaterialsByClassMeeting(resolvedMeetingId);
+        setMaterials(response.data || []);
+      } catch (error) {
+        console.error('Error loading materials:', error);
+        setMaterials([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [resolvedMeetingId]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleUpload = async (files: File[]) => {
-    if (!classId) {
-      alert('Class ID is required');
+  const handleUpload = async (filesWithTitles: FileWithTitle[]) => {
+    if (!resolvedMeetingId) {
+      alert('Please select a session before uploading materials.');
       return;
     }
 
     setUploading(true);
-    
     try {
-      for (const file of files) {
-        console.log(`Uploading file: ${file.name}`);
+      let successCount = 0;
+      let failCount = 0;
+      for (const { file, title } of filesWithTitles) {
+        // Ensure we have a valid content type; fallback to octet-stream if empty
+        const contentType = file.type || 'application/octet-stream';
         
-        // Step 1: Create learning material record and get presigned URL
+        // Step 1: request creation + presigned URL
         const createResponse = await api.createLearningMaterial({
-          classID: classId,
-          title: file.name.replace(/\.[^/.]+$/, ""), // Remove file extension from title
-          contentType: file.type,
+          classMeetingID: resolvedMeetingId,
+          title: title.trim(), // Use custom title from user input
+          contentType: contentType,
           fileName: file.name
         });
 
+        const createdId = createResponse.data?.id || createResponse.data?.Id;
         const { uploadUrl } = createResponse.data;
-        
-        // Step 2: Upload file to Cloudflare R2 using presigned URL
-        const uploadResponse = await api.uploadToPresignedUrl(uploadUrl, file, file.type);
-        
+
+        // Step 2: upload to storage using the EXACT same contentType
+        const uploadResponse = await api.uploadToPresignedUrl(uploadUrl, file, contentType);
         if (!uploadResponse.ok) {
-          throw new Error(`Failed to upload ${file.name} to storage`);
+          // Roll back DB record if storage upload failed
+          if (createdId) {
+            try { await api.deleteLearningMaterial(createdId); } catch {}
+          }
+          failCount++;
+          continue;
         }
-
-        console.log(`Successfully uploaded ${file.name} to R2`);
+        successCount++;
       }
-
-      // Reload materials to show the newly uploaded ones
-      await loadMaterials();
-      
-      alert(`${files.length} file(s) uploaded successfully!`);
+      // Reload
+      const response = await api.getLearningMaterialsByClassMeeting(resolvedMeetingId);
+      setMaterials(response.data || []);
+      if (failCount === 0) {
+        alert(`${successCount} file(s) uploaded successfully!`);
+      } else if (successCount === 0) {
+        alert(`Upload failed for ${failCount} file(s). No materials were saved.`);
+      } else {
+        alert(`Uploaded ${successCount} file(s). ${failCount} failed and were rolled back.`);
+      }
       setPopupOpen(false);
-      setCurrentPage(1); // Go to first page to see new materials
-      
+      setCurrentPage(1);
     } catch (error) {
       console.error('Upload error:', error);
       alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -113,14 +163,11 @@ export default function CourseMaterialsTab() {
 
   const handleUpdateSubmit = async (materialId: number, title: string) => {
     try {
-      // For now, just update the title in local state
-      // You can implement the backend update API later
       setMaterials(prevMaterials => 
         prevMaterials.map(material => 
           material.id === materialId.toString() ? { ...material, title } : material
         )
       );
-
       alert('Material updated successfully!');
       setUpdatePopupOpen(false);
       setSelectedMaterial(null);
@@ -139,18 +186,13 @@ export default function CourseMaterialsTab() {
 
     try {
       await api.deleteLearningMaterial(deleteConfirmId);
-      
-      // Remove from local state
       setMaterials(prevMaterials => 
         prevMaterials.filter(material => material.id !== deleteConfirmId)
       );
-      
-      // Adjust current page if necessary
       const newTotalPages = Math.ceil((materials.length - 1) / itemsPerPage);
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages);
       }
-
       alert('Material deleted successfully!');
       setDeleteConfirmId(null);
     } catch (error) {
@@ -198,7 +240,7 @@ export default function CourseMaterialsTab() {
           <FileText className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No materials yet</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Get started by uploading some course materials.
+            {resolvedMeetingId ? 'Get started by uploading some session materials.' : 'Please select a session to view or upload materials.'}
           </p>
           <div className="mt-6">
             <Button onClick={() => setPopupOpen(true)} iconLeft={<Upload size={16} />}>

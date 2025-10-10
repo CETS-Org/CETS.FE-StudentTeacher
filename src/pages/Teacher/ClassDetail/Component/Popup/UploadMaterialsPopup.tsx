@@ -5,16 +5,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFoo
 import Button from "@/components/ui/Button";
 import { UploadCloud, File, X, Info, Send } from "lucide-react";
 
+export type FileWithTitle = {
+  file: File;
+  title: string;
+};
+
 // Định nghĩa props theo khuôn mẫu
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpload: (files: File[]) => void;
+  onUpload: (filesWithTitles: FileWithTitle[]) => void;
 };
 
 export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: Props) {
-  // State để lưu trữ danh sách các file người dùng đã chọn
-  const [files, setFiles] = useState<File[]>([]);
+  // State để lưu trữ danh sách các file người dùng đã chọn với title
+  const [filesWithTitles, setFilesWithTitles] = useState<FileWithTitle[]>([]);
   // State để theo dõi khi người dùng kéo file vào vùng dropzone
   const [isDragging, setIsDragging] = useState(false);
   // Ref để truy cập input file ẩn
@@ -23,7 +28,7 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
   // Reset state khi popup được mở hoặc đóng
   useEffect(() => {
     if (!open) {
-      setFiles([]);
+      setFilesWithTitles([]);
       setIsDragging(false);
     }
   }, [open]);
@@ -31,7 +36,11 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
   // Xử lý khi người dùng chọn file từ nút "Choose File"
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
-      setFiles(prev => [...prev, ...Array.from(event.target.files!)]);
+      const newFiles = Array.from(event.target.files).map(file => ({
+        file,
+        title: file.name.replace(/\.[^/.]+$/, "") // Remove extension as default title
+      }));
+      setFilesWithTitles(prev => [...prev, ...newFiles]);
     }
   };
   
@@ -40,7 +49,11 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
     event.preventDefault();
     setIsDragging(false);
     if (event.dataTransfer.files) {
-      setFiles(prev => [...prev, ...Array.from(event.dataTransfer.files)]);
+      const newFiles = Array.from(event.dataTransfer.files).map(file => ({
+        file,
+        title: file.name.replace(/\.[^/.]+$/, "") // Remove extension as default title
+      }));
+      setFilesWithTitles(prev => [...prev, ...newFiles]);
     }
   };
 
@@ -57,16 +70,29 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
 
   // Xóa một file khỏi danh sách
   const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+    setFilesWithTitles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Update title for a specific file
+  const updateTitle = (index: number, newTitle: string) => {
+    setFilesWithTitles(prev => prev.map((item, i) => 
+      i === index ? { ...item, title: newTitle } : item
+    ));
   };
 
   // Xử lý khi nhấn nút Upload
   const handleUpload = () => {
-    if (files.length === 0) {
+    if (filesWithTitles.length === 0) {
       alert("Please select at least one file to upload.");
       return;
     }
-    onUpload(files);
+    // Validate that all files have titles
+    const emptyTitles = filesWithTitles.filter(f => !f.title.trim());
+    if (emptyTitles.length > 0) {
+      alert("Please provide a title for all files.");
+      return;
+    }
+    onUpload(filesWithTitles);
     // Có thể thêm logic đóng popup sau khi upload thành công
     // onOpenChange(false);
   };
@@ -102,24 +128,43 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
             />
           </div>
 
-          {/* Hiển thị danh sách file đã chọn */}
-          {files.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-medium text-sm">Selected Files:</h3>
-              <ul className="space-y-2 max-h-40 overflow-y-auto border p-2 rounded-md">
-                {files.map((file, index) => (
-                  <li key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                    <div className="flex items-center gap-2 text-sm">
-                      <File size={16} className="text-gray-500"/>
-                      <span className="font-medium">{file.name}</span>
-                      <span className="text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+          {/* Hiển thị danh sách file đã chọn với title input */}
+          {filesWithTitles.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-medium text-sm text-gray-700">Selected Files:</h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto border border-gray-200 p-3 rounded-lg bg-gray-50">
+                {filesWithTitles.map((item, index) => (
+                  <div key={index} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    {/* File info */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <File size={16} className="text-gray-500 flex-shrink-0"/>
+                      <span className="text-xs text-gray-600 truncate flex-1">{item.file.name}</span>
+                      <span className="text-xs text-gray-500">({(item.file.size / 1024).toFixed(1)} KB)</span>
+                      <Button variant="ghost" className="h-6 w-6 p-0" onClick={() => removeFile(index)}>
+                        <X size={14} />
+                      </Button>
                     </div>
-                   <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => removeFile(index)}>
-                      <X size={16} />
-                  </Button>
-                  </li>
+                    {/* Title input */}
+                    <div className="space-y-1">
+                      <label htmlFor={`title-${index}`} className="block text-xs font-medium text-gray-700">
+                        Material Title <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id={`title-${index}`}
+                        type="text"
+                        value={item.title}
+                        onChange={(e) => updateTitle(index, e.target.value)}
+                        placeholder="Enter material title"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        maxLength={255}
+                      />
+                      <p className="text-xs text-gray-500">
+                        {item.title.length}/255 characters
+                      </p>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
@@ -134,7 +179,7 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleUpload} iconLeft={<Send size={16}/>}>
-            Upload {files.length > 0 ? `(${files.length})` : ''}
+            Upload {filesWithTitles.length > 0 ? `(${filesWithTitles.length})` : ''}
           </Button>
         </DialogFooter>
       </DialogContent>
