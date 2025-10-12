@@ -3,6 +3,8 @@ export interface LearningMaterial {
   createdBy: string;
   classMeetingID?: string;
   title: string;
+  fileName?: string;
+  contentType?: string;
   storeUrl?: string;
   createdAt: string;
   updatedAt?: string;

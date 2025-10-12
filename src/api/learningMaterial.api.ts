@@ -12,4 +12,10 @@ export const getLearningMaterialsByClassMeeting = (classMeetingId: string, confi
 export const deleteLearningMaterial = (materialId: string, config?: AxiosRequestConfig) =>
   api.delete(`${endpoint.learningMaterial}/${materialId}`, config);
 
+export const updateLearningMaterial = (
+  materialId: string | number,
+  data: { id?: string; title?: string; fileName?: string; contentType?: string },
+  config?: AxiosRequestConfig
+) => api.patch(`${endpoint.learningMaterial}/${materialId}`, data, config);
+
 

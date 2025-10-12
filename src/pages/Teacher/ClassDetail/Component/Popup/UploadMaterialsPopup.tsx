@@ -172,13 +172,13 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
           <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 p-3 rounded-md">
             <Info size={16} className="text-gray-400 flex-shrink-0" />
             <span>
-              <strong>Allowed file types:</strong> PDF, DOCX, PPT, MP4, MP3 (Maximum file size: 50MB)
+              <strong>Allowed file types:</strong> PDF, DOCX, PPT, MP4, MP3, ZIP, RAR (Maximum file size: 50MB)
             </span>
           </div>
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleUpload} iconLeft={<Send size={16}/>}>
+          <Button onClick={handleUpload} iconLeft={<Send size={16}/>} className="hover:bg-green-600">
             Upload {filesWithTitles.length > 0 ? `(${filesWithTitles.length})` : ''}
           </Button>
         </DialogFooter>

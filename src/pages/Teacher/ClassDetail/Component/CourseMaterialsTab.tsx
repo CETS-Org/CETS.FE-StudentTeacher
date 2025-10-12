@@ -1,12 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import { FileText, Upload, Edit, Trash2 } from "lucide-react";
+import { FileText, Upload, Edit, Trash2, Eye } from "lucide-react";
 import UploadMaterialsPopup, { type FileWithTitle } from "@/pages/Teacher/ClassDetail/Component/Popup/UploadMaterialsPopup"; 
 import UpdateMaterialPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UpdateMaterialPopup";
 import Pagination from "@/Shared/Pagination";
 import { api } from "@/api";
 import type { LearningMaterial } from "@/types/learningMaterial";
+import { updateLearningMaterial } from "@/api/learningMaterial.api";
+import { config } from "@/lib/config";
 
 export default function CourseMaterialsTab() {
   // Normalize route params across teacher and student routes
@@ -156,18 +158,53 @@ export default function CourseMaterialsTab() {
     }
   };
 
+  const handleViewFile = (material: LearningMaterial) => {
+    if (material.storeUrl) {
+      // Construct full URL using storage base URL
+      const fullUrl = material.storeUrl.startsWith('http') 
+        ? material.storeUrl 
+        : `${config.storagePublicUrl}${material.storeUrl.startsWith('/') ? material.storeUrl : '/' + material.storeUrl}`;
+      
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      alert('File URL is not available.');
+    }
+  };
+
   const handleUpdateMaterial = (material: LearningMaterial) => {
     setSelectedMaterial(material);
     setUpdatePopupOpen(true);
   };
 
-  const handleUpdateSubmit = async (materialId: number, title: string) => {
+  const handleUpdateSubmit = async (materialId: string, title: string, file?: File) => {
     try {
-      setMaterials(prevMaterials => 
-        prevMaterials.map(material => 
-          material.id === materialId.toString() ? { ...material, title } : material
-        )
-      );
+      let fileResult: { fileName?: string; contentType?: string } = {};
+      if (file) {
+        // Step 1 - request update to get presigned URL for the new file
+        const contentType = file.type || "application/octet-stream";
+        const updateRes = await updateLearningMaterial(materialId, {
+          id: materialId,
+          title: title,
+          fileName: file.name,
+          contentType
+        });
+        const { uploadUrl } = updateRes.data;
+        if (uploadUrl) {
+          const uploadResponse = await api.uploadToPresignedUrl(uploadUrl, file, contentType);
+          if (!uploadResponse.ok) {
+            alert('File upload failed. Please try again.');
+            return;
+          }
+        }
+      } else {
+        await updateLearningMaterial(materialId, {
+          id: materialId,
+          title
+        });
+      }
+      if (!resolvedMeetingId) return;
+      const response = await api.getLearningMaterialsByClassMeeting(resolvedMeetingId);
+      setMaterials(response.data || []);
       alert('Material updated successfully!');
       setUpdatePopupOpen(false);
       setSelectedMaterial(null);
@@ -268,17 +305,29 @@ export default function CourseMaterialsTab() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Button
-                        variant="ghost"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleViewFile(material)}
+                        className="!bg-green-500 hover:!bg-accent2-500 text-white hover:text-white"
+                        title="View File"
+                      >
+                        <Eye size={16} />
+                      </Button>
+                      <Button
+                        variant="secondary"
                         size="sm"
                         onClick={() => handleUpdateMaterial(material)}
+                        className="!bg-blue-500 hover:!bg-accent2-500 text-white hover:text-white"
+                        title="Edit Material"
                       >
                         <Edit size={16} />
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
                         onClick={() => handleDeleteMaterial(material.id)}
-                        className="text-red-600 hover:text-red-800"
+                        className="!bg-red-500 hover:!bg-accent2-500 text-white hover:text-white"
+                        title="Delete Material"
                       >
                         <Trash2 size={16} />
                       </Button>
@@ -314,8 +363,10 @@ export default function CourseMaterialsTab() {
           open={isUpdatePopupOpen}
           onOpenChange={setUpdatePopupOpen}
           material={{
-            id: parseInt(selectedMaterial.id),
+            id: selectedMaterial.id,
             name: selectedMaterial.title,
+            fileName: selectedMaterial.fileName,
+            storeUrl: selectedMaterial.storeUrl,
             date: formatDate(selectedMaterial.createdAt)
           }}
           onUpdate={handleUpdateSubmit}
@@ -323,7 +374,7 @@ export default function CourseMaterialsTab() {
       )}
 
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md mx-4">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Confirm Delete
