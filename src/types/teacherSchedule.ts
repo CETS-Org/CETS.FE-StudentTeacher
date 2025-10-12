@@ -1,4 +1,3 @@
-// Teacher Schedule and Availability Types
 
 // ===== Day and Time Slot Types =====
 export type DayOfWeekEnum = number; // 0=Sunday..6=Saturday per JS; backend uses System.DayOfWeek

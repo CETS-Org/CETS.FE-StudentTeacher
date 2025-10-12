@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Button from "@/components/ui/Button";
 import Loader from "@/components/ui/Loader";
 import { getTeacherId } from "@/lib/utils";
+import { Trash2, AlertCircle } from "lucide-react";
 import type { 
   DaySchedule, 
   TeacherAvailability, 
@@ -17,7 +18,17 @@ export default function ScheduleRegistrationDialog({
 }: ScheduleRegistrationDialogProps) {
   const [daySchedules, setDaySchedules] = useState<DaySchedule>({});
   const [registeredSlots, setRegisteredSlots] = useState<TeacherAvailability[]>([]);
+  const [slotsToUnregister, setSlotsToUnregister] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Check if current date is past the 10th of the month
+  const isPastDeadline = (): boolean => {
+    const today = new Date();
+    return today.getDate() > 10;
+  };
+
+  const canMakeChanges = !isPastDeadline();
 
   // Available days for registration
   const dayOptions = [
@@ -66,6 +77,7 @@ export default function ScheduleRegistrationDialog({
 
   const handleDialogClose = () => {
     setDaySchedules({});
+    setSlotsToUnregister(new Set());
     onClose();
   };
 
@@ -103,13 +115,51 @@ export default function ScheduleRegistrationDialog({
     });
   };
 
-  const handleSubmitRegistration = () => {
+  const handleToggleUnregister = (slotId: string) => {
+    if (!canMakeChanges) return;
+    
+    setSlotsToUnregister(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(slotId)) {
+        newSet.delete(slotId);
+      } else {
+        newSet.add(slotId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSubmitRegistration = async () => {
     const selectedDays = Object.keys(daySchedules);
     const totalSlots = selectedDays.reduce((total, day) => total + daySchedules[day].length, 0);
+    const totalUnregistrations = slotsToUnregister.size;
     
-    if (selectedDays.length > 0 && totalSlots > 0) {
-      onSubmit(daySchedules);
+    if ((selectedDays.length === 0 || totalSlots === 0) && totalUnregistrations === 0) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // First, handle unregistrations
+      if (totalUnregistrations > 0) {
+        for (const slotId of Array.from(slotsToUnregister)) {
+          await api.deleteTeacherAvailability(slotId);
+        }
+      }
+
+      // Then, handle new registrations
+      if (selectedDays.length > 0 && totalSlots > 0) {
+        onSubmit(daySchedules);
+      }
+
       handleDialogClose();
+      // Optionally reload the page or refresh data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error processing changes:', error);
+      alert('Failed to process some changes. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -135,13 +185,31 @@ export default function ScheduleRegistrationDialog({
     ).length;
   };
 
+  // Get count of slots marked for removal for a day
+  const getRemovalCount = (dayValue: string): number => {
+    return registeredSlots.filter(slot => 
+      slot.teachDay.toLowerCase() === dayValue.toLowerCase() &&
+      slotsToUnregister.has(slot.id)
+    ).length;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Register for Schedule</DialogTitle>
+          <DialogTitle>Manage Teaching Availability</DialogTitle>
           <DialogDescription>
-            Select days and specific time slots for your teaching availability.
+            {canMakeChanges ? (
+              <span className="mt-2 text-sm text-amber-600 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                Changes can only be made until the 10th of each month.
+              </span>
+            ) : (
+              <span className="mt-2 text-sm text-red-600 font-semibold flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                Registration period has ended. No changes can be made after the 10th of the month.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
         
@@ -183,7 +251,7 @@ export default function ScheduleRegistrationDialog({
                           {day.label}
                         </span>
                         {isDaySelected(day.value) && daySchedules[day.value].length > 0 && (
-                          <span className="text-xs bg-accent-100 text-primary-700 px-2 py-1 rounded-full">
+                          <span className="text-xs bg-blue-200 text-primary-700 px-2 py-1 rounded-full">
                             {daySchedules[day.value].length} new slot{daySchedules[day.value].length !== 1 ? 's' : ''}
                           </span>
                         )}
@@ -192,38 +260,78 @@ export default function ScheduleRegistrationDialog({
                             ✓ {getRegisteredSlotsCount(day.value)} registered
                           </span>
                         )}
+                        {getRemovalCount(day.value) > 0 && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                            -{getRemovalCount(day.value)} to remove
+                          </span>
+                        )}
                       </label>
                     </div>
                     
                     {/* Time Slots for this day */}
-                    {isDaySelected(day.value) && (
+                    {(isDaySelected(day.value) || getRegisteredSlotsCount(day.value) > 0) && (
                       <div className="p-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {timeSlotOptions.map((timeSlot) => {
                             const isRegistered = isSlotAlreadyRegistered(day.value, timeSlot.value);
+                            const registeredSlot = registeredSlots.find(
+                              slot => slot.teachDay.toLowerCase() === day.value.toLowerCase() && slot.timeSlotID === timeSlot.value
+                            );
+                            const isMarkedForDeletion = registeredSlot && slotsToUnregister.has(registeredSlot.id);
+                            
                             return (
-                              <label
+                              <div
                                 key={`${day.value}-${timeSlot.value}`}
-                                className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
+                                className={`flex items-center space-x-2 p-2 rounded-md transition-colors ${
                                   isRegistered 
-                                    ? 'bg-green-50 cursor-not-allowed' 
-                                    : 'hover:bg-accent-100 cursor-pointer'
+                                    ? isMarkedForDeletion 
+                                      ? 'bg-red-50 border border-red-200' 
+                                      : 'bg-green-50'
+                                    : 'hover:bg-accent-100'
                                 }`}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={isTimeSlotSelected(day.value, timeSlot.value) || isRegistered}
-                                  onChange={() => !isRegistered && handleTimeSlotToggle(day.value, timeSlot.value)}
-                                  disabled={isRegistered}
-                                  className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 disabled:opacity-50"
-                                />
-                                <span className={`text-sm flex-1 ${isRegistered ? 'text-green-700' : 'text-neutral-700'}`}>
-                                  {timeSlot.label}
-                                  {isRegistered && (
-                                    <span className="ml-2 text-xs text-green-600 font-medium">✓ Registered</span>
-                                  )}
-                                </span>
-                              </label>
+                                <label className="flex items-center space-x-3 flex-1 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={isTimeSlotSelected(day.value, timeSlot.value) || (isRegistered && !isMarkedForDeletion)}
+                                    onChange={() => !isRegistered && canMakeChanges && handleTimeSlotToggle(day.value, timeSlot.value)}
+                                    disabled={isRegistered || !canMakeChanges}
+                                    className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 disabled:opacity-50"
+                                  />
+                                  <span className={`text-sm flex-1 ${
+                                    isMarkedForDeletion 
+                                      ? 'text-red-700 line-through' 
+                                      : isRegistered 
+                                        ? 'text-green-700' 
+                                        : 'text-neutral-700'
+                                  }`}>
+                                    {timeSlot.label}
+                                    {isRegistered && !isMarkedForDeletion && (
+                                      <span className="ml-2 text-xs text-green-600 font-medium">✓ Registered</span>
+                                    )}
+                                    {isMarkedForDeletion && (
+                                      <span className="ml-2 text-xs text-red-600 font-medium">To be removed</span>
+                                    )}
+                                  </span>
+                                </label>
+                                {isRegistered && registeredSlot && canMakeChanges && (
+                                  <button
+                                    onClick={() => handleToggleUnregister(registeredSlot.id)}
+                                    className={`p-1.5 rounded transition-colors ${
+                                      isMarkedForDeletion
+                                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                        : 'bg-red-100 text-red-600 hover:bg-red-200'
+                                    }`}
+                                    title={isMarkedForDeletion ? "Cancel removal" : "Remove this slot"}
+                                  >
+                                    {isMarkedForDeletion ? (
+                                      <span className="text-xs font-bold">↶</span>
+                                    ) : (
+                                      <Trash2 className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
@@ -235,32 +343,56 @@ export default function ScheduleRegistrationDialog({
               </div>
 
               {/* Selection Summary */}
-              {getTotalSlots() > 0 && (
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <h4 className="text-sm font-medium text-green-900 mb-2">Registration Summary</h4>
-                  <div className="text-sm text-green-700 space-y-2">
-                    <p>
-                      <strong>Selected Days:</strong> {getSelectedDays().length}
-                    </p>
-                    <p>
-                      <strong>Total Time Slots:</strong> {getTotalSlots()}
-                    </p>
-                    <div className="mt-3 space-y-1">
-                      {getSelectedDays().map(day => {
-                        const dayLabel = dayOptions.find(d => d.value === day)?.label;
-                        const slots = daySchedules[day];
-                        return (
-                          <div key={day} className="text-xs">
-                            <strong>{dayLabel}:</strong> {slots.length} slot{slots.length !== 1 ? 's' : ''}
-                            {slots.length > 0 && (
-                              <span className="ml-2 text-green-600">
-                                ({slots.map(slot => timeSlotOptions.find(t => t.value === slot)?.label).join(', ')})
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+              {(getTotalSlots() > 0 || slotsToUnregister.size > 0) && (
+                <div className={`p-4 rounded-lg border ${
+                  slotsToUnregister.size > 0 
+                    ? 'bg-amber-50 border-amber-200' 
+                    : 'bg-green-50 border-green-200'
+                }`}>
+                  <h4 className={`text-sm font-medium mb-2 ${
+                    slotsToUnregister.size > 0 ? 'text-amber-900' : 'text-green-900'
+                  }`}>
+                    Changes Summary
+                  </h4>
+                  <div className="text-sm space-y-2">
+                    {getTotalSlots() > 0 && (
+                      <div className="text-green-700">
+                        <p><strong>New Registrations:</strong> {getTotalSlots()} slot{getTotalSlots() !== 1 ? 's' : ''}</p>
+                        <div className="mt-1 space-y-1">
+                          {getSelectedDays().map(day => {
+                            const dayLabel = dayOptions.find(d => d.value === day)?.label;
+                            const slots = daySchedules[day];
+                            return (
+                              <div key={day} className="text-xs">
+                                <strong>{dayLabel}:</strong> {slots.length} slot{slots.length !== 1 ? 's' : ''}
+                                {slots.length > 0 && (
+                                  <span className="ml-2 text-green-600">
+                                    ({slots.map(slot => timeSlotOptions.find(t => t.value === slot)?.label).join(', ')})
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {slotsToUnregister.size > 0 && (
+                      <div className="text-red-700 mt-3">
+                        <p><strong>To Be Removed:</strong> {slotsToUnregister.size} slot{slotsToUnregister.size !== 1 ? 's' : ''}</p>
+                        <div className="mt-1 space-y-1 text-xs">
+                          {Array.from(slotsToUnregister).map(slotId => {
+                            const slot = registeredSlots.find(s => s.id === slotId);
+                            if (!slot) return null;
+                            const timeSlot = timeSlots.find(ts => ts.id === slot.timeSlotID);
+                            return (
+                              <div key={slotId}>
+                                <strong>{slot.teachDay}:</strong> {timeSlot?.name || 'Unknown slot'}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -272,17 +404,33 @@ export default function ScheduleRegistrationDialog({
           <Button
             variant="secondary"
             onClick={handleDialogClose}
-            disabled={loading}
+            disabled={loading || isDeleting}
           >
             Cancel
           </Button>
           <Button
             variant="primary"
             onClick={handleSubmitRegistration}
-            disabled={getTotalSlots() === 0 || loading}
-            className="hover:!bg-green-500"
+            disabled={
+              (getTotalSlots() === 0 && slotsToUnregister.size === 0) || 
+              loading || 
+              isDeleting || 
+              !canMakeChanges
+            }
+            className={slotsToUnregister.size > 0 ? "hover:!bg-amber-500" : "hover:!bg-green-500"}
           >
-            Register ({getTotalSlots()} slot{getTotalSlots() !== 1 ? 's' : ''})
+            {isDeleting ? (
+              "Processing..."
+            ) : (
+              <>
+                {getTotalSlots() > 0 && slotsToUnregister.size > 0 
+                  ? `Update (${getTotalSlots()} new, ${slotsToUnregister.size} remove)`
+                  : getTotalSlots() > 0
+                    ? `Register (${getTotalSlots()} slot${getTotalSlots() !== 1 ? 's' : ''})`
+                    : `Remove (${slotsToUnregister.size} slot${slotsToUnregister.size !== 1 ? 's' : ''})`
+                }
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
