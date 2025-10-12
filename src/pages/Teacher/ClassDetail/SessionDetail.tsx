@@ -93,32 +93,34 @@ export default function ClassDetailPage() {
     loadCoveredTopic();
   }, [classMeetingId]);
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-        
-      case "sessionContent":
-        if (loadingContext) {
-          return (
+  // Render all tabs but show/hide based on activeTab
+  const renderAllTabs = () => {
+    return (
+      <>
+        {/* Session Content Tab */}
+        <div className={activeTab === "sessionContent" ? "block" : "hidden"}>
+          {loadingContext ? (
             <div className="text-sm text-neutral-600">Loading session content...</div>
-          );
-        }
-        if (errorContext) {
-          return (
+          ) : errorContext ? (
             <div className="text-sm text-danger-600">{errorContext}</div>
-          );
-        }
-        if (sessionContent) {
-          return <SessionContentTab content={sessionContent} />
-        }
-        return null;
-      case "sessionAssignment":
-        return <SessionAssignmentsTab classMeetingId={classMeetingId} />
-      case "materials":
-        return <CourseMaterialsTab />;
-      case "students":
-        // Kiểm tra classId và classMeetingId có tồn tại không
-        if (!classId) {
-          return (
+          ) : sessionContent ? (
+            <SessionContentTab content={sessionContent} />
+          ) : null}
+        </div>
+
+        {/* Assignments Tab */}
+        <div className={activeTab === "sessionAssignment" ? "block" : "hidden"}>
+          <SessionAssignmentsTab classMeetingId={classMeetingId} />
+        </div>
+
+        {/* Materials Tab */}
+        <div className={activeTab === "materials" ? "block" : "hidden"}>
+          <CourseMaterialsTab />
+        </div>
+
+        {/* Students Tab */}
+        <div className={activeTab === "students" ? "block" : "hidden"}>
+          {!classId ? (
             <div className="flex items-center justify-center py-12">
               <div className="bg-warning-50 border border-warning-200 rounded-lg p-6 text-center">
                 <p className="text-warning-700 font-medium">
@@ -126,10 +128,7 @@ export default function ClassDetailPage() {
                 </p>
               </div>
             </div>
-          );
-        }
-        if (!classMeetingId) {
-          return (
+          ) : !classMeetingId ? (
             <div className="flex items-center justify-center py-12">
               <div className="bg-warning-50 border border-warning-200 rounded-lg p-6 text-center">
                 <p className="text-warning-700 font-medium">
@@ -137,12 +136,12 @@ export default function ClassDetailPage() {
                 </p>
               </div>
             </div>
-          );
-        }
-        return <StudentsTab classId={classId} classMeetingId={classMeetingId} />;
-      default:
-        return null;
-    }
+          ) : (
+            <StudentsTab classId={classId} classMeetingId={classMeetingId} />
+          )}
+        </div>
+      </>
+    );
   };
 
   return (
@@ -163,7 +162,7 @@ export default function ClassDetailPage() {
           onTabChange={(tabId) => setActiveTab(tabId)}
         />
         <div className="mt-4 p-4 min-h-[607px]">
-          {renderTabContent()}
+          {renderAllTabs()}
         </div>
       </Card>
     </div>
