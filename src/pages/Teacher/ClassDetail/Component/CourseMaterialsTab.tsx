@@ -10,6 +10,10 @@ import type { LearningMaterial } from "@/types/learningMaterial";
 import { updateLearningMaterial } from "@/api/learningMaterial.api";
 import { config } from "@/lib/config";
 
+// Cache for materials data to avoid reloading when switching tabs
+const materialsCache = new Map<string, { data: LearningMaterial[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export default function CourseMaterialsTab() {
   // Normalize route params across teacher and student routes
   const { id, sessionId, classId: classIdParam, classMeetingId: classMeetingIdParam } = useParams<{
@@ -83,10 +87,30 @@ export default function CourseMaterialsTab() {
         setLoading(false);
         return;
       }
+
+      // Check cache first
+      const cached = materialsCache.get(resolvedMeetingId);
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        // Use cached data
+        setMaterials(cached.data);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const response = await api.getLearningMaterialsByClassMeeting(resolvedMeetingId);
-        setMaterials(response.data || []);
+        const materialsData = response.data || [];
+        
+        // Cache the data
+        materialsCache.set(resolvedMeetingId, {
+          data: materialsData,
+          timestamp: now
+        });
+        
+        setMaterials(materialsData);
       } catch (error) {
         console.error('Error loading materials:', error);
         setMaterials([]);
@@ -138,9 +162,18 @@ export default function CourseMaterialsTab() {
         }
         successCount++;
       }
-      // Reload
+      // Clear cache and reload
+      materialsCache.delete(resolvedMeetingId);
       const response = await api.getLearningMaterialsByClassMeeting(resolvedMeetingId);
-      setMaterials(response.data || []);
+      const materialsData = response.data || [];
+      
+      // Update cache with fresh data
+      materialsCache.set(resolvedMeetingId, {
+        data: materialsData,
+        timestamp: Date.now()
+      });
+      
+      setMaterials(materialsData);
       if (failCount === 0) {
         alert(`${successCount} file(s) uploaded successfully!`);
       } else if (successCount === 0) {
@@ -178,33 +211,11 @@ export default function CourseMaterialsTab() {
 
   const handleUpdateSubmit = async (materialId: string, title: string, file?: File) => {
     try {
-      let fileResult: { fileName?: string; contentType?: string } = {};
-      if (file) {
-        // Step 1 - request update to get presigned URL for the new file
-        const contentType = file.type || "application/octet-stream";
-        const updateRes = await updateLearningMaterial(materialId, {
-          id: materialId,
-          title: title,
-          fileName: file.name,
-          contentType
-        });
-        const { uploadUrl } = updateRes.data;
-        if (uploadUrl) {
-          const uploadResponse = await api.uploadToPresignedUrl(uploadUrl, file, contentType);
-          if (!uploadResponse.ok) {
-            alert('File upload failed. Please try again.');
-            return;
-          }
-        }
-      } else {
-        await updateLearningMaterial(materialId, {
-          id: materialId,
-          title
-        });
-      }
-      if (!resolvedMeetingId) return;
-      const response = await api.getLearningMaterialsByClassMeeting(resolvedMeetingId);
-      setMaterials(response.data || []);
+      setMaterials(prevMaterials => 
+        prevMaterials.map(material => 
+          material.id === materialId.toString() ? { ...material, title } : material
+        )
+      );
       alert('Material updated successfully!');
       setUpdatePopupOpen(false);
       setSelectedMaterial(null);
@@ -226,6 +237,19 @@ export default function CourseMaterialsTab() {
       setMaterials(prevMaterials => 
         prevMaterials.filter(material => material.id !== deleteConfirmId)
       );
+      
+      // Update cache
+      if (resolvedMeetingId) {
+        const cached = materialsCache.get(resolvedMeetingId);
+        if (cached) {
+          const updatedData = cached.data.filter(material => material.id !== deleteConfirmId);
+          materialsCache.set(resolvedMeetingId, {
+            data: updatedData,
+            timestamp: Date.now()
+          });
+        }
+      }
+      
       const newTotalPages = Math.ceil((materials.length - 1) / itemsPerPage);
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages);

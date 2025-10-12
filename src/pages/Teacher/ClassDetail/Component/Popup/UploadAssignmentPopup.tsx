@@ -9,6 +9,10 @@ import {
 } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import Toast from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
+import { createAssignment } from "@/api/assignments.api";
+import { getTeacherId } from "@/lib/utils";
 import { X, Image as ImageIcon, FileText } from "lucide-react";
 
 type UploadedAttachment = {
@@ -31,14 +35,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (assignmentData: AssignmentPayload) => void;
-
-  /** (tuỳ chọn) Hàm upload từng file với callback progress.
-   *  Trả về url hoặc id tuỳ backend.
-   */
-  onUpload?: (
-    file: File,
-    onProgress: (percent: number) => void
-  ) => Promise<{ url?: string; id?: string }>;
+  classMeetingId?: string; // Required for API call
 
   accept?: string;     // ví dụ: ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*"
   maxFiles?: number;   // mặc định 10
@@ -49,11 +46,13 @@ export default function CreateAssignmentPopup({
   open,
   onOpenChange,
   onSubmit,
-  onUpload,
+  classMeetingId,
   accept = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*",
   maxFiles = 10,
   maxTotalMB = 50,
 }: Props) {
+  // Toast notifications
+  const { toasts, hideToast, success, error: showError } = useToast();
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -172,50 +171,93 @@ export default function CreateAssignmentPopup({
     };
   }, [previews]);
 
+  const uploadToR2 = async (file: File, uploadUrl: string, onProgress: (percent: number) => void): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      });
+      
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+      
+      xhr.addEventListener('error', () => {
+        reject(new Error('Upload failed'));
+      });
+      
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!title || !dueDate) {
       setError("Vui lòng nhập tiêu đề và hạn nộp.");
       return;
     }
 
-    // Nếu không có onUpload -> behave như trước, chỉ trả về files
-    if (!onUpload || files.length === 0) {
-      onSubmit({ title, instructions, dueDate, files });
-      onOpenChange(false);
+    if (files.length === 0) {
+      setError("Vui lòng thêm ít nhất một file cho assignment.");
       return;
     }
 
-    // Có onUpload -> upload từng file với progress
+    if (!classMeetingId) {
+      setError("Class meeting ID is missing.");
+      return;
+    }
+
+    const teacherId = getTeacherId();
+    if (!teacherId) {
+      setError("Teacher ID is missing. Please login again.");
+      return;
+    }
+
     try {
       setUploading(true);
-      const meta: UploadedAttachment[] = [];
-      const perFile = [...fileProgress];
+      setError(null);
 
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i];
+      // Create assignment with file upload
+      const file = files[0]; // Take first file for now
+      const contentType = file.type || 'application/octet-stream';
+      
+      const assignmentData = {
+        classMeetingId,
+        teacherId,
+        title,
+        description: instructions,
+        dueDate: new Date(dueDate).toISOString(),
+        contentType: contentType,
+        fileName: file.name.replace(/\.[^/.]+$/, "") // Remove extension
+      };
 
-        // callback cập nhật progress từng file
-        const update = (p: number) => {
-          perFile[i] = Math.max(0, Math.min(100, Math.round(p)));
-          setFileProgress([...perFile]);
-          const sum = perFile.reduce((a, b) => a + b, 0);
-          setOverallProgress(Math.round(sum / perFile.length));
-        };
+      // Step 1: Create assignment and get upload URL
+      const response = await createAssignment(assignmentData);
+      const { uploadUrl, filePath } = response.data;
 
-        const result = await onUpload(f, update);
-        meta.push({
-          name: f.name,
-          size: f.size,
-          type: f.type,
-          url: result?.url,
-          id: result?.id,
+      // Step 2: Upload file to R2
+      if (uploadUrl) {
+        await uploadToR2(file, uploadUrl, (percent) => {
+          setFileProgress([percent]);
+          setOverallProgress(percent);
         });
       }
 
-      onSubmit({ title, instructions, dueDate, files, attachments: meta });
+      success("Assignment created and file uploaded successfully!");
+      onSubmit({ title, instructions, dueDate, files });
       onOpenChange(false);
     } catch (e: any) {
-      setError(e?.message || "Upload thất bại. Vui lòng thử lại.");
+      console.error('Error creating assignment:', e);
+      showError(e?.message || "Failed to create assignment. Please try again.");
       setUploading(false);
     }
   };
@@ -260,7 +302,7 @@ export default function CreateAssignmentPopup({
           {/* Upload nhiều file + Preview + Drag-drop */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-neutral-700">
-              Attachments 
+              Attachments <span className="text-red-500">*</span>
             </label>
 
             <div
@@ -288,7 +330,7 @@ export default function CreateAssignmentPopup({
                 <span>Chọn tệp</span>
               </label>
               <p className="text-xs text-neutral-500 mt-1">
-                Tối đa {maxFiles} tệp • Tổng dung lượng ≤ {maxTotalMB}MB
+                Tối đa {maxFiles} tệp • Tổng dung lượng ≤ {maxTotalMB}MB • <span className="text-red-500 font-medium">Bắt buộc</span>
               </p>
             </div>
 
@@ -403,6 +445,17 @@ export default function CreateAssignmentPopup({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Toast Notifications */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+          duration={3000}
+        />
+      ))}
     </Dialog>
   );
 }

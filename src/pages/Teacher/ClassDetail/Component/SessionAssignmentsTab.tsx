@@ -1,7 +1,8 @@
 // src/components/teacher/SessionAssignmentsTab.tsx
 
 import { useState, useMemo, useEffect } from "react";
-import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft } from "lucide-react";
+import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download } from "lucide-react";
+import JSZip from 'jszip';
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Pagination from "@/Shared/Pagination";
@@ -16,6 +17,9 @@ import {
   getSubmissionsByAssignment,
   updateSubmissionFeedback,
   updateSubmissionScore,
+  downloadAssignment,
+  downloadSubmission,
+  downloadAllSubmissions,
   type AssignmentFromAPI,
   type SubmissionFromAPI 
 } from "@/api/assignments.api";
@@ -48,10 +52,31 @@ type AssignmentData = {
   dueDate: string;
 };
 
+// Types for Download All Submissions API
+type DownloadUrlItem = {
+  submissionId: string;
+  studentCode: string;
+  studentName: string;
+  downloadUrl: string;
+  fileName: string;
+};
+
+type DownloadAllResponse = {
+  assignmentInfo: {
+    id: string;
+    title: string;
+  };
+  downloadUrls: DownloadUrlItem[];
+};
+
 // --- COMPONENT CHÍNH ---
 interface SessionAssignmentsTabProps {
   classMeetingId?: string;
 }
+
+// Cache for assignments data to avoid reloading when switching tabs
+const assignmentsCache = new Map<string, { data: Assignment[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignmentsTabProps) {
   // Toast notifications
@@ -74,13 +99,25 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // --- FETCH ASSIGNMENTS FROM API ---
+  // --- FETCH ASSIGNMENTS FROM API WITH CACHING ---
   useEffect(() => {
     const fetchAssignments = async () => {
       // If no classMeetingId, show empty state
       if (!classMeetingId) {
         setLoading(false);
         setAssignments([]);
+        return;
+      }
+
+      // Check cache first
+      const cached = assignmentsCache.get(classMeetingId);
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        // Use cached data
+        setAssignments(cached.data);
+        setLoading(false);
+        setError(null);
         return;
       }
 
@@ -107,6 +144,12 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           };
         });
         
+        // Cache the data
+        assignmentsCache.set(classMeetingId, {
+          data: transformedAssignments,
+          timestamp: now
+        });
+        
         setAssignments(transformedAssignments);
       } catch (err) {
         console.error('Error fetching assignments:', err);
@@ -122,21 +165,62 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
 
   // --- HÀM XỬ LÝ ---
   const handleCreateAssignment = (assignmentData: AssignmentData) => {
-    const newAssignment: Assignment = {
-        id: Date.now(),
-        assignmentId: '', // Will be set by backend
-        title: assignmentData.title,
-        dueDate: assignmentData.dueDate,
-        submissions: [], // Mới tạo chưa có bài nộp
-        submissionCount: 0,
-    };
-    setAssignments(prev => [newAssignment, ...prev]);
+    // Don't add to local state immediately since we need to refresh from API
+    // The assignment will be added when the assignments list is refreshed
     success("Assignment created successfully!");
+    
+    // Clear cache and refresh assignments list to get the new assignment with proper ID
+    if (classMeetingId) {
+      // Clear cache for this classMeetingId
+      assignmentsCache.delete(classMeetingId);
+      
+      const fetchAssignments = async () => {
+        try {
+          const response = await getAssignmentsByClassMeeting(classMeetingId);
+          const apiAssignments: AssignmentFromAPI[] = response.data;
+          
+          // Transform API data to component format
+          const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
+            // Format date without timezone issues
+            const dueDate = new Date(apiAsm.dueAt);
+            const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+            
+            return {
+              id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
+              assignmentId: apiAsm.id, // Keep original UUID for API calls
+              title: apiAsm.title,
+              dueDate: formattedDueDate,
+              submissions: [], // Submissions will be loaded separately when viewing
+              submissionCount: apiAsm.submissionCount,
+            };
+          });
+          
+          // Update cache with fresh data
+          assignmentsCache.set(classMeetingId, {
+            data: transformedAssignments,
+            timestamp: Date.now()
+          });
+          
+          setAssignments(transformedAssignments);
+        } catch (err) {
+          console.error('Error refreshing assignments:', err);
+          showError('Failed to refresh assignments list.');
+        }
+      };
+      
+      fetchAssignments();
+    }
   };
 
   const handleViewSubmissions = async (assignment: Assignment) => {
     try {
       setLoading(true);
+      
+      // Validate assignmentId
+      if (!assignment.assignmentId || assignment.assignmentId.trim() === '') {
+        showError('Assignment ID is invalid. Please refresh the page and try again.');
+        return;
+      }
       
       // Fetch submissions from API
       const response = await getSubmissionsByAssignment(assignment.assignmentId);
@@ -224,6 +308,179 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
     } catch (error) {
       console.error('Error submitting score:', error);
       showError('Failed to submit score. Please try again.');
+    }
+  };
+
+  const handleDownloadAssignment = async (assignment: Assignment) => {
+    try {
+      setLoading(true);
+      
+      // Validate assignmentId
+      if (!assignment.assignmentId || assignment.assignmentId.trim() === '') {
+        showError('Assignment ID is invalid. Please refresh the page and try again.');
+        return;
+      }
+      
+      // Call download API
+      const response = await downloadAssignment(assignment.assignmentId);
+      const { downloadUrl, assignmentInfo } = response.data;
+      
+      if (!downloadUrl) {
+        showError('No download URL available for this assignment.');
+        return;
+      }
+      
+      // Create a temporary link to download the file
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${assignmentInfo.title || assignment.title}.docx`; // Default to DOCX for Word documents
+      link.target = '_blank';
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      success('Assignment downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading assignment:', error);
+      showError('Failed to download assignment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadSubmission = async (submission: Submission) => {
+    try {
+      setLoading(true);
+      
+      // Validate submissionId
+      if (!submission.id || submission.id.trim() === '') {
+        showError('Submission ID is invalid. Please refresh the page and try again.');
+        return;
+      }
+      
+      // Call download API
+      const response = await downloadSubmission(submission.id);
+      const { downloadUrl, submissionInfo } = response.data;
+      
+      if (!downloadUrl) {
+        showError('No download URL available for this submission.');
+        return;
+      }
+      
+      // Create a temporary link to download the file
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${submission.studentName}_submission.docx`; // Default to DOCX for Word documents
+      link.target = '_blank';
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      success('Submission downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading submission:', error);
+      showError('Failed to download submission. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadAllSubmissions = async () => {
+    try {
+      setLoading(true);
+      
+      if (!selectedAssignment || selectedAssignment.submissions.length === 0) {
+        showError('No submissions to download.');
+        return;
+      }
+      
+      // Validate assignmentId
+      if (!selectedAssignment.assignmentId || selectedAssignment.assignmentId.trim() === '') {
+        showError('Assignment ID is invalid. Please refresh the page and try again.');
+        return;
+      }
+      
+      // Call download all submissions API
+      const response = await downloadAllSubmissions(selectedAssignment.assignmentId);
+      const data: DownloadAllResponse = response.data;
+      
+      if (!data.downloadUrls || data.downloadUrls.length === 0) {
+        showError('No submissions available for download.');
+        return;
+      }
+      
+      // Create ZIP file
+      const zip = new JSZip();
+      let successCount = 0;
+      let failCount = 0;
+      
+      // Download each submission and add to ZIP
+      for (const item of data.downloadUrls) {
+        try {
+          // Fetch file content from download URL
+          const fileResponse = await fetch(item.downloadUrl);
+          if (!fileResponse.ok) {
+            console.error(`Failed to fetch file for ${item.studentCode}`);
+            failCount++;
+            continue;
+          }
+          
+          const fileBlob = await fileResponse.blob();
+          
+          // Create folder structure: submissions/StudentCode/FileName
+          // Keep original extension but replace filename with student name
+          let fileName: string;
+          if (item.fileName && item.fileName.includes('.')) {
+            // Extract extension from original fileName
+            const fileExtension = item.fileName.split('.').pop();
+            fileName = `${item.studentName}_submission.${fileExtension}`;
+          } else {
+            // Fallback if no extension found
+            fileName = `${item.studentName}_submission.docx`;
+          }
+          const folderPath = `submissions/${item.studentCode}/${fileName}`;
+          
+          zip.file(folderPath, fileBlob);
+          successCount++;
+        } catch (error) {
+          console.error(`Error downloading submission for ${item.studentCode}:`, error);
+          failCount++;
+        }
+      }
+      
+      if (successCount === 0) {
+        showError('Failed to download any submissions. Please try again.');
+        return;
+      }
+      
+      // Generate ZIP file
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Download ZIP file
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `${data.assignmentInfo.title}_submissions.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up object URL
+      URL.revokeObjectURL(link.href);
+      
+      if (failCount === 0) {
+        success(`All ${successCount} submissions downloaded successfully!`);
+      } else {
+        success(`${successCount} submissions downloaded successfully. ${failCount} failed.`);
+      }
+    } catch (error) {
+      console.error('Error downloading all submissions:', error);
+      showError('Failed to download submissions. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -336,6 +593,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   >
                     View Submissions
                   </Button>
+                  <Button 
+                    variant="secondary"
+                    onClick={() => handleDownloadAssignment(asm)}
+                    iconLeft={<Download size={16} />}
+                    className="btn-secondary"
+                  >
+                    Download
+                  </Button>
                   <Button variant="secondary">Edit</Button>
                 </div>
               </Card>
@@ -355,8 +620,13 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
               </Button>
               <h2 className="text-xl font-semibold">{selectedAssignment.title}: Submissions</h2>
             </div>
-            <Button disabled={selectedAssignment.submissions.length === 0} className="flex items-center">
-                 Download All
+            <Button 
+              disabled={selectedAssignment.submissions.length === 0} 
+              onClick={handleDownloadAllSubmissions}
+              className="flex items-center"
+              iconLeft={<Download size={16} />}
+            >
+              Download All
             </Button>
           </div>
           <div className="overflow-x-auto border rounded-lg">
@@ -365,7 +635,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">#</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Submission</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Submission</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Submitted Date</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Score</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Feedback</th>
@@ -394,14 +664,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           {sub.file ? (
-                            <a 
-                              href={sub.file} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-accent-600 hover:text-accent-800 underline max-w-xs truncate"
+                            <Button
+                              variant="secondary"
+                              onClick={() => handleDownloadSubmission(sub)}
+                              iconLeft={<Download size={14} />}
+                              className="btn-secondary text-[10px] px-1 py-0 h-5 leading-none"
                             >
-                              View File
-                            </a>
+                              Download
+                            </Button>
                           ) : sub.content ? (
                             <span className="text-sm text-neutral-600 max-w-xs truncate">
                               {sub.content}
@@ -438,17 +708,6 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          {sub.file && (
-                            <a 
-                              href={sub.file} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-gray-500 hover:text-blue-600 transition-colors"
-                              title="View submission"
-                            >
-                              <Eye size={20} />
-                            </a>
-                          )}
                           <button 
                             onClick={() => handleOpenFeedback(sub)} 
                             className="text-gray-500 hover:text-green-600 transition-colors"
@@ -484,7 +743,12 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       )}
 
       {/* Popups */}
-      <CreateAssignmentPopup open={isCreateOpen} onOpenChange={setCreateOpen} onSubmit={handleCreateAssignment} />
+      <CreateAssignmentPopup 
+        open={isCreateOpen} 
+        onOpenChange={setCreateOpen} 
+        onSubmit={handleCreateAssignment}
+        classMeetingId={classMeetingId}
+      />
       <FeedbackPopup 
         open={isFeedbackOpen} 
         onOpenChange={setFeedbackOpen} 

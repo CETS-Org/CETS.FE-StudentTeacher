@@ -7,6 +7,10 @@ import type { StudentInClass } from "@/api/attendance.api";
 import Loader from "@/components/ui/Loader";
 import { getTeacherId } from "@/lib/utils";
 
+// Cache for students data to avoid reloading when switching tabs
+const studentsCache = new Map<string, { data: StudentInClass[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 interface StudentsTabProps {
   classId: string;
   classMeetingId?: string;
@@ -28,11 +32,35 @@ export default function StudentsTab({
   // Fetch students when component mounts or classId/classMeetingId changes
   useEffect(() => {
     const fetchStudents = async () => {
+      if (!classId) return;
+
+      // Create cache key
+      const cacheKey = `${classId}-${classMeetingId || 'no-meeting'}`;
+      
+      // Check cache first
+      const cached = studentsCache.get(cacheKey);
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        // Use cached data
+        setStudents(cached.data);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
         // Pass classMeetingId to get attendance status
         const data = await getStudentsInClass(classId, classMeetingId);
+        
+        // Cache the data
+        studentsCache.set(cacheKey, {
+          data,
+          timestamp: now
+        });
+        
         setStudents(data);
       } catch (err) {
         console.error('Error fetching students:', err);
@@ -42,9 +70,7 @@ export default function StudentsTab({
       }
     };
 
-    if (classId) {
-      fetchStudents();
-    }
+    fetchStudents();
   }, [classId, classMeetingId]);
 
   // Lọc sinh viên theo search
@@ -107,8 +133,18 @@ export default function StudentsTab({
         notes: "", // Optional notes
       });
 
-      // Refetch students to get updated attendance status
+      // Clear cache and refetch students to get updated attendance status
+      const cacheKey = `${classId}-${classMeetingId || 'no-meeting'}`;
+      studentsCache.delete(cacheKey);
+      
       const updatedStudents = await getStudentsInClass(classId, classMeetingId);
+      
+      // Update cache with fresh data
+      studentsCache.set(cacheKey, {
+        data: updatedStudents,
+        timestamp: Date.now()
+      });
+      
       setStudents(updatedStudents);
 
       // Hiển thị thông báo thành công
