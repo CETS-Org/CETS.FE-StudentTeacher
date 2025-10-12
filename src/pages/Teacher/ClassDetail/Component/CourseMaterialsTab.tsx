@@ -305,28 +305,28 @@ export default function CourseMaterialsTab() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleViewFile(material)}
-                        className="!bg-green-500 hover:!bg-accent2-500 text-white hover:text-white"
+                        className="hover:!bg-green-500 !text-green-500 hover:text-white"
                         title="View File"
                       >
                         <Eye size={16} />
                       </Button>
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleUpdateMaterial(material)}
-                        className="!bg-blue-500 hover:!bg-accent2-500 text-white hover:text-white"
+                        className="hover:!bg-blue-500  !text-blue-500 hover:text-white"
                         title="Edit Material"
                       >
                         <Edit size={16} />
                       </Button>
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteMaterial(material.id)}
-                        className="!bg-red-500 hover:!bg-accent2-500 text-white hover:text-white"
+                        className="hover:!bg-red-500 text-red-500 hover:text-white"
                         title="Delete Material"
                       >
                         <Trash2 size={16} />
