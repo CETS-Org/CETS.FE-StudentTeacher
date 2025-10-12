@@ -1,15 +1,10 @@
 import type { AxiosRequestConfig } from 'axios';
 import { api, endpoint } from './api';
-
-export type DayOfWeekEnum = number; // 0=Sunday..6=Saturday per JS; backend uses System.DayOfWeek
-
-export interface TeacherAvailabilityCreate {
-  teacherID: string;
-  teachDay: DayOfWeekEnum; // send enum number; backend converts via HasConversion<string>()
-  timeSlotID?: string | null;
-}
-
-export interface TeacherAvailabilityUpdate extends TeacherAvailabilityCreate {}
+import type { 
+  DayOfWeekEnum, 
+  TeacherAvailabilityCreate, 
+  TeacherAvailabilityUpdate 
+} from '@/types/teacherSchedule';
 
 export const createTeacherAvailability = (payload: TeacherAvailabilityCreate, config?: AxiosRequestConfig) =>
   api.post(`${endpoint.teacherAvailability}`, payload, config);

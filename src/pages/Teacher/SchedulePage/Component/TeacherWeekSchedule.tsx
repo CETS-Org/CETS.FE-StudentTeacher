@@ -1,26 +1,7 @@
 // src/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule.tsx
 import React, { useMemo, useState } from "react";
 import { ScheduleHeader, ScheduleGrid, SessionDetailsDialog, DatePickerDialog, startOfWeek, addDays, isSameDay, toDateAny } from "@/components/schedule";
-
-/* =========================
-   Types
-========================= */
-export type Session = {
-  id: string;
-  title: string;
-  classCode: string;
-  start: string;         // "YYYY-MM-DDTHH:mm:ss" hoặc "yyyy:MM:dd:HH:mm"
-  room?: string;
-  durationMin?: number;  // mặc định 90 phút (1h30)
-  attendanceStatus?: "attended" | "absent" | "upcoming";
-};
-
-type Props = {
-  sessions: Session[];
-  startHour?: number;    // giờ bắt đầu trong ngày (VD: 14h)
-  slots?: number;        // số slot / ngày
-  slotMinutes?: number;  // thời lượng / slot (phút)
-};
+import type { Session, TeacherWeekScheduleProps, SessionDetails } from "@/types/teacherSchedule";
 
 /* Shared helpers/styles come from components/schedule */
 
@@ -32,7 +13,7 @@ export default function TeacherWeekSchedule({
   startHour = 14,
   slots = 6,
   slotMinutes = 90,
-}: Props) {
+}: TeacherWeekScheduleProps) {
   const [weekStart, setWeekStart] = useState<Date>(startOfWeek(new Date()));
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
 
@@ -41,16 +22,7 @@ export default function TeacherWeekSchedule({
 
   // Popup chi tiết
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsData, setDetailsData] = useState<{
-    courseName: string;
-    className: string;
-    instructor?: string;
-    date: string;
-    time: string;
-    roomNumber: string;
-    format: "Hybrid" | "Online" | "In-person";
-    meetingLink?: string;
-  } | null>(null);
+  const [detailsData, setDetailsData] = useState<SessionDetails | null>(null);
 
   // Dialog chứa Calendar
   const [pickerOpen, setPickerOpen] = useState(false);

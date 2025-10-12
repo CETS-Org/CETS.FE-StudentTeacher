@@ -2,31 +2,27 @@
 import { useState, useEffect } from "react";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import TeacherWeekSchedule from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
-import ScheduleRegistrationDialog, { type DaySchedule } from "@/pages/Teacher/SchedulePage/Component/ScheduleRegistrationDialog";
+import ScheduleRegistrationDialog from "@/pages/Teacher/SchedulePage/Component/ScheduleRegistrationDialog";
 import { api } from "@/api";
 import { getTeacherId } from "@/lib/utils";
 import PageHeader from "@/components/ui/PageHeader";
 import { Calendar, BookOpen, Plus } from "lucide-react";
-import type { Session } from "@/pages/Teacher/SchedulePage/Component/TeacherWeekSchedule";
 import { getTeacherSchedule } from "@/api/classMeetings.api";
 import Loader from "@/components/ui/Loader";
+import { useToast } from "@/hooks/useToast";
+import Toast from "@/components/ui/Toast";
+import type { 
+  DaySchedule, 
+  Session, 
+  TeacherScheduleApiResponse 
+} from "@/types/teacherSchedule";
 
-/* ===== Types ===== */
-interface TeacherScheduleApiResponse {
-  date: string;
-  dayOfWeek: string;
-  slot: string;
-  startTime: string;
-  endTime: string;
-  className: string;
-  courseName: string;
-  room: string;
-  enrolledCount: number;
-  capacity: number;
-  onlineMeetingUrl: string | null;
+function getErrorMessage(error: any, fallback = 'An error occurred'): string {
+  const data = error.response?.data;
+  return data;
+ 
 }
 
-/* ===== Helpers ===== */
 function transformScheduleToSessions(scheduleData: TeacherScheduleApiResponse[]): Session[] {
   return scheduleData.map((item, index) => {
     // Combine date and time to create ISO format: "YYYY-MM-DDTHH:mm:ss"
@@ -66,6 +62,7 @@ export default function SchedulePage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toasts, hideToast, success, error: showError } = useToast();
 
   const breadcrumbItems = [
     { label: "Schedule" }
@@ -92,7 +89,7 @@ export default function SchedulePage() {
         
       } catch (err: any) {
         console.error("Error fetching teacher schedule:", err);
-        setError(err.response?.data?.message || err.message || "Failed to fetch schedule");
+        setError(getErrorMessage(err, "Failed to fetch schedule"));
       } finally {
         setLoading(false);
       }
@@ -112,7 +109,7 @@ export default function SchedulePage() {
   const handleRegistrationSubmit = async (daySchedules: DaySchedule) => {
     const teacherId = getTeacherId();
     if (!teacherId) {
-      console.error('Missing teacher id');
+      showError('Missing teacher ID. Please login again.');
       return;
     }
 
@@ -132,20 +129,39 @@ export default function SchedulePage() {
 
     try {
       const entries = Object.entries(daySchedules);
+      let successCount = 0;
+      let failedCount = 0;
+      let lastError = '';
+
       for (const [day, slots] of entries) {
         const dayEnum = toDayOfWeekEnum(day);
-        // For each selected slot, create an availability. In a real app, slots should be TimeSlot IDs
         for (const timeSlotId of slots) {
-          await api.createTeacherAvailability({
-            teacherID: teacherId,
-            teachDay: dayEnum,
-            timeSlotID: timeSlotId,
-          });
+          try {
+            await api.createTeacherAvailability({
+              teacherID: teacherId,
+              teachDay: dayEnum,
+              timeSlotID: timeSlotId,
+            });
+            successCount++;
+          } catch (slotErr: any) {
+            failedCount++;
+            lastError = getErrorMessage(slotErr, 'Unknown error');
+            console.error('Failed to register time slot', slotErr);
+          }
         }
       }
-      console.log('Schedule registration submitted');
-    } catch (err) {
+
+      // Show appropriate toast based on results
+      if (failedCount === 0) {
+        success(`Successfully registered ${successCount} time slot${successCount !== 1 ? 's' : ''}!`);
+      } else if (successCount > 0) {
+        showError(`Registered ${successCount} slot${successCount !== 1 ? 's' : ''}, but ${failedCount} failed. ${lastError}`);
+      } else {
+        showError(`Failed to register schedule: ${lastError}`);
+      }
+    } catch (err: any) {
       console.error('Failed to register schedule', err);
+      showError(getErrorMessage(err, 'Failed to register schedule'));
     }
   };
 
@@ -219,6 +235,16 @@ export default function SchedulePage() {
           onClose={handleRegistrationDialogClose}
           onSubmit={handleRegistrationSubmit}
         />
+
+        {/* Toast Notifications */}
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => hideToast(toast.id)}
+          />
+        ))}
     </div>
   );
 }
