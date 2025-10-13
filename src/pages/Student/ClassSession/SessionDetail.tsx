@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import Tabs, { TabContent } from "@/components/ui/Tabs";
+import Tabs from "@/components/ui/Tabs";
+import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
+import Loader from "@/components/ui/Loader";
 import { 
   Calendar,
   Clock,
   CheckCircle,
   Play,
-  ArrowLeft,
   FileText,
   Download,
   Upload,
@@ -20,222 +21,98 @@ import {
 } from "lucide-react";
 import { getCoveredTopicByMeetingId, getAssignmentsByMeetingAndStudent, getClassMeetingsByClassId, type CoveredTopic, type MeetingAssignment, type ClassMeeting } from "@/services/teachingClassesService";
 import { getStudentId } from "@/lib/utils";
-
-// Session interface
-interface CourseSession {
-  id: string;
-  title: string;
-  topic: string;
-  date: string;
-  duration: string;
-  isCompleted: boolean;
-  submissionTasks: SubmissionTask[];
-  // Session Context fields
-  topicTitle: string;
-  totalSlots: number;
-  required: boolean;
-  objectives: string[];
-  contentSummary: string;
-  preReadingUrl?: string;
-}
-
-interface SubmissionTask {
-  id: string;
-  title: string;
-  sessionId: string;
-  isSubmitted: boolean;
-}
-
-interface CourseMaterial {
-  id: string;
-  title: string;
-  fileName: string;
-  uploadDate: string;
-  size?: string;
-}
-
-interface Assignment {
-  id: string;
-  title: string;
-  dueDate: string;
-  status: "pending" | "late" | "submitted" | "graded" | "locked";
-  score?: string;
-  submittedFile?: {
-    name: string;
-    size: string;
-  };
-  instructorRemarks?: string;
-  availableDate?: string;
-}
-
-interface CourseDetail {
-  id: string;
-  title: string;
-  instructor: string;
-  duration: string;
-  nextClass: string;
-  progress: number;
-  status: "Registered" | "In Progress" | "Completed";
-  sessions: CourseSession[];
-  materials: CourseMaterial[];
-  assignments: Assignment[];
-}
-
-// Mock data (kept for header fallback but tabs will use API)
-const mockCourseDetail: CourseDetail = {
-  id: "1",
-  title: "English For Beginner",
-  instructor: "Sarah Johnson",
-  duration: "12 weeks", 
-  nextClass: "Jan 28, 2025",
-  progress: 95,
-  status: "Registered",
-  materials: [
-    {
-      id: "material1",
-      title: "English for Beginners.pdf",
-      fileName: "English for Beginners.pdf",
-      uploadDate: "Jan 30, 2025",
-      size: "2.4 MB"
-    },
-    {
-      id: "material2", 
-      title: "Grammar Basics.pdf",
-      fileName: "Grammar Basics.pdf",
-      uploadDate: "Jan 30, 2025",
-      size: "1.8 MB"
-    }
-  ],
-  assignments: [
-    {
-      id: "assignment1",
-      title: "Assignment First Term - Unit 1, 2, 3",
-      dueDate: "Jan 29, 2025",
-      status: "graded",
-      score: "95/100",
-      submittedFile: {
-        name: "project_v2.pdf",
-        size: "2.4 MB"
-      },
-      instructorRemarks: "Good work on the responsive design! The JavaScript functionality is well implemented."
-    },
-    {
-      id: "assignment2",
-      title: "Assignment First Term - Unit 4, 5, 6", 
-      dueDate: "Jan 30, 2025",
-      status: "pending"
-    }
-  ],
-  sessions: [
-    {
-      id: "session1",
-      title: "Session 1",
-      topic: "Greetings and Introduction",
-      date: "09-30 23/08/2025 - 11:45 23/08/2025",
-      duration: "1h 45m",
-      isCompleted: true,
-      submissionTasks: [
-        {
-          id: "task1-1",
-          title: "Submit: exercise 1 session 1",
-          sessionId: "session1",
-          isSubmitted: true
-        },
-        {
-          id: "task1-2", 
-          title: "Submit: exercise 2 session 1",
-          sessionId: "session1",
-          isSubmitted: true
-        }
-      ],
-      topicTitle: "Basic Greetings and Self-Introduction",
-      totalSlots: 2, // 2 slots = 90 minutes
-      required: true,
-      objectives: [
-        "Learn basic greeting phrases in English",
-        "Practice introducing yourself and others",
-        "Understand cultural differences in greetings",
-        "Build confidence in speaking English"
-      ],
-      contentSummary: "This session covers fundamental English greetings, including formal and informal ways to say hello, goodbye, and introduce yourself. Students will practice pronunciation and learn about cultural context.",
-      preReadingUrl: "https://example.com/greetings-reading"
-    },
-    {
-      id: "session2",
-      title: "Session 2",
-      topic: "Numbers and Time",
-      date: "09-30 25/08/2025 - 11:45 25/08/2025",
-      duration: "1h 45m",
-      isCompleted: false,
-      submissionTasks: [
-        {
-          id: "task2-1",
-          title: "Submit: exercise 1 session 2", 
-          sessionId: "session2",
-          isSubmitted: false
-        }
-      ],
-      topicTitle: "Numbers, Time, and Daily Schedules",
-      totalSlots: 2, // 2 slots = 90 minutes
-      required: true,
-      objectives: [
-        "Master numbers 1-100 in English",
-        "Learn to tell time in different formats",
-        "Practice describing daily routines",
-        "Understand time-related vocabulary"
-      ],
-      contentSummary: "Students will learn cardinal and ordinal numbers, how to tell time using both 12-hour and 24-hour formats, and vocabulary related to daily schedules and routines.",
-      preReadingUrl: "https://example.com/numbers-time-reading"
-    },
-    {
-      id: "session3",
-      title: "Session 3",
-      topic: "Family and Relationships",
-      date: "09-30 27/08/2025 - 11:45 27/08/2025",
-      duration: "1h 45m",
-      isCompleted: false,
-      submissionTasks: [],
-      topicTitle: "Family Members and Relationships",
-      totalSlots: 2, // 2 slots = 90 minutes
-      required: true,
-      objectives: [
-        "Learn family member vocabulary",
-        "Practice describing family relationships",
-        "Understand possessive forms",
-        "Discuss family traditions and customs"
-      ],
-      contentSummary: "This session introduces vocabulary for family members, teaches possessive forms (my, your, his, her), and provides practice in describing family relationships and traditions.",
-      preReadingUrl: "https://example.com/family-reading"
-    }
-  ]
-};
+import { api } from "@/api";
+import type { ClassDetail } from "@/types/class";
+import type { LearningMaterial } from "@/types/learningMaterial";
+import { config } from "@/lib/config";
 
 export default function SessionDetail() {
-  const { classId, sessionId } = useParams();
-  const navigate = useNavigate();
+  const { classId, sessionId } = useParams<{ classId: string; sessionId: string }>();
   const [activeTab, setActiveTab] = useState("context");
   const [context, setContext] = useState<CoveredTopic | null>(null);
   const [assignments, setAssignments] = useState<MeetingAssignment[] | null>(null);
+  const [materials, setMaterials] = useState<LearningMaterial[]>([]);
   const [meeting, setMeeting] = useState<ClassMeeting | null>(null);
+  const [classDetail, setClassDetail] = useState<ClassDetail | null>(null);
+  const [sessionNumber, setSessionNumber] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
   const [loadingContext, setLoadingContext] = useState<boolean>(true);
   const [loadingAssignments, setLoadingAssignments] = useState<boolean>(true);
-  const [loadingMeeting, setLoadingMeeting] = useState<boolean>(true);
+  const [loadingMaterials, setLoadingMaterials] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [errorContext, setErrorContext] = useState<string | null>(null);
   const [errorAssignments, setErrorAssignments] = useState<string | null>(null);
-  const [errorMeeting, setErrorMeeting] = useState<string | null>(null);
+  const [errorMaterials, setErrorMaterials] = useState<string | null>(null);
   const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null);
-  
-  // In real app, fetch course header; for now, only use meeting/context for header
-  const course = mockCourseDetail;
 
-  // Load Session Context and Assignments via API
+  // Helper to parse objectives string from API to string[]
+  const parseObjectives = (raw?: string | null): string[] => {
+    if (!raw) return [];
+    const trimmed = raw.trim();
+    try {
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+      }
+    } catch {}
+    return trimmed
+      .split(/\r?\n|;|•|,/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  };
+
+  // Fetch class details and meeting info
+  useEffect(() => {
+    const loadClassAndMeetingDetails = async () => {
+      if (!classId || !sessionId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch class details
+        const classResponse = await api.getClassDetailsById(classId);
+        setClassDetail(classResponse.data);
+        
+        // Fetch all meetings to find the current one and its session number
+        const meetingsResponse = await getClassMeetingsByClassId(classId);
+        const meetings = Array.isArray(meetingsResponse) ? meetingsResponse : [];
+        
+        if (meetings.length > 0) {
+          const meetingIndex = meetings.findIndex(m => m.id === sessionId);
+          const foundMeeting = meetings.find(m => m.id === sessionId);
+          
+          if (foundMeeting) {
+            setMeeting(foundMeeting);
+            // Use passcode if available, otherwise use session number
+            const sessionNum = foundMeeting.passcode || `Session ${meetingIndex + 1}`;
+            setSessionNumber(sessionNum);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching class/meeting details:', err);
+        setError('Failed to load session details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadClassAndMeetingDetails();
+  }, [classId, sessionId]);
+
+  // Load Session Context via API
   useEffect(() => {
     let mounted = true;
     async function loadContext() {
       if (!sessionId) { setErrorContext("Missing sessionId"); setLoadingContext(false); return; }
       try {
-        const data = await getCoveredTopicByMeetingId(sessionId);
-        if (mounted) setContext(data);
+        const rawData = await getCoveredTopicByMeetingId(sessionId);
+        // Parse objectives from string to array
+        const parsedContext = {
+          ...rawData,
+          objectives: parseObjectives((rawData as any)?.objectives)
+        };
+        if (mounted) setContext(parsedContext as CoveredTopic);
       } catch (e: any) {
         if (mounted) setErrorContext(e?.message || "Failed to load session context");
       } finally {
@@ -245,25 +122,6 @@ export default function SessionDetail() {
     loadContext();
     return () => { mounted = false; };
   }, [sessionId]);
-
-  // Load Meeting by classId then match sessionId
-  useEffect(() => {
-    let mounted = true;
-    async function loadMeeting() {
-      if (!classId || !sessionId) { setErrorMeeting("Missing classId/sessionId"); setLoadingMeeting(false); return; }
-      try {
-        const list = await getClassMeetingsByClassId(classId);
-        const found = list.find(m => m.id === sessionId);
-        if (mounted) setMeeting(found ?? null);
-      } catch (e: any) {
-        if (mounted) setErrorMeeting(e?.message || "Failed to load meeting");
-      } finally {
-        if (mounted) setLoadingMeeting(false);
-      }
-    }
-    loadMeeting();
-    return () => { mounted = false; };
-  }, [classId, sessionId]);
 
   useEffect(() => {
     let mounted = true;
@@ -290,62 +148,123 @@ export default function SessionDetail() {
     loadAssignments();
     return () => { mounted = false; };
   }, [sessionId]);
+
+  // Load Materials via API
+  useEffect(() => {
+    let mounted = true;
+    async function loadMaterials() {
+      if (!sessionId) { 
+        setErrorMaterials("Missing sessionId"); 
+        setLoadingMaterials(false); 
+        return; 
+      }
+      
+      try {
+        const response = await api.getLearningMaterialsByClassMeeting(sessionId);
+        const materialsData = response.data || [];
+        if (mounted) setMaterials(materialsData);
+      } catch (e: any) {
+        if (mounted) setErrorMaterials(e?.message || "Failed to load materials");
+      } finally {
+        if (mounted) setLoadingMaterials(false);
+      }
+    }
+    loadMaterials();
+    return () => { mounted = false; };
+  }, [sessionId]);
   
-  if (!sessionId) {
+  const handleDownloadFile = async (material: LearningMaterial) => {
+    if (!material.storeUrl) {
+      alert('File URL is not available.');
+      return;
+    }
+
+    try {
+      // Construct full URL using storage base URL
+      const fullUrl = material.storeUrl.startsWith('http') 
+        ? material.storeUrl 
+        : `${config.storagePublicUrl}${material.storeUrl.startsWith('/') ? material.storeUrl : '/' + material.storeUrl}`;
+      
+      // Fetch the file as a blob to bypass CORS restrictions
+      const response = await fetch(fullUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create a blob URL and trigger download
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = material.fileName || material.title || 'download';
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download file. Please try again.');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB');
+    } catch {
+      return dateString;
+    }
+  };
+
+  const tabs = [
+    { id: "context", label: "Session Context" },
+    { id: "materials", label: "Course Materials" },
+    { id: "homework", label: "Homework/Quiz" },
+    { id: "assignments", label: "Assignment Submission" }
+  ];
+
+  // Breadcrumbs - using real data when available
+  const crumbs: Crumb[] = classDetail
+    ? [
+        { label: "My Classes", to: "/student/my-class" },
+        { label: classDetail.courseName, to: `/student/class/${classId}` },
+        { label: sessionNumber || "Session" },
+      ]
+    : [
+        { label: "My Classes", to: "/student/my-class" },
+        { label: "Loading..." },
+      ];
+
+  if (loading) {
     return (
       <StudentLayout>
-        <div className="max-w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="text-center py-16">
-            <h2 className="text-2xl font-bold text-neutral-900 mb-4">Session Not Found</h2>
-            <p className="text-neutral-600 mb-6">The requested session could not be found.</p>
-            <Button onClick={() => navigate(`/student/class/${classId}`)}>
-              Back to Sessions
-            </Button>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader />
+        </div>
+      </StudentLayout>
+    );
+  }
+
+  if (error || !classDetail || !sessionId) {
+    return (
+      <StudentLayout>
+        <div className="px-4 py-6 sm:px-6 lg:px-8">
+          <div className="text-center text-red-600">
+            {error || 'Session not found'}
           </div>
         </div>
       </StudentLayout>
     );
   }
 
-  const handleDownload = (material: CourseMaterial) => {
-    console.log(`Downloading ${material.fileName}`);
-  };
-
-  const goBack = () => {
-    navigate(`/student/class/${classId}`);
-  }
-
-  const tabs = [
-    { id: "context", label: "Session Context", badge: null, color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white" },
-    { id: "materials", label: "Course Materials", badge: course.materials.length, color: "bg-gradient-to-r from-accent-500 to-accent-600 text-white" },
-    { id: "homework", label: "Homework/Quiz", badge: null, color: "bg-gradient-to-r from-info-500 to-info-600 text-white" },
-    { id: "assignments", label: "Assignment Submission", badge: assignments?.length ?? 0, color: "bg-gradient-to-r from-warning-500 to-warning-600 text-white" }
-  ];
-
   return (
-    <StudentLayout>
-      <div className="max-w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-6">
-          <button 
-            onClick={goBack}
-            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">All session</span>
-          </button>
-          <span className="text-neutral-400">›</span>
-          <span className="text-sm text-neutral-900 font-medium">{meeting?.passcode ?? context?.topicTitle ?? "Session"}</span>
-        </div>
+      <div className="px-4 py-6 sm:px-6 lg:px-8 space-y-8">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={crumbs} />
 
         {/* Session Header */}
-        {loadingMeeting && (
-          <div className="mb-4 text-sm text-neutral-600">Loading session header...</div>
-        )}
-        {errorMeeting && !loadingMeeting && (
-          <div className="mb-4 text-sm text-danger-600">{errorMeeting}</div>
-        )}
-        <div className="flex items-center justify-between mb-8 p-6 border border-accent-200 rounded-xl bg-white">
+        <div className="flex items-center justify-between p-6 border border-accent-200 rounded-xl bg-white">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md ${
               meeting && meeting.isActive === false ? 'bg-success-500' : 'bg-accent-500'
@@ -358,10 +277,9 @@ export default function SessionDetail() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-primary-800 mb-2">
-                {meeting?.passcode ?? `Session`}
+                {sessionNumber || classDetail.courseName}
               </h1>
               <p className="text-accent-600 text-lg">{context?.topicTitle ?? ''}</p>
-              {/* <p className="text-neutral-500 mt-1">{context?.topicTitle ?? ''}</p> */}
             </div>
           </div>
           <div className="text-right">
@@ -376,19 +294,17 @@ export default function SessionDetail() {
           </div>
         </div>
 
-        {/* Tabs Navigation */}
-        <Card className="mb-8 border border-accent-200 bg-white shadow-lg">
-          <Tabs
-            tabs={tabs.map(tab => ({
-              ...tab,
-              badge: tab.badge === null ? undefined : tab.badge
-            }))}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-
-          {/* Tab Content */}
-          <TabContent activeTab={activeTab} tabId="context">
+        {/* Tabs + Card */}
+        <Card className="shadow-lg border border-accent-100 bg-white">
+          <div className="bg-white p-1 rounded-lg">
+            <Tabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={(tabId) => setActiveTab(tabId)}
+            />
+            <div className="mt-4 p-4 min-h-[400px]">
+              {/* Session Context Tab */}
+              <div className={activeTab === "context" ? "block" : "hidden"}>
             <div className="space-y-6">
               {loadingContext && (
                 <div className="text-sm text-neutral-600">Loading session context...</div>
@@ -400,7 +316,7 @@ export default function SessionDetail() {
                 <>
                   {/* Session Overview Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 rounded-xl">
+                    <div className="p-4 bg-gradient-to-br from-secondary-200 to-secondary-300 border border-primary-200 rounded-xl">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
                           <BookOpen className="w-4 h-4 text-white" />
@@ -439,7 +355,7 @@ export default function SessionDetail() {
                       </div>
                       <h3 className="text-xl font-bold text-success-800">Learning Objectives</h3>
                     </div>
-                    {(!context.objectives || context.objectives.length === 0) ? (
+                    {(!context.objectives || !Array.isArray(context.objectives) || context.objectives.length === 0) ? (
                       <div className="text-success-700">No objectives provided.</div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -493,12 +409,26 @@ export default function SessionDetail() {
                 </>
               )}
             </div>
-          </TabContent>
+              </div>
 
-          <TabContent activeTab={activeTab} tabId="materials">
+              {/* Course Materials Tab */}
+              <div className={activeTab === "materials" ? "block" : "hidden"}>
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-primary-800">Course Materials</h3>
-              {course.materials.map((material) => (
+              {loadingMaterials && (
+                <div className="text-sm text-neutral-600">Loading materials...</div>
+              )}
+              {errorMaterials && !loadingMaterials && (
+                <div className="text-sm text-danger-600">{errorMaterials}</div>
+              )}
+              {!loadingMaterials && !errorMaterials && materials.length === 0 && (
+                <div className="text-center py-12">
+                  <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-neutral-900 mb-2">No materials available</h3>
+                  <p className="text-neutral-600">Course materials will be uploaded by your instructor.</p>
+                </div>
+              )}
+              {!loadingMaterials && !errorMaterials && materials.map((material) => (
                 <div key={material.id} className="flex items-center justify-between p-4 border border-accent-200 rounded-lg bg-white hover:bg-accent-25 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-accent-500 rounded-xl flex items-center justify-center shadow-md">
@@ -506,18 +436,17 @@ export default function SessionDetail() {
                     </div>
                     <div>
                       <h4 className="font-semibold text-primary-800">{material.title}</h4>
-                      <p className="text-sm text-accent-600 font-medium">{material.uploadDate}</p>
+                      <p className="text-sm text-accent-600 font-medium">
+                        Uploaded on {formatDate(material.createdAt)}
+                      </p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-4">
-                    {material.size && (
-                      <span className="text-sm font-medium text-primary-600 bg-neutral-200 px-3 py-1 rounded-full">{material.size}</span>
-                    )}
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => handleDownload(material)}
+                      onClick={() => handleDownloadFile(material)}
                       iconLeft={<Download className="w-4 h-4" />}
                       className="bg-accent-500 hover:bg-accent-600"
                     >
@@ -526,17 +455,11 @@ export default function SessionDetail() {
                   </div>
                 </div>
               ))}
-              {course.materials.length === 0 && (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-neutral-900 mb-2">No materials available</h3>
-                  <p className="text-neutral-600">Course materials will be uploaded by your instructor.</p>
-                </div>
-              )}
             </div>
-          </TabContent>
+              </div>
 
-          <TabContent activeTab={activeTab} tabId="homework">
+              {/* Homework/Quiz Tab */}
+              <div className={activeTab === "homework" ? "block" : "hidden"}>
             <div className="text-center py-16 border border-info-200 bg-info-25 rounded-lg">
               <div className="w-20 h-20 bg-info-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckSquare className="w-10 h-10 text-white" />
@@ -544,9 +467,10 @@ export default function SessionDetail() {
               <h3 className="text-xl font-bold text-info-800 mb-3">Homework/Quiz</h3>
               <p className="text-info-600 font-medium">Coming soon...</p>
             </div>
-          </TabContent>
+              </div>
 
-          <TabContent activeTab={activeTab} tabId="assignments">
+              {/* Assignment Submission Tab */}
+              <div className={activeTab === "assignments" ? "block" : "hidden"}>
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-primary-800">Assignment Submission</h3>
               {loadingAssignments && (
@@ -651,9 +575,10 @@ export default function SessionDetail() {
                 );
               })}
             </div>
-          </TabContent>
+              </div>
+            </div>
+          </div>
         </Card>
       </div>
-    </StudentLayout>
   );
 }
