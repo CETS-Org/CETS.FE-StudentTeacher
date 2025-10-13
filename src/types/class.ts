@@ -82,3 +82,13 @@ export interface StudentLearningClassResponse {
   roomCode: string;
   isActive: boolean;
 }
+
+// Teacher Class Detail Interface (simplified view)
+export interface ClassDetail {
+  id: string;
+  className: string;
+  courseName: string;
+  courseId: string;
+  capacity: number;
+  enrolledCount: number;
+}

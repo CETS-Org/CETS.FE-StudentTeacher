@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
+import type { ClassDetail } from "@/types/class";
+import type { SessionContent } from "@/types/session";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
-import { getClassMeetingCoveredTopic } from "@/api/classMeetings.api";
+import Loader from "@/components/ui/Loader";
+import { getClassMeetingCoveredTopic, getClassMeetingsByClassId, type ClassMeeting } from "@/api/classMeetings.api";
+import { api } from "@/api";
 // Import các component cho từng tab
 
 import CourseMaterialsTab from "@/pages/Teacher/ClassDetail/Component/CourseMaterialsTab";
@@ -17,26 +21,11 @@ import SessionContentTab from "@/pages/Teacher/ClassDetail/Component/SessionCont
 import SessionAssignmentsTab from "@/pages/Teacher/ClassDetail/Component/SessionAssignmentsTab";
 
 
-type SessionContent = {
-  topicTitle: string;
-  objectives: string[];
-  contentSummary: string;
-  preReadingUrl?: string;
-};
-
-
 const tabs = [
   { id: "sessionContent", label: "Session Content" },
   { id: "sessionAssignment", label: "Assignments" },
   { id: "materials", label: "Course Materials" },
   { id: "students", label: "Classes" }, // "Classes" ở đây là danh sách sinh viên trong lớp
-];
-
-// Breadcrumbs
-const crumbs: Crumb[] = [
-  { label: "Classes", to: "/teacher/classes" },
-  { label: "English For Beginner", to: "/teacher/classDetail" }, 
-  { label: "Session 01" }, 
 ];
 
 export default function ClassDetailPage() {
@@ -45,6 +34,11 @@ export default function ClassDetailPage() {
   const [loadingContext, setLoadingContext] = useState(false);
   const [errorContext, setErrorContext] = useState<string | null>(null);
   const [sessionContent, setSessionContent] = useState<SessionContent | null>(null);
+  const [classDetail, setClassDetail] = useState<ClassDetail | null>(null);
+  const [currentMeeting, setCurrentMeeting] = useState<ClassMeeting | null>(null);
+  const [sessionNumber, setSessionNumber] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Debug: Log để kiểm tra
   // console.log("SessionDetail - classId:", classId, "classMeetingId:", classMeetingId);
@@ -64,6 +58,41 @@ export default function ClassDetailPage() {
       .map(s => s.trim())
       .filter(Boolean);
   };
+
+  // Fetch class details and meeting info
+  useEffect(() => {
+    const loadClassAndMeetingDetails = async () => {
+      if (!classId || !classMeetingId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch class details
+        const classResponse = await api.getClassDetailsById(classId);
+        setClassDetail(classResponse.data);
+        
+        // Fetch all meetings to find the current one and its session number
+        const meetings = await getClassMeetingsByClassId(classId);
+        const meetingIndex = meetings.findIndex(m => m.id === classMeetingId);
+        const meeting = meetings.find(m => m.id === classMeetingId);
+        
+        if (meeting) {
+          setCurrentMeeting(meeting);
+          // Use passcode if available, otherwise use session number
+          const sessionNum = meeting.passcode || `Session ${meetingIndex + 1}`;
+          setSessionNumber(sessionNum);
+        }
+      } catch (err) {
+        console.error('Error fetching class/meeting details:', err);
+        setError('Failed to load session details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadClassAndMeetingDetails();
+  }, [classId, classMeetingId]);
 
   // Fetch covered topic for this session
   useEffect(() => {
@@ -144,25 +173,57 @@ export default function ClassDetailPage() {
     );
   };
 
+  // Breadcrumbs - using real data when available
+  const crumbs: Crumb[] = classDetail
+    ? [
+        { label: "My Courses", to: "/teacher/courses" },
+        { label: classDetail.courseName, to: `/teacher/courses/${classDetail.courseId}/classes` },
+        { label: `Class ${classDetail.className}`, to: `/teacher/class/${classId}` },
+        { label: sessionNumber || "Session" },
+      ]
+    : [
+        { label: "My Courses", to: "/teacher/courses" },
+        { label: "Loading..." },
+      ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (error || !classDetail) {
+    return (
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
+        <div className="text-center text-red-600">
+          {error || 'Session not found'}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className=" px-4 py-6 sm:px-6 lg:px-8 space-y-8 ">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 space-y-8">
       <Breadcrumbs items={crumbs} />
       {/* Page Header */}
       <PageHeader
-        title="English for Beginer - Session 01"
+        title={`${classDetail.courseName} - ${sessionNumber || 'Session'}`}
         description="Manage session content, assignments, materials, and student list."
-       
       />
 
       {/* Tabs + Card */}
-      <Card className="bg-white p-1 rounded-lg border border-gray-200 shadow-md ">
-        <Tabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={(tabId) => setActiveTab(tabId)}
-        />
-        <div className="mt-4 p-4 min-h-[607px]">
-          {renderAllTabs()}
+      <Card className="shadow-lg border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
+        <div className="bg-white p-1 rounded-lg">
+          <Tabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId)}
+          />
+          <div className="mt-4 p-4 min-h-[607px]">
+            {renderAllTabs()}
+          </div>
         </div>
       </Card>
     </div>

@@ -31,7 +31,7 @@ import {
   getClassReservations,
   createCompleteReservation,
 } from './reservation.api';
-import { getStudentLearningClasses } from './classes.api';
+import { getStudentLearningClasses, getClassDetailsById } from './classes.api';
 import { getPlanTypes, getTimeSlots } from './lookup.api';
 import {
   createTeacherAvailability,
@@ -103,6 +103,7 @@ export const api = {
 
   // Student classes
   getStudentLearningClasses,
+  getClassDetailsById,
 
   // Lookups
   getPlanTypes,
@@ -155,6 +156,7 @@ export {
   getClassReservations,
   createCompleteReservation,
   getStudentLearningClasses,
+  getClassDetailsById,
   getPlanTypes,
   getTimeSlots,
   getClassMeetingsByClassId,
