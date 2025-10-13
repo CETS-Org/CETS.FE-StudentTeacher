@@ -6,11 +6,11 @@ import Card from "@/components/ui/Card";
 import Tabs from "@/components/ui/Tabs";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import Loader from "@/components/ui/Loader";
+import PageHeader from "@/components/ui/PageHeader";
 import { 
   Calendar,
   Clock,
   CheckCircle,
-  Play,
   FileText,
   Download,
   Upload,
@@ -19,7 +19,8 @@ import {
   Target,
   CheckSquare
 } from "lucide-react";
-import { getCoveredTopicByMeetingId, getAssignmentsByMeetingAndStudent, getClassMeetingsByClassId, type CoveredTopic, type MeetingAssignment, type ClassMeeting } from "@/services/teachingClassesService";
+import { getCoveredTopicByMeetingId, getAssignmentsByMeetingAndStudent, type CoveredTopic, type MeetingAssignment } from "@/services/teachingClassesService";
+import { getClassMeetingsByClassId, type ClassMeeting } from "@/api/classMeetings.api";
 import { getStudentId } from "@/lib/utils";
 import { api } from "@/api";
 import type { ClassDetail } from "@/types/class";
@@ -75,10 +76,9 @@ export default function SessionDetail() {
         setClassDetail(classResponse.data);
         
         // Fetch all meetings to find the current one and its session number
-        const meetingsResponse = await getClassMeetingsByClassId(classId);
-        const meetings = Array.isArray(meetingsResponse) ? meetingsResponse : [];
+        const meetings = await getClassMeetingsByClassId(classId);
         
-        if (meetings.length > 0) {
+        if (meetings && meetings.length > 0) {
           const meetingIndex = meetings.findIndex(m => m.id === sessionId);
           const foundMeeting = meetings.find(m => m.id === sessionId);
           
@@ -263,36 +263,11 @@ export default function SessionDetail() {
         {/* Breadcrumbs */}
         <Breadcrumbs items={crumbs} />
 
-        {/* Session Header */}
-        <div className="flex items-center justify-between p-6 border border-accent-200 rounded-xl bg-white">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md ${
-              meeting && meeting.isActive === false ? 'bg-success-500' : 'bg-accent-500'
-            }`}>
-              {meeting && meeting.isActive === false ? (
-                <CheckCircle className="w-6 h-6 text-white" />
-              ) : (
-                <Play className="w-5 h-5 text-white" />
-              )}
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-primary-800 mb-2">
-                {sessionNumber || classDetail.courseName}
-              </h1>
-              <p className="text-accent-600 text-lg">{context?.topicTitle ?? ''}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center gap-2 bg-accent-100 px-3 py-2 rounded-lg mb-2">
-              <Calendar className="w-4 h-4 text-primary-600" />
-              <span className="font-medium text-primary-700">{meeting?.date && meeting?.date !== '0001-01-01' ? meeting.date : 'N/A'}</span>
-            </div>
-            <div className="flex items-center gap-2 bg-neutral-100 px-3 py-2 rounded-lg w-fit ml-auto">
-              <Clock className="w-4 h-4 text-neutral-600" />
-              <span className="font-medium text-neutral-700">{context?.totalSlots ? `${context.totalSlots} minutes` : ''}</span>
-            </div>
-          </div>
-        </div>
+        {/* Page Header */}
+        <PageHeader
+          title={`${classDetail.courseName} - ${sessionNumber || 'Session'}`}
+          description={context?.topicTitle || 'View session content, materials, and assignments.'}
+        />
 
         {/* Tabs + Card */}
         <Card className="shadow-lg border border-accent-100 bg-white">

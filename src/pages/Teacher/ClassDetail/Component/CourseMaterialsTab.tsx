@@ -332,7 +332,7 @@ export default function CourseMaterialsTab() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleViewFile(material)}
-                        className="hover:!bg-green-500 !text-green-500 hover:text-white"
+                        className="hover:!bg-green-500 !text-green-500 hover:!text-white"
                         title="View File"
                       >
                         <Eye size={16} />
@@ -341,7 +341,7 @@ export default function CourseMaterialsTab() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleUpdateMaterial(material)}
-                        className="hover:!bg-blue-500  !text-blue-500 hover:text-white"
+                        className="hover:!bg-blue-500  !text-blue-500 hover:!text-white"
                         title="Edit Material"
                       >
                         <Edit size={16} />
@@ -350,7 +350,7 @@ export default function CourseMaterialsTab() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteMaterial(material.id)}
-                        className="hover:!bg-red-500 text-red-500 hover:text-white"
+                        className="hover:!bg-red-500 text-red-500 hover:!text-white"
                         title="Delete Material"
                       >
                         <Trash2 size={16} />
