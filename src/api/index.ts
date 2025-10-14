@@ -47,6 +47,7 @@ import {
 } from './classMeetings.api';
 import { getAssignmentsByMeetingAndStudent } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
+import { getAcademicResults, getCourseDetails } from './academicResults.api';
 
 // Export axios instance under a clear name for direct HTTP usage
 export const apiClient = axiosInstance;
@@ -122,6 +123,9 @@ export const api = {
   getTeacherAvailabilityByTeacherAndDate,
   // Attendance
   getStudentsInClass,
+  // Academic Results
+  getAcademicResults,
+  getCourseDetails,
 };
 
 // Also export individual functions for direct import usage
@@ -169,6 +173,8 @@ export {
   getTeacherAvailabilityByTeacher,
   getTeacherAvailabilityByTeacherAndDate,
   getStudentsInClass,
+  getAcademicResults,
+  getCourseDetails,
 };
 
 

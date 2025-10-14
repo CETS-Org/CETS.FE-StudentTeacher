@@ -1,131 +1,129 @@
-import React, { useState, useMemo } from "react";
-import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
-import Tabs, { TabContent } from "@/components/ui/Tabs";
-import Pagination from "@/Shared/Pagination";
+import React, { useState, useEffect } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import {
-  GraduationCap,
-  Download,
-  Filter,
-  Award,
-  TrendingUp,
-  TrendingDown,
-  AlertCircle
-} from "lucide-react";
+import { GraduationCap, AlertCircle } from "lucide-react";
 
-import type { CourseResultSummary } from "@/types/academicResults";
-import { mockAcademicResultsReport } from "./data/mockAcademicResultsData";
-import OverallStatsCard from "./components/OverallStatsCard";
-import AcademicResultSummaryCard from "./components/AcademicResultSummaryCard";
-import AcademicResultDetailsModal from "./components/AcademicResultDetailsModal";
+import type { AcademicResultsApiResponse } from "@/types/academicResults";
+import { getAcademicResults } from "@/api/academicResults.api";
+import SimpleStatsCard from "./components/SimpleStatsCard";
+import SimpleCourseCard from "./components/SimpleCourseCard";
+import CourseDetailModal from "./components/CourseDetailModal";
 
 export default function AcademicResults() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedCourse, setSelectedCourse] = useState<CourseResultSummary | null>(null);
+  const [academicData, setAcademicData] = useState<AcademicResultsApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const itemsPerPage = 5;
 
-  const academicData = mockAcademicResultsReport;
+  // Student ID - in a real app, this would come from authentication context
+  const studentId = "77437EAE-7B33-4858-B8E2-522776B2475A";
 
-  // Filter courses based on active tab
-  const filteredCourses = useMemo(() => {
-    let filtered = academicData.courseSummaries;
-    
-    switch (activeTab) {
-      case "excellent":
-        return filtered.filter(course => course.gpa >= 3.7);
-      case "good":
-        return filtered.filter(course => course.gpa >= 3.0 && course.gpa < 3.7);
-      case "satisfactory":
-        return filtered.filter(course => course.gpa >= 2.0 && course.gpa < 3.0);
-      case "needs-improvement":
-        return filtered.filter(course => course.gpa < 2.0);
-      case "overview":
-      default:
-        return filtered;
-    }
-  }, [activeTab, academicData.courseSummaries]);
+  useEffect(() => {
+    const fetchAcademicResults = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const apiResponse = await getAcademicResults(studentId);
+        setAcademicData(apiResponse);
+      } catch (err) {
+        console.error('Error fetching academic results:', err);
+        setError('Failed to load academic results. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Reset to page 1 when tab changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab]);
+    fetchAcademicResults();
+  }, [studentId]);
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedCourses = filteredCourses.slice(startIndex, endIndex);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleViewDetails = (courseId: string) => {
-    const courseData = academicData.courseSummaries.find(course => course.courseId === courseId);
-    if (courseData) {
-      setSelectedCourse(courseData);
-      setIsModalOpen(true);
-    }
+  const handleCourseClick = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setSelectedCourse(null);
+    setSelectedCourseId(null);
   };
-
-  // Calculate tab counts
-  const tabCounts = useMemo(() => {
-    const summaries = academicData.courseSummaries;
-    return {
-      overview: summaries.length,
-      excellent: summaries.filter(c => c.gpa >= 3.7).length,
-      good: summaries.filter(c => c.gpa >= 3.0 && c.gpa < 3.7).length,
-      satisfactory: summaries.filter(c => c.gpa >= 2.0 && c.gpa < 3.0).length,
-      needsImprovement: summaries.filter(c => c.gpa < 2.0).length
-    };
-  }, [academicData.courseSummaries]);
-
-  const tabs = [
-    { 
-      id: "overview", 
-      label: "Overview", 
-      badge: tabCounts.overview, 
-      color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white" 
-    },
-    { 
-      id: "excellent", 
-      label: "Excellent (3.7+)", 
-      badge: tabCounts.excellent, 
-      color: "bg-gradient-to-r from-success-500 to-success-600 text-white" 
-    },
-    { 
-      id: "good", 
-      label: "Good (3.0-3.6)", 
-      badge: tabCounts.good, 
-      color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white" 
-    },
-    { 
-      id: "satisfactory", 
-      label: "Satisfactory (2.0-2.9)", 
-      badge: tabCounts.satisfactory, 
-      color: "bg-gradient-to-r from-warning-500 to-warning-600 text-white" 
-    },
-    { 
-      id: "needs-improvement", 
-      label: "Needs Improvement (<2.0)", 
-      badge: tabCounts.needsImprovement, 
-      color: "bg-gradient-to-r from-error-500 to-error-600 text-white" 
-    }
-  ];
 
   const breadcrumbItems = [
     { label: "Academic Results" }
   ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="p-6 max-w-full space-y-8">
+        <Breadcrumbs items={breadcrumbItems} />
+        <PageHeader
+          title="Academic Results"
+          description="View your academic performance and course information"
+          icon={<GraduationCap className="w-5 h-5 text-white" />}
+        />
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading academic results...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-6 max-w-full space-y-8">
+        <Breadcrumbs items={breadcrumbItems} />
+        <PageHeader
+          title="Academic Results"
+          description="View your academic performance and course information"
+          icon={<GraduationCap className="w-5 h-5 text-white" />}
+        />
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-12 h-12 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-3">Error Loading Data</h3>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!academicData) {
+    return (
+      <div className="p-6 max-w-full space-y-8">
+        <Breadcrumbs items={breadcrumbItems} />
+        <PageHeader
+          title="Academic Results"
+          description="View your academic performance and course information"
+          icon={<GraduationCap className="w-5 h-5 text-white" />}
+        />
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <GraduationCap className="w-12 h-12 text-gray-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-3">No Data Available</h3>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              No academic results found.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-full space-y-8">
@@ -134,90 +132,40 @@ export default function AcademicResults() {
       
       <PageHeader
         title="Academic Results"
-        description="View your academic performance, grades, and course results"
+        description="View your academic performance and course information"
         icon={<GraduationCap className="w-5 h-5 text-white" />}
       />
 
       {/* Overall Statistics */}
-      <OverallStatsCard stats={academicData.overallStats} />
+      <SimpleStatsCard stats={academicData} />
 
-      {/* Actions Bar */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <Button 
-          variant="secondary" 
-          iconLeft={<Download className="w-4 h-4" />}
-        >
-          Export Transcript
-        </Button>
-        <Button 
-          variant="ghost" 
-          iconLeft={<Filter className="w-4 h-4" />}
-        >
-          Filter by Semester
-        </Button>
+      {/* Course List */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Course List</h2>
+        {academicData.items.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-600">No courses available.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {academicData.items.map((course) => (
+              <SimpleCourseCard 
+                key={course.courseId} 
+                course={course} 
+                onClick={handleCourseClick}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Tabs and Content */}
-      <Card className="shadow-lg border border-accent-100">
-        <Tabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-
-        {/* Tab Content */}
-        {tabs.map(tab => (
-          <TabContent key={tab.id} activeTab={activeTab} tabId={tab.id}>
-            <div className="space-y-6">
-              {paginatedCourses.map((courseSummary) => (
-                <AcademicResultSummaryCard 
-                  key={courseSummary.courseId} 
-                  summary={courseSummary} 
-                  onViewDetails={handleViewDetails}
-                />
-              ))}
-            </div>
-          </TabContent>
-        ))}
-
-        {/* Empty State */}
-        {filteredCourses.length === 0 && (
-          <div className="text-center py-16">
-            <div className="w-24 h-24 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mx-auto mb-6">
-              <GraduationCap className="w-12 h-12 text-accent-600" />
-            </div>
-            <h3 className="text-xl font-bold text-primary-800 mb-3">
-              No academic results found
-            </h3>
-            <p className="text-neutral-600 mb-8 max-w-md mx-auto">
-              {activeTab === "overview" 
-                ? "No academic results available for the selected period." 
-                : `No courses found in the ${activeTab.replace('-', ' ')} category.`
-              }
-            </p>
-          </div>
-        )}
-
-        {/* Pagination */}
-        {filteredCourses.length > 0 && totalPages > 1 && (
-          <div className="pt-8 border-t border-accent-200">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredCourses.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-            />
-          </div>
-        )}
-      </Card>
-
-      {/* Academic Result Details Modal */}
-      {selectedCourse && (
-        <AcademicResultDetailsModal
+      {/* Course Detail Modal */}
+      {selectedCourseId && (
+        <CourseDetailModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          courseData={selectedCourse}
+          courseId={selectedCourseId}
+          studentId={studentId}
         />
       )}
     </div>
