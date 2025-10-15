@@ -55,6 +55,7 @@ export interface MeetingAssignment {
   teacherId: string;
   title: string;
   description: string | null;
+  fileUrl?: string | null;
   dueDate: string;
   createdAt: string;
   submissions: AssignmentSubmission[];

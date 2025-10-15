@@ -45,7 +45,7 @@ import {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
 } from './classMeetings.api';
-import { getAssignmentsByMeetingAndStudent } from './assignments.api';
+import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
 import { getAcademicResults, getCourseDetails } from './academicResults.api';
 
@@ -115,6 +115,8 @@ export const api = {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
   getAssignmentsByMeetingAndStudent,
+  submitAssignment,
+  createSubmissionWithPresignedUrl,
   // HR Teacher Availability
   createTeacherAvailability,
   updateTeacherAvailability,
@@ -167,6 +169,8 @@ export {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
   getAssignmentsByMeetingAndStudent,
+  submitAssignment,
+  createSubmissionWithPresignedUrl,
   createTeacherAvailability,
   updateTeacherAvailability,
   deleteTeacherAvailability,
