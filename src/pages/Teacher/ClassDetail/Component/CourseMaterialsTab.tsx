@@ -47,7 +47,7 @@ export default function CourseMaterialsTab() {
     return materials.slice(startIndex, endIndex);
   }, [currentPage, materials]);
 
-  // Keep resolvedMeetingId in sync with route param; if it's missing, attempt to resolve from classId
+  
   useEffect(() => {
     let cancelled = false;
     const syncMeeting = async () => {
