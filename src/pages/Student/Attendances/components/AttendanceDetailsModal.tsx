@@ -40,24 +40,37 @@ const AttendanceDetailsModal: React.FC<AttendanceDetailsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-white bg-opacity-20 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-[9999] p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-accent-200">
-          <div>
-            <h2 className="text-xl font-bold text-primary-800">{classData.className}</h2>
-            <p className="text-sm text-accent-600">Detailed Attendance Records</p>
+        <div className="flex items-center justify-between p-6 border-b border-accent-200 bg-gradient-to-r from-primary-50 to-primary-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
+              <ClipboardCheck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-primary-800">{classData.className}</h2>
+              <p className="text-sm text-accent-600">Detailed Attendance Records</p>
+            </div>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="p-2 hover:bg-accent-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-primary-100 rounded-full"
           >
-            <X className="w-5 h-5 text-neutral-500" />
-          </button>
+            <X className="w-5 h-5 text-primary-600" />
+          </Button>
         </div>
 
         {/* Modal Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="text-center p-3 bg-accent-50 rounded-lg">
@@ -142,11 +155,11 @@ const AttendanceDetailsModal: React.FC<AttendanceDetailsModalProps> = ({
                 </div>
               ))
             ) : (
-              <div className="text-center py-8">
+              <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
                 <div className="w-16 h-16 bg-accent-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <ClipboardCheck className="w-8 h-8 text-accent-600" />
                 </div>
-                <p className="text-neutral-600">No detailed records available for this class</p>
+                <p className="text-accent-600">No detailed records available for this class</p>
               </div>
             )}
           </div>

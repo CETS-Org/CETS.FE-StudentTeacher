@@ -45,8 +45,9 @@ import {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
 } from './classMeetings.api';
-import { getAssignmentsByMeetingAndStudent } from './assignments.api';
+import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
+import { getAcademicResults, getCourseDetails } from './academicResults.api';
 
 // Export axios instance under a clear name for direct HTTP usage
 export const apiClient = axiosInstance;
@@ -114,6 +115,8 @@ export const api = {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
   getAssignmentsByMeetingAndStudent,
+  submitAssignment,
+  createSubmissionWithPresignedUrl,
   // HR Teacher Availability
   createTeacherAvailability,
   updateTeacherAvailability,
@@ -122,6 +125,9 @@ export const api = {
   getTeacherAvailabilityByTeacherAndDate,
   // Attendance
   getStudentsInClass,
+  // Academic Results
+  getAcademicResults,
+  getCourseDetails,
 };
 
 // Also export individual functions for direct import usage
@@ -163,12 +169,16 @@ export {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
   getAssignmentsByMeetingAndStudent,
+  submitAssignment,
+  createSubmissionWithPresignedUrl,
   createTeacherAvailability,
   updateTeacherAvailability,
   deleteTeacherAvailability,
   getTeacherAvailabilityByTeacher,
   getTeacherAvailabilityByTeacherAndDate,
   getStudentsInClass,
+  getAcademicResults,
+  getCourseDetails,
 };
 
 

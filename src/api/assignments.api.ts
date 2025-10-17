@@ -65,6 +65,28 @@ export const downloadAllSubmissions = (
   config?: AxiosRequestConfig
 ) => api.get(`/api/ACAD_Submissions/assignment/${assignmentId}/downloads`, config);
 
+// Create submission with presigned URL
+export const createSubmissionWithPresignedUrl = (
+  submissionData: {
+    assignmentID: string;
+    studentID: string;
+    fileName: string;
+    contentType: string;
+  },
+  config?: AxiosRequestConfig
+) => api.post('/api/ACAD_Submissions/create-with-presigned-url', submissionData, config);
+
+// Submit assignment
+export const submitAssignment = (
+  submissionData: {
+    assignmentID: string;
+    studentID: string;
+    fileUrl: string;
+    content: string;
+  },
+  config?: AxiosRequestConfig
+) => api.post('/api/ACAD_Submissions/submit', submissionData, config);
+
 // Types for Assignment API
 export interface AssignmentFromAPI {
   id: string;
