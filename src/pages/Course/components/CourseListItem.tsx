@@ -61,9 +61,14 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
             <h3 className="text-base md:text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors duration-300 line-clamp-2 md:line-clamp-1 mb-1 md:mb-2">
               {course.courseName}
             </h3>
-            <span className="inline-block bg-gradient-to-r from-accent2-200 to-accent2-200 text-primary-700 px-2 py-1 rounded text-xs font-semibold">
-              {course.categoryName}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-block bg-secondary-200 text-primary-800 px-2 py-1 rounded text-xs font-bold ">
+                {course.courseCode}
+              </span>
+              <span className="inline-block bg-gradient-to-r from-accent2-200 to-accent2-200 text-primary-700 px-2 py-1 rounded text-xs font-semibold">
+                {course.categoryName}
+              </span>
+            </div>
           </div>
 
           {/* Description */}

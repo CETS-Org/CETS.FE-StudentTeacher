@@ -3,6 +3,36 @@ import { X, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+// Simple toast notification helper
+const toastQueue: Array<{ message: string; type: ToastType }> = [];
+let toastListener: ((message: string, type: ToastType) => void) | null = null;
+
+export const toast = {
+  success: (message: string) => {
+    if (toastListener) {
+      toastListener(message, 'success');
+    }
+  },
+  error: (message: string) => {
+    if (toastListener) {
+      toastListener(message, 'error');
+    }
+  },
+  warning: (message: string) => {
+    if (toastListener) {
+      toastListener(message, 'warning');
+    }
+  },
+  info: (message: string) => {
+    if (toastListener) {
+      toastListener(message, 'info');
+    }
+  },
+  setListener: (listener: (message: string, type: ToastType) => void) => {
+    toastListener = listener;
+  },
+};
+
 interface ToastProps {
   message: string;
   type?: ToastType;

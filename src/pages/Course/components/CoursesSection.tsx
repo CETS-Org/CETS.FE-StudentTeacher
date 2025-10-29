@@ -9,6 +9,7 @@ import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/api"
 import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
+import { useWishlist } from "@/hooks/useWishlist";
 
 import type { Course, CourseSearchResult } from "@/types/course";
 
@@ -80,8 +81,17 @@ export default function CoursesSection() {
   const [loading, setLoading] = useState(true); // Start with loading true
   const [err, setErr] = useState<string | null>(null);
 
-  // Wishlist state
-  const [wishlist, setWishlist] = useState<Set<string>>(new Set());
+  // Get student ID from localStorage
+  const userInfoStr = localStorage.getItem('userInfo');
+  const userInfo = userInfoStr ? JSON.parse(userInfoStr) : null;
+  const studentId = userInfo?.id || null;
+
+  // Wishlist integration
+  const { 
+    wishlistItems, 
+    toggleCourse,
+    checkCourseInWishlist 
+  } = useWishlist({ studentId, autoFetch: true });
 
   // Build querystring - always include all params to prevent re-fetches
   const buildSearchParams = () => {
@@ -197,20 +207,12 @@ export default function CoursesSection() {
     navigate(`/course/${course.id}`);
   };
 
-  const toggleWishlist = (courseId: string) => {
-    setWishlist(prev => {
-      const newWishlist = new Set(prev);
-      if (newWishlist.has(courseId)) {
-        newWishlist.delete(courseId);
-      } else {
-        newWishlist.add(courseId);
-      }
-      return newWishlist;
-    });
+  const toggleWishlist = async (courseId: string) => {
+    await toggleCourse(courseId);
   };
 
   const isInWishlist = (courseId: string) => {
-    return wishlist.has(courseId);
+    return checkCourseInWishlist(courseId);
   };
 
   return (

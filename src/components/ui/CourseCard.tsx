@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "./Button";
 import { Heart, Clock, Users, Star, ChevronRight } from "lucide-react";
 import type { SimpleCourse, SimpleCourseCardProps } from "@/types/course";
@@ -16,6 +17,7 @@ const CourseCard: React.FC<SimpleCourseCardProps> = ({
   isWishlisted: initialWishlisted = true,
   className = ""
 }) => {
+  const navigate = useNavigate();
   const [isWishlisted, setIsWishlisted] = useState(initialWishlisted);
 
   const handleWishlistToggle = () => {
@@ -27,19 +29,11 @@ const CourseCard: React.FC<SimpleCourseCardProps> = ({
     }
   };
 
-  const handleEnroll = () => {
-    if (onEnroll) {
-      onEnroll(course);
-    } else {
-      console.log(`Enrolling in ${course.title}`);
-    }
-  };
-
   const handleViewDetails = () => {
     if (onViewDetails) {
       onViewDetails(course);
     } else {
-      console.log(`Viewing details for ${course.title}`);
+      navigate(`/course/${course.id}`);
     }
   };
 
@@ -67,9 +61,9 @@ const CourseCard: React.FC<SimpleCourseCardProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow duration-200 ${className}`}>
+    <div className={`bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col ${className}`}>
       {/* Course Image */}
-      <div className="relative h-48 bg-neutral-600 overflow-hidden">
+      <div className="relative h-48 bg-neutral-600 overflow-hidden flex-shrink-0">
         <img 
           src={course.image} 
           alt={course.title}
@@ -92,57 +86,87 @@ const CourseCard: React.FC<SimpleCourseCardProps> = ({
       </div>
 
       {/* Course Content */}
-      <div className="p-6">
-        {/* Course Title */}
-        <h3 className="text-lg font-semibold text-neutral-900 mb-2 line-clamp-2">
+      <div className="p-6 flex flex-col flex-grow">
+        {/* Course Title*/}
+        <h3 className="text-lg font-semibold text-neutral-900  line-clamp-2 min-h-[3.5rem]">
           {course.title}
         </h3>
         
-        {/* Course Description */}
-        <p className="text-sm text-neutral-600 mb-4 line-clamp-3">
-          {course.description}
+        {/* Course Description  */}
+        <p className="text-sm text-neutral-600 mb-3 line-clamp-2 min-h-[2.5rem]">
+          {course.description || 'No description available'}
         </p>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <span className={`px-2 py-1 text-xs font-medium rounded-md ${getLevelColor(course.level)}`}>
+        {/* Course Code and Tags  */}
+        <div className="flex flex-wrap gap-2 mb-3 min-h-[2rem]">
+          <span className="px-2 py-1 text-xs font-bold rounded-md bg-secondary-200 text-primary-800 h-fit">
+            {course.code}
+          </span>
+          <span className={`px-2 py-1 text-xs font-medium rounded-md h-fit ${getLevelColor(course.level)}`}>
             {course.level}
           </span>
-          <span className={`px-2 py-1 text-xs font-medium rounded-md ${getFormatColor(course.format)}`}>
+          <span className={`px-2 py-1 text-xs font-medium rounded-md h-fit ${getFormatColor(course.format)}`}>
             {course.format}
           </span>
-          <span className="px-2 py-1 text-xs font-medium rounded-md bg-neutral-100 text-neutral-700">
-            {course.timeOfDay}
-          </span>
+          {course.timeOfDay && (
+            <span className="px-2 py-1 text-xs font-medium rounded-md bg-neutral-100 text-neutral-700 h-fit">
+              {course.timeOfDay}
+            </span>
+          )}
         </div>
 
-        {/* Rating and Students */}
-        {(course.rating || course.students) && (
-          <div className="flex items-center gap-4 mb-4 text-sm text-neutral-600">
-            {course.rating && (
-              <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-warning-400 text-warning-400" />
-                <span className="font-medium">{course.rating}</span>
+        {/* Teachers  */}
+        <div className="mb-3 min-h-[1.75rem]">
+          {course.teachers && course.teachers.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-bold">
+                  {course.teachers[0]?.fullName?.charAt(0) || '?'}
+                </span>
               </div>
-            )}
-            {course.students && (
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>{course.students.toLocaleString()} students</span>
-              </div>
-            )}
-          </div>
-        )}
+              <span className="text-xs text-gray-600 truncate">
+                by {course.teachers.length > 1 
+                  ? `${course.teachers[0].fullName} +${course.teachers.length - 1} more`
+                  : course.teachers[0].fullName
+                }
+              </span>
+            </div>
+          ) : (
+            <div className="text-xs text-gray-400 invisible">No teacher</div>
+          )}
+        </div>
+
+        {/* Rating and Students  */}
+        <div className="mb-4 min-h-[1.5rem]">
+          {(course.rating !== undefined || course.students !== undefined) && (
+            <div className="flex items-center gap-4 text-sm text-neutral-600">
+              {course.rating !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Star className="w-4 h-4 fill-warning-400 text-warning-400" />
+                  <span className="font-medium">{course.rating}</span>
+                </div>
+              )}
+              {course.students !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  <span>{course.students.toLocaleString()} students</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex-grow"></div>
 
         {/* Price and Duration */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col">
             <span className="text-2xl font-bold text-neutral-900">
-              ${course.price}
+              {course.price.toLocaleString('vi-VN')} ₫
             </span>
             {course.originalPrice && (
               <span className="text-sm text-neutral-500 line-through">
-                ${course.originalPrice}
+                {course.originalPrice.toLocaleString('vi-VN')} ₫
               </span>
             )}
           </div>
@@ -152,24 +176,15 @@ const CourseCard: React.FC<SimpleCourseCardProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button 
-            className="flex-1" 
-            variant="primary"
-            onClick={handleEnroll}
-          >
-            Enroll Now
-          </Button>
-          <Button 
-            variant="secondary"
-            onClick={handleViewDetails}
-            iconRight={<ChevronRight className="w-4 h-4" />}
-            className="flex-1 sm:flex-initial"
-          >
-            View Details
-          </Button>
-        </div>
+        {/* Action Button */}
+        <Button 
+          variant="primary"
+          onClick={handleViewDetails}
+          iconRight={<ChevronRight className="w-4 h-4" />}
+          className="w-full"
+        >
+          View Details
+        </Button>
       </div>
     </div>
   );
