@@ -405,9 +405,7 @@ export default function PackagesSection() {
                 >
                   <CoursePackageListItem 
                     coursePackage={coursePackage} 
-                    onEnroll={handleEnroll} 
-                    onToggleWishlist={toggleWishlist}
-                    isInWishlist={isInWishlist(coursePackage.id)}
+                    onEnroll={handleEnroll}
                   />
                 </div>
               ))}

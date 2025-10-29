@@ -48,6 +48,12 @@ import {
 import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
 import { getAcademicResults, getCourseDetails } from './academicResults.api';
+import { 
+  addToWishlist, 
+  removeFromWishlist, 
+  getStudentWishlist, 
+  isCourseInWishlist 
+} from './wishlist.api';
 
 // Export axios instance under a clear name for direct HTTP usage
 export const apiClient = axiosInstance;
@@ -128,6 +134,11 @@ export const api = {
   // Academic Results
   getAcademicResults,
   getCourseDetails,
+  // Wishlist
+  addToWishlist,
+  removeFromWishlist,
+  getStudentWishlist,
+  isCourseInWishlist,
 };
 
 // Also export individual functions for direct import usage
@@ -179,6 +190,10 @@ export {
   getStudentsInClass,
   getAcademicResults,
   getCourseDetails,
+  addToWishlist,
+  removeFromWishlist,
+  getStudentWishlist,
+  isCourseInWishlist,
 };
 
 

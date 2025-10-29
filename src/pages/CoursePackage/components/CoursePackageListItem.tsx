@@ -1,17 +1,15 @@
-import { Star, Package, ArrowRight, Heart, BookOpen } from "lucide-react";
+import { Star, Package, ArrowRight, BookOpen } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import type { CoursePackageCardProps } from "@/types/coursePackage";
 
 export default function CoursePackageListItem({ 
   coursePackage, 
-  onEnroll, 
-  onToggleWishlist, 
-  isInWishlist = false 
+  onEnroll
 }: CoursePackageCardProps) {
   
   return (
     <div className="group bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all duration-300 p-3 md:p-4">
-      <div className="flex flex-col md:flex-row gap-3 md:gap-4 md:h-[240px]">
+      <div className="flex flex-col md:flex-row gap-3 md:gap-4 md:h-[290px]">
         {/* Package Image/Icon */}
         <div className="relative w-full md:w-40 lg:w-48 xl:w-56 h-48 md:h-full flex-shrink-0 overflow-hidden rounded-lg">
             {coursePackage.packageImageUrl ? (
@@ -34,25 +32,6 @@ export default function CoursePackageListItem({
                 📦 Package
               </span>
             </div>
-
-            {/* Wishlist Heart Icon */}
-            {onToggleWishlist && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleWishlist(coursePackage.id);
-                }}
-                className="absolute top-2 right-2 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white hover:scale-110 transition-all duration-200 group/heart"
-              >
-                <Heart 
-                  className={`w-4 h-4 transition-all duration-200 ${
-                    isInWishlist 
-                      ? 'text-red-500 fill-red-500 scale-110' 
-                      : 'text-gray-600 group-hover/heart:text-red-500 group-hover/heart:scale-110'
-                  }`}
-                />
-              </button>
-            )}
         </div>
 
         {/* Package Content */}
@@ -62,7 +41,7 @@ export default function CoursePackageListItem({
             <h3 className="text-base md:text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors duration-300 line-clamp-2 md:line-clamp-1 mb-1 md:mb-2">
               {coursePackage.name}
             </h3>
-            <span className="inline-block bg-gradient-to-r from-accent2-200 to-accent2-200 text-primary-700 px-2 py-1 rounded text-xs font-semibold">
+            <span className="inline-block bg-secondary-200 text-primary-800 px-2 py-1 rounded text-xs font-bold ">
               {coursePackage.packageCode}
             </span>
           </div>
@@ -97,21 +76,21 @@ export default function CoursePackageListItem({
           </div>
 
           {/* Course List */}
-          <div className="mb-auto">
+          <div className="mb-auto overflow-hidden">
             <div className="text-sm text-gray-600 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-start gap-2">
                 <BookOpen className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="text-blue-700 font-semibold mb-1">Included Courses:</div>
-                  <ul className="space-y-1">
-                    {coursePackage.courseNames.slice(0, 3).map((courseName, index) => (
-                      <li key={index} className="text-gray-700 text-xs leading-relaxed">
+                  <ul className="space-y-1 ">
+                    {coursePackage.courseNames.slice(0, 2).map((courseName, index) => (
+                      <li key={index} className="text-gray-700 text-xs leading-relaxed truncate" title={courseName}>
                         • {courseName}
                       </li>
                     ))}
-                    {coursePackage.courseNames.length > 3 && (
+                    {coursePackage.courseNames.length > 2 && (
                       <li className="text-blue-600 text-xs font-medium">
-                        + {coursePackage.courseNames.length - 3} more courses
+                        + {coursePackage.courseNames.length - 2} more course{coursePackage.courseNames.length - 2 !== 1 ? 's' : ''}
                       </li>
                     )}
                   </ul>

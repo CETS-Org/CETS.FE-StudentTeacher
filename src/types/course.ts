@@ -101,10 +101,18 @@ export interface Course {
   updatedAt?: string | null;
 }
 
+// Teacher detail for SimpleCourse
+export interface SimpleCourseTeacher {
+  id: string;
+  fullName: string;
+  avatarUrl?: string;
+}
+
 // Simplified Course interface for basic components that don't need all properties
 export interface SimpleCourse {
   id: string;
   title: string;
+  code: string;
   description: string;
   image: string;
   level: "Beginner" | "Intermediate" | "Advanced";
@@ -115,6 +123,7 @@ export interface SimpleCourse {
   duration: string;
   rating?: number;
   students?: number;
+  teachers?: SimpleCourseTeacher[];
 }
 
 // Props interfaces for components
@@ -271,6 +280,7 @@ export function courseToSimpleCourse(course: Course): SimpleCourse {
   return {
     id: course.id,
     title: course.courseName,
+    code: course.courseCode,
     description: course.description,
     image: course.courseImageUrl,
     level: course.courseLevel as "Beginner" | "Intermediate" | "Advanced",
