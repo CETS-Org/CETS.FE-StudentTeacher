@@ -8,6 +8,7 @@ export interface ScheduleItem {
   startTime: string;
   endTime: string;
   className: string;
+  classId?: string;
   courseName: string;
   room: string;
   teacher: string;
@@ -19,6 +20,7 @@ export interface StudentSession {
   id: string;
   title: string;
   classCode: string;
+  classId?: string;
   room: string;
   instructor: string;
   start: string; // Format: yyyy:MM:dd:HH:mm
@@ -64,6 +66,7 @@ export const transformScheduleData = (apiData: ScheduleItem[]): StudentSession[]
       id: `session-${index}`,
       title: item.courseName,
       classCode: item.className,
+      classId: item.classId,
       room: item.room,
       instructor: item.teacher,
       start: formatDate(sessionDate),

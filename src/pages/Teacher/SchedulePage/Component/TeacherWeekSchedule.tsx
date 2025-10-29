@@ -73,6 +73,7 @@ export default function TeacherWeekSchedule({
     setDetailsData({
       courseName: s.title,
       className: `Class ${s.classCode}`,
+      classId: s.classId,
       instructor: "You (Instructor)",
       date: dateStr,
       time: `${startLabel} – ${endLabel}`,

@@ -1,7 +1,9 @@
 // src/components/schedule/SessionDetailsDialog.tsx
 import React from "react";
-import { Video, Calendar as CalendarIcon, User, Clock, MapPin, BookOpen, GraduationCap } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
+import { Video, Calendar as CalendarIcon, User, Clock, MapPin, BookOpen, GraduationCap, ArrowRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { useNavigate } from "react-router-dom";
+import Button from "@/components/ui/Button";
 import type { SessionDetailsData } from "./scheduleUtils";
 
 type Props = {
@@ -17,7 +19,23 @@ export default function SessionDetailsDialog({
   sessionData,
   isStudent = true,
 }: Props) {
+  const navigate = useNavigate();
+
   if (!sessionData) return null;
+
+  const handleGoToClass = () => {
+    if (sessionData.classId && !isStudent) {
+      navigate(`/teacher/class/${sessionData.classId}`);
+      onOpenChange(false);
+    }
+  };
+
+  // Debug log
+  console.log('SessionDetailsDialog:', { 
+    classId: sessionData.classId, 
+    isStudent, 
+    shouldShowButton: sessionData.classId && !isStudent 
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,6 +158,26 @@ export default function SessionDetailsDialog({
                 )}
               </div>
             </div>
+
+            {/* Navigation Button - Teacher Only */}
+            {!isStudent && (
+              <div className="mt-4">
+                <Button
+                  variant="primary"
+                  onClick={handleGoToClass}
+                  iconRight={<ArrowRight size={16} />}
+                  className="w-full"
+                  disabled={!sessionData.classId}
+                >
+                  {sessionData.classId ? "Go to Class Detail" : "Class ID not available"}
+                </Button>
+                {!sessionData.classId && (
+                  <p className="text-xs text-warning-600 mt-2 text-center">
+                    Note: Backend needs to provide classId in API response
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </DialogBody>
       </DialogContent>

@@ -49,6 +49,7 @@ function transformScheduleToSessions(scheduleData: TeacherScheduleApiResponse[])
       id: `${item.className}-${item.slot}-${index}`,
       title: item.courseName,
       classCode: item.className,
+      classId: item.classId, // ✅ Map classId from API
       room: item.room,
       start: startDateTime,
       durationMin: durationMin,

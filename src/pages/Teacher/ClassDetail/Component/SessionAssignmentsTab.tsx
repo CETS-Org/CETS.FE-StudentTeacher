@@ -1,7 +1,7 @@
 // src/components/teacher/SessionAssignmentsTab.tsx
 
 import { useState, useMemo, useEffect } from "react";
-import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download } from "lucide-react";
+import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
 import JSZip from 'jszip';
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -12,11 +12,13 @@ import { useToast } from "@/hooks/useToast";
 import CreateAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
+import BulkGradeImportPopup, { type GradeImportData } from "@/pages/Teacher/ClassDetail/Component/Popup/BulkGradeImportPopup";
 import { 
   getAssignmentsByClassMeeting, 
   getSubmissionsByAssignment,
   updateSubmissionFeedback,
   updateSubmissionScore,
+  bulkUpdateSubmissions,
   downloadAssignment,
   downloadSubmission,
   downloadAllSubmissions,
@@ -93,6 +95,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
+  const [isBulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
   // State cho phân trang
@@ -308,6 +311,68 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
     } catch (error) {
       console.error('Error submitting score:', error);
       showError('Failed to submit score. Please try again.');
+    }
+  };
+
+  const handleBulkGradeImport = async (gradesData: GradeImportData[]) => {
+    try {
+      // Format data for API - only include non-null fields
+      const submissions = gradesData.map((grade) => {
+        const submission: {
+          submissionId: string;
+          score?: number;
+          feedback?: string;
+        } = {
+          submissionId: grade.submissionId,
+        };
+        
+        // Only include score if it's not null
+        if (grade.score !== null) {
+          submission.score = grade.score;
+        }
+        
+        // Only include feedback if it's not null
+        if (grade.feedback !== null) {
+          submission.feedback = grade.feedback;
+        }
+        
+        return submission;
+      });
+
+      // Call bulk update API
+      const response = await bulkUpdateSubmissions(submissions);
+      
+      // Refresh submissions after update
+      if (selectedAssignment) {
+        await handleViewSubmissions(selectedAssignment);
+      }
+      
+      // Handle response
+      const { data } = response;
+      if (data.success) {
+        if (data.data.failedCount > 0) {
+          // Partial success
+          success(`Updated ${data.data.updatedCount} record(s). ${data.data.failedCount} failed.`);
+          
+          // Log failed items for debugging
+          const failedItems = data.data.results.filter((r: any) => r.status === 'failed');
+          if (failedItems.length > 0) {
+            console.warn('Failed to update:', failedItems);
+          }
+        } else {
+          // Complete success
+          success(`Successfully imported ${data.data.updatedCount} record(s)!`);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error importing grades:', error);
+      
+      // Extract error message from response if available
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          'Failed to import grades and feedback. Please try again.';
+      
+      throw new Error(errorMessage);
     }
   };
 
@@ -620,14 +685,25 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
               </Button>
               <h2 className="text-xl font-semibold">{selectedAssignment.title}: Submissions</h2>
             </div>
-            <Button 
-              disabled={selectedAssignment.submissions.length === 0} 
-              onClick={handleDownloadAllSubmissions}
-              className="flex items-center"
-              iconLeft={<Download size={16} />}
-            >
-              Download All
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                disabled={selectedAssignment.submissions.length === 0} 
+                onClick={() => setBulkImportOpen(true)}
+                className="flex items-center"
+                iconLeft={<FileSpreadsheet size={16} />}
+                variant="secondary"
+              >
+                Import Grades
+              </Button>
+              <Button 
+                disabled={selectedAssignment.submissions.length === 0} 
+                onClick={handleDownloadAllSubmissions}
+                className="flex items-center"
+                iconLeft={<Download size={16} />}
+              >
+                Download All
+              </Button>
+            </div>
           </div>
           <div className="overflow-x-auto border rounded-lg">
             <table className="min-w-full bg-white">
@@ -762,6 +838,17 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         onSubmit={handleGradeSubmit}
         initialScore={selectedSubmission?.score?.toString() || ""}
         submissionId={selectedSubmission?.id || ""}
+      />
+      <BulkGradeImportPopup 
+        open={isBulkImportOpen} 
+        onOpenChange={setBulkImportOpen} 
+        onSubmit={handleBulkGradeImport}
+        assignmentTitle={selectedAssignment?.title || ""}
+        submissions={selectedAssignment?.submissions.map(sub => ({
+          id: sub.id,
+          studentCode: sub.studentCode,
+          studentName: sub.studentName,
+        })) || []}
       />
 
       {/* Toast Notifications */}

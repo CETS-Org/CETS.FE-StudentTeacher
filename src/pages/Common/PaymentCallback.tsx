@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
@@ -11,16 +11,31 @@ export default function PaymentCallback() {
   const [paymentStatus, setPaymentStatus] = useState<'loading' | 'success' | 'failed'>('loading');
   const [paymentData, setPaymentData] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  
+  // Sử dụng useRef để tránh gọi API nhiều lần - track orderCode đã xử lý
+  const processedOrderCode = useRef<string | null>(null);
 
   useEffect(() => {
     const handlePaymentCallback = async () => {
+      // Get payment parameters from URL
+      const code = searchParams.get('code');
+      const id = searchParams.get('id');
+      const cancel = searchParams.get('cancel');
+      const status = searchParams.get('status');
+      const orderCode = searchParams.get('orderCode');
+      
+      // Kiểm tra nếu orderCode này đã được xử lý rồi thì return
+      if (orderCode && processedOrderCode.current === orderCode) {
+        console.log('Payment callback for orderCode', orderCode, 'already processed, skipping...');
+        return;
+      }
+      
+      // Đánh dấu orderCode này đã được xử lý
+      if (orderCode) {
+        processedOrderCode.current = orderCode;
+      }
+      
       try {
-        // Get payment parameters from URL
-        const code = searchParams.get('code');
-        const id = searchParams.get('id');
-        const cancel = searchParams.get('cancel');
-        const status = searchParams.get('status');
-        const orderCode = searchParams.get('orderCode');
 
         // Check if this is a backend callback with redirect URL
         if (code && id) {

@@ -9,6 +9,7 @@ export type StudentSession = {
   id: string;
   title: string;
   classCode: string;
+  classId?: string;
   start: string;
   room?: string;
   instructor?: string;
@@ -48,6 +49,7 @@ export default function StudentWeekSchedule({
   const [detailsData, setDetailsData] = useState<{
     courseName: string;
     className: string;
+    classId?: string;
     instructor: string;
     date: string;
     time: string;
@@ -105,6 +107,7 @@ export default function StudentWeekSchedule({
     setDetailsData({
       courseName: s.title,
       className: `Class ${s.classCode}`,
+      classId: s.classId,
       instructor: s.instructor || "TBA",
       date: dateStr,
       time: `${startLabel} – ${endLabel}`,

@@ -159,6 +159,7 @@ export function getStaffSessionStyles(type?: string) {
 export type SessionDetailsData = {
   courseName: string;
   className: string;
+  classId?: string;
   instructor?: string;
   date: string;
   time: string;

@@ -32,6 +32,7 @@ export interface Session {
   id: string;
   title: string;
   classCode: string;
+  classId?: string;
   start: string; // "YYYY-MM-DDTHH:mm:ss" or "yyyy:MM:dd:HH:mm"
   room?: string;
   durationMin?: number; // default 90 minutes (1h30)
@@ -45,6 +46,7 @@ export interface TeacherScheduleApiResponse {
   startTime: string;
   endTime: string;
   className: string;
+  classId: string; // ✅ Add classId field
   courseName: string;
   room: string;
   enrolledCount: number;
@@ -70,6 +72,7 @@ export interface TeacherWeekScheduleProps {
 export interface SessionDetails {
   courseName: string;
   className: string;
+  classId?: string;
   instructor?: string;
   date: string;
   time: string;

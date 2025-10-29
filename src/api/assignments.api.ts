@@ -33,6 +33,16 @@ export const updateSubmissionScore = (
   config?: AxiosRequestConfig
 ) => api.put(`/api/ACAD_Submissions/update-score`, { submissionId, score }, config);
 
+// Bulk update submission scores and feedback
+export const bulkUpdateSubmissions = (
+  submissions: Array<{ 
+    submissionId: string; 
+    score?: number | null; 
+    feedback?: string | null;
+  }>,
+  config?: AxiosRequestConfig
+) => api.put(`/api/ACAD_Submissions/bulk-update`, { submissions }, config);
+
 // Create assignment
 export const createAssignment = (
   assignmentData: {
