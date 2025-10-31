@@ -35,9 +35,9 @@ export default function SessionsTab({ classId }: Props) {
         setLoading(true);
         setError(null);
         const data = await getClassMeetingsByClassId(classId);
-        // Sort by date descending (newest first)
+        // Sort by date ascending (oldest first)
         const sortedData = data.sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
+          new Date(a.date).getTime() - new Date(b.date).getTime()
         );
         setSessions(sortedData);
       } catch (err) {
@@ -67,7 +67,7 @@ export default function SessionsTab({ classId }: Props) {
   // Format date helper
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
+    return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',

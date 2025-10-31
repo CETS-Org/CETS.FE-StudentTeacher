@@ -689,17 +689,18 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
               <Button 
                 disabled={selectedAssignment.submissions.length === 0} 
                 onClick={() => setBulkImportOpen(true)}
-                className="flex items-center"
+                className="btn-secondary flex items-center"
                 iconLeft={<FileSpreadsheet size={16} />}
-                variant="secondary"
+                variant="primary"
               >
-                Import Grades
+                Import Grades   
               </Button>
               <Button 
                 disabled={selectedAssignment.submissions.length === 0} 
                 onClick={handleDownloadAllSubmissions}
-                className="flex items-center"
+                className="btn-primary flex items-center"
                 iconLeft={<Download size={16} />}
+                variant="primary"
               >
                 Download All
               </Button>

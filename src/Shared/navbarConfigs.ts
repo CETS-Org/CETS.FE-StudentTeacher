@@ -46,13 +46,10 @@ export const teacherNavbarConfig: NavbarConfig = {
     { name: "Home", href: "/", icon: Home, description: "Go to homepage" },
     { name: "My Courses", href: "/teacher/courses", icon: BookOpen, description: "View your courses" },
     { name: "Schedule", href: "/teacher/schedule", icon: Calendar, description: "Check your teaching schedule" },
-    { name: "Reports", href: "/teacher/request-issue", icon: BarChart3, description: "View reports and analytics" }
   ],
   userMenuItems: [
     { name: "Dashboard", href: "/teacher/dashboard", icon: Home, description: "Teacher dashboard" },
     { name: "My Profile", href: "/teacher/teacherProfile", icon: User, description: "Manage your profile" },
-    { name: "Course Materials", href: "/teacher/materials", icon: FileText, description: "Upload and manage materials" },
-    { name: "Student Progress", href: "/teacher/progress", icon: Award, description: "Track student progress" },
     { name: "Messages", href: "/teacher/messages", icon: MessageSquare, description: "Communication with students" }
   ],
   quickStats: [

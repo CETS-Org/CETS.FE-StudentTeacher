@@ -2,9 +2,11 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  ChevronLeft, ChevronRight, X, ChevronDown
+  ChevronLeft, ChevronRight, X, ChevronDown, Clock, AlertCircle
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getStudentId } from "@/lib/utils";
+import { getUpcomingAssignmentsForStudent } from "@/api/assignments.api";
+import type { UpcomingAssignment } from "@/api/assignments.api";
 
 export interface SubItem {
   id: string;
@@ -48,6 +50,8 @@ export default function GenericSidebar({
 }: Props) {
   const location = useLocation();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+  const [upcomingAssignments, setUpcomingAssignments] = useState<UpcomingAssignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
 
   useEffect(() => {
     if (config.submenuPathPrefix) {
@@ -59,6 +63,33 @@ export default function GenericSidebar({
       }
     }
   }, [location.pathname, config.submenuPathPrefix, config.items]);
+
+  // Fetch upcoming assignments if enabled
+  useEffect(() => {
+    if (!config.showUpcomingDeadlines) return;
+
+    const fetchUpcomingAssignments = async () => {
+      const studentId = getStudentId();
+      if (!studentId) return;
+
+      try {
+        setLoadingAssignments(true);
+        const assignments = await getUpcomingAssignmentsForStudent(studentId, 3);
+        setUpcomingAssignments(assignments);
+      } catch (error) {
+        console.error('Error fetching upcoming assignments:', error);
+        setUpcomingAssignments([]);
+      } finally {
+        setLoadingAssignments(false);
+      }
+    };
+
+    fetchUpcomingAssignments();
+    
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchUpcomingAssignments, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [config.showUpcomingDeadlines]);
 
   const isActive = (path?: string) => path && location.pathname.startsWith(path);
 
@@ -196,17 +227,64 @@ export default function GenericSidebar({
           </div>
           <div className="sticky bottom-0 z-10 bg-sidebar-primary">
             {config.showUpcomingDeadlines && (!collapsed || mobileOpen) && (
-              <div className="p-3">
-                <h2 className="font-semibold text-white mb-2 text-sm">Upcoming Deadlines</h2>
-                <div className="flex flex-col gap-2">
-                  <div className="rounded-lg p-2 bg-white/20 ">
-                    <h3 className="text-xs font-semibold text-white">Math 101 Registration</h3>
-                    <p className="text-[11px] text-white/70">Due, Jan 15, 2025</p>
-                  </div>
-                  <div className="rounded-lg p-2 bg-white/20">
-                    <h3 className="text-xs font-semibold text-white">Physics 201 Registration</h3>
-                    <p className="text-[11px] text-white/70">Due, Jan 20, 2025</p>
-                  </div>
+              <div className="p-3 border-t border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="font-semibold text-white text-sm flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Upcoming Deadlines
+                  </h2>
+                  {loadingAssignments && (
+                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto sidebar-scrollbar">
+                  {!loadingAssignments && upcomingAssignments.length === 0 && (
+                    <div className="rounded-lg p-3 bg-white/10 text-center">
+                      <p className="text-xs text-white/70">No upcoming deadlines</p>
+                    </div>
+                  )}
+                  {upcomingAssignments.map((assignment) => (
+                    <NavLink
+                      key={assignment.id}
+                      to={`/student/my-classes/${assignment.classId}/session/${assignment.classMeetingId}`}
+                      onClick={onNavigate}
+                      className={cn(
+                        "rounded-lg p-2 transition-all duration-200 hover:bg-white/30",
+                        assignment.isOverdue ? "bg-red-500/20 border border-red-500/30" : "bg-white/20"
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        {assignment.isOverdue && (
+                          <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xs font-semibold text-white truncate" title={assignment.title}>
+                            {assignment.title}
+                          </h3>
+                          <p className="text-[10px] text-white/70 truncate" title={assignment.className}>
+                            {assignment.className}
+                          </p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="w-2.5 h-2.5 text-white/50" />
+                            <p className={cn(
+                              "text-[10px]",
+                              assignment.isOverdue ? "text-red-300 font-medium" : "text-white/70"
+                            )}>
+                              {assignment.isOverdue ? "Overdue" : "Due"} {new Date(assignment.dueAt).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                          {assignment.hasSubmission && (
+                            <span className="inline-block mt-1 px-1.5 py-0.5 bg-green-500/20 border border-green-500/30 rounded text-[9px] text-green-300">
+                              Submitted
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </NavLink>
+                  ))}
                 </div>
               </div>
             )}

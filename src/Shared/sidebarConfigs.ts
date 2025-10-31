@@ -35,8 +35,6 @@ export const teacherSidebarConfig: SidebarConfig = {
   items: [
     { id: "courses", label: "My Courses", icon: BookOpen, path: "/teacher/courses" },
     { id: "schedule", label: "Schedule", icon: Calendar, path: "/teacher/schedule" },
-    { id: "attendance", label: "Attendance", icon: ClipboardCheck, path: "/teacher/attendance" },
-    { id: "materials", label: "Materials", icon: FileText, path: "/teacher/materials" },
     { id: "feedback", label: "Feedback", icon: MessageCircle, path: "/teacher/feedback" },
     {
       id: "request",

@@ -416,7 +416,7 @@ export default function SessionDetail() {
   // Breadcrumbs - using real data when available
   const crumbs: Crumb[] = classDetail
     ? [
-        { label: "My Classes", to: "/student/my-class" },
+        { label: "My Classes", to: "/student/my-classes" },
         { label: classDetail.courseName, to: `/student/class/${classId}` },
         { label: sessionNumber || "Session" },
       ]

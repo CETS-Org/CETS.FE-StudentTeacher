@@ -88,23 +88,45 @@ export interface TeachingClassResponse {
   classSession: ClassSession | null;
 }
 
-// Time slot mapping function
+// Time slot calculation function 
 export const calculateTimeSlot = (slot: string): { startTime: string; endTime: string } => {
-  const timeSlotMap: { [key: string]: { startTime: string; endTime: string } } = {
-    '9:00': { startTime: '09:00', endTime: '10:30' },
-    '13:30': { startTime: '13:30', endTime: '14:30' },
-    '15:30': { startTime: '15:30', endTime: '17:00' },
-    '18:00': { startTime: '18:00', endTime: '19:30' },
-    '20:00': { startTime: '20:00', endTime: '21:30' }
-  };
+  try {
+    // Parse the slot time (e.g., "09:00" or "9:00")
+    const [hoursStr, minutesStr] = slot.split(':');
+    let hours = parseInt(hoursStr, 10);
+    let minutes = parseInt(minutesStr, 10);
 
-  const slotInfo = timeSlotMap[slot];
-  if (!slotInfo) {
-    // Default fallback
+    // Validate parsed values
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.warn(`Invalid time slot format: ${slot}`);
+      return { startTime: slot, endTime: slot };
+    }
+
+    // Format start time (ensure 2-digit format)
+    const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+    // Add 90 minutes
+    minutes += 90;
+    
+    // Handle minute overflow (e.g., 09:30 + 90 = 11:00)
+    if (minutes >= 60) {
+      hours += Math.floor(minutes / 60);
+      minutes = minutes % 60;
+    }
+    
+    // Handle hour overflow (e.g., 23:00 + 90 = 00:30 next day)
+    if (hours >= 24) {
+      hours = hours % 24;
+    }
+
+    // Format end time (ensure 2-digit format)
+    const endTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+    return { startTime, endTime };
+  } catch (error) {
+    console.error(`Error calculating time slot for ${slot}:`, error);
     return { startTime: slot, endTime: slot };
   }
-
-  return slotInfo;
 };
 
 // Transform API response to component format

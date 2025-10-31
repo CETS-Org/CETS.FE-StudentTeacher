@@ -330,10 +330,10 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
                   {classItem.courseCode && (
                     <span className="ml-2 inline-flex items-center gap-1 bg-accent-100 text-primary-700 px-2 py-1 rounded-md text-xs font-semibold">
                       {classItem.courseCode}
-                    </span>
+                </span>
                   )}
                 </p>
-              </div>
+            </div>
             )}
 
             <div className="flex items-center gap-2 mb-1">
@@ -353,72 +353,87 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
         </div>
 
         {/* Next Meeting Section */}
-        {classItem.nextMeeting && (
+        {(() => {
+          // Check if nextMeeting exists and has valid dates
+          const hasValidMeeting = classItem.nextMeeting && 
+            classItem.nextMeeting.startsAt && 
+            classItem.nextMeeting.endsAt &&
+            !isNaN(new Date(classItem.nextMeeting.startsAt).getTime()) &&
+            !isNaN(new Date(classItem.nextMeeting.endsAt).getTime());
+          
+          if (hasValidMeeting) {
+            const nextMeeting = classItem.nextMeeting!;
+            const startDate = new Date(nextMeeting.startsAt);
+            const endDate = new Date(nextMeeting.endsAt);
+            
+            return (
           <div className="mb-6">
             <div className="bg-gradient-to-r from-secondary-200 to-secondary-300 border border-accent-200 p-4 rounded-xl">
-              {/* <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 bg-accent-400 rounded-lg flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-semibold text-accent-800 text-sm">
-                  Next Meeting
-                </span>
-              </div> */}
-              
               {/* Meeting Time */}
               <div className="mb-3">
                 <p className="text-sm font-medium text-accent-700">
-                  {new Date(classItem.nextMeeting.startsAt).toLocaleDateString()} • {new Date(classItem.nextMeeting.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(classItem.nextMeeting.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {startDate.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })} • {startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
 
               {/* Location/Online Info */}
-              {classItem.nextMeeting.roomName && (
+                  {nextMeeting.roomName && nextMeeting.roomName !== 'null' && (
                 <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
                   <MapPin className="w-3.5 h-3.5" />
-                  <span className="font-medium">{classItem.nextMeeting.roomName}</span>
+                      <span className="font-medium">{nextMeeting.roomName}</span>
                 </div>
               )}
               
-              {classItem.nextMeeting.onlineMeetingUrl && (
+                  {nextMeeting.onlineMeetingUrl && (
                 <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span className="font-medium">Online Meeting</span>
-                  {classItem.nextMeeting.passcode && (
+                      {nextMeeting.passcode && (
                     <span className="ml-2 px-2 py-1 bg-accent-100 rounded text-xs">
-                      Code: {classItem.nextMeeting.passcode}
+                          Code: {nextMeeting.passcode}
                     </span>
                   )}
                 </div>
               )}
 
               {/* Topic */}
-              {classItem.nextMeeting.coveredTopic && (
+                  {nextMeeting.coveredTopic && (
                 <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span className="font-medium">Course: {classItem.nextMeeting.coveredTopic}</span>
+                      <span className="font-medium">Topic: {nextMeeting.coveredTopic}</span>
                 </div>
               )}
-
             </div>
           </div>
-        )}
+            );
+          }
 
-        {/* No Meeting Info for Completed/Inactive Classes */}
-        {!classItem.nextMeeting && (
+          // No Meeting Info for Completed/Inactive Classes or Invalid Dates
+          return (
           <div className="mb-6">
-            <div className="bg-gradient-to-r from-neutral-100 to-neutral-200 border border-neutral-300 p-4 rounded-xl">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 bg-neutral-400 rounded-lg flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-white" />
+              <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 border border-neutral-200 p-6 rounded-xl">
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-neutral-200 to-neutral-300 rounded-full flex items-center justify-center mb-3">
+                    <Calendar className="w-6 h-6 text-neutral-600" />
                 </div>
-                <span className="font-semibold text-neutral-700 text-sm">
-                  No Upcoming Meetings
-                </span>
+                  <h4 className="text-base font-semibold text-neutral-800 mb-1">
+                    No Upcoming Sessions
+                  </h4>
+                  <p className="text-sm text-neutral-600">
+                    {classItem.status === "completed" 
+                      ? "This class has been completed." 
+                      : "No sessions scheduled at this time."
+                    }
+                  </p>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
 
 

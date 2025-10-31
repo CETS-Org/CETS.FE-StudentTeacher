@@ -288,9 +288,11 @@ export default function CourseMaterialsTab() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Course Materials</h2>
         <Button
+          variant="primary"
           onClick={() => setPopupOpen(true)}
           iconLeft={<Upload size={16} />}
           disabled={uploading}
+           className="btn-secondary"
         >
           {uploading ? 'Uploading...' : 'Upload Materials'}
         </Button>

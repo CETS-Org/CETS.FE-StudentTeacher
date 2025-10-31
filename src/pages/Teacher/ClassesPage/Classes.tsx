@@ -155,7 +155,11 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
               {/* Meeting Time */}
               <div className="mb-3">
                 <p className="text-sm font-medium text-accent-700">
-                  {new Date(classItem.nextMeeting.startsAt).toLocaleDateString('vi-VN')} • {new Date(classItem.nextMeeting.startsAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(classItem.nextMeeting.endsAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(classItem.nextMeeting.startsAt).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })} • {new Date(classItem.nextMeeting.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - {new Date(classItem.nextMeeting.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
 
@@ -254,14 +258,14 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
           >
             Open Class
           </Button>
-          <Button 
+          {/* <Button 
             variant="secondary" 
             iconLeft={<Users className="w-4 h-4" />}
             className="flex-1 sm:flex-initial"
             onClick={() => navigate(`/teacher/class/${classItem.id}/roster`)}
           >
             Students
-          </Button>
+          </Button> */}
           {classItem.status === "completed" && classItem.certificate && (
             <Button 
               variant="secondary" 
