@@ -75,6 +75,7 @@ export interface StudentLearningClassResponse {
   statusName: string;
   courseName: string;
   className: string;
+  courseCode?: string;
   teacherName: string;
   startDate: string;
   endDate: string;

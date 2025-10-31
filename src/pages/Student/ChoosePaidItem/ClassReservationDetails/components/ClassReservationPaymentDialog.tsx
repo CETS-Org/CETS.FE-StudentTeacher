@@ -19,7 +19,7 @@ export default function ClassReservationPaymentDialog({
   reservation,
   reservationItems
 }: Omit<ClassReservationPaymentDialogProps, 'onPaymentSubmit'>) {
-  const [paymentPlan, setPaymentPlan] = useState<'full' | 'monthly'>('full');
+  const [paymentPlan, setPaymentPlan] = useState<'OneTime' | 'TwoTime'>('OneTime');
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
@@ -33,6 +33,31 @@ export default function ClassReservationPaymentDialog({
       fetchPersonalDetails();
     }
   }, [open, studentName, studentEmail]);
+
+  // Preselect payment plan based on reservation item's planType and reset on close
+  useEffect(() => {
+    if (open && reservationItems.length > 0) {
+      const firstItemPlanType = reservationItems[0].planType;
+      
+      // Normalize the planType string to lowercase for comparison
+      const normalizedPlanType = firstItemPlanType?.toLowerCase() || '';
+      
+      // Map the planType from API to payment plan state
+      if (normalizedPlanType.includes('one-time') || normalizedPlanType.includes('onetime') || 
+          firstItemPlanType === 'OneTime' || firstItemPlanType === 'one_time') {
+        setPaymentPlan('OneTime');
+      } else if (normalizedPlanType.includes('two-time') || normalizedPlanType.includes('twotime') || 
+                 firstItemPlanType === 'TwoTime' || firstItemPlanType === 'two_time') {
+        setPaymentPlan('TwoTime');
+      }
+      
+      console.log('Preselected payment plan from API planType:', firstItemPlanType);
+    } else if (!open) {
+      // Reset form state when dialog closes
+      setPaymentPlan('OneTime');
+      setNotes('');
+    }
+  }, [open, reservationItems]);
 
   const fetchPersonalDetails = async () => {
     setIsLoadingProfile(true);
@@ -122,6 +147,22 @@ export default function ClassReservationPaymentDialog({
     return reservationItems.reduce((sum, item) => sum + item.price, 0);
   }, [reservationItems]);
 
+  // Calculate total with 10% increase for two-time payment
+  const totalWithFee = useMemo(() => {
+    if (paymentPlan === 'TwoTime') {
+      return Math.round(totalAmount * 1.1);
+    }
+    return totalAmount;
+  }, [totalAmount, paymentPlan]);
+
+  // Calculate per payment amount for two-time payment
+  const perPaymentAmount = useMemo(() => {
+    if (paymentPlan === 'TwoTime') {
+      return Math.round(totalWithFee / 2);
+    }
+    return totalAmount;
+  }, [totalAmount, totalWithFee, paymentPlan]);
+
   // Get the item name for display
   const itemName = useMemo(() => {
     if (reservationItems.length === 1) {
@@ -175,11 +216,11 @@ export default function ClassReservationPaymentDialog({
         note: notes || ""
       };
       
-      console.log(`${paymentPlan === 'full' ? 'Full' : 'Monthly'} payment data:`, paymentData);
+      console.log(`${paymentPlan === 'OneTime' ? 'OneTime' : 'TwoTime'} payment data:`, paymentData);
 
       // Call the appropriate payment API based on payment plan
       let paymentResponse;
-      if (paymentPlan === 'full') {
+      if (paymentPlan === 'OneTime') {
         paymentResponse = await paymentService.createFullPayment(paymentData as FullPaymentRequest);
       } else {
         paymentResponse = await paymentService.createMonthlyPayment(paymentData);
@@ -333,8 +374,16 @@ export default function ClassReservationPaymentDialog({
               
               <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                 <span className="text-lg font-semibold text-gray-900">Payment Amount:</span>
-                <span className="text-xl font-bold text-primary-600">{formatPrice(totalAmount)}</span>
+                <span className="text-xl font-bold text-primary-600">
+                  {paymentPlan === 'TwoTime' ? formatPrice(perPaymentAmount) : formatPrice(totalAmount)}
+                </span>
               </div>
+              {paymentPlan === 'TwoTime' && (
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>Total (with 10% fee):</span>
+                  <span className="font-medium">{formatPrice(totalWithFee)}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -348,21 +397,21 @@ export default function ClassReservationPaymentDialog({
               <div className="space-y-3">
                 {/* Full Payment */}
                 <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  paymentPlan === 'full' ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-gray-300 hover:border-gray-400'
+                  paymentPlan === 'OneTime' ? 'border-primary-50 bg-secondary-200 shadow-md' : 'border-gray-100 hover:border-gray-400'
                 }`}>
                   <input
                     type="radio"
                     name="paymentPlan"
-                    value="full"
-                    checked={paymentPlan === 'full'}
-                    onChange={(e) => setPaymentPlan(e.target.value as 'full')}
+                    value="OneTime"
+                    checked={paymentPlan === 'OneTime'}
+                    onChange={(e) => setPaymentPlan(e.target.value as 'OneTime')}
                     className="sr-only"
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <DollarSign className={`w-5 h-5 ${paymentPlan === 'full' ? 'text-primary-600' : 'text-gray-500'}`} />
-                        <span className="text-base font-semibold text-gray-900">Full Payment</span>
+                        <DollarSign className={`w-5 h-5 ${paymentPlan === 'OneTime' ? 'text-primary-600' : 'text-gray-500'}`} />
+                        <span className="text-base font-semibold text-gray-900">One-time Payment</span>
                       </div>
                       <span className="text-xl font-bold text-primary-600">{formatPrice(totalAmount)}</span>
                     </div>
@@ -370,29 +419,29 @@ export default function ClassReservationPaymentDialog({
                   </div>
                 </label>
 
-                {/* Monthly Payment */}
+                {/* Two-time Payment */}
                 <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  paymentPlan === 'monthly' ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-gray-300 hover:border-gray-400'
+                  paymentPlan === 'TwoTime' ? 'border-primary-50 bg-secondary-200 shadow-md' : 'border-gray-300 hover:border-gray-400'
                 }`}>
                   <input
                     type="radio"
                     name="paymentPlan"
-                    value="monthly"
-                    checked={paymentPlan === 'monthly'}
-                    onChange={(e) => setPaymentPlan(e.target.value as 'monthly')}
+                    value="TwoTime"
+                    checked={paymentPlan === 'TwoTime'}
+                    onChange={(e) => setPaymentPlan(e.target.value as 'TwoTime')}
                     className="sr-only"
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <Package className={`w-5 h-5 ${paymentPlan === 'monthly' ? 'text-primary-600' : 'text-gray-500'}`} />
-                        <span className="text-base font-semibold text-gray-900">Monthly Payment</span>
+                        <Package className={`w-5 h-5 ${paymentPlan === 'TwoTime' ? 'text-primary-600' : 'text-gray-500'}`} />
+                        <span className="text-base font-semibold text-gray-900">Two-time Payment</span>
                       </div>
-                      <span className="text-xl font-bold text-primary-600">{formatPrice(Math.ceil(totalAmount / 2))}</span>
+                      <span className="text-xl font-bold text-primary-600">{formatPrice(Math.round((totalAmount * 1.1) / 2))}</span>
                     </div>
                     <p className="text-sm text-gray-600">First installment payment</p>
                     <div className="text-xs text-gray-500 mt-1">
-                      Total amount: {formatPrice(totalAmount)}
+                      Total amount: {formatPrice(Math.round(totalAmount * 1.1))} (includes 10% fee)
                     </div>
                   </div>
                 </label>
@@ -409,61 +458,46 @@ export default function ClassReservationPaymentDialog({
                 )}
               </h4>
               
-              {/* Show message if no user data loaded */}
-              {!isLoadingProfile && !studentName && !studentEmail && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                  <div className="flex items-center gap-2 text-yellow-700">
-                    <User className="w-4 h-4" />
-                    <span className="text-sm font-medium">Please fill in your information manually</span>
-                  </div>
-                  <p className="text-xs text-yellow-600 mt-1">
-                    We couldn't load your profile data. Please enter your details below.
-                  </p>
-                </div>
-              )}
+              <p className="text-sm text-gray-600">Your profile information has been automatically filled and cannot be edited here.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name *
+                    Full Name
                   </label>
                   <input
                     type="text"
                     value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    disabled={isLoadingProfile}
-                    required
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                    placeholder="Loading..."
                   />
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email *
+                    Email
                   </label>
                   <input
                     type="email"
                     value={studentEmail}
-                    onChange={(e) => setStudentEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    disabled={isLoadingProfile}
-                    required
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                    placeholder="Loading..."
                   />
                 </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
+                  Phone Number
                 </label>
                 <input
                   type="tel"
                   value={studentPhone}
-                  onChange={(e) => setStudentPhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  disabled={isLoadingProfile}
-                  placeholder="+84 123 456 789"
-                  required
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  placeholder="Loading..."
                 />
               </div>
             </div>
@@ -501,9 +535,9 @@ export default function ClassReservationPaymentDialog({
                 iconLeft={isProcessing ? undefined : <CreditCard className="w-4 h-4" />}
               >
                 {isLoadingProfile ? "Loading..." : isProcessing ? "Processing..." : 
-                  paymentPlan === 'full' 
+                  paymentPlan === 'OneTime' 
                     ? `Pay ${formatPrice(totalAmount)}` 
-                    : `Pay First Installment ${formatPrice(Math.ceil(totalAmount / 2))}`
+                    : `Pay First Installment ${formatPrice(Math.round((totalAmount * 1.1) / 2))}`
                 }
               </Button>
             </div>

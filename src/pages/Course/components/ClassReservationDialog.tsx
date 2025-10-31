@@ -25,7 +25,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
     fullName: "",
     email: "",
     phone: "",
-    paymentPlan: "one_time", // "one_time" or "two_time"
+    paymentPlan: "OneTime", // "OneTime" or "TwoTime"
     notes: ""
   });
 
@@ -47,7 +47,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
         fullName: "",
         email: "",
         phone: "",
-        paymentPlan: "one_time",
+        paymentPlan: "OneTime",
         notes: ""
       });
     }
@@ -55,15 +55,17 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
 
   // Calculate payment amounts
   const getPaymentAmount = () => {
-    if (reservationData.paymentPlan === "two_time") {
-      return Math.round(course.standardPrice / 2);
+    if (reservationData.paymentPlan === "TwoTime") {
+      // Two-time payment: total + 10%, divided by 2
+      return Math.round((course.standardPrice * 1.1) / 2);
     }
     return course.standardPrice;
   };
 
   const getTotalAmount = () => {
-    if (reservationData.paymentPlan === "two_time") {
-      return course.standardPrice;
+    if (reservationData.paymentPlan === "TwoTime") {
+      // Two-time payment total is 10% more than standard price
+      return Math.round(course.standardPrice * 1.1);
     }
     return course.standardPrice;
   };
@@ -158,16 +160,16 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
                   <div className="grid grid-cols-2 gap-4">
                     <div 
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        reservationData.paymentPlan === "one_time" 
+                        reservationData.paymentPlan === "OneTime" 
                           ? "border-accent-100 bg-secondary-200" 
                           : "border-gray-200 hover:border-gray-300"
                       }`}
-                      onClick={() => setReservationData({...reservationData, paymentPlan: "one_time"})}
+                      onClick={() => setReservationData({...reservationData, paymentPlan: "OneTime"})}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <input 
                           type="radio" 
-                          checked={reservationData.paymentPlan === "one_time"}
+                          checked={reservationData.paymentPlan === "OneTime"}
                           onChange={() => {}}
                           className="text-primary-600"
                         />
@@ -181,25 +183,25 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
                     
                     <div 
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        reservationData.paymentPlan === "two_time" 
+                        reservationData.paymentPlan === "TwoTime" 
                           ? "border-accent-100 bg-secondary-200" 
                           : "border-gray-200 hover:border-gray-300"
                       }`}
-                      onClick={() => setReservationData({...reservationData, paymentPlan: "two_time"})}
+                      onClick={() => setReservationData({...reservationData, paymentPlan: "TwoTime"})}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <input 
                           type="radio" 
-                          checked={reservationData.paymentPlan === "two_time"}
+                          checked={reservationData.paymentPlan === "TwoTime"}
                           onChange={() => {}}
                           className="text-primary-600"
                         />
                         <span className="font-semibold text-gray-900">Two-time Payment</span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <div className="font-medium text-lg text-primary-600">{Math.round(course.standardPrice / 2).toLocaleString('vi-VN')}₫/payment</div>
-                        <div>2 payments of {Math.round(course.standardPrice / 2).toLocaleString('vi-VN')}₫ each</div>
-                        <div className="text-xs text-gray-500 mt-1">Total: {course.standardPrice.toLocaleString('vi-VN')}₫</div>
+                        <div className="font-medium text-lg text-primary-600">{Math.round((course.standardPrice * 1.1) / 2).toLocaleString('vi-VN')}₫/payment</div>
+                        <div>2 payments of {Math.round((course.standardPrice * 1.1) / 2).toLocaleString('vi-VN')}₫ each</div>
+                        <div className="text-xs text-gray-500 mt-1">Total: {Math.round(course.standardPrice * 1.1).toLocaleString('vi-VN')}₫ (includes 10% fee)</div>
                       </div>
                     </div>
                   </div>
@@ -235,7 +237,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
         <DialogFooter>
           <div className="flex justify-between items-center w-full">
             <div className="text-lg font-semibold">
-              {reservationData.paymentPlan === "two_time" ? (
+              {reservationData.paymentPlan === "TwoTime" ? (
                 <div>
                   <div>Per Payment: <span className="text-primary-600">{getPaymentAmount().toLocaleString('vi-VN')}₫</span></div>
                   <div className="text-sm text-gray-600">Total: <span className="text-primary-600">{getTotalAmount().toLocaleString('vi-VN')}₫</span></div>
