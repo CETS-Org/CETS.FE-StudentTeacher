@@ -61,13 +61,21 @@ export const createAssignment = (
 export const downloadAssignment = (
   assignmentId: string,
   config?: AxiosRequestConfig
-) => api.get(`/api/ACAD_Assignments/download/${assignmentId}`, config);
+) =>
+  api.get(`/api/ACAD_Assignments/download/${assignmentId}`, {
+    responseType: 'blob',
+    ...config,
+  });
 
 // Download submission
 export const downloadSubmission = (
   submissionId: string,
   config?: AxiosRequestConfig
-) => api.get(`/api/ACAD_Submissions/download/${submissionId}`, config);
+) =>
+  api.get(`/api/ACAD_Submissions/download/${submissionId}`, {
+    ...config, // vẫn cho phép custom header nếu cần
+  });
+
 
 // Download all submissions for an assignment
 export const downloadAllSubmissions = (
@@ -91,8 +99,9 @@ export const submitAssignment = (
   submissionData: {
     assignmentID: string;
     studentID: string;
-    fileUrl: string;
-    content: string;
+    fileName: string;
+    contentType: string;
+    content: string | null;
   },
   config?: AxiosRequestConfig
 ) => api.post('/api/ACAD_Submissions/submit', submissionData, config);
