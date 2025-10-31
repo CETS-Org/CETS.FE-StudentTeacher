@@ -13,7 +13,8 @@ import {
   BookOpen,
   AlertCircle,
   CheckCircle,
-  DollarSign
+  DollarSign,
+  Eye
 } from "lucide-react";
 
 import type { ClassReservationResponse, ReservationItem } from "@/types/payment";
@@ -169,6 +170,10 @@ export default function ClassReservationDetails() {
     // Pay for a specific item
     setSelectedItemForPayment(item);
     setShowPaymentDialog(true);
+  };
+
+  const handleViewCourseDetails = (courseId: string) => {
+    navigate(`/course/${courseId}`);
   };
 
 
@@ -339,7 +344,7 @@ export default function ClassReservationDetails() {
                  </div>
 
                  {/* Item Price and Action */}
-                 <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-3">
                    <div className="text-right">
                      <div className="font-semibold text-gray-900">{formatPrice(item.price)}</div>
                      <div className="text-xs text-gray-600 mt-1">
@@ -355,6 +360,16 @@ export default function ClassReservationDetails() {
                        )}
                      </div>
                    </div>
+                   
+                   {/* View Details Button */}
+                   <Button
+                     variant="secondary"
+                     size="sm"
+                     iconLeft={<Eye className="w-3 h-3" />}
+                     onClick={() => handleViewCourseDetails(item.courseId)}
+                   >
+                     View Details
+                   </Button>
                    
                    {/* Pay Button */}
                    {!item.invoiceStatus || item.invoiceStatus !== 'Paid' ? (

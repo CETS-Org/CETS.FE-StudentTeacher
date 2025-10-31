@@ -56,8 +56,9 @@ export const planTypeService = {
   // Map payment plan strings to plan type codes
   getPlanTypeCode: (paymentPlan: string): string => {
     const planCodeMapping: Record<string, string> = {
-      'one_time': 'OneTime',
-      'two_time': 'TwoTime',
+    
+      'OneTime': 'OneTime',
+      'TwoTime': 'TwoTime',
     };
     
     return planCodeMapping[paymentPlan] || 'OneTime'; // Default to OneTime

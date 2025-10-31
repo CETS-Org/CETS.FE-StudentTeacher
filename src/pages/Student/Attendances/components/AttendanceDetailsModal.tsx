@@ -49,7 +49,7 @@ const AttendanceDetailsModal: React.FC<AttendanceDetailsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-accent-200 bg-gradient-to-r from-primary-50 to-primary-100">
+        <div className="flex items-center justify-between p-6 bg-secondary-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
               <ClipboardCheck className="w-5 h-5 text-white" />

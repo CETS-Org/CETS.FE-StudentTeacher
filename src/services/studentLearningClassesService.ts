@@ -67,7 +67,7 @@ export const transformStudentLearningClass = (apiClass: StudentLearningClassResp
     classStatus: apiClass.statusName,
     courseFormat: "In-person" as const, // Default format, can be enhanced later
     courseName: apiClass.courseName,
-    courseCode: apiClass.className,
+    courseCode: apiClass.courseCode, // Will be undefined if not provided by API
     category: "General", // Default category, can be enhanced later
     startDate: apiClass.startDate,
     endDate: apiClass.endDate,
