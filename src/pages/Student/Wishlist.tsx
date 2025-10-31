@@ -449,7 +449,7 @@ export default function Wishlist() {
               </p>
               <Button 
                 variant="primary"
-                onClick={() => navigate('/student/courses')}
+                onClick={() => navigate('/courses')}
               >
                 Browse Courses
               </Button>

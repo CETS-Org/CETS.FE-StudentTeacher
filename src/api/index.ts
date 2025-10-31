@@ -54,6 +54,12 @@ import {
   getStudentWishlist, 
   isCourseInWishlist 
 } from './wishlist.api';
+import {
+  getStudentEnrollments,
+  isStudentEnrolledInCourse,
+  isCourseInActiveReservation,
+  checkCourseStatus,
+} from './enrollment.api';
 
 // Export axios instance under a clear name for direct HTTP usage
 export const apiClient = axiosInstance;
@@ -139,6 +145,11 @@ export const api = {
   removeFromWishlist,
   getStudentWishlist,
   isCourseInWishlist,
+  // Enrollment
+  getStudentEnrollments,
+  isStudentEnrolledInCourse,
+  isCourseInActiveReservation,
+  checkCourseStatus,
 };
 
 // Also export individual functions for direct import usage
@@ -194,6 +205,10 @@ export {
   removeFromWishlist,
   getStudentWishlist,
   isCourseInWishlist,
+  getStudentEnrollments,
+  isStudentEnrolledInCourse,
+  isCourseInActiveReservation,
+  checkCourseStatus,
 };
 
 

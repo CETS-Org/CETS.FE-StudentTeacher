@@ -15,7 +15,6 @@ export const studentSidebarConfig: SidebarConfig = {
     { id: "schedule", label: "Schedule", icon: Calendar, path: "/student/schedule" },
     { id: "attendance", label: "Attendance", icon: ClipboardCheck, path: "/student/attendance" },
     { id: "academic-results", label: "Academic Results", icon: GraduationCap, path: "/student/academic-results" },
-    { id: "materials", label: "Materials", icon: FileText, path: "/student/materials" },
     { id: "choose-paid-item", label: "Choose Paid Item", icon: CreditCard, path: "/student/choose-paid-item" },
     { id: "feedback", label: "Feedback", icon: MessageCircle, path: "/student/feedback" },
     {

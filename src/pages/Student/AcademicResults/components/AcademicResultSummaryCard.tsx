@@ -122,29 +122,33 @@ const AcademicResultSummaryCard: React.FC<AcademicResultSummaryCardProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* View Details Button */}
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-xs font-medium text-neutral-600">
+                <span className="font-bold text-neutral-700">{summary.credits}</span> credits
+              </div>
+              <Button 
+                variant="primary" 
+                size="sm"
+                iconLeft={<Eye className="w-4 h-4" />}
+                onClick={() => onViewDetails(summary.courseId)}
+                className="shadow-md hover:shadow-lg transition-shadow"
+              >
+                View Details
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Remarks */}
         {summary.remarks && (
-          <div className="mb-4 p-3 bg-accent-50 rounded-lg border border-accent-200">
+          <div className="p-3 bg-accent-50 rounded-lg border border-accent-200">
             <p className="text-sm text-accent-700">
               <span className="font-medium">Remarks:</span> {summary.remarks}
             </p>
           </div>
         )}
-
-        {/* Action Button */}
-        <div className="flex gap-2">
-          <Button 
-            variant="secondary" 
-            className="flex-1"
-            iconLeft={<Eye className="w-4 h-4" />}
-            onClick={() => onViewDetails(summary.courseId)}
-          >
-            View Details
-          </Button>
-        </div>
       </div>
     </Card>
   );

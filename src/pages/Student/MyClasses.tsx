@@ -320,23 +320,23 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              {/* <p className="text-xs mt-1">
-                <span className="inline-flex items-center gap-1 bg-warning-200 text-primary-700 px-2 py-1 rounded-md border border-primary-100">
-                  <span className="text-xs font-semibold">{classItem.courseCode}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 bg-accent-100 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
-                  <GraduationCap className="w-3 h-3" />
-                  <span className="text-xs font-semibold">{classItem.level}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 bg-secondary-200 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
-                  <span className="text-xs font-semibold text-accent-700">{classItem.courseFormat || 'N/A'}</span>
-                </span>
-              </p> */}
+            
+            {/* Course Name Display */}
+            {classItem.courseName && (
+              <div className="mb-3">
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Course: </span>
+                  <span className="text-primary-700 font-semibold">{classItem.courseName}</span>
+                  {classItem.courseCode && (
+                    <span className="ml-2 inline-flex items-center gap-1 bg-accent-100 text-primary-700 px-2 py-1 rounded-md text-xs font-semibold">
+                      {classItem.courseCode}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
 
-            </div>
-
-            <div className="flex items-center gap-2 mb-1 mt-4">
+            <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 bg-accent-400 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs font-semibold">{classItem.instructor?.charAt(0) || 'T'}</span>
               </div>

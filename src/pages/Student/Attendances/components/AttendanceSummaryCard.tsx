@@ -54,7 +54,7 @@ const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
               <span className="text-accent-600">by {summary.instructor}</span>
             </div>
             {/* Course Name - More Prominent */}
-            <div className="bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200 rounded-lg p-3">
+            <div className="bg-gradient-to-r from-secondary-200 to-secondary-300 border border-primary-200 rounded-lg p-3">
               <p className="text-sm font-medium text-primary-700 mb-1">Course:</p>
               <p className="text-base font-semibold text-primary-800">{summary.courseName}</p>
             </div>
@@ -62,7 +62,7 @@ const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
         </div>
 
         {/* Attendance Summary - All in One Line */}
-        <div className={`p-4 rounded-xl border mb-4 ${getAttendanceBgColor(summary.attendanceRate)}`}>
+        <div className={`p-4 rounded-xl border ${getAttendanceBgColor(summary.attendanceRate)}`}>
           <div className="flex items-center justify-between gap-6">
             {/* Attendance Rate */}
             <div className="flex items-center gap-3">
@@ -99,24 +99,22 @@ const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
               </div>
             </div>
 
-            {/* Total Sessions */}
-            <div className="text-right">
-              <p className="text-xs font-medium text-neutral-600">Total Sessions</p>
-              <p className="text-lg font-bold text-neutral-700">{summary.totalSessions}</p>
+            {/* View Details Button - Replacing Total Sessions */}
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-xs font-medium text-neutral-600">
+                Total: <span className="font-bold text-neutral-700">{summary.totalSessions}</span> sessions
+              </div>
+              <Button 
+                variant="primary" 
+                size="sm"
+                iconLeft={<Eye className="w-4 h-4" />}
+                onClick={() => onViewDetails(summary.classId)}
+                className="shadow-md hover:shadow-lg transition-shadow"
+              >
+                View Details
+              </Button>
             </div>
           </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="flex gap-2">
-          <Button 
-            variant="secondary" 
-            className="flex-1"
-            iconLeft={<Eye className="w-4 h-4" />}
-            onClick={() => onViewDetails(summary.classId)}
-          >
-            View Details
-          </Button>
         </div>
       </div>
     </Card>

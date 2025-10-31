@@ -10,7 +10,7 @@ import Toast from "@/components/ui/Toast";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useCourseSchedule } from "@/hooks/useCourseSchedule";
 import { useToast } from "@/hooks/useToast";
-import { isTokenValid, getUserInfo } from "@/lib/utils";
+import { isTokenValid, getUserInfo, getUserRole } from "@/lib/utils";
 import { api } from "@/api";
 import { planTypeService } from "@/services/planTypeService";
 import type { CourseDetailProps } from "@/types/course";
@@ -21,6 +21,8 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   const [expandedSyllabus, setExpandedSyllabus] = useState<Set<string>>(new Set());
   const [allSyllabusExpanded, setAllSyllabusExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [courseStatus, setCourseStatus] = useState({ isEnrolled: false, inReservation: false });
+  const [checkingStatus, setCheckingStatus] = useState(false);
   
   // Use schedules from course if available, otherwise fetch them
   const shouldFetchSchedules = !course.schedules || course.schedules.length === 0;
@@ -31,6 +33,42 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   // Scroll to top on component mount
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [course.id]);
+
+  // Check if student is already enrolled or has course in reservation
+  useEffect(() => {
+    const checkStatus = async () => {
+      // Only check if user is logged in and is a student
+      if (!isTokenValid()) {
+        setCourseStatus({ isEnrolled: false, inReservation: false });
+        return;
+      }
+
+      const userRole = getUserRole();
+      if (userRole?.toLowerCase() !== 'student') {
+        setCourseStatus({ isEnrolled: false, inReservation: false });
+        return;
+      }
+
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        setCourseStatus({ isEnrolled: false, inReservation: false });
+        return;
+      }
+
+      try {
+        setCheckingStatus(true);
+        const status = await api.checkCourseStatus(userInfo.id, course.id);
+        setCourseStatus(status);
+      } catch (err) {
+        console.error('Error checking course status:', err);
+        setCourseStatus({ isEnrolled: false, inReservation: false });
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkStatus();
   }, [course.id]);
 
   // Function to calculate start date based on course schedule
@@ -618,10 +656,40 @@ export default function CourseDetail({ course }: CourseDetailProps) {
 
               <Button
                 onClick={handleEnroll}
-                 className="w-full font-semibold mb-4"
+                className="w-full font-semibold mb-4"
+                disabled={
+                  checkingStatus || 
+                  courseStatus.isEnrolled || 
+                  courseStatus.inReservation || 
+                  (isTokenValid() && getUserRole()?.toLowerCase() !== 'student')
+                }
               >
-                Enroll Now
+                {checkingStatus 
+                  ? 'Checking...' 
+                  : courseStatus.isEnrolled 
+                    ? 'Already Enrolled' 
+                    : courseStatus.inReservation
+                      ? 'In Reservation'
+                      : 'Enroll Now'}
               </Button>
+
+              {courseStatus.isEnrolled && (
+                <p className="text-sm text-success-600 text-center mb-4">
+                  ✓ You are already enrolled in this course
+                </p>
+              )}
+
+              {courseStatus.inReservation && !courseStatus.isEnrolled && (
+                <p className="text-sm text-primary-600 text-center mb-4">
+                  This course is already in your reservation.<br></br> Please complete payment.
+                </p>
+              )}
+
+              {isTokenValid() && getUserRole()?.toLowerCase() !== 'student' && !courseStatus.isEnrolled && !courseStatus.inReservation && (
+                <p className="text-sm text-warning-600 text-center mb-4">
+                  Only students can enroll in courses
+                </p>
+              )}
 
                {course.benefits && course.benefits.length > 0 && (
                 <div className="space-y-3 text-sm text-gray-600">
