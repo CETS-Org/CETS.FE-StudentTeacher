@@ -283,7 +283,7 @@ export default function BulkGradeImportPopup({
               </h3>
               <ol className="list-decimal list-inside space-y-1 text-sm text-neutral-700">
                 <li>Download the template Excel file</li>
-                <li>Fill in the scores (0-100) and/or feedback for each student</li>
+                <li>Fill in the scores (0-10) and/or feedback for each student</li>
                 <li>Leave cells empty if you don't want to update that field</li>
                 <li>Upload the completed file</li>
                 <li>Review the data and submit</li>
