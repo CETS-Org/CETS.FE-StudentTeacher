@@ -8,6 +8,7 @@ import { getAcademicResults } from "@/api/academicResults.api";
 import SimpleStatsCard from "./components/SimpleStatsCard";
 import SimpleCourseCard from "./components/SimpleCourseCard";
 import CourseDetailModal from "./components/CourseDetailModal";
+import { getStudentId } from "@/lib/utils";
 
 export default function AcademicResults() {
   const [academicData, setAcademicData] = useState<AcademicResultsApiResponse | null>(null);
@@ -16,14 +17,17 @@ export default function AcademicResults() {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Student ID - in a real app, this would come from authentication context
-  const studentId = "77437EAE-7B33-4858-B8E2-522776B2475A";
+  // Get student ID from session (localStorage)
+  const studentId = getStudentId() ?? "";
 
   useEffect(() => {
     const fetchAcademicResults = async () => {
       try {
         setLoading(true);
         setError(null);
+        if (!studentId) {
+          throw new Error("Student session not found. Please log in again.");
+        }
         const apiResponse = await getAcademicResults(studentId);
         setAcademicData(apiResponse);
       } catch (err) {

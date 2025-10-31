@@ -87,6 +87,7 @@ export interface AcademicResult {
 
 // Academic result summary for a single course
 export interface CourseResultSummary {
+  studentId: string;
   courseId: string;
   courseCode: string;
   courseName: string;
@@ -258,6 +259,7 @@ export const mapApiResponseToStudentReport = (
     const gpa = GRADE_POINTS[finalGrade];
 
     return {
+      studentId, 
       courseId: item.courseId,
       courseCode: item.courseCode,
       courseName: item.courseName,

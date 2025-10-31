@@ -24,7 +24,7 @@ import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { getCoveredTopicByMeetingId, getAssignmentsByMeetingAndStudent, type CoveredTopic, type MeetingAssignment } from "@/services/teachingClassesService";
 import { getClassMeetingsByClassId, type ClassMeeting } from "@/api/classMeetings.api";
 import { getStudentId } from "@/lib/utils";
-import { api } from "@/api";
+import { api, downloadSubmission } from "@/api";
 import type { ClassDetail } from "@/types/class";
 import type { LearningMaterial } from "@/types/learningMaterial";
 import { config } from "@/lib/config";
@@ -230,6 +230,115 @@ export default function SessionDetail() {
     }
   };
 
+  // Download assignment file using API
+  const handleDownloadAssignment = async (assignmentId: string, fileName?: string) => {
+    try {
+      console.log('Downloading assignment:', assignmentId);
+      const response = await api.downloadAssignment(assignmentId);
+      
+      // Create blob from response data
+      const blob = new Blob([response.data], { 
+        type: response.headers['content-type'] || 'application/octet-stream' 
+      });
+      
+      // Create download link
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName || `assignment-${assignmentId}`;
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error: any) {
+      console.error('Download assignment error:', error);
+      alert(`Failed to download assignment: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  // // Download submission file using API
+  // const handleDownloadSubmission = async (submissionId: string, fileName?: string) => {
+  //   try {
+  //     console.log('Downloading submission:', submissionId);
+  //     console.log('Submission ID type:', typeof submissionId);
+  //     console.log('Submission ID length:', submissionId?.length);
+      
+  //     if (!submissionId || submissionId === 'undefined' || submissionId === 'null') {
+  //       throw new Error('Invalid submission ID');
+  //     }
+      
+  //     const response = await api.downloadSubmission(submissionId);
+  //     console.log('Download response:', response);
+  //     console.log('Response headers:', response.headers);
+  //     console.log('Response data type:', typeof response.data);
+  //     console.log('Response data size:', response.data?.size || response.data?.length);
+      
+  //     // Check if response.data is already a Blob
+  //     let blob;
+  //     if (response.data instanceof Blob) {
+  //       blob = response.data;
+  //       console.log('Response data is already a Blob');
+  //     } else {
+  //       // Create blob from response data
+  //       blob = new Blob([response.data], { 
+  //         type: response.headers['content-type'] || 'application/octet-stream' 
+  //       });
+  //       console.log('Created blob from response data');
+  //     }
+      
+  //     console.log('Blob type:', blob.type);
+  //     console.log('Blob size:', blob.size);
+      
+  //     // Create download link
+  //     const blobUrl = window.URL.createObjectURL(blob);
+  //     const link = document.createElement('a');
+  //     link.href = blobUrl;
+  //     link.download = fileName || `submission-${submissionId}`;
+  //     document.body.appendChild(link);
+  //     link.click();
+      
+  //     document.body.removeChild(link);
+  //     window.URL.revokeObjectURL(blobUrl);
+      
+  //     console.log('Download completed successfully');
+  //   } catch (error: any) {
+  //     console.error('Download submission error:', error);
+  //     console.error('Error response:', error.response);
+  //     console.error('Error status:', error.response?.status);
+  //     console.error('Error data:', error.response?.data);
+      
+  //     const errorMessage = error.response?.data?.message || error.message;
+  //     alert(`Failed to download submission: ${errorMessage}`);
+  //   }
+  // };
+  const handleDownloadSubmission = async (submissionId: string) => {
+    try {
+      const res = await downloadSubmission(submissionId);
+  
+      // BE trả JSON có downloadUrl
+      const presignedUrl = res.data?.downloadUrl;
+      if (!presignedUrl) throw new Error("No presigned URL returned from server");
+  
+      // Mở file thật (Cloudflare R2)
+      const link = document.createElement("a");
+      link.href = presignedUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error: any) {
+      console.error("Download submission error:", error);
+      alert(
+        `Failed to download submission: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
+  };
+  
+  
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-GB');
@@ -353,27 +462,46 @@ export default function SessionDetail() {
         return;
       }
 
-      // For now, use a simple approach without presigned URL
-      // TODO: Implement proper file upload with presigned URL
-      const fileUrl = `https://storage.example.com/submissions/${file.name}`;
-      
-      console.log('Calling submitAssignment API...');
-      try {
-        // Call API to submit assignment
-        await api.submitAssignment({
-          assignmentID: assignmentId,
-          studentID: studentId,
-          fileUrl: fileUrl,
-          content: file.name
-        });
-        console.log('API call successful');
-      } catch (apiError) {
-        console.warn('API call failed, continuing with UI update:', apiError);
-        // Continue with UI update even if API fails
+      console.log('Step 1: Calling submitAssignment API to get presigned URL...');
+      // Step 1: Call BE to get presigned URL
+      const submitResponse = await api.submitAssignment({
+        assignmentID: assignmentId,
+        studentID: studentId,
+        fileName: file.name,
+        contentType: file.type || 'application/octet-stream',
+        content: null,
+      });
+
+      const { uploadUrl, storeUrl, contentType } = submitResponse.data;
+      console.log('Got presigned URL:', { uploadUrl, storeUrl, contentType });
+
+      if (!uploadUrl) {
+        throw new Error('No upload URL received from server');
       }
 
+      console.log('Step 2: Uploading to R2...');
+      // Step 2: Upload to R2 using EXACT same Content-Type as signed
+      const putResp = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': contentType || file.type || 'application/octet-stream' 
+        },
+        body: file,
+      });
+
+      console.log('R2 upload response:', putResp.status, putResp.statusText);
+
+      // Step 3: Validate upload result
+      if (!putResp.ok) {
+        const errText = await putResp.text().catch(() => '');
+        throw new Error(`R2 upload failed: ${putResp.status} ${putResp.statusText} ${errText}`);
+      }
+
+      console.log('File uploaded successfully to R2:', storeUrl);
+      alert('Upload / Resubmit thành công!');
+
       console.log('API call successful, updating UI...');
-      // Update UI to show submission
+      // Update UI to show submission with storeUrl from presigned response
       setAssignments(prev => {
         if (!prev) return prev;
         return prev.map(a => {
@@ -383,10 +511,10 @@ export default function SessionDetail() {
             ...a,
             submissions: [
               {
-                id: `submission-${Date.now()}`,
+                id: `submission-${Date.now()}`, // Temporary ID until page reload
                 assignmentID: a.id,
                 studentID: studentId,
-                storeUrl: fileUrl,
+                storeUrl: storeUrl,
                 content: file.name,
                 score: null,
                 feedback: null,
@@ -403,7 +531,6 @@ export default function SessionDetail() {
       resetUploadState();
       
       // Show success message
-      alert('Assignment submitted successfully!');
       console.log('Submission completed successfully');
     } catch (e: any) {
       console.error('Submit assignment error:', e);
@@ -673,21 +800,23 @@ export default function SessionDetail() {
                               <Calendar className="w-4 h-4 text-primary-600" />
                               <span className="text-sm font-medium text-primary-700">Due: {formatDateTime(assignment.dueDate)}</span>
                             </div>
-                            {assignment.fileUrl && (
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg">
-                                  <FileText className="w-4 h-4 text-blue-600" />
-                                  <a 
-                                    href={assignment.fileUrl} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-sm font-medium text-blue-700 hover:text-blue-800 underline"
-                                  >
-                                    Download Assignment File
-                                  </a>
+                              {assignment.fileUrl && (
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                                    <FileText className="w-4 h-4 text-blue-600" />
+                                    <span 
+                                      className="text-sm font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDownloadAssignment(assignment.id, `${assignment.title}.pdf`);
+                                      }}
+                                    >
+                                      Download Assignment File
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-8 ml-2">
@@ -745,9 +874,16 @@ export default function SessionDetail() {
                               <div className="flex items-center gap-3">
                                 <FileText className="w-5 h-5 text-green-600" />
                                 <div>
-                                  <a className="text-sm font-semibold text-green-800 underline" href={submission.storeUrl} target="_blank" rel="noreferrer">
+                                  <span 
+                                    className="text-sm font-semibold text-green-800 hover:text-green-900 underline cursor-pointer"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDownloadSubmission(submission.id);
+                                    }}
+                                  >
                                     {getFileNameFromUrl(submission.storeUrl)}
-                                  </a>
+                                  </span>
                                   {submission.createdAt && (
                                     <p className="text-xs text-green-600">Submitted at: {formatDateTime(submission.createdAt)}</p>
                                   )}

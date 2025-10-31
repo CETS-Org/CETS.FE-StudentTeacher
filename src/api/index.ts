@@ -45,7 +45,7 @@ import {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
 } from './classMeetings.api';
-import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl, getUpcomingAssignmentsForStudent } from './assignments.api';
+import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl, getUpcomingAssignmentsForStudent, downloadAssignment, downloadSubmission } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
 import { getAcademicResults, getCourseDetails } from './academicResults.api';
 import { 
@@ -130,6 +130,8 @@ export const api = {
   submitAssignment,
   createSubmissionWithPresignedUrl,
   getUpcomingAssignmentsForStudent,
+  downloadAssignment,
+  downloadSubmission,
   // HR Teacher Availability
   createTeacherAvailability,
   updateTeacherAvailability,
@@ -195,6 +197,8 @@ export {
   submitAssignment,
   createSubmissionWithPresignedUrl,
   getUpcomingAssignmentsForStudent,
+  downloadAssignment,
+  downloadSubmission,
   createTeacherAvailability,
   updateTeacherAvailability,
   deleteTeacherAvailability,
