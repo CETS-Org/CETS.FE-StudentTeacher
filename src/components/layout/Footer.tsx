@@ -186,14 +186,14 @@ export default function Footer() {
               </h5>
               <div className="flex space-x-3">
                 {[
-                  { Icon: Facebook, href: "#", color: "hover:bg-blue-600" },
-                  { Icon: Twitter, href: "#", color: "hover:bg-sky-500" },
-                  { Icon: Instagram, href: "#", color: "hover:bg-pink-600" },
-                  { Icon: Linkedin, href: "#", color: "hover:bg-blue-700" },
-                  { Icon: Youtube, href: "#", color: "hover:bg-red-600" }
-                ].map(({ Icon, href, color }) => (
+                  { name: "facebook", Icon: Facebook, href: "#", color: "hover:bg-blue-600" },
+                  { name: "twitter", Icon: Twitter, href: "#", color: "hover:bg-sky-500" },
+                  { name: "instagram", Icon: Instagram, href: "#", color: "hover:bg-pink-600" },
+                  { name: "linkedin", Icon: Linkedin, href: "#", color: "hover:bg-blue-700" },
+                  { name: "youtube", Icon: Youtube, href: "#", color: "hover:bg-red-600" }
+                ].map(({ name, Icon, href, color }) => (
                   <a
-                    key={href}
+                    key={name}
                     href={href}
                     className={`w-10 h-10 bg-neutral-800 rounded-xl flex items-center justify-center text-neutral-400 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg ${color}`}
                   >
