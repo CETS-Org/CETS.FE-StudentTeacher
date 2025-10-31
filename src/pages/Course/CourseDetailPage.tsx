@@ -35,6 +35,8 @@ export default function CourseDetailPage() {
           ...data,
           courseImageUrl: data.courseImageUrl || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
           courseLevel: data.courseLevel || "Beginner",
+          startDate: data.startDate,
+          enrolledCount: data.enrolledCount,
           syllabusItems: data.syllabusItems ? 
             data.syllabusItems.map((item: Record<string, unknown>) => ({
               id: (item.id ) as string,

@@ -82,6 +82,10 @@ export interface Course {
   // Metrics
   rating: number;
   studentsCount: number;
+  enrolledCount?: number;
+  
+  // Start date
+  startDate?: string;
   
   // Additional features
   benefits?: Benefit[];

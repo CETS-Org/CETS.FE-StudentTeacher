@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Clock, Users, BookOpen, CheckCircle, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Star, Clock, Users, BookOpen, CheckCircle, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp, CalendarCheck, UserCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ClassReservationDialog from "./components/ClassReservationDialog";
@@ -32,6 +32,63 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [course.id]);
+
+  // Function to calculate start date based on course schedule
+  const getCalculatedStartDate = (): Date | null => {
+    // If there's an explicit start date from the API, use it
+    if (course.startDate) {
+      return new Date(course.startDate);
+    }
+
+    // Otherwise, calculate from schedules
+    if (!schedules || schedules.length === 0) {
+      return null;
+    }
+
+    // Map day names to numbers (0 = Sunday, 1 = Monday, etc.)
+    const dayMap: { [key: string]: number } = {
+      'Sunday': 0,
+      'Monday': 1,
+      'Tuesday': 2,
+      'Wednesday': 3,
+      'Thursday': 4,
+      'Friday': 5,
+      'Saturday': 6
+    };
+
+    // Get all days of week from schedules and convert to numbers
+    const scheduleDays = schedules
+      .map(schedule => dayMap[schedule.dayOfWeek])
+      .filter(day => day !== undefined)
+      .sort((a, b) => a - b);
+
+    if (scheduleDays.length === 0) {
+      return null;
+    }
+
+    // Get the first day of the week from the schedule
+    const firstScheduleDay = scheduleDays[0];
+
+    // Get current date
+    const today = new Date();
+    const currentDay = today.getDay();
+
+    // Calculate the next occurrence of the first schedule day
+    let daysUntilStart = firstScheduleDay - currentDay;
+    
+    // If the day has already passed this week, move to next week
+    if (daysUntilStart <= 0) {
+      daysUntilStart += 7;
+    }
+
+    // Calculate the start date
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() + daysUntilStart);
+
+    return startDate;
+  };
+
+  const calculatedStartDate = getCalculatedStartDate();
 
   // Function to get appropriate icon for benefit content
   const getBenefitIcon = (benefitName: string) => {
@@ -209,19 +266,46 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">{course.courseName}</h2>
                 <p className="text-lg text-gray-600 mb-6">{course.description}</p>
                 
-                <div className="flex items-center gap-6 text-sm text-gray-600 mb-6">
-                  <div className="flex items-center gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
                     <span className="font-medium">{course.rating}</span>
-                    <span>({course.studentsCount.toLocaleString()} students)</span>
+                    <span>({course.studentsCount.toLocaleString()} reviews)</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Clock className="w-4 h-4" />
                     <span>{course.duration}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
                     <BookOpen className="w-4 h-4" />
                     <span>{course.courseLevel}</span>
+                  </div>
+                  {calculatedStartDate && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <CalendarCheck className="w-4 h-4 text-primary-600" />
+                      <span>
+                        <span className="font-medium">Start Date: </span>
+                        {calculatedStartDate.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          year: 'numeric' 
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span>
+                      <span className="font-medium">Enrolled: </span>
+                      {(course.enrolledCount ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <UserCheck className="w-4 h-4 text-green-600" />
+                    <span>
+                      <span className="font-medium">Students: </span>
+                      {(course.studentsCount ?? 0).toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -554,9 +638,34 @@ export default function CourseDetail({ course }: CourseDetailProps) {
             {/* Course Stats */}
             <Card title="Course Statistics">
               <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Students enrolled</span>
-                  <span className="font-semibold">{course.studentsCount.toLocaleString()}</span>
+                {calculatedStartDate && (
+                  <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                    <span className="text-gray-600 flex items-center gap-2">
+                      <CalendarCheck className="w-4 h-4 text-primary-600" />
+                      Start Date
+                    </span>
+                    <span className="font-semibold text-primary-700">
+                      {calculatedStartDate.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    Enrolled
+                  </span>
+                  <span className="font-semibold text-blue-700">{(course.enrolledCount ?? 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-green-600" />
+                    Students
+                  </span>
+                  <span className="font-semibold text-green-700">{(course.studentsCount ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Average rating</span>
