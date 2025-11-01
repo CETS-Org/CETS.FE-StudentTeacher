@@ -44,6 +44,7 @@ import PaymentCancel from './pages/Student/ChoosePaidItem/PaymentCancel'
 import PaymentCallback from './pages/Common/PaymentCallback'
 import ClassReservationDetails from './pages/Student/ChoosePaidItem/ClassReservationDetails/ClassReservationDetails'
 import UniversalLayout from './Shared/UniversalLayout'
+import StudentDetailPage from './pages/Student/Profile/StudentDetailPage'
 
 
 export default function App() {
@@ -94,7 +95,8 @@ export default function App() {
             <Route path="/student/request-issue/academic" element={<AcademicReport />} />
             <Route path="/student/request-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
             <Route path="/student/academic-request/detail/:id" element={<AcademicChangeRequestDetail />} />
-            
+            <Route path="/student/profile" element={<StudentDetailPage />} />
+
             {/* Teacher routes */}
             <Route path="/teacher/classes" element={<Classes />} />
             <Route path="/teacher/courses" element={<Courses />} />
