@@ -472,14 +472,15 @@ export default function SessionDetail() {
         content: null,
       });
 
-      const { uploadUrl, storeUrl, contentType } = submitResponse.data;
-      console.log('Got presigned URL:', { uploadUrl, storeUrl, contentType });
+      const { uploadUrl, storeUrl, contentType, id, createdAt } = submitResponse.data;
+      
 
       if (!uploadUrl) {
         throw new Error('No upload URL received from server');
       }
 
-      console.log('Step 2: Uploading to R2...');
+      
+      
       // Step 2: Upload to R2 using EXACT same Content-Type as signed
       const putResp = await fetch(uploadUrl, {
         method: 'PUT',
@@ -489,11 +490,13 @@ export default function SessionDetail() {
         body: file,
       });
 
-      console.log('R2 upload response:', putResp.status, putResp.statusText);
+     
+      
 
       // Step 3: Validate upload result
       if (!putResp.ok) {
         const errText = await putResp.text().catch(() => '');
+        console.error('R2 upload error details:', errText);
         throw new Error(`R2 upload failed: ${putResp.status} ${putResp.statusText} ${errText}`);
       }
 
@@ -501,24 +504,23 @@ export default function SessionDetail() {
       alert('Upload / Resubmit thành công!');
 
       console.log('API call successful, updating UI...');
-      // Update UI to show submission with storeUrl from presigned response
+      // Update UI to show submission with real data from backend response
       setAssignments(prev => {
         if (!prev) return prev;
         return prev.map(a => {
           if (a.id !== assignmentId) return a;
-          const now = new Date().toISOString();
           return {
             ...a,
             submissions: [
               {
-                id: `submission-${Date.now()}`, // Temporary ID until page reload
+                id: id || `submission-${Date.now()}`, // Use real ID from backend if available
                 assignmentID: a.id,
                 studentID: studentId,
                 storeUrl: storeUrl,
                 content: file.name,
                 score: null,
                 feedback: null,
-                createdAt: now,
+                createdAt: createdAt || new Date().toISOString(),
               },
               ...(a.submissions || []),
             ],
