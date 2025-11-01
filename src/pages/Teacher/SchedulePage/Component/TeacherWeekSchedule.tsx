@@ -74,12 +74,12 @@ export default function TeacherWeekSchedule({
       courseName: s.title,
       className: `Class ${s.classCode}`,
       classId: s.classId,
-      instructor: "You (Instructor)",
+      instructor: "You (Teacher)",
       date: dateStr,
       time: `${startLabel} – ${endLabel}`,
       roomNumber: s.room ?? "—",
       format: "In-person",
-      meetingLink: "https://meet.google.com/teacher-class",
+      meetingLink: s.onlineMeetingUrl || undefined,
     });
     setDetailsOpen(true);
   }

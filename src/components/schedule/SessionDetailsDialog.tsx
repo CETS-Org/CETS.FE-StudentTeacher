@@ -69,14 +69,14 @@ export default function SessionDetailsDialog({
                     <User className="w-4 h-4 text-white" />
                   </div>
                   <span className="font-bold text-accent-800 text-sm uppercase tracking-wide">
-                    {isStudent ? "Instructor" : "Role"}
+                    {isStudent ? "Instructor" : "Teacher"}
                   </span>
                 </div>
                 <p className="text-accent-700 font-semibold text-base">
-                  {sessionData.instructor || (isStudent ? "TBA" : "You (Instructor)")}
+                  {sessionData.instructor || (isStudent ? "TBA" : "You (Teacher)")}
                 </p>
                 <p className="text-accent-600 text-sm mt-1">
-                  {isStudent ? "Available for Q&A after class" : "You are the instructor for this class"}
+                  {isStudent ? "Available for Q&A after class" : "You are the teacher for this class"}
                 </p>
               </div>
 
@@ -116,7 +116,7 @@ export default function SessionDetailsDialog({
               </div>
             </div>
 
-            {sessionData.meetingLink && (
+            {sessionData.meetingLink && sessionData.meetingLink.trim() !== '' && (
               <div className="p-3 bg-info-50 border border-info-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

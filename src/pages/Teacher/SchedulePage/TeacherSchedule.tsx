@@ -41,19 +41,19 @@ function transformScheduleToSessions(scheduleData: TeacherScheduleApiResponse[])
     
     let attendanceStatus: "attended" | "absent" | "upcoming" = "upcoming";
     if (sessionDate < today) {
-      // For past sessions, randomly set attended or absent (you can modify this logic)
-      attendanceStatus = Math.random() > 0.3 ? "attended" : "absent";
+      attendanceStatus = "attended";
     }
 
     return {
       id: `${item.className}-${item.slot}-${index}`,
       title: item.courseName,
       classCode: item.className,
-      classId: item.classId, // ✅ Map classId from API
+      classId: item.classId, 
       room: item.room,
       start: startDateTime,
       durationMin: durationMin,
       attendanceStatus: attendanceStatus,
+      onlineMeetingUrl: item.onlineMeetingUrl,
     };
   });
 }
