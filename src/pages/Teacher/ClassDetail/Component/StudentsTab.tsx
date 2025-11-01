@@ -233,12 +233,13 @@ export default function StudentsTab({
           style={{ scrollbarGutter: "stable" }}
         >
         <table className="min-w-full table-fixed">
+        {/* Column widths: STT (w-20), Avatar (w-28), Name (w-1/3), Email (w-1/3), Actions (w-40) */}
         <colgroup>
-          <col className="w-20" />     {/* STT rộng hơn */}
-          <col className="w-28" />     {/* Avatar */}
-          <col className="w-1/3" />    {/* Name */}
-          <col className="w-1/3" />    {/* Email */}
-          <col className="w-40" />     {/* Actions */}
+          <col className="w-20" />
+          <col className="w-28" />
+          <col className="w-1/3" />
+          <col className="w-1/3" />
+          <col className="w-40" />
         </colgroup>
 
         <thead className="sticky top-0 z-10 bg-gradient-to-r from-accent-200 to-accent-300">

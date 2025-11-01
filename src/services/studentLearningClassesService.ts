@@ -1,23 +1,39 @@
 import { api } from '@/api';
 import type { StudentLearningClassResponse, MyClass } from '@/types/class';
 
-// Time slot mapping function (reused from teachingClassesService)
+// Time slot calculation function - automatically adds 90 minutes to start time
 export const calculateTimeSlot = (slot: string): { startTime: string; endTime: string } => {
-  const timeSlotMap: { [key: string]: { startTime: string; endTime: string } } = {
-    '9:00': { startTime: '09:00', endTime: '10:30' },
-    '13:30': { startTime: '13:30', endTime: '14:30' },
-    '15:30': { startTime: '15:30', endTime: '17:00' },
-    '18:00': { startTime: '18:00', endTime: '19:30' },
-    '20:00': { startTime: '20:00', endTime: '21:30' }
-  };
+  try {
+    const [hoursStr, minutesStr] = slot.split(':');
+    let hours = parseInt(hoursStr, 10);
+    let minutes = parseInt(minutesStr, 10);
 
-  const slotInfo = timeSlotMap[slot];
-  if (!slotInfo) {
-    // Default fallback
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.warn(`Invalid time slot format: ${slot}`);
+      return { startTime: slot, endTime: slot };
+    }
+
+    const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+    // Add 90 minutes
+    minutes += 90;
+
+    if (minutes >= 60) {
+      hours += Math.floor(minutes / 60);
+      minutes = minutes % 60;
+    }
+
+    if (hours >= 24) {
+      hours = hours % 24;
+    }
+
+    const endTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+    return { startTime, endTime };
+  } catch (error) {
+    console.error(`Error calculating time slot for ${slot}:`, error);
     return { startTime: slot, endTime: slot };
   }
-
-  return slotInfo;
 };
 
 // Transform student learning class API response to MyClass format

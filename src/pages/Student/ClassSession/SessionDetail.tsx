@@ -385,7 +385,6 @@ export default function SessionDetail() {
   const tabs = [
     { id: "context", label: "Session Context" },
     { id: "materials", label: "Course Materials" },
-    { id: "homework", label: "Homework/Quiz" },
     { id: "assignments", label: "Assignment Submission" }
   ];
 
@@ -751,16 +750,7 @@ export default function SessionDetail() {
             </div>
               </div>
 
-              {/* Homework/Quiz Tab */}
-              <div className={activeTab === "homework" ? "block" : "hidden"}>
-            <div className="text-center py-16 border border-info-200 bg-info-25 rounded-lg">
-              <div className="w-20 h-20 bg-info-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckSquare className="w-10 h-10 text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-info-800 mb-3">Homework/Quiz</h3>
-              <p className="text-info-600 font-medium">Coming soon...</p>
-            </div>
-              </div>
+
 
               {/* Assignment Submission Tab */}
               <div className={activeTab === "assignments" ? "block" : "hidden"}>
