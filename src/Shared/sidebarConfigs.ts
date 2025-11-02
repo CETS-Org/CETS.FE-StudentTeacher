@@ -1,7 +1,7 @@
 // src/Shared/sidebarConfigs.ts
 import {
   BookOpen, Calendar, ClipboardCheck, MessageCircle,
-  FileText, Heart, AlertTriangle, Wrench, BookText, Clock, GraduationCap, CreditCard
+  FileText, Heart, AlertTriangle, Wrench, BookText, Clock, GraduationCap, CreditCard, Route
 } from "lucide-react";
 import type { SidebarConfig } from "./GenericSidebar";
 
@@ -15,6 +15,7 @@ export const studentSidebarConfig: SidebarConfig = {
     { id: "schedule", label: "Schedule", icon: Calendar, path: "/student/schedule" },
     { id: "attendance", label: "Attendance", icon: ClipboardCheck, path: "/student/attendance" },
     { id: "academic-results", label: "Academic Results", icon: GraduationCap, path: "/student/academic-results" },
+    { id: "learning-path", label: "Learning Path", icon: Route, path: "/student/learning-path" },
     { id: "choose-paid-item", label: "Choose Paid Item", icon: CreditCard, path: "/student/choose-paid-item" },
     { id: "feedback", label: "Feedback", icon: MessageCircle, path: "/student/feedback" },
     {

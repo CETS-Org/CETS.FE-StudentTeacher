@@ -609,6 +609,13 @@ export default function SessionDetail() {
     }
     setSelectedFile(file);
     if (file) {
+      // Check file size (50MB limit)
+      const maxSizeInBytes = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSizeInBytes) {
+        alert(`File size exceeds the 50MB limit. Please choose a smaller file.`);
+        setSelectedFile(null);
+        return;
+      }
       const url = URL.createObjectURL(file);
       setFilePreviewUrl(url);
     }
