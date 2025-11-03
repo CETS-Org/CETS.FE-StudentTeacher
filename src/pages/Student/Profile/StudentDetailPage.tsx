@@ -9,6 +9,7 @@ import { Edit, UserX, User, Eye, Settings, Calendar, BookOpen, Award,Mail,Phone,
 import { formatDate, getStatusColor, getStatusDisplay } from "@/helper/helper.service";
 import Loader from "@/components/ui/Loader";
 import { getStudentById, getTotalAssignmentByStudentId, getTotalAttendceByStudentId, updateStudent, uploadAvatar} from "@/api/student.api";
+import { checkEmailExist, checkCIDExist } from "@/api/account.api";
 import type { Student, CourseEnrollment, AssignmentSubmited, TotalStudentAttendanceByCourse, UpdateStudent } from "@/types/student.type";
 import { getUserInfo, setUserInfo } from "@/lib/utils";
 
@@ -29,6 +30,32 @@ export default function StudentDetailPage() {
   const [editData, setEditData] = useState<UpdateStudent | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [emailCheckTimer, setEmailCheckTimer] = useState<number | null>(null);
+  const [cidCheckTimer, setCidCheckTimer] = useState<number | null>(null);
+
+  // Immediate API checks used onBlur for instant feedback
+  const checkEmailUniqueNow = async (value: string) => {
+    try {
+      if (!value) return;
+      if (student && value === (student.email || "")) return;
+      const exists = await checkEmailExist(value);
+      setErrors((prev) => ({ ...prev, email: exists ?  "" : "Email already exists" }));
+    } catch {
+      // ignore network errors for inline validation
+    }
+  };
+
+  const checkCIDUniqueNow = async (value: string) => {
+    try {
+      if (!value) return;
+      if (student && value === (student.cid || "")) return;
+      const exists = await checkCIDExist(value);
+      setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
+
+    } catch {
+      // ignore
+    }
+  };
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
  
@@ -182,6 +209,12 @@ export default function StudentDetailPage() {
     if (!emailRegex.test(email)) {
       return "Please enter a valid email address";
     }
+ 
+        // Email existence check needs to be async; do not call here for sync validation
+        // Instead, this should be handled as a separate async step elsewhere (e.g., form submission or debounced input handler)
+        // So nothing extra to do here in synchronous validation
+      
+
     return "";
   };
 
@@ -279,6 +312,26 @@ export default function StudentDetailPage() {
       return;
     }
 
+    // Final uniqueness checks if changed from original
+    try {
+      if (editData.email && editData.email !== (student?.email || "")) {
+        const exists = await checkEmailExist(editData.email);
+        if (!exists) {
+          setErrors((prev) => ({ ...prev, email: "Email already exists" }));
+          return;
+        }
+      }
+      if (editData.cid && editData.cid !== (student?.cid || "")) {
+        const exists = await checkCIDExist(editData.cid);
+        if (exists) {
+          setErrors((prev) => ({ ...prev, cid: "CID already exists" }));
+          return;
+        }
+      }
+    } catch {
+      // If check fails, proceed with save; server will enforce
+    }
+
     setSaving(true);
     try {
       // Upload avatar first if a new file is selected
@@ -331,18 +384,45 @@ export default function StudentDetailPage() {
       case "fullName":
         error = validateFullName(value);
         break;
-      case "email":
-        error = validateEmail(value || "");
+      case "email": {
+        const v = value || "";
+        error = validateEmail(v);
+        // async uniqueness check (debounced) when passes basic validation and changed from original
+        if (!error && student && v && v !== (student.email || "")) {
+          if (emailCheckTimer) window.clearTimeout(emailCheckTimer);
+          const t = window.setTimeout(async () => {
+            try {
+              const exists = await checkEmailExist(v);
+              setErrors((prev) => ({ ...prev, email: exists ? "" : "Email already exists" }));
+            } catch {
+              // ignore network error here
+            }
+          }, 500);
+          setEmailCheckTimer(t as unknown as number);
+        }
         break;
+      }
       case "phoneNumber":
         error = validatePhone(value);
         break;
       case "dateOfBirth":
         error = validateDateOfBirth(value);
         break;
-      case "cid":
+      case "cid": {
         error = validateCID(value);
+        const v = value || "";
+        if (!error && student && v && v !== (student.cid || "")) {
+          if (cidCheckTimer) window.clearTimeout(cidCheckTimer);
+          const t = window.setTimeout(async () => {
+            try {
+              const exists = await checkCIDExist(v);
+              setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
+            } catch {}
+          }, 500);
+          setCidCheckTimer(t as unknown as number);
+        }
         break;
+      }
       default:
         break;
     }
@@ -609,6 +689,12 @@ export default function StudentDetailPage() {
                         type="email"
                         value={editData?.email || ""}
                         onChange={(e) => handleFieldChange("email", e.target.value)}
+                        onBlur={(e) => {
+                          const v = e.target.value || "";
+                          if (!validateEmail(v)) {
+                            void checkEmailUniqueNow(v);
+                          }
+                        }}
                         className={`text-sm ${errors.email ? "border-red-500" : ""}`}
                         placeholder="Enter email address"
                       />
@@ -730,6 +816,12 @@ export default function StudentDetailPage() {
                           // Only allow digits
                           const value = e.target.value.replace(/\D/g, '');
                           handleFieldChange("cid", value || null);
+                        }}
+                        onBlur={(e) => {
+                          const v = (e.target.value || "").replace(/\D/g, '');
+                          if (!validateCID(v)) {
+                            void checkCIDUniqueNow(v);
+                          }
                         }}
                         className={`text-sm font-mono ${errors.cid ? "border-red-500" : ""}`}
                         placeholder="Enter 12-digit CID"

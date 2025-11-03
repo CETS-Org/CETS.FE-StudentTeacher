@@ -61,3 +61,24 @@ export const changePassword = async (
 };
 
 
+// Checkers for uniqueness validation (email, CID)
+export const checkEmailExist = async (email: string): Promise<boolean> => {
+  try {
+    const res = await api.get(`${endpoint.account}/checkEmailExist/${encodeURIComponent(email)}`);
+    return (res.data as boolean) === true;
+  } catch (err: any) {
+    if (err?.response?.status === 404) return false; // Not found => does NOT exist
+    throw err;
+  }
+};
+
+export const checkCIDExist = async (cid: string): Promise<boolean> => {
+  try {
+    const res = await api.get(`${endpoint.account}/checkCIDExist/${encodeURIComponent(cid)}`);
+    return (res.data as boolean) === true;
+  } catch (err: any) {
+    if (err?.response?.status === 404) return false; // Not found => does NOT exist
+    throw err;
+  }
+};
+
