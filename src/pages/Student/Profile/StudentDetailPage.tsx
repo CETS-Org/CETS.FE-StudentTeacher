@@ -10,7 +10,7 @@ import { formatDate, getStatusColor, getStatusDisplay } from "@/helper/helper.se
 import Loader from "@/components/ui/Loader";
 import { getStudentById, getTotalAssignmentByStudentId, getTotalAttendceByStudentId, updateStudent, uploadAvatar} from "@/api/student.api";
 import type { Student, CourseEnrollment, AssignmentSubmited, TotalStudentAttendanceByCourse, UpdateStudent } from "@/types/student.type";
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, setUserInfo } from "@/lib/utils";
 
 
 
@@ -302,6 +302,15 @@ export default function StudentDetailPage() {
       setAvatarFile(null);
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 5000);
+
+      // Persist latest user info (avatar/name/email) to localStorage and notify header
+      setUserInfo({
+        avatarUrl: updatedStudent.avatarUrl
+          ? `${updatedStudent.avatarUrl}${updatedStudent.avatarUrl.includes('?') ? '&' : '?'}v=${Date.now()}`
+          : undefined,
+        fullName: updatedStudent.fullName,
+        email: updatedStudent.email,
+      } as any);
     } catch (error) {
       console.error("Error updating student:", error);
       setErrorMessage("Failed to update student information. Please try again.");
@@ -413,16 +422,7 @@ export default function StudentDetailPage() {
     );
   }
 
-  // const handleSave = (updatedStudentData: UpdateStudent) => {
-  //   console.log("Save student:", updatedStudentData);
-  //   
-  //   setOpenEditDialog(false);
-  //   setEditingStudent(null);
-  // }; // Replaced with page navigation
-  const breadcrumbItems = [
-    { label: "Students", to: "/admin/students" },
-    { label: student?.fullName || "Student Detail" }
-  ];
+  
 
   return (
     <div className=" sm:p-6  ">
@@ -468,7 +468,7 @@ export default function StudentDetailPage() {
       )}
       {/* Header */}
       <div className="mb-4">
-        <Breadcrumbs items={breadcrumbItems} />
+       
         <div className="flex items-center justify-between mt-3">
           <h1 className="text-2xl font-bold text-gray-900"></h1>
           <div className="flex items-center gap-2">
@@ -513,7 +513,7 @@ export default function StudentDetailPage() {
         <div className="lg:col-span-1">
           <Card>
             <div className="text-center py-4">
-              <div className="relative w-20 h-20 mx-auto mb-3 group">
+              <div className="relative w-50 h-50 mx-auto mb-3 group">
                 <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-md hover:shadow-lg transition-all duration-300">
                   {avatarPreview || student.avatarUrl ? (
                     <img 

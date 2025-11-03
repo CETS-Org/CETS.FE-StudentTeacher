@@ -38,8 +38,10 @@ export default function UniversalLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userInfoTick, setUserInfoTick] = useState(0);
   const location = useLocation();
-
+ // Get user info for navbar
+const userInfo = getUserInfo();
   // Check authentication and role on mount and when location changes
   useEffect(() => {
     const checkAuth = () => {
@@ -61,6 +63,13 @@ export default function UniversalLayout({
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [location.pathname]);
 
+  // Re-render when userInfo in localStorage changes (avatar/name updates)
+  useEffect(() => {
+    const handler = () => setUserInfoTick((v) => v + 1);
+    window.addEventListener('userInfoUpdated', handler as EventListener);
+    return () => window.removeEventListener('userInfoUpdated', handler as EventListener);
+  }, []);
+
   // Determine if we should show layout
   const shouldShowLayout = !forceNoLayout && !PUBLIC_PAGES.includes(location.pathname);
   
@@ -72,8 +81,7 @@ export default function UniversalLayout({
     return <>{children}</>;
   }
 
-  // Get user info for navbar
-  const userInfo = getUserInfo();
+ 
   
   // Configure navbar based on role and authentication status
   let navbarConfig;

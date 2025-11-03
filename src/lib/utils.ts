@@ -66,3 +66,15 @@ export function getStudentId(): string | null {
   const userInfo = getUserInfo();
   return userInfo?.id || null;
 }
+
+// Update user info in localStorage and notify listeners to refresh UI (e.g., header avatar)
+export function setUserInfo(partial: Partial<UserInfo>): void {
+  try {
+    const current = getUserInfo() || ({} as UserInfo);
+    const next = { ...current, ...partial } as UserInfo;
+    localStorage.setItem('userInfo', JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent('userInfoUpdated'));
+  } catch (error) {
+    console.error('Failed to set user info:', error);
+  }
+}
