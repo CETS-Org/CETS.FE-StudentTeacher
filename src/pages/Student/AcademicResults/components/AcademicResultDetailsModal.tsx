@@ -141,7 +141,7 @@ const AcademicResultDetailsModal: React.FC<AcademicResultDetailsModalProps> = ({
                 <div className="p-4 bg-gradient-to-r from-accent-50 to-accent-100 rounded-xl border border-accent-200">
                   <div className="text-center">
                     <p className="text-sm font-medium text-accent-700 mb-1">Final Score</p>
-                    <p className="text-3xl font-bold text-accent-600">{courseData.finalScore}%</p>
+                    <p className="text-3xl font-bold text-accent-600">{courseData.finalScore}</p>
                   </div>
                 </div>
                 <div className="p-4 bg-gradient-to-r from-secondary-200 to-secondary-300 rounded-xl border border-primary-200">

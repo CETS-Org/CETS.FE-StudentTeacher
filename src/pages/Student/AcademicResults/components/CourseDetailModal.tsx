@@ -222,7 +222,7 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
                               <FileText className="w-4 h-4 text-accent-500" />
                               <div>
                                 <p className="font-medium text-primary-700">Score</p>
-                                <p className="text-accent-600">{assignment.score}%</p>
+                                <p className="text-accent-600">{assignment.score}</p>
                               </div>
                             </div>
                           )}
