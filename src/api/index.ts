@@ -47,7 +47,7 @@ import {
 } from './classMeetings.api';
 import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl, getUpcomingAssignmentsForStudent, downloadAssignment, downloadSubmission, getAssignmentById, submitAssignmentAnswers, startAttempt, getSpeakingSubmissionUploadUrls, submitSpeakingSubmission, createSpeakingAssignment, createQuizAssignment, createAssignment, deleteAssignment,  getAudioUploadUrl  } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
-import { getAcademicResults, getCourseDetails } from './academicResults.api';
+import { getAcademicResults, getCourseDetails, getLearningPathOverview } from './academicResults.api';
 import { 
   addToWishlist, 
   removeFromWishlist, 
@@ -154,6 +154,7 @@ export const api = {
   // Academic Results
   getAcademicResults,
   getCourseDetails,
+  getLearningPathOverview,
   // Wishlist
   addToWishlist,
   removeFromWishlist,

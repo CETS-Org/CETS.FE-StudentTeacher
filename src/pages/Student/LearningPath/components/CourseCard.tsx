@@ -17,6 +17,7 @@ export interface CourseItem {
     totalSessions: number;
     attendedSessions: number;
   };
+  classItem?: MyClass | null;
 }
 
 interface CourseCardProps {
@@ -25,17 +26,25 @@ interface CourseCardProps {
 }
 
 const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
-  const [classItem, setClassItem] = useState<MyClass | null>(null);
+  // Use classItem from course data if available, otherwise try to fetch
+  const [classItem, setClassItem] = useState<MyClass | null>(course.classItem || null);
   const [loadingClass, setLoadingClass] = useState(false);
 
   useEffect(() => {
+    // If classItem is already provided in course, use it
+    if (course.classItem) {
+      setClassItem(course.classItem);
+      return;
+    }
+    
+    // Otherwise try to fetch from mock data (fallback)
     fetchClass();
-  }, [course.courseCode]);
+  }, [course.courseCode, course.classItem]);
 
   const fetchClass = async () => {
     try {
       setLoadingClass(true);
-      // Use mock data directly - 1 course = 1 class
+      // Use mock data directly - 1 course = 1 class (fallback)
       const mockClasses = mockClassesByCourseCode[course.courseCode] || [];
       const firstClass = mockClasses[0] || null;
       setClassItem(firstClass);

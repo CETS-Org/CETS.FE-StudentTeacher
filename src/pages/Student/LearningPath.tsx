@@ -14,36 +14,27 @@ import {
 } from "lucide-react";
 
 import type { ClassAttendanceSummary } from "@/types/attendance";
-import type { AcademicResultsApiResponse } from "@/types/academicResults";
 import { getStudentId } from "@/lib/utils";
-import { mockAttendanceData, mockAcademicResultsData } from "@/pages/Student/LearningPath/data/mockLearningPathData";
+import { getLearningPathOverview } from "@/api/academicResults.api";
+import type { LearningPathOverviewResponse } from "@/api/academicResults.api";
 import CourseCard, { type CourseItem } from "@/pages/Student/LearningPath/components/CourseCard";
 import ClassDetailsView from "@/pages/Student/LearningPath/components/ClassDetailsView";
 import type { MyClass } from "@/types/class";
+import { getStudentLearningClasses } from "@/api/classes.api";
 
 export default function LearningPath() {
-  // Attendance state
-  const [attendanceData, setAttendanceData] = useState<any>({
-    overallStats: {
-      totalClasses: 0,
-      totalSessions: 0,
-      totalAttended: 0,
-      totalAbsent: 0,
-      overallAttendanceRate: 0
-    },
-    classSummaries: []
-  });
-  const [attendanceLoading, setAttendanceLoading] = useState(true);
-  const [attendanceError, setAttendanceError] = useState<string | null>(null);
-
-  // Academic Results state
-  const [academicData, setAcademicData] = useState<AcademicResultsApiResponse | null>(null);
-  const [academicLoading, setAcademicLoading] = useState(true);
-  const [academicError, setAcademicError] = useState<string | null>(null);
+  // Learning Path Overview state
+  const [learningPathData, setLearningPathData] = useState<LearningPathOverviewResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Classes data for mapping course to class
+  const [classesData, setClassesData] = useState<MyClass[]>([]);
 
   // View state: 'courseList' or 'classDetails'
   const [currentView, setCurrentView] = useState<'courseList' | 'classDetails'>('courseList');
   const [selectedClass, setSelectedClass] = useState<MyClass | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
   // Filter and search state
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -51,6 +42,7 @@ export default function LearningPath() {
   const [showStatusDropdown, setShowStatusDropdown] = useState<boolean>(false);
 
   const studentId = getStudentId();
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -69,88 +61,126 @@ export default function LearningPath() {
     }
   }, [showStatusDropdown]);
 
-  // Fetch Attendance Data (using mock data)
+  // Fetch Learning Path Overview and Classes
   useEffect(() => {
-    const fetchAttendanceData = async () => {
+    const fetchData = async () => {
       try {
-        setAttendanceLoading(true);
-        setAttendanceError(null);
+        console.log('Fetching learning path data for student:', studentId);
+        setLoading(true);
+        setError(null);
         
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        if (!studentId) {
+          throw new Error('Student ID not found. Please log in again.');
+        }
         
-        // Use mock data
-        setAttendanceData(mockAttendanceData);
-      } catch (err) {
-        console.error('Error fetching attendance data:', err);
-        setAttendanceError('Failed to load attendance data');
-        setAttendanceData({
-          overallStats: {
-            totalClasses: 0,
-            totalSessions: 0,
-            totalAttended: 0,
-            totalAbsent: 0,
-            overallAttendanceRate: 0
-          },
-          classSummaries: []
+        // Fetch learning path overview
+        console.log('Calling getLearningPathOverview...');
+        const overviewData = await getLearningPathOverview(studentId);
+        console.log('Learning path overview response:', overviewData);
+        
+        if (overviewData && overviewData.courses) {
+          setLearningPathData(overviewData);
+        } else {
+          throw new Error('Invalid response data: courses array not found');
+        }
+        
+        // Fetch classes to map courses to classes
+        try {
+          console.log('Fetching classes...');
+          const classesResponse = await getStudentLearningClasses(studentId);
+          const classes = classesResponse.data || [];
+          console.log('Classes response:', classes);
+          setClassesData(Array.isArray(classes) ? classes : []);
+        } catch (classError) {
+          console.warn('Error fetching classes, continuing without class data:', classError);
+          setClassesData([]);
+        }
+      } catch (err: any) {
+        console.error('Error fetching learning path data:', err);
+        console.error('Error details:', {
+          message: err?.message,
+          response: err?.response,
+          stack: err?.stack
         });
+        setError(err?.response?.data?.message || err?.message || 'Failed to load learning path data. Please try again later.');
+        setLearningPathData(null);
       } finally {
-        setAttendanceLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchAttendanceData();
-  }, []);
+    if (studentId) {
+      fetchData();
+    } else {
+      console.warn('No studentId found, cannot fetch data');
+      setLoading(false);
+      setError('Student ID not found. Please log in again.');
+    }
+  }, [studentId]);
 
-  // Fetch Academic Results (using mock data)
-  useEffect(() => {
-    const fetchAcademicResults = async () => {
-      try {
-        setAcademicLoading(true);
-        setAcademicError(null);
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Use mock data
-        setAcademicData(mockAcademicResultsData);
-      } catch (err) {
-        console.error('Error fetching academic results:', err);
-        setAcademicError('Failed to load academic results. Please try again later.');
-      } finally {
-        setAcademicLoading(false);
-      }
-    };
+  // Parse courseProgress "x/y" format to extract sessions
+  const parseCourseProgress = (progress: string): { attendedSessions: number; totalSessions: number } => {
+    const parts = progress.split('/');
+    if (parts.length === 2) {
+      const attended = parseInt(parts[0], 10) || 0;
+      const total = parseInt(parts[1], 10) || 0;
+      return { attendedSessions: attended, totalSessions: total };
+    }
+    return { attendedSessions: 0, totalSessions: 0 };
+  };
 
-    fetchAcademicResults();
-  }, []);
+  // Map statusCode from API to filter format
+  const mapStatusCode = (statusCode: string): string => {
+    const status = statusCode.toLowerCase();
+    if (status === "inprogress" || status === "in-progress") {
+      return "in-progress";
+    }
+    if (status === "passed" || status === "completed") {
+      return "passed";
+    }
+    if (status === "failed" || status === "not passed") {
+      return "failed";
+    }
+    return status;
+  };
 
-  // Merge attendance and academic data into course list
+  // Transform learning path data to course list
   const allCourseList = useMemo(() => {
-    if (!academicData || !attendanceData.classSummaries) return [];
+    if (!learningPathData || !learningPathData.courses) {
+      console.log('No learning path data or courses:', { learningPathData });
+      return [];
+    }
 
-    return academicData.items.map((academicItem) => {
-      // Find matching attendance data by courseCode
-      const attendanceItem = attendanceData.classSummaries.find(
-        (classSummary: any) => classSummary.courseCode === academicItem.courseCode
-      );
+    try {
+      return learningPathData.courses.map((course) => {
+        const progress = parseCourseProgress(course.courseProgress || "0/0");
+        
+        // Find matching class by courseCode
+        const classItem = classesData.find(
+          (cls) => cls.courseCode === course.courseCode
+        );
 
-      return {
-        courseId: academicItem.courseId,
-        courseCode: academicItem.courseCode,
-        courseName: academicItem.courseName,
-        instructor: attendanceItem 
-          ? attendanceItem.instructor 
-          : academicItem.teacherNames.join(', '),
-        attendanceRate: attendanceItem ? attendanceItem.attendanceRate : 0,
-        status: academicItem.statusCode,
-        attendanceData: attendanceItem ? {
-          totalSessions: attendanceItem.totalSessions,
-          attendedSessions: attendanceItem.attendedSessions
-        } : undefined
-      } as CourseItem;
-    });
-  }, [academicData, attendanceData.classSummaries]);
+        return {
+          courseId: course.courseId,
+          courseCode: course.courseCode,
+          courseName: course.courseName,
+          instructor: course.instructor || (course.teacherNames && course.teacherNames.length > 0 ? course.teacherNames.join(', ') : 'Unknown'),
+          attendanceRate: progress.totalSessions > 0 
+            ? (progress.attendedSessions / progress.totalSessions) * 100 
+            : 0,
+          status: mapStatusCode(course.statusCode || ''),
+          attendanceData: {
+            totalSessions: progress.totalSessions,
+            attendedSessions: progress.attendedSessions
+          },
+          classItem: classItem || null // Store class item for navigation
+        } as CourseItem & { classItem: MyClass | null };
+      });
+    } catch (err) {
+      console.error('Error transforming course list:', err);
+      return [];
+    }
+  }, [learningPathData, classesData]);
 
   // Filter and search course list
   const courseList = useMemo(() => {
@@ -165,7 +195,7 @@ export default function LearningPath() {
         } else if (statusFilter === "not passed") {
           return status === "failed";
         } else if (statusFilter === "in progress") {
-          return status === "enrolled" || status === "in-progress" || status === "active";
+          return status === "enrolled" || status === "in-progress" || status === "active" || status === "inprogress";
         }
         return true;
       });
@@ -185,6 +215,7 @@ export default function LearningPath() {
     return filtered;
   }, [allCourseList, statusFilter, searchQuery]);
 
+
   const handleCourseClick = (classItem: MyClass) => {
     setSelectedClass(classItem);
     setCurrentView('classDetails');
@@ -193,59 +224,52 @@ export default function LearningPath() {
   const handleBackToCourseList = () => {
     setCurrentView('courseList');
     setSelectedClass(null);
+    setSelectedCourseId(null);
   };
 
-  // Retry functions (using mock data)
-  const handleRetryAttendance = () => {
-    const fetchAttendanceData = async () => {
+  // Retry function
+  const handleRetry = () => {
+    const fetchData = async () => {
       try {
-        setAttendanceLoading(true);
-        setAttendanceError(null);
+        setLoading(true);
+        setError(null);
         
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        if (!studentId) {
+          throw new Error('Student ID not found. Please log in again.');
+        }
         
-        // Use mock data
-        setAttendanceData(mockAttendanceData);
-      } catch (err) {
-        console.error('Error fetching attendance data:', err);
-        setAttendanceError('Failed to load attendance data');
+        const overviewData = await getLearningPathOverview(studentId);
+        if (overviewData && overviewData.courses) {
+          setLearningPathData(overviewData);
+        } else {
+          throw new Error('Invalid response data: courses array not found');
+        }
+        
+        try {
+          const classesResponse = await getStudentLearningClasses(studentId);
+          const classes = classesResponse.data || [];
+          setClassesData(Array.isArray(classes) ? classes : []);
+        } catch (classError) {
+          console.warn('Error fetching classes, continuing without class data:', classError);
+          setClassesData([]);
+        }
+      } catch (err: any) {
+        console.error('Error fetching learning path data:', err);
+        setError(err?.response?.data?.message || err?.message || 'Failed to load learning path data. Please try again later.');
       } finally {
-        setAttendanceLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchAttendanceData();
-  };
-
-  const handleRetryAcademic = () => {
-    const fetchAcademicResults = async () => {
-      try {
-        setAcademicLoading(true);
-        setAcademicError(null);
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Use mock data
-        setAcademicData(mockAcademicResultsData);
-      } catch (err) {
-        console.error('Error fetching academic results:', err);
-        setAcademicError('Failed to load academic results. Please try again later.');
-      } finally {
-        setAcademicLoading(false);
-      }
-    };
-
-    fetchAcademicResults();
+    if (studentId) {
+      fetchData();
+    }
   };
 
   const breadcrumbItems = [
     { label: "Learning Path" }
   ];
 
-  const isLoading = attendanceLoading || academicLoading;
-  const hasError = attendanceError || academicError;
 
   return (
     <div className="p-6 max-w-full space-y-8">
@@ -263,13 +287,14 @@ export default function LearningPath() {
         /* Class Details View */
         <ClassDetailsView
           classItem={selectedClass}
+          courseId={selectedCourseId || undefined}
           onBack={handleBackToCourseList}
         />
       ) : (
         /* Course List View */
         <>
           {/* Loading State */}
-          {isLoading && (
+          {loading && (
             <Card className="shadow-lg border border-accent-100">
               <div className="flex flex-col items-center justify-center py-12">
                 <Spinner size="lg" />
@@ -279,40 +304,27 @@ export default function LearningPath() {
           )}
 
           {/* Error State */}
-          {hasError && !isLoading && (
+          {error && !loading && !learningPathData && (
             <Card className="shadow-lg border border-accent-100">
               <div className="flex flex-col items-center justify-center py-12">
                 <AlertCircle className="w-12 h-12 text-error-500 mb-4" />
                 <h3 className="text-lg font-semibold text-neutral-900 mb-2">Failed to Load Data</h3>
                 <p className="text-neutral-600 text-center mb-4">
-                  {attendanceError || academicError || "Failed to load course data"}
+                  {error}
                 </p>
-                <div className="flex gap-3">
-                  {attendanceError && (
-                    <Button
-                      onClick={handleRetryAttendance}
-                      iconLeft={<RefreshCw className="w-4 h-4" />}
-                      className="bg-primary-500 hover:bg-primary-600 text-white"
-                    >
-                      Retry Attendance
-                    </Button>
-                  )}
-                  {academicError && (
-                    <Button
-                      onClick={handleRetryAcademic}
-                      iconLeft={<RefreshCw className="w-4 h-4" />}
-                      className="bg-primary-500 hover:bg-primary-600 text-white"
-                    >
-                      Retry Academic
-                    </Button>
-                  )}
-                </div>
+                <Button
+                  onClick={handleRetry}
+                  iconLeft={<RefreshCw className="w-4 h-4" />}
+                  className="bg-primary-500 hover:bg-primary-600 text-white"
+                >
+                  Retry
+                </Button>
               </div>
             </Card>
           )}
 
           {/* Course List */}
-          {!isLoading && !hasError && (
+          {!loading && learningPathData && (
             <Card className="shadow-lg border border-accent-100">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -426,7 +438,9 @@ export default function LearningPath() {
                       No courses found
                     </h3>
                     <p className="text-neutral-600 mb-8 max-w-md mx-auto">
-                      No courses available at this time.
+                      {searchQuery || statusFilter !== "all" 
+                        ? "No courses match your search or filter criteria."
+                        : "No courses available at this time."}
                     </p>
                   </div>
                 ) : (
@@ -434,8 +448,12 @@ export default function LearningPath() {
                     {courseList.map((course) => (
                       <CourseCard 
                         key={course.courseId} 
-                        course={course} 
-                        onCourseClick={handleCourseClick}
+                        course={course}
+                        onCourseClick={(classItem) => {
+                          setSelectedClass(classItem);
+                          setSelectedCourseId(course.courseId);
+                          setCurrentView('classDetails');
+                        }}
                       />
                     ))}
                   </div>

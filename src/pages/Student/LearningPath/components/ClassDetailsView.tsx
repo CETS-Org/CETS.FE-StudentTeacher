@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
@@ -6,6 +7,12 @@ import { ArrowLeft, BookOpen, Calendar, FileText, CheckCircle, Clock, AlertCircl
 import type { ClassMeeting } from "@/api/classMeetings.api";
 import type { MeetingAssignment } from "@/services/teachingClassesService";
 import type { MyClass } from "@/types/class";
+import type { AttendanceRecord } from "@/types/attendance";
+import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
+import { attendanceService } from "@/services/attendanceService";
+import { getCourseAttendanceSummary, getCourseDetails, type CourseAttendanceSummaryResponse, type Assignment, type AssignmentByMeeting } from "@/api/academicResults.api";
+import { getCoveredTopicByMeetingId } from "@/services/teachingClassesService";
+import { getStudentId } from "@/lib/utils";
 import { mockClassMeetings, mockAssignmentsByMeeting, mockAttendanceData } from "@/pages/Student/LearningPath/data/mockLearningPathData";
 
 // Mock topics for sessions (fallback if not in attendance data)
@@ -44,11 +51,17 @@ const mockSessionTopics: Record<string, string[]> = {
 
 interface ClassDetailsViewProps {
   classItem: MyClass;
+  courseId?: string; // Optional courseId from parent component
   onBack: () => void;
 }
 
+interface AssignmentWithStatus extends MeetingAssignment {
+  submissionStatus?: string; // From API: "SUBMITTED", "PENDING", etc.
+  submittedAt?: string | null; // From API
+}
+
 interface SessionWithAssignments extends ClassMeeting {
-  assignments: MeetingAssignment[];
+  assignments: AssignmentWithStatus[];
   sessionNumber: number;
   isCompleted: boolean;
   coveredTopic?: string;
@@ -56,8 +69,10 @@ interface SessionWithAssignments extends ClassMeeting {
 
 const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ 
   classItem,
+  courseId: propCourseId,
   onBack
 }) => {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionWithAssignments[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,19 +84,96 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
   const [warningLevel, setWarningLevel] = useState<"low" | "medium" | "high" | null>(null);
   const [filterMode, setFilterMode] = useState<"4w" | "8s">("8s");
   const [activeTab, setActiveTab] = useState<string>("timeline");
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null); // Store attendance summary for Learning Timeline
+  const [courseAttendanceSummary, setCourseAttendanceSummary] = useState<CourseAttendanceSummaryResponse | null>(null); // Store course attendance summary for Attendance Report tab
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [allAssignments, setAllAssignments] = useState<AssignmentWithStatus[]>([]); // Store all assignments from API
+  const [assignmentsByMeeting, setAssignmentsByMeeting] = useState<AssignmentByMeeting[]>([]); // Store assignments grouped by meeting
+  const [sortedMeetingsList, setSortedMeetingsList] = useState<ClassMeeting[]>([]); // Store sorted meetings for reference
+  const [courseDetailsData, setCourseDetailsData] = useState<any>(null); // Store full course details response for weeklyPerformance and completionStats
 
   useEffect(() => {
     if (classItem?.id) {
       fetchClassSessions();
+      fetchCourseAttendanceSummary();
     }
   }, [classItem?.id]);
+
+  // Fetch course attendance summary for Attendance Report tab
+  const fetchCourseAttendanceSummary = async () => {
+    try {
+      setAttendanceLoading(true);
+      const studentId = getStudentId();
+      if (!studentId) {
+        throw new Error('Student ID not found');
+      }
+
+      // Get courseId: prefer prop, then courseCode from classItem
+      const courseId = propCourseId || classItem.courseCode;
+      if (!courseId) {
+        console.warn('Course ID not found, skipping attendance summary fetch', {
+          propCourseId,
+          courseCode: classItem.courseCode,
+          classItem
+        });
+        return;
+      }
+
+      console.log('Fetching course attendance summary:', {
+        courseId,
+        studentId,
+        propCourseId,
+        classItemCourseCode: classItem.courseCode,
+        classItemId: classItem.id
+      });
+
+      const summary = await getCourseAttendanceSummary(courseId, studentId);
+      console.log('Course attendance summary received:', summary);
+      setCourseAttendanceSummary(summary);
+    } catch (err: any) {
+      console.error('Error fetching course attendance summary:', err);
+      console.error('Error details:', {
+        courseId: propCourseId || classItem.courseCode,
+        studentId: getStudentId(),
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data,
+        message: err?.message
+      });
+      
+      // Fallback to mock data
+      const mockSummary = mockAttendanceData.classSummaries.find(
+        cs => cs.className === classItem.className || cs.courseCode === classItem.courseCode
+      );
+      if (mockSummary) {
+        // Transform mock data to match API structure (simplified)
+        setCourseAttendanceSummary(null); // Keep null to use mock fallback in render
+      }
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
 
   const fetchClassSessions = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      let meetings: ClassMeeting[] = mockClassMeetings[classItem.id] || [];
+      // Get student ID
+      const studentId = getStudentId();
+      if (!studentId) {
+        throw new Error('Student ID not found. Please log in again.');
+      }
+
+      // 1. Fetch meetings/sessions from API
+      let meetings: ClassMeeting[] = [];
+      try {
+        meetings = await getClassMeetingsByClassId(classItem.id);
+      } catch (meetingError) {
+        console.warn('Error fetching meetings, using mock data:', meetingError);
+        // Fallback to mock data if API fails
+        meetings = mockClassMeetings[classItem.id] || [];
+      }
       
       const sortedMeetings = meetings.sort((a, b) => {
         const dateA = new Date(a.date).getTime();
@@ -89,34 +181,171 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
         return dateA - dateB;
       });
 
-      // Get attendance summary for this class to extract coveredTopic
-      const attendanceSummary = mockAttendanceData.classSummaries.find(
-        cs => cs.className === classItem.className || cs.courseCode === classItem.courseCode
-      );
+      // 2. Fetch attendance report to get coveredTopic and First Attendance
+      let attendanceSummaryData = null;
+      try {
+        const attendanceReport = await attendanceService.getStudentAttendanceReport(studentId);
+        attendanceSummaryData = attendanceReport.classSummaries.find(
+          cs => cs.className === classItem.className || 
+                cs.courseCode === classItem.courseCode ||
+                cs.classId === classItem.id
+        );
+        // Store attendance summary for Attendance Report tab
+        setAttendanceSummary(attendanceSummaryData);
+      } catch (attendanceError) {
+        console.warn('Error fetching attendance report, using mock data:', attendanceError);
+        // Fallback to mock data if API fails
+        attendanceSummaryData = mockAttendanceData.classSummaries.find(
+          cs => cs.className === classItem.className || cs.courseCode === classItem.courseCode
+        );
+        setAttendanceSummary(attendanceSummaryData);
+      }
 
+      // 3. Fetch all assignments for the course from new API
+      // Endpoint: GET /api/ACAD_Enrollment/{studentId}/coursedetails-results/{courseId}/
+      // Use propCourseId (UUID) if available, otherwise try classItem.courseId or courseCode
+      const courseId = propCourseId || (classItem as any).courseId || classItem.courseCode;
+      
+      console.log('Assignment fetch debug:', {
+        propCourseId,
+        classItemCourseId: (classItem as any).courseId,
+        classItemCourseCode: classItem.courseCode,
+        finalCourseId: courseId,
+        studentId
+      });
+      
+      let assignmentsByMeetingData: AssignmentByMeeting[] = [];
+      
+      if (courseId) {
+        try {
+          console.log(`Fetching course assignments for student ${studentId}, course ${courseId}`);
+          const courseDetailsResponse = await getCourseDetails(studentId, courseId);
+          console.log('Course details response:', courseDetailsResponse);
+          console.log('Assignments by meeting:', courseDetailsResponse.assignments);
+          assignmentsByMeetingData = courseDetailsResponse.assignments || [];
+          console.log(`✅ Fetched ${assignmentsByMeetingData.length} meetings with assignments`);
+          
+          // Store full course details response
+          setCourseDetailsData(courseDetailsResponse);
+          console.log('📊 Weekly Performance data:', courseDetailsResponse.weeklyPerformance);
+          console.log('📈 Completion Stats:', courseDetailsResponse.completionStats);
+          
+          // Sort assignments by meeting date
+          assignmentsByMeetingData.sort((a, b) => {
+            const dateA = new Date(a.meetingDate).getTime();
+            const dateB = new Date(b.meetingDate).getTime();
+            return dateA - dateB;
+          });
+          
+          // Store assignments by meeting for display
+          setAssignmentsByMeeting(assignmentsByMeetingData);
+          
+          // Also create flat list for backward compatibility
+          const allAssignmentsFlat: AssignmentWithStatus[] = [];
+          assignmentsByMeetingData.forEach((meetingGroup) => {
+            meetingGroup.assignments.forEach((asm) => {
+              allAssignmentsFlat.push({
+                id: asm.assignmentId,
+                classMeetingId: meetingGroup.meetingId,
+                teacherId: '',
+                title: asm.title,
+                description: asm.description || null,
+                fileUrl: null,
+                dueDate: asm.dueAt,
+                createdAt: asm.dueAt,
+                submissionStatus: asm.submissionStatus,
+                submittedAt: asm.submittedAt,
+                submissions: asm.submittedAt ? [{
+                  id: asm.assignmentId,
+                  assignmentID: asm.assignmentId,
+                  studentID: studentId,
+                  storeUrl: null,
+                  content: null,
+                  score: asm.score,
+                  feedback: asm.feedback,
+                  createdAt: asm.submittedAt || new Date().toISOString()
+                }] : []
+              });
+            });
+          });
+          setAllAssignments(allAssignmentsFlat);
+        } catch (courseAssignmentsError: any) {
+          console.error('❌ Error fetching course assignments:', courseAssignmentsError);
+          console.error('Error status:', courseAssignmentsError?.response?.status);
+          console.error('Error data:', courseAssignmentsError?.response?.data);
+          console.error('Error message:', courseAssignmentsError?.message);
+          setAssignmentsByMeeting([]);
+          setAllAssignments([]);
+        }
+      } else {
+        console.warn('⚠️ Course ID not available, skipping assignment fetch');
+        console.warn('Available data:', { propCourseId, classItem });
+        setAssignmentsByMeeting([]);
+        setAllAssignments([]);
+      }
+
+      // Map sessions - fetch coveredTopic for each session
       const sessionsWithAssignments: SessionWithAssignments[] = await Promise.all(
         sortedMeetings.map(async (meeting, index) => {
           try {
-            const assignments: MeetingAssignment[] = mockAssignmentsByMeeting[meeting.id] || [];
+            // Don't assign assignments to sessions - they'll be shown in a separate section
+            const meetingAssignments: AssignmentWithStatus[] = [];
+
+            console.log(`Session ${index + 1} (${meeting.id}):`, {
+              assignmentsCount: meetingAssignments.length,
+              allCourseAssignmentsCount: assignmentsByMeetingData.length,
+              isFirstSession: index === 0
+            });
             
-            // Find coveredTopic from attendance records
-            const attendanceRecord = attendanceSummary?.records?.find(
-              record => record.meeting.id === meeting.id || record.meetingId === meeting.id
-            );
-            let coveredTopic = attendanceRecord?.meeting?.coveredTopic || null;
+            // Store sorted meetings for use in Assignments tab (only once)
+            if (index === 0) {
+              setSortedMeetingsList(sortedMeetings);
+            }
             
-            // Fallback to mock topics if not found in attendance
-            if (!coveredTopic) {
-              const classTopics = mockSessionTopics[classItem.id];
-              if (classTopics && classTopics[index]) {
-                coveredTopic = classTopics[index];
+            // Always fetch coveredTopic from API to get topicTitle from syllabus
+            // This ensures we get the correct topicTitle for milestone checking
+            let coveredTopic: string | null = null;
+            
+            try {
+              console.log(`📚 Fetching coveredTopic from API for Session ${index + 1} (${meeting.id})...`);
+              const coveredTopicData = await getCoveredTopicByMeetingId(meeting.id);
+              coveredTopic = coveredTopicData?.topicTitle || null;
+              console.log(`✅ Fetched coveredTopic from API for Session ${index + 1}:`, coveredTopic);
+            } catch (apiError: any) {
+              console.warn(`❌ Failed to fetch coveredTopic from API for Session ${index + 1}:`, apiError);
+              console.warn(`API URL attempted: /api/ACAD_ClassMeetings/${meeting.id}/covered-topic`);
+              console.warn(`Error details:`, {
+                status: apiError?.response?.status,
+                statusText: apiError?.response?.statusText,
+                data: apiError?.response?.data,
+                message: apiError?.message
+              });
+              
+              // Fallback to attendance records if API fails
+              const attendanceRecord = attendanceSummaryData?.records?.find(
+                record => record.meeting.id === meeting.id || record.meetingId === meeting.id
+              );
+              coveredTopic = attendanceRecord?.meeting?.coveredTopic || null;
+              
+              if (coveredTopic) {
+                console.log(`📚 Using coveredTopic from attendance for Session ${index + 1}:`, coveredTopic);
+              } else {
+                // Final fallback to mock topics
+                const classTopics = mockSessionTopics[classItem.id];
+                if (classTopics && classTopics[index]) {
+                  coveredTopic = classTopics[index];
+                  console.log(`📚 Using mock topic for Session ${index + 1}:`, coveredTopic);
+                }
               }
             }
             
+            console.log(`📚 Final coveredTopic for Session ${index + 1}:`, coveredTopic);
+            
+            // Determine completion status
             const now = new Date();
             const sessionDate = new Date(meeting.date);
-            const hasAssignments = assignments.length > 0;
-            const allAssignmentsCompleted = hasAssignments && assignments.every(assignment => {
+            const hasAssignments = meetingAssignments.length > 0;
+            const allAssignmentsCompleted = hasAssignments && meetingAssignments.every(assignment => {
               const submission = assignment.submissions?.[0];
               return submission && (submission.score !== null || submission.storeUrl);
             });
@@ -124,13 +353,13 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 
             return {
               ...meeting,
-              assignments,
+              assignments: meetingAssignments,
               sessionNumber: index + 1,
               isCompleted,
               coveredTopic: coveredTopic || undefined
             };
           } catch (err) {
-            console.error(`Error fetching assignments for session ${meeting.id}:`, err);
+            console.error(`Error processing session ${meeting.id}:`, err);
             return {
               ...meeting,
               assignments: [],
@@ -142,8 +371,120 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
         })
       );
 
-      const firstIncompleteIndex = sessionsWithAssignments.findIndex(session => !session.isCompleted);
-      setCurrentSessionIndex(firstIncompleteIndex >= 0 ? firstIncompleteIndex : sessionsWithAssignments.length - 1);
+      // Determine current session based on student's attendance
+      // Find the last session that student has attended (status = "Present")
+      let currentSessionIdx = -1;
+      
+      // Check attendanceSummaryData from getStudentAttendanceReport
+      const attendanceRecords = attendanceSummaryData?.records || [];
+      
+      // Also check courseAttendanceSummary from getCourseAttendanceSummary (if available)
+      const courseAttendanceRecords = courseAttendanceSummary?.sessionRecords || [];
+      
+      console.log('🎯 Determining current session:', {
+        attendanceRecordsCount: attendanceRecords.length,
+        courseAttendanceRecordsCount: courseAttendanceRecords.length,
+        totalSessions: sessionsWithAssignments.length
+      });
+      
+      // Combine both sources of attendance data
+      const allAttendedSessions: Array<{ meetingId: string; date: string; sessionIndex: number }> = [];
+      
+      // From attendanceSummaryData.records (AttendanceRecord type)
+      attendanceRecords.forEach(record => {
+        const meetingId = record.meetingId || record.meeting?.id;
+        const status = record.status || record.attendanceStatus;
+        if ((status === 'Present') && meetingId) {
+          const sessionIndex = sessionsWithAssignments.findIndex(s => s.id === meetingId);
+          if (sessionIndex >= 0) {
+            const meetingDate = record.meeting?.startsAt || record.meeting?.date || sessionsWithAssignments[sessionIndex].date;
+            allAttendedSessions.push({
+              meetingId,
+              date: meetingDate,
+              sessionIndex
+            });
+          }
+        }
+      });
+      
+      // From courseAttendanceSummary.sessionRecords
+      courseAttendanceRecords.forEach(record => {
+        if (record.status === 'Present' && record.meetingId) {
+          const sessionIndex = sessionsWithAssignments.findIndex(s => s.id === record.meetingId);
+          if (sessionIndex >= 0 && !allAttendedSessions.find(s => s.meetingId === record.meetingId)) {
+            // Avoid duplicates
+            allAttendedSessions.push({
+              meetingId: record.meetingId,
+              date: record.meetingDate,
+              sessionIndex
+            });
+          }
+        }
+      });
+      
+      // Sort by date descending to get the most recent attended session
+      allAttendedSessions.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateB - dateA;
+      });
+      
+      if (allAttendedSessions.length > 0) {
+        // Find the last attended session
+        const lastAttendedSession = allAttendedSessions[0];
+        const lastAttendedIndex = lastAttendedSession.sessionIndex;
+        
+        // Find the next session after the last attended one (the session student is currently studying)
+        // Look for sessions that come after the last attended session
+        const nextSessionIndex = sessionsWithAssignments.findIndex((session, idx) => {
+          // Find first session that is after the last attended session
+          return idx > lastAttendedIndex;
+        });
+        
+        if (nextSessionIndex >= 0) {
+          // Current session is the next session after the last attended one
+          currentSessionIdx = nextSessionIndex;
+          console.log('🎯 Current session determined (next session after last attended):', {
+            lastAttendedSession: {
+              sessionIndex: lastAttendedIndex,
+              sessionNumber: lastAttendedIndex + 1,
+              meetingId: lastAttendedSession.meetingId,
+              date: lastAttendedSession.date
+            },
+            currentSession: {
+              sessionIndex: currentSessionIdx,
+              sessionNumber: currentSessionIdx + 1,
+              meetingId: sessionsWithAssignments[currentSessionIdx].id,
+              date: sessionsWithAssignments[currentSessionIdx].date
+            },
+            totalAttendedSessions: allAttendedSessions.length
+          });
+        } else {
+          // No more sessions after the last attended one, use the last attended as current
+          currentSessionIdx = lastAttendedIndex;
+          console.log('🎯 Current session determined (last attended - no more sessions):', {
+            sessionIndex: currentSessionIdx,
+            sessionNumber: currentSessionIdx + 1,
+            meetingId: lastAttendedSession.meetingId,
+            date: lastAttendedSession.date
+          });
+        }
+      } else {
+        // No attendance records found, use first session as current (student hasn't attended any yet)
+        currentSessionIdx = 0;
+        console.log('⚠️ No attended sessions found, defaulting to first session (student has not attended any session yet)');
+      }
+      
+      setCurrentSessionIndex(currentSessionIdx);
+
+      console.log('Final sessions with assignments:', sessionsWithAssignments);
+      console.log('Total sessions:', sessionsWithAssignments.length);
+      sessionsWithAssignments.forEach((session, idx) => {
+        console.log(`Session ${idx + 1} (${session.id}):`, {
+          assignmentsCount: session.assignments.length,
+          assignments: session.assignments.map(a => ({ id: a.id, title: a.title, submissionsCount: a.submissions?.length || 0 }))
+        });
+      });
 
       setSessions(sessionsWithAssignments);
 
@@ -357,7 +698,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 
             {/* Learning Timeline Tab */}
             <TabContent activeTab={activeTab} tabId="timeline">
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50/30 via-white to-blue-50/20 rounded-lg">
                 {/* Learning Timeline - Split into 2 columns */}
                 <div>
                   {sessions.length === 0 ? (
@@ -368,9 +709,14 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Left Column: Session List */}
-                      <Card className="border border-accent-200 shadow-sm bg-white">
+                      <Card className="border-2 border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50/40">
                         <div className="p-6">
-                          <h4 className="text-base font-semibold text-primary-800 mb-4">Sessions</h4>
+                          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-blue-200">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                              <BookOpen className="w-4 h-4 text-white" />
+                            </div>
+                            <h4 className="text-base font-semibold text-primary-800">Sessions</h4>
+                          </div>
                           <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
                             {sessions.map((session, index) => {
                               const sessionIndex = index;
@@ -389,19 +735,25 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                 }
                               };
 
+                              const handleSessionClick = () => {
+                                // Navigate to session detail page with Session Context tab
+                                navigate(`/student/class/${classItem.id}/session/${session.id}?tab=context`);
+                              };
+
                               return (
                                 <div 
-                                  key={session.id} 
-                                  className={`p-3 rounded-lg border transition-colors ${
+                                  key={session.id}
+                                  onClick={handleSessionClick}
+                                  className={`p-3 rounded-lg border transition-all duration-200 shadow-sm cursor-pointer ${
                                     isCurrent 
-                                      ? 'bg-white border-blue-300 border-2 hover:bg-blue-50 hover:border-blue-400' 
-                                      : 'bg-white border-accent-200 hover:bg-accent-25'
+                                      ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 hover:bg-blue-100 hover:border-blue-500 hover:shadow-md' 
+                                      : 'bg-gradient-to-br from-white to-accent-50/30 border-accent-200 hover:bg-accent-25 hover:shadow'
                                   }`}
                                 >
                                   <div className="flex items-start justify-between">
                                     <div className="flex items-start gap-3 flex-1">
                                       {isCurrent ? (
-                                        <PlayCircle className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                                        <PlayCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                                       ) : session.isCompleted ? (
                                         <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
                                       ) : (
@@ -413,7 +765,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                             Session {session.sessionNumber}
                                           </h5>
                                           {isCurrent && (
-                                            <span className="px-2 py-0.5 bg-blue-400 text-white rounded text-xs font-medium">
+                                            <span className="px-2 py-0.5 bg-blue-500 text-white rounded text-xs font-medium shadow-sm">
                                               Current
                                             </span>
                                           )}
@@ -436,9 +788,14 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                       </Card>
 
                       {/* Right Column: Milestone Timeline */}
-                      <Card className="border border-accent-200 shadow-sm bg-white">
+                      <Card className="border-2 border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50/40">
                         <div className="p-6">
-                          <h4 className="text-base font-semibold text-primary-800 mb-6">Milestone Timeline</h4>
+                          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-blue-200">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                              <TrendingUp className="w-4 h-4 text-white" />
+                            </div>
+                            <h4 className="text-base font-semibold text-primary-800">Milestone Timeline</h4>
+                          </div>
                           <div className="relative">
                             {/* Vertical Timeline Line */}
                             <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-accent-200"></div>
@@ -472,10 +829,10 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                       </div>
                                     </div>
                                     <div className="flex-1 pt-0">
-                                      <Card className={`p-2 border shadow-sm transition-colors ${
+                                      <Card className={`p-2 border shadow-sm transition-all duration-200 ${
                                         shouldGlow 
-                                          ? 'border-blue-300 hover:bg-blue-50 hover:border-blue-400' 
-                                          : 'border-accent-200 hover:bg-accent-25'
+                                          ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 hover:bg-blue-100 hover:border-blue-500 hover:shadow-md' 
+                                          : 'bg-gradient-to-br from-white to-accent-50/30 border-accent-200 hover:bg-accent-25 hover:shadow'
                                       }`}>
                                         <div className="flex items-start justify-between">
                                           <div className="flex-1">
@@ -487,17 +844,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                             </p>
                                           </div>
                                           <span className="text-accent-600 text-xs font-medium whitespace-nowrap ml-4">
-                                            {(() => {
-                                              try {
-                                                const date = new Date(classItem.startDate);
-                                                return date.toLocaleDateString('en-US', {
-                                                  day: '2-digit',
-                                                  month: 'short'
-                                                });
-                                              } catch {
-                                                return formatDate(classItem.startDate);
-                                              }
-                                            })()}
+                                            {formatDate(classItem.startDate)}
                                           </span>
                                         </div>
                                       </Card>
@@ -513,10 +860,33 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                 
                                 // Check if this is a milestone (First Attendance, Exam, Mock Test)
                                 const isFirstAttendance = sessionIndex === 0;
-                                const isMilestone = session.assignments.some(a => {
-                                  const title = a.title.toLowerCase();
-                                  return title.includes('exam') || title.includes('mock') || title.includes('test') || title.includes('assessment');
-                                });
+                                
+                                // Check milestone based on coveredTopic.topicTitle instead of assignment.title
+                                const checkIfMilestone = (topicTitle: string | null | undefined): boolean => {
+                                  if (!topicTitle) {
+                                    console.log(`🔍 Milestone check - Session ${session.sessionNumber}: No topicTitle`);
+                                    return false;
+                                  }
+                                  const title = topicTitle.toLowerCase();
+                                  const isMilestone = title.includes('exam') || 
+                                         title.includes('mock') || 
+                                         title.includes('test') || 
+                                         title.includes('assessment');
+                                  
+                                  console.log(`🔍 Milestone check - Session ${session.sessionNumber}:`, {
+                                    topicTitle,
+                                    lowercased: title,
+                                    isMilestone,
+                                    containsExam: title.includes('exam'),
+                                    containsMock: title.includes('mock'),
+                                    containsTest: title.includes('test'),
+                                    containsAssessment: title.includes('assessment')
+                                  });
+                                  
+                                  return isMilestone;
+                                };
+                                
+                                const isMilestone = checkIfMilestone(session.coveredTopic);
 
                                 if (!isFirstAttendance && !isMilestone) {
                                   return null;
@@ -525,11 +895,8 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                 // Get session title
                                 const getMilestoneTitle = () => {
                                   if (isFirstAttendance) return 'First Attendance';
-                                  const milestoneAssignment = session.assignments.find(a => {
-                                    const title = a.title.toLowerCase();
-                                    return title.includes('exam') || title.includes('mock') || title.includes('test') || title.includes('assessment');
-                                  });
-                                  return milestoneAssignment ? milestoneAssignment.title : `Session ${session.sessionNumber}`;
+                                  // Use coveredTopic instead of assignment title
+                                  return session.coveredTopic || `Session ${session.sessionNumber}`;
                                 };
 
                                 // Get session description
@@ -537,16 +904,20 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                   if (isFirstAttendance) {
                                     return 'Attendance started - Materials assigned';
                                   }
-                                  const milestoneAssignment = session.assignments.find(a => {
-                                    const title = a.title.toLowerCase();
-                                    return title.includes('exam') || title.includes('mock') || title.includes('test') || title.includes('assessment');
-                                  });
-                                  if (milestoneAssignment) {
-                                    const sub = milestoneAssignment.submissions?.[0];
-                                    if (sub && sub.score !== null) {
-                                      return `Score: ${sub.score}%${sub.feedback ? ' - Feedback available' : ''}`;
+                                  // For milestone sessions, show the coveredTopic as description
+                                  if (session.coveredTopic) {
+                                    // Try to find assignment score if available
+                                    const milestoneAssignment = session.assignments.find(a => {
+                                      const sub = a.submissions?.[0];
+                                      return sub && sub.score !== null;
+                                    });
+                                    if (milestoneAssignment) {
+                                      const sub = milestoneAssignment.submissions?.[0];
+                                      if (sub && sub.score !== null) {
+                                        return `Score: ${sub.score}%${sub.feedback ? ' - Feedback available' : ''}`;
+                                      }
                                     }
-                                    return milestoneAssignment.description || 'Important assessment';
+                                    return 'Important assessment';
                                   }
                                   return 'Milestone session';
                                 };
@@ -592,10 +963,10 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 
                                     {/* Timeline Content */}
                                     <div className="flex-1 pt-0">
-                                      <Card className={`p-2 border shadow-sm transition-colors ${
+                                      <Card className={`p-2 border shadow-sm transition-all duration-200 ${
                                         shouldGlow 
-                                          ? 'border-blue-300 hover:bg-blue-50 hover:border-blue-400' 
-                                          : 'border-accent-200 hover:bg-accent-25'
+                                          ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 hover:bg-blue-100 hover:border-blue-500 hover:shadow-md' 
+                                          : 'bg-gradient-to-br from-white to-accent-50/30 border-accent-200 hover:bg-accent-25 hover:shadow'
                                       }`}>
                                         <div className="flex items-start justify-between">
                                           <div className="flex-1">
@@ -607,7 +978,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                             </p>
                                           </div>
                                           <span className="text-accent-600 text-xs font-medium whitespace-nowrap ml-4">
-                                            {formatShortDate(session.date)}
+                                            {formatDate(session.date)}
                                           </span>
                                         </div>
                                       </Card>
@@ -629,139 +1000,213 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
             <TabContent activeTab={activeTab} tabId="assignments">
               <div className="p-6 space-y-6">
                 {/* Learning Performance for this class */}
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-md font-semibold text-primary-800">Học lực & Tiến độ</h3>
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      className={`px-3 py-1 rounded border ${filterMode === '4w' ? 'bg-primary-100 border-primary-300 text-primary-800' : 'bg-white border-accent-300 text-accent-700'}`}
-                      onClick={() => setFilterMode('4w')}
-                    >
-                      4 tuần gần nhất
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded border ${filterMode === '8s' ? 'bg-primary-100 border-primary-300 text-primary-800' : 'bg-white border-accent-300 text-accent-700'}`}
-                      onClick={() => setFilterMode('8s')}
-                    >
-                      8 buổi gần nhất
-                    </button>
-                  </div>
+                <div className="mb-4">
+                  <h3 className="text-md font-semibold text-primary-800">Academic Performance & Progress</h3>
+                  <p className="text-xs text-accent-600 mt-1">Last 4 weeks</p>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Weekly Scores */}
-                  <Card className="p-4 border border-accent-200">
+                  <Card className="p-4 border border-accent-200 bg-gradient-to-br from-white to-primary-50/30">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-sm font-semibold text-primary-800">Điểm theo tuần</div>
-                      <span className="text-xs text-accent-600">out of 100</span>
+                      <div className="text-sm font-semibold text-primary-800">Weekly Scores</div>
+                      <span className="text-xs text-accent-600">out of 10</span>
                     </div>
-                    <div className="h-28 flex items-end gap-2">
-                      {weeklyScores.map((w) => (
-                        <div key={w.label} className="flex-1 flex flex-col items-center gap-1">
-                          <div className="w-full bg-primary-200 rounded-t-md" style={{ height: `${Math.max(4, w.score)}%` }} />
-                          <span className="text-[10px] text-accent-600">{w.label}</span>
+                    <div className="h-40 flex items-end justify-center gap-4 px-4">
+                      {(() => {
+                        console.log('📊 Rendering chart - courseDetailsData:', courseDetailsData);
+                        console.log('📊 weeklyPerformance:', courseDetailsData?.weeklyPerformance);
+                        console.log('📊 weeklyPerformance is array?', Array.isArray(courseDetailsData?.weeklyPerformance));
+                        console.log('📊 weeklyPerformance length:', courseDetailsData?.weeklyPerformance?.length);
+                        return null;
+                      })()}
+                      {courseDetailsData?.weeklyPerformance && Array.isArray(courseDetailsData.weeklyPerformance) && courseDetailsData.weeklyPerformance.length > 0 ? (() => {
+                        // Sort by weekNumber descending and take last 4 weeks (most recent)
+                        const sortedWeeks = [...courseDetailsData.weeklyPerformance].sort((a, b) => b.weekNumber - a.weekNumber);
+                        const last4Weeks = sortedWeeks.slice(0, 4).reverse(); // Reverse to show oldest to newest (left to right)
+                        
+                        console.log('📊 Last 4 weeks:', last4Weeks);
+                        
+                        return last4Weeks.map((wp: any, idx: number) => {
+                          // averageScore is out of 10, convert to percentage for display
+                          const score = Number(wp.averageScore) || 0;
+                          const scorePercent = (score / 10) * 100; // Convert to percentage (8.67/10 = 86.7%)
+                          const heightPercent = Math.max(15, scorePercent); // Minimum 15% height for visibility
+                          
+                          console.log(`📊 Week ${wp.weekNumber}: score=${score}, scorePercent=${scorePercent}%, heightPercent=${heightPercent}%`);
+                          
+                          // Determine color based on score (out of 10)
+                          let gradientColors = '';
+                          if (score >= 8) {
+                            gradientColors = 'linear-gradient(to top, #10b981, #34d399)'; // Green for excellent
+                          } else if (score >= 6) {
+                            gradientColors = 'linear-gradient(to top, #3b82f6, #60a5fa)'; // Blue for good
+                          } else if (score >= 4) {
+                            gradientColors = 'linear-gradient(to top, #f59e0b, #fbbf24)'; // Yellow for average
+                          } else {
+                            gradientColors = 'linear-gradient(to top, #ef4444, #f87171)'; // Red for poor
+                          }
+                          
+                          // Calculate week label
+                          const weekLabel = `Week ${wp.weekNumber}`;
+                          
+                          return (
+                            <div key={`week-${wp.weekNumber}-${idx}`} className="flex flex-col items-center gap-2" style={{ width: `${100 / last4Weeks.length}%`, maxWidth: '120px' }}>
+                              <div 
+                                className="w-full rounded-t-lg transition-all hover:opacity-90 hover:scale-105 shadow-md border-2 border-white"
+                                style={{ 
+                                  height: `${heightPercent}%`,
+                                  minHeight: '30px',
+                                  background: gradientColors
+                                }} 
+                              />
+                              <div className="text-center w-full">
+                                <div className="text-sm font-bold text-primary-800 mb-0.5">{score.toFixed(1)}</div>
+                                <span className="text-[11px] font-medium text-accent-600">{weekLabel}</span>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })() : weeklyScores.length > 0 ? (
+                        weeklyScores.map((w) => (
+                          <div key={w.label} className="flex-1 flex flex-col items-center gap-1 min-w-[70px]">
+                            <div 
+                              className="w-full rounded-t-lg transition-all hover:opacity-90 shadow-md"
+                              style={{ 
+                                height: `${Math.max(10, w.score)}%`,
+                                minHeight: '30px',
+                                background: `linear-gradient(to top, ${w.score >= 80 ? '#10b981' : w.score >= 60 ? '#3b82f6' : '#f59e0b'}, ${w.score >= 80 ? '#34d399' : w.score >= 60 ? '#60a5fa' : '#fbbf24'})`
+                              }} 
+                            />
+                            <span className="text-[11px] font-medium text-accent-700">{w.label}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="w-full text-center py-6">
+                          <div className="text-sm text-accent-500 mb-1">No weekly score data available</div>
+                          <div className="text-xs text-accent-400">Data will be updated after assignments are graded</div>
                         </div>
-                      ))}
+                      )}
                     </div>
-                    {weeklyScores.length > 0 && (
-                      <div className="mt-2 text-xs text-accent-600">
-                        Tuần gần nhất: <span className="font-medium text-primary-700">{weeklyScores[weeklyScores.length-1].score}</span>
-                      </div>
-                    )}
                   </Card>
 
                   {/* Completion */}
-                  <Card className="p-4 border border-accent-200">
-                    <div className="text-sm font-semibold text-primary-800 mb-3">Tỷ lệ hoàn thành bài tập</div>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-accent-700">Hoàn thành</span>
-                      <span className="font-semibold text-primary-700">{Math.round(completionRate)}%</span>
-                    </div>
-                    <div className="h-3 w-full bg-accent-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-success-500" style={{ width: `${completionRate}%` }} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-xs mt-3">
-                      <div className="p-2 rounded border border-accent-200 bg-accent-25">
-                        <div className="text-accent-600">Đang chờ</div>
-                        <div className="font-semibold text-primary-700">{pendingCount}</div>
-                      </div>
-                      <div className="p-2 rounded border border-accent-200 bg-accent-25">
-                        <div className="text-accent-600">Trễ hạn</div>
-                        <div className="font-semibold text-error-600">{overdueCount}</div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Early Warning */}
-                  <Card className="p-4 border border-accent-200">
-                    <div className="text-sm font-semibold text-primary-800 mb-3">Cảnh báo sớm</div>
-                    {!warningLevel ? (
-                      <div className="text-sm text-success-700">Không có rủi ro đáng chú ý. Tiếp tục duy trì tiến độ!</div>
-                    ) : (
-                      <div className="space-y-2 text-sm">
-                        <div className={`px-2 py-1 inline-block rounded text-xs font-medium ${warningLevel === 'high' ? 'bg-error-100 text-error-700' : 'bg-warning-100 text-warning-800'}`}>
-                          Mức độ: {warningLevel === 'high' ? 'Cao' : 'Trung bình'}
+                  <Card className="p-4 border border-accent-200 bg-gradient-to-br from-white to-success-50/20">
+                    <div className="text-sm font-semibold text-primary-800 mb-3">Assignment Completion Rate</div>
+                    {courseDetailsData?.completionStats ? (
+                      <>
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <span className="text-accent-700 font-medium">Completed</span>
+                          <span className="font-bold text-success-600 text-lg">{courseDetailsData.completionStats.completionRate}%</span>
                         </div>
-                        <ul className="list-disc pl-5 text-accent-700">
-                          {(() => {
-                            const items: string[] = [];
-                            if (weeklyScores.length >= 3) {
-                              const n = weeklyScores.length;
-                              if (weeklyScores[n-3].score > weeklyScores[n-2].score && weeklyScores[n-2].score > weeklyScores[n-1].score) items.push('Điểm tuần giảm liên tiếp');
-                            }
-                            if (completionRate < 70) items.push('Tỷ lệ hoàn thành bài tập thấp (< 70%)');
-                            if (weeklyScores.length && weeklyScores[weeklyScores.length-1].score < 60) items.push('Điểm tuần gần nhất dưới 60');
-                            return items.map((t, i) => <li key={i}>{t}</li>);
-                          })()}
-                        </ul>
-                        <div className="text-xs text-accent-600">Đề xuất: hoàn thành bài tập còn lại, xem lại nội dung tuần gần đây.</div>
-                      </div>
+                        <div className="h-4 w-full bg-accent-100 rounded-full overflow-hidden shadow-inner">
+                          <div 
+                            className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-success-500 to-success-400 shadow-sm" 
+                            style={{ width: `${courseDetailsData.completionStats.completionRate}%` }} 
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs mt-4">
+                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-amber-50 to-amber-100/50 shadow-sm">
+                            <div className="text-accent-600 mb-1">Pending Grading </div>
+                            <div className="font-bold text-amber-700 text-base">{courseDetailsData.completionStats.pendingGrading}</div>
+                          </div>
+                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-red-50 to-red-100/50 shadow-sm">
+                            <div className="text-accent-600 mb-1">Late</div>
+                            <div className="font-bold text-red-600 text-base">{courseDetailsData.completionStats.completedLate}</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs mt-2">
+                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-green-50 to-green-100/50 shadow-sm">
+                            <div className="text-accent-600 mb-1">On Time</div>
+                            <div className="font-bold text-green-700 text-base">{courseDetailsData.completionStats.completedOnTime}</div>
+                          </div>
+                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-red-50 to-red-100/50 shadow-sm">
+                            <div className="text-accent-600 mb-1">Not Submitted</div>
+                            <div className="font-bold text-red-600 text-base">{courseDetailsData.completionStats.notSubmitted}</div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <span className="text-accent-700 font-medium">Completed</span>
+                          <span className="font-bold text-success-600 text-lg">{Math.round(completionRate)}%</span>
+                        </div>
+                        <div className="h-4 w-full bg-accent-100 rounded-full overflow-hidden shadow-inner">
+                          <div 
+                            className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-success-500 to-success-400 shadow-sm" 
+                            style={{ width: `${completionRate}%` }} 
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs mt-4">
+                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-amber-50 to-amber-100/50 shadow-sm">
+                            <div className="text-accent-600 mb-1">Pending</div>
+                            <div className="font-bold text-amber-700 text-base">{pendingCount}</div>
+                          </div>
+                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-red-50 to-red-100/50 shadow-sm">
+                            <div className="text-accent-600 mb-1">Late</div>
+                            <div className="font-bold text-red-600 text-base">{overdueCount}</div>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </Card>
                 </div>
 
-                {/* Sessions List */}
-                <div className="space-y-4">
-                  {sessions.length === 0 ? (
-                    <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
-                      <FileText className="w-12 h-12 text-accent-400 mx-auto mb-2" />
-                      <p className="text-accent-600">No sessions available</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {sessions.map((session, index) => {
-                        const isCurrent = index === currentSessionIndex;
-                        return (
-                        <Card 
-                          key={session.id} 
-                          className={`p-4 border transition-colors ${
-                            isCurrent 
-                              ? 'bg-white border-blue-300 border-2 hover:bg-blue-50 hover:border-blue-400' 
-                              : getSessionStatusColor(session, index) + ' hover:shadow-md'
-                          }`}
+                {/* Sessions with Assignments */}
+                {assignmentsByMeeting.length > 0 ? (
+                  <div className="space-y-4">
+                    {assignmentsByMeeting.map((meetingGroup, index) => {
+                      // Find corresponding session from meetings
+                      const session = sortedMeetingsList.find(m => m.id === meetingGroup.meetingId);
+                      const sessionNumber = sortedMeetingsList.findIndex(m => m.id === meetingGroup.meetingId) + 1;
+                      const isCurrent = sessionNumber === currentSessionIndex + 1;
+                      
+                      const handleSessionClick = () => {
+                        // Navigate to Assignment Submission page for this session with tab parameter
+                        navigate(`/student/class/${classItem.id}/session/${meetingGroup.meetingId}?tab=assignments`);
+                      };
+
+                      return (
+                        <div 
+                          onClick={handleSessionClick}
+                          className="cursor-pointer"
                         >
-                          <div className="flex items-start justify-between mb-3">
+                          <Card 
+                            key={meetingGroup.meetingId}
+                            className={`p-5 border transition-all duration-200 ${
+                              isCurrent 
+                                ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 shadow-lg hover:shadow-xl' 
+                                : 'bg-gradient-to-br from-white to-accent-50/30 border-accent-200 shadow-sm hover:shadow-md'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between mb-3">
                             <div className="flex items-start gap-3 flex-1">
-                              {getSessionStatusIcon(session, index)}
+                              <div className={`p-2 rounded-lg ${
+                                isCurrent 
+                                  ? 'bg-blue-500 text-white' 
+                                  : 'bg-primary-100 text-primary-600'
+                              }`}>
+                                <BookOpen className="w-5 h-5" />
+                              </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <h4 className="font-semibold text-primary-800">
-                                    Session {session.sessionNumber}
+                                  <h4 className="font-bold text-primary-800 text-lg">
+                                    {session ? `Session ${sessionNumber}` : `Session ${index + 1}`}
                                   </h4>
-                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                    index === currentSessionIndex
-                                      ? 'bg-blue-400 text-white'
-                                      : session.isCompleted
-                                      ? 'bg-green-200 text-green-800'
-                                      : 'bg-gray-200 text-gray-800'
-                                  }`}>
-                                    {getSessionStatusLabel(session, index)}
-                                  </span>
+                                  {isCurrent && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white shadow-sm animate-pulse">
+                                      Current
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-accent-600 mb-2">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>{formatDate(session.date)}</span>
-                                  {session.isStudy && (
-                                    <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
-                                      Study Day
+                                <div className="flex items-center gap-4 text-sm text-accent-600">
+                                  <div className="flex items-center gap-1 font-medium">
+                                    <Calendar className="w-4 h-4 text-primary-500" />
+                                    <span>{formatDate(meetingGroup.meetingDate)}</span>
+                                  </div>
+                                  {meetingGroup.topic && meetingGroup.topic !== '(No topic)' && (
+                                    <span className="px-2 py-1 rounded-md bg-primary-100 text-primary-700 text-xs font-medium">
+                                      {meetingGroup.topic}
                                     </span>
                                   )}
                                 </div>
@@ -769,61 +1214,82 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                             </div>
                           </div>
 
-                          {/* Assignments in this session */}
-                          {session.assignments.length > 0 && (
+                          {/* Assignments for this session */}
+                          {meetingGroup.assignments.length > 0 ? (
                             <div className="mt-4 pt-4 border-t border-accent-200">
-                              <h5 className="text-sm font-semibold text-primary-700 mb-3 flex items-center gap-2">
-                                <FileText className="w-4 h-4" />
-                                Assignments ({session.assignments.length})
+                              <h5 className="text-sm font-semibold text-primary-700 mb-4 flex items-center gap-2">
+                                <div className="p-1.5 rounded-md bg-gradient-to-br from-primary-500 to-primary-600">
+                                  <FileText className="w-4 h-4 text-white" />
+                                </div>
+                                <span>Assignments ({meetingGroup.assignments.length})</span>
                               </h5>
                               <div className="space-y-3">
-                                {session.assignments.map((assignment) => {
-                                  const submission = assignment.submissions?.[0];
-                                  const hasSubmission = !!(submission && submission.storeUrl);
-                                  const hasScore = submission?.score !== null && submission?.score !== undefined;
+                                {meetingGroup.assignments.map((assignment) => {
+                                  const submissionStatus = assignment.submissionStatus || 'PENDING';
+                                  const hasScore = assignment.score !== null && assignment.score !== undefined;
+                                  const isSubmitted = submissionStatus === 'SUBMITTED' || submissionStatus === 'GRADED' || !!assignment.submittedAt;
+                                  const isGraded = hasScore || submissionStatus === 'GRADED';
+                                  
+                                  // Determine status badge with better colors
+                                  let statusBadge = {
+                                    text: 'Pending',
+                                    className: 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-200'
+                                  };
+                                  
+                                  if (isGraded) {
+                                    statusBadge = {
+                                      text: 'Graded',
+                                      className: 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200'
+                                    };
+                                  } else if (isSubmitted) {
+                                    statusBadge = {
+                                      text: 'Submitted',
+                                      className: 'bg-gradient-to-r from-amber-100 to-amber-50 text-amber-700 border border-amber-200'
+                                    };
+                                  }
                                   
                                   return (
                                     <div 
-                                      key={assignment.id}
-                                      className="p-3 bg-white rounded-lg border border-accent-100 hover:bg-accent-25 transition-colors"
+                                      key={assignment.assignmentId}
+                                      className="p-4 bg-white rounded-lg border border-accent-200 hover:border-primary-300 hover:shadow-md transition-all duration-200 bg-gradient-to-br from-white to-accent-50/20"
                                     >
-                                      <div className="flex items-start justify-between mb-2">
+                                      <div className="flex items-start justify-between mb-3">
                                         <div className="flex-1">
-                                          <h6 className="font-medium text-primary-800 mb-1">
+                                          <h6 className="font-semibold text-primary-800 mb-2 text-base">
                                             {assignment.title}
                                           </h6>
                                           {assignment.description && (
-                                            <p className="text-xs text-accent-600 mb-2">
+                                            <p className="text-sm text-accent-600 mb-2 leading-relaxed">
                                               {assignment.description}
                                             </p>
                                           )}
                                         </div>
-                                        <div className={`px-2 py-1 rounded text-xs font-medium ${
-                                          hasScore
-                                            ? 'bg-green-100 text-green-800'
-                                            : hasSubmission
-                                            ? 'bg-yellow-100 text-yellow-800'
-                                            : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                          {hasScore ? 'Graded' : hasSubmission ? 'Submitted' : 'Pending'}
+                                        <div className={`px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm ${statusBadge.className}`}>
+                                          {statusBadge.text}
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-4 text-xs text-accent-600">
-                                        <div className="flex items-center gap-1">
-                                          <Calendar className="w-3 h-3" />
-                                          <span>Due: {formatDate(assignment.dueDate)}</span>
+                                      <div className="flex items-center gap-4 text-sm text-accent-600 flex-wrap">
+                                        <div className="flex items-center gap-1.5 bg-accent-50 px-2 py-1 rounded-md">
+                                          <Calendar className="w-4 h-4 text-primary-500" />
+                                          <span className="font-medium">Due: {formatDate(assignment.dueAt)}</span>
                                         </div>
-                                        {hasScore && (
-                                          <div className="flex items-center gap-1 text-green-700">
-                                            <CheckCircle className="w-3 h-3" />
-                                            <span>Score: {submission.score}%</span>
+                                        {assignment.submittedAt && (
+                                          <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-md text-blue-700">
+                                            <Clock className="w-4 h-4" />
+                                            <span className="font-medium">Submitted: {formatDate(assignment.submittedAt)}</span>
+                                          </div>
+                                        )}
+                                        {hasScore && assignment.score !== null && (
+                                          <div className="flex items-center gap-1.5 bg-green-50 px-2 py-1 rounded-md text-green-700">
+                                            <CheckCircle className="w-4 h-4" />
+                                            <span className="font-bold text-base">Score: {assignment.score}</span>
                                           </div>
                                         )}
                                       </div>
-                                      {submission?.feedback && (
-                                        <div className="mt-2 p-2 bg-accent-25 rounded border border-accent-200">
-                                          <p className="text-[11px] font-medium text-primary-700 mb-1">Feedback</p>
-                                          <p className="text-xs text-accent-700">{submission.feedback}</p>
+                                      {assignment.feedback && (
+                                        <div className="mt-3 p-3 bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg border border-green-200 shadow-sm">
+                                          <p className="text-xs font-semibold text-green-700 mb-1.5">Feedback</p>
+                                          <p className="text-sm text-green-800 leading-relaxed">{assignment.feedback}</p>
                                         </div>
                                       )}
                                     </div>
@@ -831,28 +1297,43 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                 })}
                               </div>
                             </div>
-                          )}
-
-                          {session.assignments.length === 0 && (
-                            <div className="mt-3 text-sm text-accent-500 italic">
+                          ) : (
+                            <div className="mt-3 text-sm text-accent-500 italic p-3 bg-accent-50 rounded-lg border border-accent-200">
                               No assignments for this session
                             </div>
                           )}
                         </Card>
+                        </div>
                       );
-                      })}
-                    </div>
-                  )}
-                </div>
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
+                    <FileText className="w-12 h-12 text-accent-400 mx-auto mb-2" />
+                    <p className="text-accent-600">No assignments available</p>
+                  </div>
+                )}
               </div>
             </TabContent>
 
             {/* Attendance Report Tab */}
             <TabContent activeTab={activeTab} tabId="attendance">
               <div className="p-6">
-                {(() => {
-                  const summary = mockAttendanceData.classSummaries.find(cs => cs.className === classItem.className || cs.courseCode === classItem.courseCode);
-                  if (!summary) {
+                {attendanceLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                      <p className="text-accent-600">Loading attendance data...</p>
+                    </div>
+                  </div>
+                ) : (() => {
+                  // Use API data if available, otherwise fallback to mock
+                  const summary = courseAttendanceSummary;
+                  const mockSummary = mockAttendanceData.classSummaries.find(
+                    cs => cs.className === classItem.className || cs.courseCode === classItem.courseCode
+                  );
+
+                  if (!summary && !mockSummary) {
                     return (
                       <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
                         <ClipboardCheck className="w-12 h-12 text-accent-400 mx-auto mb-2" />
@@ -860,6 +1341,152 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                       </div>
                     );
                   }
+
+                  // Use API data structure
+                  if (summary) {
+                    return (
+                      <div className="space-y-4">
+                        {/* Summary Stats */}
+                        <Card className="p-4 border border-accent-200">
+                          <div className="grid grid-cols-3 gap-4 mb-3">
+                            <div className="text-center p-3 bg-success-50 rounded-lg">
+                              <p className="text-sm font-medium text-success-700">Present</p>
+                              <p className="text-2xl font-bold text-success-600">{summary.attended}</p>
+                            </div>
+                            <div className="text-center p-3 bg-error-50 rounded-lg">
+                              <p className="text-sm font-medium text-error-700">Absent</p>
+                              <p className="text-2xl font-bold text-error-600">{summary.absent}</p>
+                            </div>
+                            <div className="text-center p-3 bg-primary-50 rounded-lg">
+                              <p className="text-sm font-medium text-primary-700">Total</p>
+                              <p className="text-2xl font-bold text-primary-600">{summary.totalSessions}</p>
+                            </div>
+                          </div>
+                          {summary.isWarning && summary.warningMessage && (
+                            <div className="mt-4 p-3 bg-warning-50 border border-warning-200 rounded-lg">
+                              <p className="text-sm font-medium text-warning-800">Warning</p>
+                              <p className="text-sm text-warning-700">{summary.warningMessage}</p>
+                            </div>
+                          )}
+                        </Card>
+
+                        {/* Detailed Attendance Records - Display by Sessions */}
+                        {sessions && sessions.length > 0 ? (
+                          <div className="space-y-3">
+                            <h4 className="text-md font-semibold text-primary-800">Attendance Records</h4>
+                            <div className="space-y-2">
+                              {sessions.map((session) => {
+                                // Find attendance record for this session
+                                const attendanceRecord = summary.sessionRecords?.find(
+                                  record => record.meetingId === session.id
+                                );
+                                
+                                const meetingDate = new Date(session.date);
+                                const dateStr = meetingDate.toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                });
+                                
+                                // Get status from attendance record or default to 'Not Marked'
+                                const status = attendanceRecord?.status || 'Not Marked';
+                                const present = status === 'Present';
+                                const absent = status === 'Absent';
+                                const notMarked = status === 'Not Marked';
+                                
+                                return (
+                                  <Card 
+                                    key={session.id} 
+                                    className={`p-4 border ${
+                                      present 
+                                        ? 'bg-success-50 border-success-200' 
+                                        : absent
+                                        ? 'bg-error-50 border-error-200'
+                                        : 'bg-gray-50 border-gray-200'
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex items-start gap-3 flex-1">
+                                        {present ? (
+                                          <div className="w-10 h-10 bg-success-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <CheckCircle className="w-5 h-5 text-success-600" />
+                                          </div>
+                                        ) : absent ? (
+                                          <div className="w-10 h-10 bg-error-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <AlertCircle className="w-5 h-5 text-error-600" />
+                                          </div>
+                                        ) : (
+                                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <Clock className="w-5 h-5 text-gray-600" />
+                                          </div>
+                                        )}
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-semibold text-primary-800">
+                                              Session {session.sessionNumber}
+                                            </span>
+                                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                              present
+                                                ? 'bg-success-200 text-success-800'
+                                                : absent
+                                                ? 'bg-error-200 text-error-800'
+                                                : 'bg-gray-200 text-gray-800'
+                                            }`}>
+                                              {status}
+                                            </span>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="flex items-center gap-2 text-sm">
+                                              <Calendar className="w-4 h-4 text-accent-500" />
+                                              <span className="font-medium text-primary-700">{dateStr}</span>
+                                            </div>
+                                            {session.coveredTopic && (
+                                              <div className="mt-2 flex items-center gap-2">
+                                                <span className="text-xs font-medium text-primary-700">Topic:</span>
+                                                <span className="text-sm text-primary-600 underline">{session.coveredTopic}</span>
+                                              </div>
+                                            )}
+                                            {attendanceRecord?.notes && (
+                                              <div className="mt-2 p-2 bg-accent-50 rounded border border-accent-200">
+                                                <p className="text-xs font-medium text-primary-700 mb-1">Notes:</p>
+                                                <p className="text-sm text-accent-600">{attendanceRecord.notes}</p>
+                                              </div>
+                                            )}
+                                            {attendanceRecord?.checkedBy && (
+                                              <div className="flex items-center gap-2 text-xs text-accent-500 mt-1">
+                                                <span>Checked by: {attendanceRecord.checkedBy}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
+                            <ClipboardCheck className="w-8 h-8 text-accent-400 mx-auto mb-2" />
+                            <p className="text-sm text-accent-600">No sessions available</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Fallback to mock data structure
+                  if (!mockSummary) {
+                    return (
+                      <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
+                        <ClipboardCheck className="w-12 h-12 text-accent-400 mx-auto mb-2" />
+                        <p className="text-accent-600">No attendance data available</p>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div className="space-y-4">
                       {/* Summary Stats */}
@@ -867,47 +1494,53 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                         <div className="grid grid-cols-3 gap-4 mb-3">
                           <div className="text-center p-3 bg-success-50 rounded-lg">
                             <p className="text-sm font-medium text-success-700">Present</p>
-                            <p className="text-2xl font-bold text-success-600">{summary.attendedSessions}</p>
+                            <p className="text-2xl font-bold text-success-600">{mockSummary.attendedSessions}</p>
                           </div>
                           <div className="text-center p-3 bg-error-50 rounded-lg">
                             <p className="text-sm font-medium text-error-700">Absent</p>
-                            <p className="text-2xl font-bold text-error-600">{summary.absentSessions}</p>
+                            <p className="text-2xl font-bold text-error-600">{mockSummary.absentSessions}</p>
                           </div>
                           <div className="text-center p-3 bg-primary-50 rounded-lg">
                             <p className="text-sm font-medium text-primary-700">Total</p>
-                            <p className="text-2xl font-bold text-primary-600">{summary.totalSessions}</p>
+                            <p className="text-2xl font-bold text-primary-600">{mockSummary.totalSessions}</p>
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-4 border-t border-accent-200">
-                          <span className="text-sm font-medium text-neutral-700">Attendance Rate</span>
-                          <span className="text-lg font-bold text-primary-600">
-                            {summary.attendanceRate?.toFixed?.(1) ?? summary.attendanceRate}%
-                          </span>
                         </div>
                       </Card>
 
-                      {/* Detailed Attendance Records */}
-                      {summary.records && summary.records.length > 0 ? (
+                      {/* Detailed Attendance Records - Display by Sessions */}
+                      {sessions && sessions.length > 0 ? (
                         <div className="space-y-3">
                           <h4 className="text-md font-semibold text-primary-800">Attendance Records</h4>
                           <div className="space-y-2">
-                            {summary.records.map((record) => {
-                              const meetingDate = new Date(record.meeting.startsAt);
+                            {sessions.map((session) => {
+                              // Find attendance record for this session from mock data
+                              const attendanceRecord = mockSummary.records?.find(
+                                (record: AttendanceRecord) => record.meeting.id === session.id || record.meetingId === session.id
+                              );
+                              
+                              const meetingDate = new Date(session.date);
                               const dateStr = meetingDate.toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric'
                               });
-                              const timeStr = `${meetingDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - ${new Date(record.meeting.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-                              const present = record.attendanceStatus === 'Present';
+                              
+                              // Get status from attendance record or default to 'Not Marked'
+                              const status = attendanceRecord?.attendanceStatus || 'Not Marked';
+                              const present = status === 'Present';
+                              const absent = status === 'Absent';
+                              const notMarked = status === 'Not Marked';
+                              
                               return (
                                 <Card 
-                                  key={record.id} 
+                                  key={session.id} 
                                   className={`p-4 border ${
                                     present 
                                       ? 'bg-success-50 border-success-200' 
-                                      : 'bg-error-50 border-error-200'
+                                      : absent
+                                      ? 'bg-error-50 border-error-200'
+                                      : 'bg-gray-50 border-gray-200'
                                   }`}
                                 >
                                   <div className="flex items-start justify-between">
@@ -916,19 +1549,28 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                         <div className="w-10 h-10 bg-success-100 rounded-full flex items-center justify-center flex-shrink-0">
                                           <CheckCircle className="w-5 h-5 text-success-600" />
                                         </div>
-                                      ) : (
+                                      ) : absent ? (
                                         <div className="w-10 h-10 bg-error-100 rounded-full flex items-center justify-center flex-shrink-0">
                                           <AlertCircle className="w-5 h-5 text-error-600" />
+                                        </div>
+                                      ) : (
+                                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                          <Clock className="w-5 h-5 text-gray-600" />
                                         </div>
                                       )}
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
+                                          <span className="font-semibold text-primary-800">
+                                            Session {session.sessionNumber}
+                                          </span>
                                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                                             present
                                               ? 'bg-success-200 text-success-800'
-                                              : 'bg-error-200 text-error-800'
+                                              : absent
+                                              ? 'bg-error-200 text-error-800'
+                                              : 'bg-gray-200 text-gray-800'
                                           }`}>
-                                            {record.attendanceStatus}
+                                            {status}
                                           </span>
                                         </div>
                                         <div className="space-y-1">
@@ -936,25 +1578,21 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                             <Calendar className="w-4 h-4 text-accent-500" />
                                             <span className="font-medium text-primary-700">{dateStr}</span>
                                           </div>
-                                          <div className="flex items-center gap-2 text-sm">
-                                            <Clock className="w-4 h-4 text-accent-500" />
-                                            <span className="text-accent-600">{timeStr}</span>
-                                          </div>
-                                          {record.meeting.roomName && (
-                                            <div className="flex items-center gap-2 text-sm text-accent-600">
-                                              <span>Room: {record.meeting.roomName}</span>
-                                            </div>
-                                          )}
-                                          {record.meeting.coveredTopic && (
+                                          {session.coveredTopic && (
                                             <div className="mt-2">
-                                              <p className="text-xs font-medium text-primary-700 mb-1">Covered Topic:</p>
-                                              <p className="text-sm text-accent-600">{record.meeting.coveredTopic}</p>
+                                              <p className="text-xs font-medium text-primary-700 mb-1">Topic:</p>
+                                              <p className="text-sm text-accent-600">{session.coveredTopic}</p>
                                             </div>
                                           )}
-                                          {record.notes && (
+                                          {attendanceRecord?.notes && (
                                             <div className="mt-2 p-2 bg-accent-50 rounded border border-accent-200">
                                               <p className="text-xs font-medium text-primary-700 mb-1">Notes:</p>
-                                              <p className="text-sm text-accent-600">{record.notes}</p>
+                                              <p className="text-sm text-accent-600">{attendanceRecord.notes}</p>
+                                            </div>
+                                          )}
+                                          {attendanceRecord?.checkedByName && (
+                                            <div className="flex items-center gap-2 text-xs text-accent-500 mt-1">
+                                              <span>Checked by: {attendanceRecord.checkedByName}</span>
                                             </div>
                                           )}
                                         </div>
@@ -969,7 +1607,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                       ) : (
                         <div className="text-center py-6 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
                           <ClipboardCheck className="w-8 h-8 text-accent-400 mx-auto mb-2" />
-                          <p className="text-sm text-accent-600">No detailed attendance records available</p>
+                          <p className="text-sm text-accent-600">No sessions available</p>
                         </div>
                       )}
                     </div>
@@ -985,4 +1623,5 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 };
 
 export default ClassDetailsView;
+
 

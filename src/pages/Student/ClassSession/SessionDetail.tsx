@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -61,7 +61,9 @@ export default function SessionDetail() {
     }
     return tabs[0].id;
   };
-  const [activeTab, setActiveTab] = useState(() => getInitialTab(sessionId));
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || getInitialTab(sessionId));
   const [context, setContext] = useState<CoveredTopic | null>(null);
   const [assignments, setAssignments] = useState<MeetingAssignment[] | null>(null);
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
@@ -174,6 +176,14 @@ export default function SessionDetail() {
 
     loadClassAndMeetingDetails();
   }, [classId, sessionId]);
+
+  // Update activeTab when tab query parameter changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    if (tabFromUrl && ["context", "materials", "assignments"].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
 
   // Load Session Context via API
   useEffect(() => {
