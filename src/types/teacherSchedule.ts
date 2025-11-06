@@ -38,6 +38,7 @@ export interface Session {
   durationMin?: number; // default 90 minutes (1h30)
   attendanceStatus?: "attended" | "absent" | "upcoming";
   onlineMeetingUrl?: string | null;
+  classMeetingId?: string;
 }
 
 export interface TeacherScheduleApiResponse {
@@ -74,6 +75,7 @@ export interface SessionDetails {
   courseName: string;
   className: string;
   classId?: string;
+  classMeetingId?: string;
   instructor?: string;
   date: string;
   time: string;

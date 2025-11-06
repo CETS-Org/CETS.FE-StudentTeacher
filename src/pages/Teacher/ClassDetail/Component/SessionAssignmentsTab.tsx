@@ -10,6 +10,7 @@ import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import CreateAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
+import EditAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/EditAssignmentPopup";
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
 import BulkGradeImportPopup, { type GradeImportData } from "@/pages/Teacher/ClassDetail/Component/Popup/BulkGradeImportPopup";
@@ -43,7 +44,9 @@ type Assignment = {
   id: number;
   assignmentId: string; // UUID from API
   title: string;
+  description: string | null;
   dueDate: string;
+  storeUrl: string | null;
   submissions: Submission[];
   submissionCount: number;
 };
@@ -93,10 +96,12 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [isEditOpen, setEditOpen] = useState(false);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
   const [isBulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [assignmentToEdit, setAssignmentToEdit] = useState<Assignment | null>(null);
 
   // State cho phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -141,7 +146,9 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
             assignmentId: apiAsm.id, // Keep original UUID for API calls
             title: apiAsm.title,
+            description: apiAsm.description,
             dueDate: formattedDueDate,
+            storeUrl: apiAsm.storeUrl,
             submissions: [], // Submissions will be loaded separately when viewing
             submissionCount: apiAsm.submissionCount,
           };
@@ -167,51 +174,71 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   }, [classMeetingId]);
 
   // --- HÀM XỬ LÝ ---
+  // Helper function to refresh assignments
+  const refreshAssignments = async () => {
+    if (!classMeetingId) return;
+    
+    // Clear cache for this classMeetingId
+    assignmentsCache.delete(classMeetingId);
+    
+    try {
+      const response = await getAssignmentsByClassMeeting(classMeetingId);
+      const apiAssignments: AssignmentFromAPI[] = response.data;
+      
+      // Transform API data to component format
+      const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
+        // Format date without timezone issues
+        const dueDate = new Date(apiAsm.dueAt);
+        const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+        
+        return {
+          id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
+          assignmentId: apiAsm.id, // Keep original UUID for API calls
+          title: apiAsm.title,
+          description: apiAsm.description,
+          dueDate: formattedDueDate,
+          storeUrl: apiAsm.storeUrl,
+          submissions: [], // Submissions will be loaded separately when viewing
+          submissionCount: apiAsm.submissionCount,
+        };
+      });
+      
+      // Update cache with fresh data
+      assignmentsCache.set(classMeetingId, {
+        data: transformedAssignments,
+        timestamp: Date.now()
+      });
+      
+      setAssignments(transformedAssignments);
+    } catch (err) {
+      console.error('Error refreshing assignments:', err);
+      showError('Failed to refresh assignments list.');
+    }
+  };
+
   const handleCreateAssignment = (assignmentData: AssignmentData) => {
     // Don't add to local state immediately since we need to refresh from API
     // The assignment will be added when the assignments list is refreshed
     success("Assignment created successfully!");
+    refreshAssignments();
+  };
+
+  const handleEditAssignment = (assignment: Assignment) => {
+    setAssignmentToEdit(assignment);
+    setEditOpen(true);
+  };
+
+  const handleUpdateAssignment = async (assignmentData: AssignmentData) => {
+    if (!assignmentToEdit) return;
     
-    // Clear cache and refresh assignments list to get the new assignment with proper ID
-    if (classMeetingId) {
-      // Clear cache for this classMeetingId
-      assignmentsCache.delete(classMeetingId);
-      
-      const fetchAssignments = async () => {
-        try {
-          const response = await getAssignmentsByClassMeeting(classMeetingId);
-          const apiAssignments: AssignmentFromAPI[] = response.data;
-          
-          // Transform API data to component format
-          const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
-            // Format date without timezone issues
-            const dueDate = new Date(apiAsm.dueAt);
-            const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
-            
-            return {
-              id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
-              assignmentId: apiAsm.id, // Keep original UUID for API calls
-              title: apiAsm.title,
-              dueDate: formattedDueDate,
-              submissions: [], // Submissions will be loaded separately when viewing
-              submissionCount: apiAsm.submissionCount,
-            };
-          });
-          
-          // Update cache with fresh data
-          assignmentsCache.set(classMeetingId, {
-            data: transformedAssignments,
-            timestamp: Date.now()
-          });
-          
-          setAssignments(transformedAssignments);
-        } catch (err) {
-          console.error('Error refreshing assignments:', err);
-          showError('Failed to refresh assignments list.');
-        }
-      };
-      
-      fetchAssignments();
+    try {
+      // The actual update is handled in EditAssignmentPopup
+      // This callback is just to refresh the list after successful update
+      await refreshAssignments();
+      setEditOpen(false);
+      setAssignmentToEdit(null);
+    } catch (err) {
+      console.error('Error refreshing after update:', err);
     }
   };
 
@@ -666,7 +693,12 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   >
                     Download
                   </Button>
-                  <Button variant="secondary">Edit</Button>
+                  <Button 
+                    variant="secondary"
+                    onClick={() => handleEditAssignment(asm)}
+                  >
+                    Edit
+                  </Button>
                 </div>
               </Card>
               ))}
@@ -826,6 +858,23 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         onSubmit={handleCreateAssignment}
         classMeetingId={classMeetingId}
       />
+      {assignmentToEdit && (
+        <EditAssignmentPopup
+          open={isEditOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) setAssignmentToEdit(null);
+          }}
+          onSubmit={handleUpdateAssignment}
+          assignmentId={assignmentToEdit.assignmentId}
+          initialData={{
+            title: assignmentToEdit.title,
+            description: assignmentToEdit.description,
+            dueDate: assignmentToEdit.dueDate,
+            storeUrl: assignmentToEdit.storeUrl,
+          }}
+        />
+      )}
       <FeedbackPopup 
         open={isFeedbackOpen} 
         onOpenChange={setFeedbackOpen} 

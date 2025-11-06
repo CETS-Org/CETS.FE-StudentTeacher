@@ -60,10 +60,19 @@ export default function SessionDetailsDialog({
                   variant="primary"
                   className="w-full"
                   onClick={() => {
-                    if (sessionData.classMeetingId) {
-                      navigate(`/student/class/${sessionData.classId}/session/${sessionData.classMeetingId}`);
+                    if (isStudent) {
+                      if (sessionData.classMeetingId) {
+                        navigate(`/student/class/${sessionData.classId}/session/${sessionData.classMeetingId}`);
+                      } else {
+                        navigate(`/student/class/${sessionData.classId}`);
+                      }
                     } else {
-                      navigate(`/student/class/${sessionData.classId}`);
+                      // Teacher navigation
+                      if (sessionData.classMeetingId) {
+                        navigate(`/teacher/class/${sessionData.classId}/session/${sessionData.classMeetingId}`);
+                      } else {
+                        navigate(`/teacher/class/${sessionData.classId}`);
+                      }
                     }
                     onOpenChange(false);
                   }}

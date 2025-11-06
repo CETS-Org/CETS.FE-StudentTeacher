@@ -167,7 +167,7 @@ export type SessionDetailsData = {
   roomNumber: string;
   format: "Hybrid" | "Online" | "In-person";
   meetingLink?: string;
-  classMeetingId: string
+  classMeetingId?: string;
 };
 
 

@@ -57,6 +57,21 @@ export const createAssignment = (
   config?: AxiosRequestConfig
 ) => api.post(`/api/ACAD_Assignments/create-assignment`, assignmentData, config);
 
+// Update assignment
+export const updateAssignment = (
+  assignmentId: string,
+  assignmentData: {
+    id: string;
+    title: string;
+    description: string;
+    dueDate: string;
+    storeUrl?: string;
+    contentType?: string;
+    fileName?: string;
+  },
+  config?: AxiosRequestConfig
+) => api.put(`/api/ACAD_Assignments/update/${assignmentId}`, assignmentData, config);
+
 // Download assignment
 export const downloadAssignment = (
   assignmentId: string,

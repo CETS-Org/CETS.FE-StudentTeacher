@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { ScheduleHeader, ScheduleGrid, SessionDetailsDialog, DatePickerDialog, startOfWeek, addDays, isSameDay, toDateAny } from "@/components/schedule";
 import type { Session, TeacherWeekScheduleProps, SessionDetails } from "@/types/teacherSchedule";
+import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
 
 /* Shared helpers/styles come from components/schedule */
 
@@ -62,7 +63,7 @@ export default function TeacherWeekSchedule({
     year: "numeric",
   })}`;
 
-  function openDetails(s: Session, startLabel: string, endLabel: string) {
+  async function openDetails(s: Session, startLabel: string, endLabel: string) {
     const dt = toDateAny(s.start);
     const dateStr = dt.toLocaleDateString(undefined, {
       weekday: "long",
@@ -70,10 +71,37 @@ export default function TeacherWeekSchedule({
       day: "numeric",
       year: "numeric",
     });
+    
+    // Try to find classMeetingId by matching date
+    let classMeetingId: string | undefined = s.classMeetingId;
+    if (!classMeetingId && s.classId) {
+      try {
+        const meetings = await getClassMeetingsByClassId(s.classId);
+        // Match by date (compare only date part, ignore time)
+        const sessionDate = new Date(dt);
+        sessionDate.setHours(0, 0, 0, 0);
+        
+        const matchedMeeting = meetings.find(meeting => {
+          if (!meeting.date) return false;
+          const meetingDate = new Date(meeting.date);
+          meetingDate.setHours(0, 0, 0, 0);
+          return meetingDate.getTime() === sessionDate.getTime();
+        });
+        
+        if (matchedMeeting) {
+          classMeetingId = matchedMeeting.id;
+        }
+      } catch (error) {
+        console.error('Error fetching class meetings:', error);
+        // Continue without classMeetingId
+      }
+    }
+    
     setDetailsData({
       courseName: s.title,
       className: `Class ${s.classCode}`,
       classId: s.classId,
+      classMeetingId: classMeetingId,
       instructor: "You (Teacher)",
       date: dateStr,
       time: `${startLabel} – ${endLabel}`,
