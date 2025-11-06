@@ -6,7 +6,7 @@ export interface ClassMeeting {
   classID: string;
   date: string; // ISO date (may be "0001-01-01" from API)
   isStudy: boolean;
-  roomID: string;
+  roomID: string | null;
   onlineMeetingUrl?: string | null;
   passcode?: string | null;
   recordingUrl?: string | null;
@@ -16,8 +16,7 @@ export interface ClassMeeting {
 }
 
 export const getClassMeetingsByClassId = async (classId: string): Promise<ClassMeeting[]> => {
-  const res = await api.getClassMeetingsByClassId(classId);
-  return res.data as ClassMeeting[];
+  return await api.getClassMeetingsByClassId(classId);
 };
 
 // Covered Topic (Session Context)

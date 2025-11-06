@@ -10,6 +10,7 @@ import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import CreateAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
+import AdvancedAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 import EditAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/EditAssignmentPopup";
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
@@ -23,9 +24,11 @@ import {
   downloadAssignment,
   downloadSubmission,
   downloadAllSubmissions,
+  createAssignment,
   type AssignmentFromAPI,
   type SubmissionFromAPI 
 } from "@/api/assignments.api";
+import { getTeacherId } from "@/lib/utils";
 
 // --- CẤU TRÚC DỮ LIỆU ---
 type Submission = {
@@ -99,6 +102,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [isAdvancedCreateOpen, setAdvancedCreateOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
@@ -228,6 +232,80 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
     // The assignment will be added when the assignments list is refreshed
     success("Assignment created successfully!");
     refreshAssignments();
+  };
+
+  const handleAdvancedCreateAssignment = async (assignmentData: {
+    title: string;
+    description: string;
+    dueDate: string;
+    skillID: string | null;
+    assignmentType: string;
+    totalPoints: number;
+    timeLimitMinutes?: number;
+    maxAttempts: number;
+    isAutoGradable: boolean;
+    showAnswersAfterSubmission: boolean;
+    showAnswersAfterDueDate: boolean;
+    questionData: any;
+    files: File[];
+  }) => {
+    try {
+      // For now, we'll create the assignment with the question data
+      // Later, we'll upload the question JSON to storage and store the URL
+      const teacherId = getTeacherId();
+      if (!teacherId) {
+        showError("Teacher ID is missing. Please login again.");
+        return;
+      }
+
+      if (!classMeetingId) {
+        showError("Class meeting ID is missing.");
+        return;
+      }
+
+      // TODO: Upload questionData JSON to storage and get URL
+      // For now, we'll stringify it (will be replaced with storage upload)
+      const questionDataJson = assignmentData.questionData 
+        ? JSON.stringify(assignmentData.questionData)
+        : null;
+
+      // Create assignment with file if provided
+      if (assignmentData.files.length > 0) {
+        const file = assignmentData.files[0];
+        const contentType = file.type || 'application/octet-stream';
+        
+        const createData = {
+          classMeetingId,
+          teacherId,
+          title: assignmentData.title,
+          description: assignmentData.description,
+          dueDate: assignmentData.dueDate,
+          contentType: contentType,
+          fileName: file.name.replace(/\.[^/.]+$/, ""),
+          skillID: assignmentData.skillID,
+          // TODO: Add other fields when backend is updated
+        };
+
+        // Call create assignment API
+        const response = await createAssignment(createData);
+        
+        // TODO: Upload questionData JSON to storage
+        // const questionDataUrl = await uploadQuestionData(questionDataJson);
+        // Then update assignment with questionDataUrl
+
+        success("Advanced assignment created successfully!");
+      } else {
+        // Create assignment without file
+        // TODO: Implement create assignment without file endpoint
+        success("Assignment created successfully! (Question data will be uploaded separately)");
+      }
+
+      refreshAssignments();
+      setAdvancedCreateOpen(false);
+    } catch (err: any) {
+      console.error('Error creating advanced assignment:', err);
+      showError(err?.message || "Failed to create assignment. Please try again.");
+    }
   };
 
   const handleEditAssignment = (assignment: Assignment) => {
@@ -595,7 +673,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   // --- LOGIC GROUP BY SKILL ---
   const skillGroups = useMemo(() => {
     const groups: { [key: string]: { skillID: string | null; skillName: string; assignments: Assignment[] } } = {
-      'all': { skillID: null, skillName: 'All Skills', assignments: [] },
+      'all': { skillID: null, skillName: 'All', assignments: [] },
       'no-skill': { skillID: null, skillName: 'No Skill', assignments: [] }
     };
     
@@ -672,13 +750,22 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-primary-800">Session Assignments</h2>
-            <Button 
-              onClick={() => setCreateOpen(true)} 
-              iconLeft={<PlusCircle size={16} />}
-              className="btn-secondary"
-            >
-              Create Assignment
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setCreateOpen(true)} 
+                iconLeft={<PlusCircle size={16} />}
+                variant="secondary"
+              >
+                Simple Assignment
+              </Button>
+              <Button 
+                onClick={() => setAdvancedCreateOpen(true)} 
+                iconLeft={<PlusCircle size={16} />}
+                className="btn-primary"
+              >
+                Create Assignment
+              </Button>
+            </div>
           </div>
           
           {/* Skill Tabs */}
@@ -692,7 +779,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                     className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
                       selectedSkillTab === key
                         ? 'bg-primary-600 text-white border-b-2 border-primary-600'
-                        : 'bg-accent-100 text-primary-700 hover:bg-accent-200'
+                        : 'bg-secondary-200 text-primary-700 hover:bg-secondary-300'
                     }`}
                   >
                     {group.skillName} ({group.assignments.length})
@@ -741,7 +828,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                     </h3>
                     <div className="flex flex-wrap items-center gap-3">
                       {asm.skillName && (
-                        <div className="flex items-center gap-2 bg-primary-200 px-3 py-2 rounded-lg">
+                        <div className="flex items-center gap-2 bg-accent2-200 px-3 py-2 rounded-lg">
                           <span className="text-sm font-medium text-primary-800">{asm.skillName}</span>
                         </div>
                       )}
@@ -756,7 +843,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 justify-between items-center">
                   <Button 
                     variant="primary"
                     onClick={() => handleViewSubmissions(asm)}
@@ -764,20 +851,23 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   >
                     View Submissions
                   </Button>
-                  <Button 
-                    variant="secondary"
-                    onClick={() => handleDownloadAssignment(asm)}
-                    iconLeft={<Download size={16} />}
-                    className="btn-secondary"
-                  >
-                    Download
-                  </Button>
-                  <Button 
-                    variant="secondary"
-                    onClick={() => handleEditAssignment(asm)}
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button 
+                      variant="secondary"
+                      onClick={() => handleDownloadAssignment(asm)}
+                      iconLeft={<Download size={16} />}
+                      className="btn-secondary"
+                    >
+                      Download
+                    </Button>
+                    <Button 
+                      variant="secondary"
+                      onClick={() => handleEditAssignment(asm)}
+                      className="btn-secondary !bg-gradient-to-r !from-yellow-400 !to-yellow-500 hover:!from-yellow-600 hover:!to-yellow-700 !shadow-yellow-500/25 hover:!shadow-yellow-600/30"
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </div>
               </Card>
                 ))
@@ -936,6 +1026,12 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         open={isCreateOpen} 
         onOpenChange={setCreateOpen} 
         onSubmit={handleCreateAssignment}
+        classMeetingId={classMeetingId}
+      />
+      <AdvancedAssignmentPopup
+        open={isAdvancedCreateOpen}
+        onOpenChange={setAdvancedCreateOpen}
+        onSubmit={handleAdvancedCreateAssignment}
         classMeetingId={classMeetingId}
       />
       {assignmentToEdit && (

@@ -1,27 +1,41 @@
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { forwardRef } from "react";
 
 export type SelectOption = {
+  value: string;
   label: string;
-  value: string | number;
 };
 
-export type SelectProps = ComponentPropsWithoutRef<"select"> & {
-  label?: string;
+export type SelectProps = Omit<ComponentPropsWithoutRef<"select">, "children"> & {
+  label?: string | ReactNode;
+  options: SelectOption[];
   error?: string;
   hint?: string;
-  options?: SelectOption[];
+  loading?: boolean;
+  loadingText?: string;
+  placeholder?: string;
 };
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, error, hint, options = [], className = "", id, children, ...props },
+  { 
+    label, 
+    options, 
+    error, 
+    hint, 
+    loading = false,
+    loadingText = "Loading...",
+    placeholder = "Select an option...",
+    className = "", 
+    id, 
+    ...props 
+  },
   ref
 ) {
   const selectId = id || props.name || undefined;
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={selectId} className="block text-sm font-medium text-neutral-700 mb-1">
+        <label htmlFor={selectId} className="block text-sm font-medium text-neutral-700 mb-2">
           {label}
         </label>
       )}
@@ -29,20 +43,27 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
         id={selectId}
         ref={ref}
         className={[
-          "block w-full rounded-md border border-neutral-300 bg-neutral-0 px-3 py-2 text-sm text-neutral-900",
-          "focus:outline-none focus:ring-2 focus:ring-primary-500",
+          "w-full border border-neutral-300 rounded-md px-3 py-2 text-sm",
+          "focus:outline-none focus:ring-1 focus:ring-primary-200",
           error ? "border-red-500" : "",
+          loading ? "opacity-50 cursor-not-allowed" : "",
           className,
         ].join(" ")}
+        disabled={loading || props.disabled}
         {...props}
       >
-        {options.map((opt) => (
-          <option key={String(opt.value)} value={opt.value}>
-            {opt.label}
+        {placeholder && (
+          <option value="">{placeholder}</option>
+        )}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
-        {children}
       </select>
+      {loading && (
+        <p className="text-xs text-neutral-500 mt-1">{loadingText}</p>
+      )}
       {error ? (
         <p className="mt-1 text-sm text-red-600">{error}</p>
       ) : hint ? (
@@ -53,5 +74,3 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
 });
 
 export default Select;
-
-

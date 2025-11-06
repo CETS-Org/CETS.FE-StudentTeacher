@@ -774,7 +774,7 @@ export default function SessionDetail() {
               {/* Skill Tabs and Assignments */}
               {!loadingAssignments && !errorAssignments && assignments && assignments.length > 0 && (() => {
                 const skillGroups: { [key: string]: { skillID: string | null; skillName: string; assignments: MeetingAssignment[] } } = {
-                  'all': { skillID: null, skillName: 'All Skills', assignments: [] },
+                  'all': { skillID: null, skillName: 'All', assignments: [] },
                   'no-skill': { skillID: null, skillName: 'No Skill', assignments: [] }
                 };
                 

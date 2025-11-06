@@ -1,8 +1,8 @@
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { forwardRef } from "react";
 
 export type InputProps = ComponentPropsWithoutRef<"input"> & {
-  label?: string;
+  label?: string | ReactNode;
   error?: string;
   hint?: string;
 };
@@ -24,7 +24,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ref={ref}
         className={[
           "block w-full rounded-md border border-neutral-300 bg-neutral-0 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400",
-          "focus:outline-none focus:ring-2 focus:ring-primary-500",
+          "focus:outline-none focus:ring-1 focus:ring-primary-200",
           error ? "border-red-500" : "",
           className,
         ].join(" ")}
