@@ -49,6 +49,8 @@ type Assignment = {
   storeUrl: string | null;
   submissions: Submission[];
   submissionCount: number;
+  skillID?: string | null;
+  skillName?: string | null;
 };
 
 type AssignmentData = {
@@ -93,6 +95,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'assignments' | 'submissions'>('assignments');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedSkillTab, setSelectedSkillTab] = useState<string | null>('all'); // 'all' or skillID
   
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
@@ -151,6 +154,8 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             storeUrl: apiAsm.storeUrl,
             submissions: [], // Submissions will be loaded separately when viewing
             submissionCount: apiAsm.submissionCount,
+            skillID: apiAsm.skillID,
+            skillName: apiAsm.skillName,
           };
         });
         
@@ -191,16 +196,18 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         const dueDate = new Date(apiAsm.dueAt);
         const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
         
-        return {
-          id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
-          assignmentId: apiAsm.id, // Keep original UUID for API calls
-          title: apiAsm.title,
-          description: apiAsm.description,
-          dueDate: formattedDueDate,
-          storeUrl: apiAsm.storeUrl,
-          submissions: [], // Submissions will be loaded separately when viewing
-          submissionCount: apiAsm.submissionCount,
-        };
+          return {
+            id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
+            assignmentId: apiAsm.id, // Keep original UUID for API calls
+            title: apiAsm.title,
+            description: apiAsm.description,
+            dueDate: formattedDueDate,
+            storeUrl: apiAsm.storeUrl,
+            submissions: [], // Submissions will be loaded separately when viewing
+            submissionCount: apiAsm.submissionCount,
+            skillID: apiAsm.skillID,
+            skillName: apiAsm.skillName,
+          };
       });
       
       // Update cache with fresh data
@@ -585,6 +592,40 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   }, [currentPage, submissionsToDisplay]);
   const handlePageChange = (page: number) => setCurrentPage(page);
 
+  // --- LOGIC GROUP BY SKILL ---
+  const skillGroups = useMemo(() => {
+    const groups: { [key: string]: { skillID: string | null; skillName: string; assignments: Assignment[] } } = {
+      'all': { skillID: null, skillName: 'All Skills', assignments: [] },
+      'no-skill': { skillID: null, skillName: 'No Skill', assignments: [] }
+    };
+    
+    assignments.forEach(asm => {
+      const skillKey = asm.skillID || 'no-skill';
+      const skillName = asm.skillName || 'No Skill';
+      
+      if (!groups[skillKey]) {
+        groups[skillKey] = {
+          skillID: asm.skillID || null,
+          skillName: skillName,
+          assignments: []
+        };
+      }
+      groups[skillKey].assignments.push(asm);
+    });
+    
+    // Add all assignments to 'all' group
+    groups['all'].assignments = assignments;
+    
+    return groups;
+  }, [assignments]);
+
+  const filteredAssignments = useMemo(() => {
+    if (selectedSkillTab === 'all') {
+      return assignments;
+    }
+    return skillGroups[selectedSkillTab || 'all']?.assignments || [];
+  }, [assignments, selectedSkillTab, skillGroups]);
+
   // --- RENDER ---
   // Show loading state
   if (loading) {
@@ -639,6 +680,28 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
               Create Assignment
             </Button>
           </div>
+          
+          {/* Skill Tabs */}
+          {assignments.length > 0 && Object.keys(skillGroups).length > 1 && (
+            <div className="mb-6 border-b border-accent-200">
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(skillGroups).map(([key, group]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedSkillTab(key)}
+                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                      selectedSkillTab === key
+                        ? 'bg-primary-600 text-white border-b-2 border-primary-600'
+                        : 'bg-accent-100 text-primary-700 hover:bg-accent-200'
+                    }`}
+                  >
+                    {group.skillName} ({group.assignments.length})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
           {assignments.length === 0 ? (
             <div className="text-center py-12 bg-accent-25 rounded-lg">
               <Calendar className="w-16 h-16 text-accent-300 mx-auto mb-4" />
@@ -658,7 +721,18 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             </div>
           ) : (
             <div className="space-y-4">
-              {assignments.map(asm => (
+              {filteredAssignments.length === 0 ? (
+                <div className="text-center py-12 bg-accent-25 rounded-lg">
+                  <Calendar className="w-16 h-16 text-accent-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-primary-800 mb-2">
+                    No Assignments for This Skill
+                  </h3>
+                  <p className="text-neutral-600">
+                    There are no assignments for the selected skill.
+                  </p>
+                </div>
+              ) : (
+                filteredAssignments.map(asm => (
               <Card key={asm.id} className="p-6 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
@@ -666,6 +740,11 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                       {asm.title}
                     </h3>
                     <div className="flex flex-wrap items-center gap-3">
+                      {asm.skillName && (
+                        <div className="flex items-center gap-2 bg-primary-200 px-3 py-2 rounded-lg">
+                          <span className="text-sm font-medium text-primary-800">{asm.skillName}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 bg-error-200 px-3 py-2 rounded-lg">
                         <Calendar className="w-4 h-4 text-primary-600" />
                         <span className="text-sm font-medium text-primary-700">Due: {asm.dueDate}</span>
@@ -701,7 +780,8 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   </Button>
                 </div>
               </Card>
-              ))}
+                ))
+              )}
             </div>
           )}
         </div>

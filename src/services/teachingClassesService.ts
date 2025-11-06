@@ -59,6 +59,8 @@ export interface MeetingAssignment {
   dueDate: string;
   createdAt: string;
   submissions: AssignmentSubmission[];
+  skillID?: string | null;
+  skillName?: string | null;
 }
 
 export const getAssignmentsByMeetingAndStudent = async (classMeetingId: string, studentId: string): Promise<MeetingAssignment[]> => {

@@ -131,6 +131,8 @@ export interface AssignmentFromAPI {
   dueAt: string;
   createdAt: string;
   submissionCount: number;
+  skillID?: string | null;
+  skillName?: string | null;
 }
 
 // Types for Submission API

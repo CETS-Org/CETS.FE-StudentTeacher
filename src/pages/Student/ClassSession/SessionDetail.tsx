@@ -53,6 +53,7 @@ export default function SessionDetail() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [selectedSkillTab, setSelectedSkillTab] = useState<string | null>('all'); // 'all' or skillID
   
   // Store data for confirm dialog
   const [confirmData, setConfirmData] = useState<{
@@ -769,14 +770,71 @@ export default function SessionDetail() {
                   <p className="text-neutral-600">Assignments will be posted by your instructor.</p>
                 </div>
               )}
-              {assignments?.map((assignment) => {
-                const submission = assignment.submissions?.[0];
-                const hasSubmittedFile = !!(submission && submission.storeUrl);
-                const pastDue = isPastDue(assignment.dueDate);
-                const status = submission?.score != null ? "graded" : hasSubmittedFile ? "submitted" : pastDue ? "not_submitted" : "pending";
-                const canSubmit = status === "pending" || (status === "submitted" && !pastDue);
-                console.log('Assignment:', assignment.title, 'Status:', status, 'Past Due:', pastDue, 'Can Submit:', canSubmit);
+              
+              {/* Skill Tabs and Assignments */}
+              {!loadingAssignments && !errorAssignments && assignments && assignments.length > 0 && (() => {
+                const skillGroups: { [key: string]: { skillID: string | null; skillName: string; assignments: MeetingAssignment[] } } = {
+                  'all': { skillID: null, skillName: 'All Skills', assignments: [] },
+                  'no-skill': { skillID: null, skillName: 'No Skill', assignments: [] }
+                };
+                
+                assignments.forEach(asm => {
+                  const skillKey = asm.skillID || 'no-skill';
+                  const skillName = asm.skillName || 'No Skill';
+                  
+                  if (!skillGroups[skillKey]) {
+                    skillGroups[skillKey] = {
+                      skillID: asm.skillID || null,
+                      skillName: skillName,
+                      assignments: []
+                    };
+                  }
+                  skillGroups[skillKey].assignments.push(asm);
+                });
+                
+                skillGroups['all'].assignments = assignments;
+                
+                const filteredAssignments = selectedSkillTab === 'all' 
+                  ? assignments 
+                  : skillGroups[selectedSkillTab || 'all']?.assignments || [];
+                
                 return (
+                  <>
+                    {Object.keys(skillGroups).length > 1 && (
+                      <div className="mb-6 border-b border-accent-200">
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(skillGroups).map(([key, group]) => (
+                            <button
+                              key={key}
+                              onClick={() => setSelectedSkillTab(key)}
+                              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                                selectedSkillTab === key
+                                  ? 'bg-primary-600 text-white border-b-2 border-primary-600'
+                                  : 'bg-accent-100 text-primary-700 hover:bg-accent-200'
+                              }`}
+                            >
+                              {group.skillName} ({group.assignments.length})
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {filteredAssignments.length === 0 ? (
+                      <div className="text-center py-12">
+                        <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-neutral-900 mb-2">No assignments for this skill</h3>
+                        <p className="text-neutral-600">There are no assignments for the selected skill.</p>
+                      </div>
+                    ) : (
+                      filteredAssignments.map((assignment) => {
+                        const submission = assignment.submissions?.[0];
+                        const hasSubmittedFile = !!(submission && submission.storeUrl);
+                        const pastDue = isPastDue(assignment.dueDate);
+                        const status = submission?.score != null ? "graded" : hasSubmittedFile ? "submitted" : pastDue ? "not_submitted" : "pending";
+                        const canSubmit = status === "pending" || (status === "submitted" && !pastDue);
+                        console.log('Assignment:', assignment.title, 'Status:', status, 'Past Due:', pastDue, 'Can Submit:', canSubmit);
+                        return (
                   <div key={assignment.id} className="p-4 border border-accent-200 rounded-lg bg-white hover:bg-accent-25 transition-colors">
                     <button
                       className="w-full text-left"
@@ -788,6 +846,13 @@ export default function SessionDetail() {
                             {assignment.title}
                           </h4>
                           <div className="space-y-2">
+                            {assignment.skillName && (
+                              <div className="flex items-center gap-2">
+                                <div className="bg-accent2-200 px-3 py-1 rounded-lg">
+                                  <span className="text-sm font-medium text-primary-800">{assignment.skillName}</span>
+                                </div>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4 text-primary-600" />
                               <span className="text-sm font-medium text-primary-700">Due: {formatDateTime(assignment.dueDate)}</span>
@@ -915,8 +980,12 @@ export default function SessionDetail() {
                       </div>
                     )}
                   </div>
+                        );
+                      })
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
               </div>
             </div>
