@@ -66,7 +66,7 @@ export default function Schedule() {
           setError(fetchError);
           setSessions(emptySessions);
         } else {
-          setSessions(data || emptySessions);
+          setSessions((data as StudentSession[]) || emptySessions);
         }
       } catch (err) {
         console.error('Error fetching schedule data:', err);
@@ -101,7 +101,7 @@ export default function Schedule() {
           setError(fetchError);
           setSessions(emptySessions);
         } else {
-          setSessions(data || emptySessions);
+          setSessions((data as StudentSession[]) || emptySessions);
         }
       } catch (err) {
         console.error('Error fetching schedule data:', err);

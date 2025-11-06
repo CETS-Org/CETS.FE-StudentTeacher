@@ -160,12 +160,14 @@ export type SessionDetailsData = {
   courseName: string;
   className: string;
   classId?: string;
+  sessionId?: string;
   instructor?: string;
   date: string;
   time: string;
   roomNumber: string;
   format: "Hybrid" | "Online" | "In-person";
   meetingLink?: string;
+  classMeetingId: string
 };
 
 

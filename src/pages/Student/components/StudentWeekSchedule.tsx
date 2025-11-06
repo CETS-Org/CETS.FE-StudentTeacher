@@ -15,6 +15,7 @@ export type StudentSession = {
   instructor?: string;
   durationMin?: number;
   attendanceStatus?: "attended" | "absent" | "upcoming";
+  classMeetingId: string;
 };
 
 type Props = {
@@ -56,6 +57,7 @@ export default function StudentWeekSchedule({
     roomNumber: string;
     format: "Hybrid" | "Online" | "In-person";
     meetingLink?: string;
+    classMeetingId: string;
   } | null>(null);
 
   // Dialog chứa Calendar
@@ -98,7 +100,7 @@ export default function StudentWeekSchedule({
 
   function openDetails(s: StudentSession, startLabel: string, endLabel: string) {
     const dt = toDateAny(s.start);
-    const dateStr = dt.toLocaleDateString(undefined, {
+    const dateStr = dt.toLocaleDateString('en-US', {
       weekday: "long",
       month: "short",
       day: "numeric",
@@ -108,6 +110,7 @@ export default function StudentWeekSchedule({
       courseName: s.title,
       className: `Class ${s.classCode}`,
       classId: s.classId,
+      classMeetingId: s.classMeetingId,
       instructor: s.instructor || "TBA",
       date: dateStr,
       time: `${startLabel} – ${endLabel}`,

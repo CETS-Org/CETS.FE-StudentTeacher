@@ -9,10 +9,12 @@ export interface ScheduleItem {
   endTime: string;
   className: string;
   classId?: string;
+  classMeetingId?: string;
   courseName: string;
   room: string;
   teacher: string;
   onlineMeetingUrl: string | null;
+  attendenceStatus?: string;
 }
 
 // StudentSession interface (from component)
@@ -21,6 +23,7 @@ export interface StudentSession {
   title: string;
   classCode: string;
   classId?: string;
+  classMeetingId?: string;
   room: string;
   instructor: string;
   start: string; // Format: yyyy:MM:dd:HH:mm
@@ -44,29 +47,23 @@ export const transformScheduleData = (apiData: ScheduleItem[]): StudentSession[]
       return `${date.getFullYear()}:${zp(date.getMonth() + 1)}:${zp(date.getDate())}:${zp(date.getHours())}:${zp(date.getMinutes())}`;
     };
     
-    // Determine attendance status based on current time
-    const now = new Date();
-    const sessionTime = new Date(sessionDate);
-    const timeDiff = sessionTime.getTime() - now.getTime();
-    const hoursDiff = timeDiff / (1000 * 60 * 60);
-    
-    let attendanceStatus: "attended" | "absent" | "upcoming";
-    if (hoursDiff < -2) {
-      // Session was more than 2 hours ago - assume attended for now
-      attendanceStatus = "attended";
-    } else if (hoursDiff < 0) {
-      // Session was recent - could be attended or absent
-      attendanceStatus = "attended";
-    } else {
-      // Future session
-      attendanceStatus = "upcoming";
-    }
+    // Map API attendenceStatus to UI attendanceStatus
+    // Normalize API status (support both keys and any casing)
+    const apiStatusValue = (item as any).attendenceStatus ?? (item as any).attendanceStatus ?? "";
+    const rawStatus = String(apiStatusValue).trim().toLowerCase();
+    const attendanceStatus: "attended" | "absent" | "upcoming" =
+      rawStatus === "present"
+        ? "attended"
+        : rawStatus === "absent"
+        ? "absent"
+        : "upcoming";
     
     return {
       id: `session-${index}`,
       title: item.courseName,
       classCode: item.className,
       classId: item.classId,
+      classMeetingId: item.classMeetingId,
       room: item.room,
       instructor: item.teacher,
       start: formatDate(sessionDate),
