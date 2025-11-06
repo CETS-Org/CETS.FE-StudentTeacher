@@ -146,14 +146,23 @@ export default function ScheduleGrid<T extends BaseSession>({
                     }
                   >
                     {items.map((s) => {
-                      const eMin = m + (s.durationMin ?? slotMinutes);
-                      const startLabel = fmtTime(h, m);
-                      const endLabel = timeSlots && timeSlots[row]
-                        ? timeSlots[row].end
-                        : fmtTime(
-                            h + Math.floor(eMin / 60),
-                            eMin % 60
-                          );
+                      let startLabel: string;
+                      let endLabel: string;
+                      
+                      if (timeSlots && timeSlots[row]) {
+                        // Use custom time slot times
+                        startLabel = timeSlots[row].start;
+                        endLabel = timeSlots[row].end;
+                      } else {
+                        // Original logic
+                        const eMin = m + (s.durationMin ?? slotMinutes);
+                        startLabel = fmtTime(h, m);
+                        endLabel = fmtTime(
+                          h + Math.floor(eMin / 60),
+                          eMin % 60
+                        );
+                      }
+                      
                       return (
                         <SessionCard
                           key={s.id}
