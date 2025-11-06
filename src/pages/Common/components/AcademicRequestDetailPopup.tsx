@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, File, Download, Calendar, User, AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import { getAcademicRequestDetails } from "@/api/report.api";
+import { getAcademicRequestDetails, getReportDownloadUrl } from "@/api/report.api";
 import type { AcademicReportResponse } from "@/types/report";
 import { toast } from "@/components/ui/Toast";
 
@@ -19,14 +19,12 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
 }) => {
   const [request, setRequest] = useState<AcademicReportResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [attachmentDownloadUrl, setAttachmentDownloadUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && requestId) {
       fetchRequestDetails();
     } else {
       setRequest(null);
-      setAttachmentDownloadUrl(null);
     }
   }, [isOpen, requestId]);
 
@@ -80,20 +78,35 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
   };
 
   const handleDownloadAttachment = async () => {
-    if (!request?.attachmentUrl) return;
+    if (!request?.id || !request?.attachmentUrl) {
+      toast.error('No attachment available to download');
+      return;
+    }
 
     try {
-      // TODO: Implement download URL fetch from backend if needed
-      // For now, if attachmentUrl is a full URL, use it directly
-      // Otherwise, might need to call an API to get presigned download URL
-      if (request.attachmentUrl.startsWith('http')) {
-        window.open(request.attachmentUrl, '_blank');
-      } else {
-        toast.error('Download functionality not yet implemented');
+      const response = await getReportDownloadUrl(request.id);
+
+      // Backend returns JSON with downloadUrl
+      const presignedUrl = response.data?.downloadUrl;
+      if (!presignedUrl) {
+        throw new Error("No presigned URL returned from server");
       }
+
+      // Open the file in a new tab (Cloudflare R2 presigned URL)
+      const link = document.createElement("a");
+      link.href = presignedUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error: any) {
-      console.error('Error downloading attachment:', error);
-      toast.error('Failed to download attachment');
+      console.error("Download attachment error:", error);
+      toast.error(
+        `Failed to download attachment: ${
+          error.response?.data?.error || error.message || "Unknown error"
+        }`
+      );
     }
   };
 
