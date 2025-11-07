@@ -16,8 +16,15 @@ export const getAssignmentsByClassMeeting = (
 // Get submissions for an assignment (Teacher view)
 export const getSubmissionsByAssignment = (
   assignmentId: string,
+  assignmentSkill?: string,
   config?: AxiosRequestConfig
-) => api.get(`/api/ACAD_Submissions/assignment/${assignmentId}`, config);
+) => {
+  const params = new URLSearchParams({ assignmentId });
+  if (assignmentSkill) {
+    params.append('assignmentSkill', assignmentSkill);
+  }
+  return api.get(`/api/ACAD_Submissions/api/submissions?${params.toString()}`, config);
+};
 
 // Update submission feedback
 export const updateSubmissionFeedback = (

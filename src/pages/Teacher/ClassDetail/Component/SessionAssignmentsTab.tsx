@@ -15,6 +15,7 @@ import EditAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/Edi
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
 import BulkGradeImportPopup, { type GradeImportData } from "@/pages/Teacher/ClassDetail/Component/Popup/BulkGradeImportPopup";
+import WritingGradingView from "@/pages/Teacher/ClassDetail/Component/WritingGradingView";
 import { 
   getAssignmentsByClassMeeting, 
   getSubmissionsByAssignment,
@@ -107,6 +108,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
   const [isBulkImportOpen, setBulkImportOpen] = useState(false);
+  const [isWritingGradingOpen, setWritingGradingOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [assignmentToEdit, setAssignmentToEdit] = useState<Assignment | null>(null);
 
@@ -141,7 +143,8 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         setError(null);
         
         const response = await getAssignmentsByClassMeeting(classMeetingId);
-        const apiAssignments: AssignmentFromAPI[] = response.data;
+        // Handle both response formats: { success: true, data: [...] } or direct array
+        const apiAssignments: AssignmentFromAPI[] = response.data.data || response.data;
         
         // Transform API data to component format
         const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
@@ -192,7 +195,8 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
     
     try {
       const response = await getAssignmentsByClassMeeting(classMeetingId);
-      const apiAssignments: AssignmentFromAPI[] = response.data;
+      // Handle both response formats: { success: true, data: [...] } or direct array
+      const apiAssignments: AssignmentFromAPI[] = response.data.data || response.data;
       
       // Transform API data to component format
       const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
@@ -337,9 +341,13 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         return;
       }
       
-      // Fetch submissions from API
-      const response = await getSubmissionsByAssignment(assignment.assignmentId);
-      const apiSubmissions: SubmissionFromAPI[] = response.data;
+      // Fetch submissions from API (pass skillName for Writing assignments)
+      const response = await getSubmissionsByAssignment(
+        assignment.assignmentId,
+        assignment.skillName || undefined
+      );
+      // API returns { success: true, data: [...] } so we need response.data.data
+      const apiSubmissions: SubmissionFromAPI[] = response.data.data || response.data;
       
       // Transform API data to component format
       const transformedSubmissions: Submission[] = apiSubmissions.map((apiSub) => {
@@ -367,8 +375,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       };
       
       setSelectedAssignment(updatedAssignment);
-      setViewMode('submissions');
-      setCurrentPage(1);
+      
+      // Check if this is a Writing assignment - open special grading view
+      if (assignment.skillName?.toLowerCase() === 'writing') {
+        setWritingGradingOpen(true);
+      } else {
+        setViewMode('submissions');
+        setCurrentPage(1);
+      }
     } catch (err) {
       console.error('Error fetching submissions:', err);
       showError('Failed to load submissions. Please try again.');
@@ -424,6 +438,47 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       console.error('Error submitting score:', error);
       showError('Failed to submit score. Please try again.');
     }
+  };
+
+  const handleWritingGradeSubmit = async (submissionId: string, score: number, feedback: string) => {
+    try {
+      // Update both score and feedback
+      const promises = [];
+      
+      if (score !== null && score !== undefined) {
+        promises.push(updateSubmissionScore(submissionId, score));
+      }
+      
+      if (feedback && feedback.trim() !== '') {
+        promises.push(updateSubmissionFeedback(submissionId, feedback));
+      }
+      
+      await Promise.all(promises);
+      
+      // Update the submission in the local state
+      if (selectedAssignment) {
+        const updatedSubmissions = selectedAssignment.submissions.map(sub =>
+          sub.id === submissionId
+            ? { ...sub, score, feedback }
+            : sub
+        );
+        setSelectedAssignment({
+          ...selectedAssignment,
+          submissions: updatedSubmissions
+        });
+      }
+      
+      success('Grade and feedback saved successfully!');
+    } catch (error) {
+      console.error('Error submitting grade:', error);
+      throw error; // Re-throw to be caught by WritingGradingView
+    }
+  };
+
+  const handleCloseWritingGrading = () => {
+    setWritingGradingOpen(false);
+    setSelectedAssignment(null);
+    setViewMode('assignments');
   };
 
   const handleBulkGradeImport = async (gradesData: GradeImportData[]) => {
@@ -1076,6 +1131,16 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           studentName: sub.studentName,
         })) || []}
       />
+
+      {/* Writing Grading View */}
+      {isWritingGradingOpen && selectedAssignment && (
+        <WritingGradingView
+          assignmentTitle={selectedAssignment.title}
+          submissions={selectedAssignment.submissions}
+          onClose={handleCloseWritingGrading}
+          onGradeSubmit={handleWritingGradeSubmit}
+        />
+      )}
 
       {/* Toast Notifications */}
       {toasts.map((toast) => (
