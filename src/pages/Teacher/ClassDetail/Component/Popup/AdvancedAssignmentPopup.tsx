@@ -112,6 +112,7 @@ export interface AssignmentQuestionData {
     videoUrl?: string;
     images?: Array<{ url: string; questionId: string }>;
   };
+  readingPassage?: string;
 }
 
 export interface Skill {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -31,6 +31,7 @@ import { config } from "@/lib/config";
 
 export default function SessionDetail() {
   const { classId, sessionId } = useParams<{ classId: string; sessionId: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("context");
   const [context, setContext] = useState<CoveredTopic | null>(null);
   const [assignments, setAssignments] = useState<MeetingAssignment[] | null>(null);
@@ -890,20 +891,39 @@ export default function SessionDetail() {
                              status === "not_submitted" ? "Not Submitted" : status}
                           </span>
                           {status === "pending" && !pastDue && (
-                            <Button 
-                              variant="primary"
-                              size="sm"
-                              className="bg-warning-500 hover:bg-warning-600"
-                              iconLeft={<Upload className="w-4 h-4" />}
-                              onClick={(e) => { 
-                                console.log('Submit button clicked for assignment:', assignment.id);
-                                e.preventDefault(); 
-                                e.stopPropagation(); 
-                                handleOpenUpload(assignment.id); 
-                              }}
-                            >
-                              Submit Assignment
-                            </Button>
+                            <div className="flex flex-col gap-2">
+                              {assignment.questionDataUrl && (
+                                <Button 
+                                  variant="primary"
+                                  size="sm"
+                                  className="bg-primary-600 hover:bg-primary-700"
+                                  iconLeft={<BookOpen className="w-4 h-4" />}
+                                  onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    e.stopPropagation(); 
+                                    navigate(`/student/assignment/${assignment.id}/take`);
+                                  }}
+                                >
+                                  Take Assignment
+                                </Button>
+                              )}
+                              {!assignment.questionDataUrl && (
+                                <Button 
+                                  variant="primary"
+                                  size="sm"
+                                  className="bg-warning-500 hover:bg-warning-600"
+                                  iconLeft={<Upload className="w-4 h-4" />}
+                                  onClick={(e) => { 
+                                    console.log('Submit button clicked for assignment:', assignment.id);
+                                    e.preventDefault(); 
+                                    e.stopPropagation(); 
+                                    handleOpenUpload(assignment.id); 
+                                  }}
+                                >
+                                  Submit Assignment
+                                </Button>
+                              )}
+                            </div>
                           )}
                           {status === "not_submitted" && (
                             <span className="text-sm text-red-600 font-medium">Assignment is past due date</span>

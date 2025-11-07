@@ -156,6 +156,26 @@ export interface SubmissionFromAPI {
   createdAt: string;
 }
 
+// Get assignment by ID
+export const getAssignmentById = (
+  assignmentId: string,
+  config?: AxiosRequestConfig
+) => api.get(`${endpoint.assignments}/${assignmentId}`, config);
+
+// Submit assignment answers (for question-based assignments)
+export const submitAssignmentAnswers = (
+  submissionData: {
+    assignmentID: string;
+    answers: Array<{
+      questionId: string;
+      answer: any;
+      timestamp?: string;
+    }>;
+    audioBlob?: Blob | null;
+  },
+  config?: AxiosRequestConfig
+) => api.post('/api/ACAD_Submissions/submit-answers', submissionData, config);
+
 // Get upcoming assignments for a student (across all classes)
 export const getUpcomingAssignmentsForStudent = async (
   studentId: string,
