@@ -8,7 +8,7 @@ export type SelectOption = {
 
 export type SelectProps = Omit<ComponentPropsWithoutRef<"select">, "children"> & {
   label?: string | ReactNode;
-  options: SelectOption[];
+  options?: SelectOption[];
   error?: string;
   hint?: string;
   loading?: boolean;
@@ -19,7 +19,7 @@ export type SelectProps = Omit<ComponentPropsWithoutRef<"select">, "children"> &
 const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   { 
     label, 
-    options, 
+    options = [], 
     error, 
     hint, 
     loading = false,
@@ -32,6 +32,9 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   ref
 ) {
   const selectId = id || props.name || undefined;
+  // Ensure options is always an array
+  const safeOptions = Array.isArray(options) ? options : [];
+  
   return (
     <div className="w-full">
       {label && (
@@ -55,7 +58,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
         {placeholder && (
           <option value="">{placeholder}</option>
         )}
-        {options.map((option) => (
+        {safeOptions.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

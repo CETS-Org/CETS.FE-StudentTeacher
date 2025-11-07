@@ -63,10 +63,10 @@ export default function BasicInformationStep({
           }
           value={selectedSkillId || ""}
           onChange={(e) => onSkillChange(e.target.value || null)}
-          options={skills.map((skill) => ({
+          options={skills?.map((skill) => ({
             value: skill.lookUpId,
             label: skill.name,
-          }))}
+          })) || []}
           placeholder="Select a skill..."
           loading={loadingSkills}
           loadingText="Loading skills..."
