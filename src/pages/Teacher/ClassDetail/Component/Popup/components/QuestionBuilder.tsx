@@ -25,13 +25,23 @@ export default function QuestionBuilder({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
-    type: "multiple_choice",
+  // Helper function to get default question type - must be defined before useState
+  const getDefaultQuestionType = (): QuestionType => {
+    if (skillType.toLowerCase().includes("speaking")) {
+      return "short_answer";
+    } else if (skillType.toLowerCase().includes("writing")) {
+      return "essay";
+    }
+    return "multiple_choice";
+  };
+
+  const [newQuestion, setNewQuestion] = useState<Partial<Question>>(() => ({
+    type: getDefaultQuestionType(),
     question: "",
     points: 1,
     options: [],
     shuffleOptions: false,
-  });
+  }));
 
   const questionTypes: { value: QuestionType; label: string; icon: string }[] = [
     { value: "multiple_choice", label: "Multiple Choice", icon: "☑️" },
@@ -43,15 +53,8 @@ export default function QuestionBuilder({
   ];
 
   const resetForm = () => {
-    let defaultType: QuestionType = "multiple_choice";
-    if (skillType === "Speaking" || skillType.toLowerCase().includes("speaking")) {
-      defaultType = "short_answer";
-    } else if (skillType === "Writing" || skillType.toLowerCase().includes("writing")) {
-      defaultType = "essay";
-    }
-    
     setNewQuestion({
-      type: defaultType,
+      type: getDefaultQuestionType(),
       question: "",
       points: 1,
       options: [],
@@ -127,7 +130,11 @@ export default function QuestionBuilder({
       return;
     }
 
-    if (newQuestion.type === "multiple_choice") {
+    // Skip multiple choice validation for Speaking and Writing skills
+    const isSpeakingOrWriting = skillType === "Speaking" || skillType.toLowerCase().includes("speaking") ||
+                                 skillType === "Writing" || skillType.toLowerCase().includes("writing");
+
+    if (newQuestion.type === "multiple_choice" && !isSpeakingOrWriting) {
       if (!newQuestion.options || newQuestion.options.length < 2) {
         alert("Multiple choice questions need at least 2 options");
         return;
@@ -586,7 +593,16 @@ export default function QuestionBuilder({
       {/* Add Question Button */}
       {!showAddForm && !editingId && (
         <Button
-          onClick={() => setShowAddForm(true)}
+          onClick={() => {
+            setNewQuestion({
+              type: getDefaultQuestionType(),
+              question: "",
+              points: 1,
+              options: [],
+              shuffleOptions: false,
+            });
+            setShowAddForm(true);
+          }}
           iconLeft={<Plus className="w-4 h-4" />}
           className="w-full"
         >
