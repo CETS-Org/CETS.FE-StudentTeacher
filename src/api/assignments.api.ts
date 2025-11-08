@@ -128,6 +128,17 @@ export const submitAssignment = (
   config?: AxiosRequestConfig
 ) => api.post('/api/ACAD_Submissions/submit', submissionData, config);
 
+// Submit writing assignment with AI grading
+export const submitWritingAssignment = (
+  formData: FormData,
+  config?: AxiosRequestConfig
+) => api.post('/api/ACAD_Submissions/SubmitWritingSubmisson', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data',
+  },
+  ...config,
+});
+
 // Types for Assignment API
 export interface AssignmentFromAPI {
   id: string;
@@ -154,6 +165,7 @@ export interface SubmissionFromAPI {
   score: number | null;
   feedback: string | null;
   createdAt: string;
+  isAiScore?: boolean; // API returns lowercase 'i'
 }
 
 // Get upcoming assignments for a student (across all classes)

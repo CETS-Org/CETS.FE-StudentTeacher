@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Save, MessageSquare, Award } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Save, MessageSquare, Award, Bot } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Loader from "@/components/ui/Loader";
+import Toast from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 
 const CDN_BASE_URL = "https://pub-59cfd11e5f0d4b00af54839edc83842d.r2.dev";
 
@@ -16,6 +18,7 @@ type Submission = {
   submittedDate: string;
   score: number | null;
   feedback: string | null;
+  IsAiScore?: boolean;
 };
 
 interface WritingGradingViewProps {
@@ -31,24 +34,53 @@ export default function WritingGradingView({
   onClose,
   onGradeSubmit,
 }: WritingGradingViewProps) {
+  // Toast notifications
+  const { toasts, hideToast, success, error: showError } = useToast();
+  
   const [selectedSubmissionIndex, setSelectedSubmissionIndex] = useState(0);
   const [score, setScore] = useState<string>("");
   const [feedback, setFeedback] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [documentError, setDocumentError] = useState(false);
   const [documentLoading, setDocumentLoading] = useState(true);
+  const [currentFileUrl, setCurrentFileUrl] = useState<string>("");
 
   const selectedSubmission = submissions[selectedSubmissionIndex];
 
   // Load score and feedback when submission changes
   useEffect(() => {
     if (selectedSubmission) {
+      console.log('Selected submission changed:', {
+        studentName: selectedSubmission.studentName,
+        score: selectedSubmission.score,
+        IsAiScore: selectedSubmission.IsAiScore,
+        feedback: selectedSubmission.feedback,
+        fileUrl: selectedSubmission.file
+      });
+      
       setScore(selectedSubmission.score?.toString() || "");
       setFeedback(selectedSubmission.feedback || "");
       setDocumentError(false);
-      setDocumentLoading(true); // Reset loading state when changing submission
+      
+      // Only reset loading state if the file URL actually changed (new submission)
+      const newFileUrl = selectedSubmission.file || "";
+      if (newFileUrl !== currentFileUrl) {
+        console.log('File URL changed, resetting loading state');
+        setCurrentFileUrl(newFileUrl);
+        setDocumentLoading(true);
+        
+        // Fallback timeout: hide loading after 10 seconds if iframe doesn't trigger onLoad
+        const loadingTimeout = setTimeout(() => {
+          console.log('Document loading timeout - hiding spinner');
+          setDocumentLoading(false);
+        }, 10000);
+        
+        return () => clearTimeout(loadingTimeout);
+      } else {
+        console.log('Same file URL, keeping current loading state');
+      }
     }
-  }, [selectedSubmission]);
+  }, [selectedSubmission, currentFileUrl]);
 
   // Preload next submission's file
   useEffect(() => {
@@ -114,12 +146,12 @@ export default function WritingGradingView({
 
     // Validation
     if (parsedScore === null && trimmedFeedback === "") {
-      alert("Please provide at least a score or feedback.");
+      showError("Please provide at least a score or feedback.");
       return;
     }
 
-    if (parsedScore !== null && (isNaN(parsedScore) || parsedScore < 0 || parsedScore > 100)) {
-      alert("Score must be a number between 0 and 100.");
+    if (parsedScore !== null && (isNaN(parsedScore) || parsedScore < 0 || parsedScore > 10)) {
+      showError("Score must be a number between 0 and 10.");
       return;
     }
 
@@ -131,13 +163,21 @@ export default function WritingGradingView({
         trimmedFeedback || selectedSubmission.feedback || ""
       );
       
-      // Move to next submission if available
-      if (selectedSubmissionIndex < submissions.length - 1) {
-        handleNext();
+      // Check if this is the last submission
+      const isLastSubmission = selectedSubmissionIndex === submissions.length - 1;
+      
+      if (isLastSubmission) {
+        success("Grade saved! This was the last submission.");
+      } else {
+        success("Grade saved! Moving to next submission...");
+        // Auto-navigate to next submission after a short delay
+        setTimeout(() => {
+          handleNext();
+        }, 500);
       }
     } catch (error) {
       console.error("Error saving grade:", error);
-      alert("Failed to save. Please try again.");
+      showError("Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -151,7 +191,10 @@ export default function WritingGradingView({
 
   const getDocumentViewerUrl = (fileUrl: string): string => {
     const fullUrl = getFullFileUrl(fileUrl);
-    const fileExtension = fileUrl.split('.').pop()?.toLowerCase();
+    
+    // Check if URL has proper extension
+    const hasExtension = fileUrl.includes('.') && fileUrl.lastIndexOf('.') > fileUrl.lastIndexOf('/');
+    const fileExtension = hasExtension ? fileUrl.split('.').pop()?.toLowerCase() : null;
 
     // For PDF files, we can use direct iframe
     if (fileExtension === 'pdf') {
@@ -160,6 +203,12 @@ export default function WritingGradingView({
 
     // For DOCX and other Office files, use Microsoft Office Online Viewer
     if (fileExtension === 'docx' || fileExtension === 'doc' || fileExtension === 'xlsx' || fileExtension === 'pptx') {
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
+    }
+
+    // If no extension detected, assume it's a Word document (common for writing assignments)
+    // Use Office Online Viewer as default
+    if (!fileExtension) {
       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
     }
 
@@ -187,6 +236,11 @@ export default function WritingGradingView({
     }
 
     const viewerUrl = getDocumentViewerUrl(selectedSubmission.file);
+    console.log('Rendering document viewer:', {
+      studentName: selectedSubmission.studentName,
+      fileUrl: selectedSubmission.file,
+      viewerUrl: viewerUrl
+    });
 
     return (
       <div className="h-full w-full bg-neutral-50 relative">
@@ -208,8 +262,12 @@ export default function WritingGradingView({
               src={viewerUrl}
               className="w-full h-full border-0"
               title="Document Viewer"
-              onLoad={() => setDocumentLoading(false)}
+              onLoad={() => {
+                console.log('Iframe onLoad triggered for:', selectedSubmission.studentName);
+                setDocumentLoading(false);
+              }}
               onError={() => {
+                console.error('Iframe onError triggered');
                 setDocumentError(true);
                 setDocumentLoading(false);
               }}
@@ -316,9 +374,17 @@ export default function WritingGradingView({
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     {submission.score !== null ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-success-100 text-success-700">
-                        {submission.score}
-                      </span>
+                      <>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-success-100 text-success-700">
+                          {submission.score}
+                        </span>
+                        {submission.IsAiScore === true && (
+                          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded text-[10px]">
+                            <Bot size={10} className="text-blue-600" />
+                            <span className="text-blue-700 font-medium">AI</span>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <span className="text-xs text-neutral-400 italic">Not graded</span>
                     )}
@@ -340,19 +406,21 @@ export default function WritingGradingView({
                 onClick={handlePrevious}
                 disabled={selectedSubmissionIndex === 0}
                 className="p-1 hover:bg-neutral-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Previous submission"
+                title="Previous submission (←)"
               >
                 <ChevronLeft size={20} />
               </button>
               <div>
                 <p className="font-semibold">{selectedSubmission?.studentName}</p>
-                <p className="text-xs text-neutral-400">{selectedSubmission?.studentCode}</p>
+                <p className="text-xs text-neutral-400">
+                  {selectedSubmission?.studentCode} • {selectedSubmissionIndex + 1}/{submissions.length}
+                </p>
               </div>
               <button
                 onClick={handleNext}
                 disabled={selectedSubmissionIndex === submissions.length - 1}
                 className="p-1 hover:bg-neutral-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Next submission"
+                title="Next submission (→)"
               >
                 <ChevronRight size={20} />
               </button>
@@ -379,12 +447,12 @@ export default function WritingGradingView({
             {/* Score Input */}
             <div>
               <label className="block text-sm font-semibold text-primary-800 mb-2">
-                Score (0-100)
+                Score (0-10)
               </label>
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="10"
                 step="0.1"
                 value={score}
                 onChange={(e) => setScore(e.target.value)}
@@ -393,8 +461,17 @@ export default function WritingGradingView({
               />
               {score && (
                 <p className="text-xs text-neutral-500 mt-1">
-                  Score: {score}/100
+                  Score: {score}/10
                 </p>
+              )}
+              {/* AI Score Note - Show when IsAiScore is true */}
+              {selectedSubmission?.IsAiScore === true && (
+                <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Bot size={16} className="text-blue-600" />
+                  <p className="text-xs text-blue-700 font-medium">
+                    💡 This score is AI-generated. Your grading will replace it.
+                  </p>
+                </div>
               )}
             </div>
 
@@ -479,8 +556,17 @@ export default function WritingGradingView({
           </div>
         </div>
       </div>
+
+      {/* Toast Notifications */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+          duration={3000}
+        />
+      ))}
     </div>
   );
 }
-
-

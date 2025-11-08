@@ -1,7 +1,7 @@
 // src/components/teacher/SessionAssignmentsTab.tsx
 
 import { useState, useMemo, useEffect } from "react";
-import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
+import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet, Bot } from "lucide-react";
 import JSZip from 'jszip';
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -10,8 +10,6 @@ import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import CreateAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
-import AdvancedAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
-import EditAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/EditAssignmentPopup";
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
 import BulkGradeImportPopup, { type GradeImportData } from "@/pages/Teacher/ClassDetail/Component/Popup/BulkGradeImportPopup";
@@ -25,11 +23,9 @@ import {
   downloadAssignment,
   downloadSubmission,
   downloadAllSubmissions,
-  createAssignment,
   type AssignmentFromAPI,
   type SubmissionFromAPI 
 } from "@/api/assignments.api";
-import { getTeacherId } from "@/lib/utils";
 
 // --- CẤU TRÚC DỮ LIỆU ---
 type Submission = {
@@ -42,15 +38,14 @@ type Submission = {
   submittedDate: string;
   score: number | null;
   feedback: string | null;
+  IsAiScore?: boolean;
 };
 
 type Assignment = {
   id: number;
   assignmentId: string; // UUID from API
   title: string;
-  description: string | null;
   dueDate: string;
-  storeUrl: string | null;
   submissions: Submission[];
   submissionCount: number;
   skillID?: string | null;
@@ -99,18 +94,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'assignments' | 'submissions'>('assignments');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [selectedSkillTab, setSelectedSkillTab] = useState<string | null>('all'); // 'all' or skillID
   
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
-  const [isAdvancedCreateOpen, setAdvancedCreateOpen] = useState(false);
-  const [isEditOpen, setEditOpen] = useState(false);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
   const [isBulkImportOpen, setBulkImportOpen] = useState(false);
   const [isWritingGradingOpen, setWritingGradingOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [assignmentToEdit, setAssignmentToEdit] = useState<Assignment | null>(null);
 
   // State cho phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -143,8 +134,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         setError(null);
         
         const response = await getAssignmentsByClassMeeting(classMeetingId);
-        // Handle both response formats: { success: true, data: [...] } or direct array
-        const apiAssignments: AssignmentFromAPI[] = response.data.data || response.data;
+        console.log('Assignments response:', response.data);
+        
+        // Handle nested response structure: { success, data: [...] } or direct array
+        const apiAssignments: AssignmentFromAPI[] = Array.isArray(response.data)
+          ? response.data
+          : (response.data.data || []);
+        
+        console.log('Parsed assignments:', apiAssignments);
         
         // Transform API data to component format
         const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
@@ -156,9 +153,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
             assignmentId: apiAsm.id, // Keep original UUID for API calls
             title: apiAsm.title,
-            description: apiAsm.description,
             dueDate: formattedDueDate,
-            storeUrl: apiAsm.storeUrl,
             submissions: [], // Submissions will be loaded separately when viewing
             submissionCount: apiAsm.submissionCount,
             skillID: apiAsm.skillID,
@@ -186,148 +181,57 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   }, [classMeetingId]);
 
   // --- HÀM XỬ LÝ ---
-  // Helper function to refresh assignments
-  const refreshAssignments = async () => {
-    if (!classMeetingId) return;
-    
-    // Clear cache for this classMeetingId
-    assignmentsCache.delete(classMeetingId);
-    
-    try {
-      const response = await getAssignmentsByClassMeeting(classMeetingId);
-      // Handle both response formats: { success: true, data: [...] } or direct array
-      const apiAssignments: AssignmentFromAPI[] = response.data.data || response.data;
-      
-      // Transform API data to component format
-      const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
-        // Format date without timezone issues
-        const dueDate = new Date(apiAsm.dueAt);
-        const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
-        
-          return {
-            id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
-            assignmentId: apiAsm.id, // Keep original UUID for API calls
-            title: apiAsm.title,
-            description: apiAsm.description,
-            dueDate: formattedDueDate,
-            storeUrl: apiAsm.storeUrl,
-            submissions: [], // Submissions will be loaded separately when viewing
-            submissionCount: apiAsm.submissionCount,
-            skillID: apiAsm.skillID,
-            skillName: apiAsm.skillName,
-          };
-      });
-      
-      // Update cache with fresh data
-      assignmentsCache.set(classMeetingId, {
-        data: transformedAssignments,
-        timestamp: Date.now()
-      });
-      
-      setAssignments(transformedAssignments);
-    } catch (err) {
-      console.error('Error refreshing assignments:', err);
-      showError('Failed to refresh assignments list.');
-    }
-  };
-
   const handleCreateAssignment = (assignmentData: AssignmentData) => {
     // Don't add to local state immediately since we need to refresh from API
     // The assignment will be added when the assignments list is refreshed
     success("Assignment created successfully!");
-    refreshAssignments();
-  };
-
-  const handleAdvancedCreateAssignment = async (assignmentData: {
-    title: string;
-    description: string;
-    dueDate: string;
-    skillID: string | null;
-    assignmentType: string;
-    totalPoints: number;
-    timeLimitMinutes?: number;
-    maxAttempts: number;
-    isAutoGradable: boolean;
-    showAnswersAfterSubmission: boolean;
-    showAnswersAfterDueDate: boolean;
-    questionData: any;
-    files: File[];
-  }) => {
-    try {
-      // For now, we'll create the assignment with the question data
-      // Later, we'll upload the question JSON to storage and store the URL
-      const teacherId = getTeacherId();
-      if (!teacherId) {
-        showError("Teacher ID is missing. Please login again.");
-        return;
-      }
-
-      if (!classMeetingId) {
-        showError("Class meeting ID is missing.");
-        return;
-      }
-
-      // TODO: Upload questionData JSON to storage and get URL
-      // For now, we'll stringify it (will be replaced with storage upload)
-      const questionDataJson = assignmentData.questionData 
-        ? JSON.stringify(assignmentData.questionData)
-        : null;
-
-      // Create assignment with file if provided
-      if (assignmentData.files.length > 0) {
-        const file = assignmentData.files[0];
-        const contentType = file.type || 'application/octet-stream';
-        
-        const createData = {
-          classMeetingId,
-          teacherId,
-          title: assignmentData.title,
-          description: assignmentData.description,
-          dueDate: assignmentData.dueDate,
-          contentType: contentType,
-          fileName: file.name.replace(/\.[^/.]+$/, ""),
-          skillID: assignmentData.skillID,
-          // TODO: Add other fields when backend is updated
-        };
-
-        // Call create assignment API
-        const response = await createAssignment(createData);
-        
-        // TODO: Upload questionData JSON to storage
-        // const questionDataUrl = await uploadQuestionData(questionDataJson);
-        // Then update assignment with questionDataUrl
-
-        success("Advanced assignment created successfully!");
-      } else {
-        // Create assignment without file
-        // TODO: Implement create assignment without file endpoint
-        success("Assignment created successfully! (Question data will be uploaded separately)");
-      }
-
-      refreshAssignments();
-      setAdvancedCreateOpen(false);
-    } catch (err: any) {
-      console.error('Error creating advanced assignment:', err);
-      showError(err?.message || "Failed to create assignment. Please try again.");
-    }
-  };
-
-  const handleEditAssignment = (assignment: Assignment) => {
-    setAssignmentToEdit(assignment);
-    setEditOpen(true);
-  };
-
-  const handleUpdateAssignment = async (assignmentData: AssignmentData) => {
-    if (!assignmentToEdit) return;
     
-    try {
-      // The actual update is handled in EditAssignmentPopup
-      // This callback is just to refresh the list after successful update
-      await refreshAssignments();
-      setEditOpen(false);
-      setAssignmentToEdit(null);
-    } catch (err) {
-      console.error('Error refreshing after update:', err);
+    // Clear cache and refresh assignments list to get the new assignment with proper ID
+    if (classMeetingId) {
+      // Clear cache for this classMeetingId
+      assignmentsCache.delete(classMeetingId);
+      
+      const fetchAssignments = async () => {
+        try {
+          const response = await getAssignmentsByClassMeeting(classMeetingId);
+          
+          // Handle nested response structure: { success, data: [...] } or direct array
+          const apiAssignments: AssignmentFromAPI[] = Array.isArray(response.data)
+            ? response.data
+            : (response.data.data || []);
+          
+          // Transform API data to component format
+          const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
+            // Format date without timezone issues
+            const dueDate = new Date(apiAsm.dueAt);
+            const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+            
+            return {
+              id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
+              assignmentId: apiAsm.id, // Keep original UUID for API calls
+              title: apiAsm.title,
+              dueDate: formattedDueDate,
+              submissions: [], // Submissions will be loaded separately when viewing
+              submissionCount: apiAsm.submissionCount,
+              skillID: apiAsm.skillID,
+              skillName: apiAsm.skillName,
+            };
+          });
+          
+          // Update cache with fresh data
+          assignmentsCache.set(classMeetingId, {
+            data: transformedAssignments,
+            timestamp: Date.now()
+          });
+          
+          setAssignments(transformedAssignments);
+        } catch (err) {
+          console.error('Error refreshing assignments:', err);
+          showError('Failed to refresh assignments list.');
+        }
+      };
+      
+      fetchAssignments();
     }
   };
 
@@ -341,19 +245,33 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         return;
       }
       
-      // Fetch submissions from API (pass skillName for Writing assignments)
-      const response = await getSubmissionsByAssignment(
-        assignment.assignmentId,
-        assignment.skillName || undefined
-      );
-      // API returns { success: true, data: [...] } so we need response.data.data
-      const apiSubmissions: SubmissionFromAPI[] = response.data.data || response.data;
+      // Fetch submissions from API
+      const response = await getSubmissionsByAssignment(assignment.assignmentId);
+      console.log('Submissions response:', response.data);
+      
+      // Handle nested response structure: { success, data: [...] } or direct array
+      const apiSubmissions: SubmissionFromAPI[] = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data.data || []);
+      
+      console.log('Parsed submissions:', apiSubmissions);
       
       // Transform API data to component format
       const transformedSubmissions: Submission[] = apiSubmissions.map((apiSub) => {
         // Format submitted date
         const submittedDate = new Date(apiSub.createdAt);
         const formattedDate = `${submittedDate.getFullYear()}-${String(submittedDate.getMonth() + 1).padStart(2, '0')}-${String(submittedDate.getDate()).padStart(2, '0')}`;
+        
+        // Normalize isAiScore: handle boolean or undefined
+        // Backend returns 'isAiScore' (lowercase 'i')
+        const isAiScore = apiSub.isAiScore === true;
+        
+        console.log('Transforming submission:', {
+          studentName: apiSub.studentName,
+          isAiScore: apiSub.isAiScore,
+          normalizedIsAiScore: isAiScore,
+          score: apiSub.score
+        });
         
         return {
           id: apiSub.id,
@@ -365,6 +283,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           submittedDate: formattedDate,
           score: apiSub.score,
           feedback: apiSub.feedback,
+          IsAiScore: isAiScore,
         };
       });
       
@@ -456,10 +375,11 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       await Promise.all(promises);
       
       // Update the submission in the local state
+      // When teacher manually grades, set IsAiScore to false
       if (selectedAssignment) {
         const updatedSubmissions = selectedAssignment.submissions.map(sub =>
           sub.id === submissionId
-            ? { ...sub, score, feedback }
+            ? { ...sub, score, feedback, IsAiScore: false }
             : sub
         );
         setSelectedAssignment({
@@ -725,40 +645,6 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   }, [currentPage, submissionsToDisplay]);
   const handlePageChange = (page: number) => setCurrentPage(page);
 
-  // --- LOGIC GROUP BY SKILL ---
-  const skillGroups = useMemo(() => {
-    const groups: { [key: string]: { skillID: string | null; skillName: string; assignments: Assignment[] } } = {
-      'all': { skillID: null, skillName: 'All', assignments: [] },
-      'no-skill': { skillID: null, skillName: 'No Skill', assignments: [] }
-    };
-    
-    assignments.forEach(asm => {
-      const skillKey = asm.skillID || 'no-skill';
-      const skillName = asm.skillName || 'No Skill';
-      
-      if (!groups[skillKey]) {
-        groups[skillKey] = {
-          skillID: asm.skillID || null,
-          skillName: skillName,
-          assignments: []
-        };
-      }
-      groups[skillKey].assignments.push(asm);
-    });
-    
-    // Add all assignments to 'all' group
-    groups['all'].assignments = assignments;
-    
-    return groups;
-  }, [assignments]);
-
-  const filteredAssignments = useMemo(() => {
-    if (selectedSkillTab === 'all') {
-      return assignments;
-    }
-    return skillGroups[selectedSkillTab || 'all']?.assignments || [];
-  }, [assignments, selectedSkillTab, skillGroups]);
-
   // --- RENDER ---
   // Show loading state
   if (loading) {
@@ -805,45 +691,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-primary-800">Session Assignments</h2>
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => setCreateOpen(true)} 
-                iconLeft={<PlusCircle size={16} />}
-                variant="secondary"
-              >
-                Simple Assignment
-              </Button>
-              <Button 
-                onClick={() => setAdvancedCreateOpen(true)} 
-                iconLeft={<PlusCircle size={16} />}
-                className="btn-primary"
-              >
-                Create Assignment
-              </Button>
-            </div>
+            <Button 
+              onClick={() => setCreateOpen(true)} 
+              iconLeft={<PlusCircle size={16} />}
+              className="btn-secondary"
+            >
+              Create Assignment
+            </Button>
           </div>
-          
-          {/* Skill Tabs */}
-          {assignments.length > 0 && Object.keys(skillGroups).length > 1 && (
-            <div className="mb-6 border-b border-accent-200">
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(skillGroups).map(([key, group]) => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedSkillTab(key)}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                      selectedSkillTab === key
-                        ? 'bg-primary-600 text-white border-b-2 border-primary-600'
-                        : 'bg-secondary-200 text-primary-700 hover:bg-secondary-300'
-                    }`}
-                  >
-                    {group.skillName} ({group.assignments.length})
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
           {assignments.length === 0 ? (
             <div className="text-center py-12 bg-accent-25 rounded-lg">
               <Calendar className="w-16 h-16 text-accent-300 mx-auto mb-4" />
@@ -863,18 +718,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredAssignments.length === 0 ? (
-                <div className="text-center py-12 bg-accent-25 rounded-lg">
-                  <Calendar className="w-16 h-16 text-accent-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-primary-800 mb-2">
-                    No Assignments for This Skill
-                  </h3>
-                  <p className="text-neutral-600">
-                    There are no assignments for the selected skill.
-                  </p>
-                </div>
-              ) : (
-                filteredAssignments.map(asm => (
+              {assignments.map(asm => (
               <Card key={asm.id} className="p-6 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
@@ -882,11 +726,6 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                       {asm.title}
                     </h3>
                     <div className="flex flex-wrap items-center gap-3">
-                      {asm.skillName && (
-                        <div className="flex items-center gap-2 bg-accent2-200 px-3 py-2 rounded-lg">
-                          <span className="text-sm font-medium text-primary-800">{asm.skillName}</span>
-                        </div>
-                      )}
                       <div className="flex items-center gap-2 bg-error-200 px-3 py-2 rounded-lg">
                         <Calendar className="w-4 h-4 text-primary-600" />
                         <span className="text-sm font-medium text-primary-700">Due: {asm.dueDate}</span>
@@ -898,7 +737,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3 justify-between items-center">
+                <div className="flex flex-wrap gap-3">
                   <Button 
                     variant="primary"
                     onClick={() => handleViewSubmissions(asm)}
@@ -906,27 +745,18 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   >
                     View Submissions
                   </Button>
-                  <div className="flex gap-3">
-                    <Button 
-                      variant="secondary"
-                      onClick={() => handleDownloadAssignment(asm)}
-                      iconLeft={<Download size={16} />}
-                      className="btn-secondary"
-                    >
-                      Download
-                    </Button>
-                    <Button 
-                      variant="secondary"
-                      onClick={() => handleEditAssignment(asm)}
-                      className="btn-secondary !bg-gradient-to-r !from-yellow-400 !to-yellow-500 hover:!from-yellow-600 hover:!to-yellow-700 !shadow-yellow-500/25 hover:!shadow-yellow-600/30"
-                    >
-                      Edit
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="secondary"
+                    onClick={() => handleDownloadAssignment(asm)}
+                    iconLeft={<Download size={16} />}
+                    className="btn-secondary"
+                  >
+                    Download
+                  </Button>
+                  <Button variant="secondary">Edit</Button>
                 </div>
               </Card>
-                ))
-              )}
+              ))}
             </div>
           )}
         </div>
@@ -946,18 +776,17 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
               <Button 
                 disabled={selectedAssignment.submissions.length === 0} 
                 onClick={() => setBulkImportOpen(true)}
-                className="btn-secondary flex items-center"
+                className="flex items-center"
                 iconLeft={<FileSpreadsheet size={16} />}
-                variant="primary"
+                variant="secondary"
               >
-                Import Grades   
+                Import Grades
               </Button>
               <Button 
                 disabled={selectedAssignment.submissions.length === 0} 
                 onClick={handleDownloadAllSubmissions}
-                className="btn-primary flex items-center"
+                className="flex items-center"
                 iconLeft={<Download size={16} />}
-                variant="primary"
               >
                 Download All
               </Button>
@@ -1020,10 +849,18 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {sub.score !== null ? (
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-success-100 text-success-700">
-                              {sub.score}
-                            </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-success-100 text-success-700">
+                                {sub.score}
+                              </span>
+                            </div>
+                            {sub.IsAiScore === true && (
+                              <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs">
+                                <Bot size={12} className="text-blue-600" />
+                                <span className="text-blue-700 font-medium">AI Graded</span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-sm text-neutral-400 italic">Not graded</span>
@@ -1083,29 +920,6 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         onSubmit={handleCreateAssignment}
         classMeetingId={classMeetingId}
       />
-      <AdvancedAssignmentPopup
-        open={isAdvancedCreateOpen}
-        onOpenChange={setAdvancedCreateOpen}
-        onSubmit={handleAdvancedCreateAssignment}
-        classMeetingId={classMeetingId}
-      />
-      {assignmentToEdit && (
-        <EditAssignmentPopup
-          open={isEditOpen}
-          onOpenChange={(open) => {
-            setEditOpen(open);
-            if (!open) setAssignmentToEdit(null);
-          }}
-          onSubmit={handleUpdateAssignment}
-          assignmentId={assignmentToEdit.assignmentId}
-          initialData={{
-            title: assignmentToEdit.title,
-            description: assignmentToEdit.description,
-            dueDate: assignmentToEdit.dueDate,
-            storeUrl: assignmentToEdit.storeUrl,
-          }}
-        />
-      )}
       <FeedbackPopup 
         open={isFeedbackOpen} 
         onOpenChange={setFeedbackOpen} 
