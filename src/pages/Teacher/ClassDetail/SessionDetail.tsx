@@ -24,7 +24,7 @@ import SessionAssignmentsTab from "@/pages/Teacher/ClassDetail/Component/Session
 const tabs = [
   { id: "sessionContent", label: "Session Content" },
   { id: "sessionAssignment", label: "Assignments" },
-  { id: "materials", label: "Course Materials" },
+  { id: "materials", label: "Materials" },
   { id: "students", label: "Classes" }, // "Classes" ở đây là danh sách sinh viên trong lớp
 ];
 

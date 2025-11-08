@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Loader from "@/components/ui/Loader";
-import PageHeader from "@/components/ui/PageHeader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { 
@@ -24,6 +22,7 @@ import {
   FileText
 } from "lucide-react";
 import { api } from "@/api";
+import { getQuestionDataUrl } from "@/api/assignments.api";
 import { getStudentId } from "@/lib/utils";
 import type { Question, QuestionType, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 import MultipleChoiceQuestion from "./components/MultipleChoiceQuestion";
@@ -113,10 +112,15 @@ export default function StudentAssignmentTaking() {
           showAnswersAfterDueDate: assignmentData.showAnswersAfterDueDate || false,
         });
 
-        // Load question data if URL exists
-        if (assignmentData.questionDataUrl) {
+        // Load question data if QuestionUrl exists (quiz assignment)
+        if (assignmentData.questionUrl) {
           try {
-            const questionResponse = await fetch(assignmentData.questionDataUrl);
+            // Get presigned URL for question data
+            const questionUrlResponse = await getQuestionDataUrl(assignmentId);
+            const presignedUrl = questionUrlResponse.data.questionDataUrl;
+            
+            // Fetch question data using presigned URL
+            const questionResponse = await fetch(presignedUrl);
             const questionData: AssignmentQuestionData = await questionResponse.json();
             setQuestions(questionData.questions || []);
           } catch (err) {
@@ -326,47 +330,41 @@ export default function StudentAssignmentTaking() {
 
   if (loading) {
     return (
-      <StudentLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader />
-        </div>
-      </StudentLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
     );
   }
 
   if (error || !assignment) {
     return (
-      <StudentLayout>
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
-            <p className="text-neutral-600">{error || "Assignment not found"}</p>
-            <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-          </div>
+      <div className="px-6 py-6">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
+          <p className="text-neutral-600">{error || "Assignment not found"}</p>
+          <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <StudentLayout>
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-yellow-600 mb-2">No Questions</h2>
-            <p className="text-neutral-600">This assignment doesn't have any questions yet.</p>
-            <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-          </div>
+      <div className="px-6 py-6">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-yellow-600 mb-2">No Questions</h2>
+          <p className="text-neutral-600">This assignment doesn't have any questions yet.</p>
+          <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
@@ -376,11 +374,10 @@ export default function StudentAssignmentTaking() {
   const isWriting = assignment.skillName?.toLowerCase().includes("writing");
 
   return (
-    <StudentLayout>
-      <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50">
         {/* Header */}
         <div className="bg-white border-b border-neutral-200 sticky top-0 z-10">
-          <div className="px-4 py-4 sm:px-6 lg:px-8">
+          <div className="px-6 py-4 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Button
@@ -428,8 +425,8 @@ export default function StudentAssignmentTaking() {
           </div>
         </div>
 
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto">
+        <div className="py-6">
+          <div className="max-w-7xl mx-auto px-6">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Question Navigation Sidebar */}
               <div className="lg:col-span-1">
@@ -560,8 +557,7 @@ export default function StudentAssignmentTaking() {
           confirmText="Exit"
           cancelText="Continue"
         />
-      </div>
-    </StudentLayout>
+    </div>
   );
 }
 

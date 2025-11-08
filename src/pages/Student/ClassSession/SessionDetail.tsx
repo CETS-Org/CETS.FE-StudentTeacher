@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
@@ -18,7 +18,13 @@ import {
   ExternalLink,
   Target,
   CheckSquare,
-  MessageSquare
+  MessageSquare,
+  Send,
+  Save,
+  ArrowLeft,
+  Headphones,
+  PenTool,
+  AlertCircle
 } from "lucide-react";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
@@ -57,6 +63,7 @@ export default function SessionDetail() {
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [selectedSkillTab, setSelectedSkillTab] = useState<string | null>('all'); // 'all' or skillID
+  
   
   // Store data for confirm dialog
   const [confirmData, setConfirmData] = useState<{
@@ -246,7 +253,6 @@ export default function SessionDetail() {
   // Download assignment file using API
   const handleDownloadAssignment = async (assignmentId: string, fileName?: string) => {
     try {
-      console.log('Downloading assignment:', assignmentId);
       const response = await api.downloadAssignment(assignmentId);
       
       // Create blob from response data
@@ -395,22 +401,25 @@ export default function SessionDetail() {
     }
   };
 
+  // Quiz handling - navigate to quiz taking page
+  const handleStartQuiz = (assignment: MeetingAssignment) => {
+    if (!assignment.questionUrl) return;
+    navigate(`/student/assignment/${assignment.id}/take`);
+  };
+
   const tabs = [
     { id: "context", label: "Session Context" },
-    { id: "materials", label: "Course Materials" },
-    { id: "assignments", label: "Assignment Submission" }
+    { id: "materials", label: "Materials" },
+    { id: "assignments", label: "Assignments" }
   ];
 
   // Upload flow handlers
   const handleOpenUpload = (assignmentId: string) => {
-    console.log('Opening upload for assignment:', assignmentId);
     setSelectedAssignmentId(assignmentId);
     setIsUploadOpen(true);
-    console.log('Upload dialog opened, selectedAssignmentId set to:', assignmentId);
   };
 
   const handleFileChange = (file: File | null) => {
-    console.log('File changed:', file?.name);
     if (filePreviewUrl) {
       URL.revokeObjectURL(filePreviewUrl);
       setFilePreviewUrl(null);
@@ -420,7 +429,6 @@ export default function SessionDetail() {
       const url = URL.createObjectURL(file);
       setFilePreviewUrl(url);
     }
-    console.log('Selected file set to:', file?.name);
   };
 
   const resetUploadState = () => {
@@ -437,9 +445,7 @@ export default function SessionDetail() {
   };
 
   const handleSubmitAssignment = () => {
-    console.log('handleSubmitAssignment called with:', { selectedFile, selectedAssignmentId });
     if (!selectedFile || !selectedAssignmentId) {
-      console.log('Missing required data in handleSubmitAssignment');
       return;
     }
     
@@ -455,9 +461,7 @@ export default function SessionDetail() {
   };
 
   const confirmSubmitAssignment = async () => {
-    console.log('confirmSubmitAssignment called with confirmData:', confirmData);
     if (!confirmData || !sessionId) {
-      console.log('Missing required data:', { confirmData, sessionId });
       return;
     }
     
@@ -465,7 +469,6 @@ export default function SessionDetail() {
     
     try {
       setSubmitting(true);
-      console.log('Starting submission process...');
       
       // Get student ID
       const studentId = getStudentId();
@@ -478,15 +481,9 @@ export default function SessionDetail() {
       const currentAssignment = assignments?.find(a => a.id === assignmentId);
       const isWritingAssignment = currentAssignment?.skillName?.toLowerCase() === 'writing';
 
-      console.log('Assignment type:', { 
-        skillName: currentAssignment?.skillName, 
-        isWritingAssignment 
-      });
 
       if (isWritingAssignment) {
         // Handle writing assignment with AI grading
-        console.log('Step 1: Submitting writing assignment for AI grading...');
-        
         // Validate file type for writing assignments
         const fileExtension = file.name.split('.').pop()?.toLowerCase();
         const allowedExtensions = ['docx', 'doc', 'pdf'];
@@ -520,22 +517,17 @@ export default function SessionDetail() {
         
 
         const writingResponse = await submitWritingAssignment(formData);
-        console.log('Writing response:', writingResponse.data);
-        console.log('Full response:', writingResponse);
         
         // Response structure: { success, data: { submissionId, score, feedback, uploadUrl, storeUrl, submittedAt, isAiScore } }
         const responseData = writingResponse.data.data || writingResponse.data;
         // API returns 'isAiScore' (lowercase 'i')
         const { uploadUrl, storeUrl, submissionId, score, feedback, submittedAt, isAiScore } = responseData;
 
-        console.log('Parsed response data:', { uploadUrl, storeUrl, submissionId, score, feedback });
-
         if (!uploadUrl) {
           throw new Error('No upload URL received from server');
         }
 
         // Step 2: Upload to Cloudflare using PUT
-        console.log('Step 2: Uploading file to Cloudflare with ContentType:', contentType);
         
         const putResp = await fetch(uploadUrl, {
           method: 'PUT',
@@ -546,12 +538,8 @@ export default function SessionDetail() {
         });
 
         if (!putResp.ok) {
-          const errText = await putResp.text().catch(() => '');
-          console.error('Cloudflare upload error details:', errText);
           throw new Error(`File upload failed: ${putResp.status} ${putResp.statusText}`);
         }
-
-        console.log('File uploaded successfully to Cloudflare:', storeUrl);
 
         // Update UI with AI-graded submission
         setAssignments(prev => {
@@ -593,7 +581,6 @@ export default function SessionDetail() {
         
       } else {
         // Handle regular assignment submission
-        console.log('Step 1: Calling submitAssignment API to get presigned URL...');
         const submitResponse = await api.submitAssignment({
           assignmentID: assignmentId,
           studentID: studentId,
@@ -620,14 +607,10 @@ export default function SessionDetail() {
         // Step 3: Validate upload result
         if (!putResp.ok) {
           const errText = await putResp.text().catch(() => '');
-          console.error('R2 upload error details:', errText);
           throw new Error(`R2 upload failed: ${putResp.status} ${putResp.statusText} ${errText}`);
         }
 
-        console.log('File uploaded successfully to R2:', storeUrl);
         alert('Upload / Resubmit thành công!');
-
-        console.log('API call successful, updating UI...');
         // Update UI to show submission with real data from backend response
         setAssignments(prev => {
           if (!prev) return prev;
@@ -656,9 +639,6 @@ export default function SessionDetail() {
         setConfirmData(null);
         resetUploadState();
       }
-      
-      // Show success message
-      console.log('Submission completed successfully');
     } catch (e: any) {
       console.error('Submit assignment error:', e);
       alert(`Failed to submit assignment: ${e.response?.data?.message || e.message}`);
@@ -880,19 +860,37 @@ export default function SessionDetail() {
 
               {/* Assignment Submission Tab */}
               <div className={activeTab === "assignments" ? "block" : "hidden"}>
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary-800">Assignment Submission</h3>
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-primary-900">Assignments</h2>
+              </div>
+              
               {loadingAssignments && (
-                <div className="text-sm text-neutral-600">Loading assignments...</div>
+                <div className="flex items-center justify-center min-h-[200px]">
+                  <Loader />
+                </div>
               )}
               {errorAssignments && !loadingAssignments && (
-                <div className="text-sm text-danger-600">{errorAssignments}</div>
+                <div className="text-center py-12">
+                  <div className="text-sm text-danger-600 mb-4">{errorAssignments}</div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => window.location.reload()}
+                  >
+                    Retry
+                  </Button>
+                </div>
               )}
               {!loadingAssignments && !errorAssignments && (assignments?.length ?? 0) === 0 && (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-neutral-900 mb-2">No assignments available</h3>
-                  <p className="text-neutral-600">Assignments will be posted by your instructor.</p>
+                <div className="text-center py-12 bg-accent-25 rounded-lg">
+                  <Calendar className="w-16 h-16 text-accent-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-primary-800 mb-2">
+                    No Assignments Yet
+                  </h3>
+                  <p className="text-neutral-600">
+                    Assignments will be posted by your instructor.
+                  </p>
                 </div>
               )}
               
@@ -925,6 +923,7 @@ export default function SessionDetail() {
                 
                 return (
                   <>
+                    {/* Skill Tabs */}
                     {Object.keys(skillGroups).length > 1 && (
                       <div className="mb-6 border-b border-accent-200">
                         <div className="flex flex-wrap gap-2">
@@ -935,7 +934,7 @@ export default function SessionDetail() {
                               className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
                                 selectedSkillTab === key
                                   ? 'bg-primary-600 text-white border-b-2 border-primary-600'
-                                  : 'bg-accent-100 text-primary-700 hover:bg-accent-200'
+                                  : 'bg-secondary-200 text-primary-700 hover:bg-secondary-300'
                               }`}
                             >
                               {group.skillName} ({group.assignments.length})
@@ -946,115 +945,131 @@ export default function SessionDetail() {
                     )}
                     
                     {filteredAssignments.length === 0 ? (
-                      <div className="text-center py-12">
+                      <div className="text-center py-12 bg-accent-25 rounded-lg">
                         <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-neutral-900 mb-2">No assignments for this skill</h3>
                         <p className="text-neutral-600">There are no assignments for the selected skill.</p>
                       </div>
                     ) : (
-                      filteredAssignments.map((assignment) => {
-                        const submission = assignment.submissions?.[0];
-                        const hasSubmittedFile = !!(submission && submission.storeUrl);
-                        const pastDue = isPastDue(assignment.dueDate);
-                        const status = submission?.score != null ? "graded" : hasSubmittedFile ? "submitted" : pastDue ? "not_submitted" : "pending";
+                      <div className="space-y-4">
+                        {filteredAssignments.map((assignment) => {
+                          const submission = assignment.submissions?.[0];
+                          const hasSubmittedFile = !!(submission && submission.storeUrl);
+                          const pastDue = isPastDue(assignment.dueDate);
+                          const status = submission?.score != null ? "graded" : hasSubmittedFile ? "submitted" : pastDue ? "not_submitted" : "pending";
                         const canSubmit = status === "pending" || (status === "submitted" && !pastDue);
-                        console.log('Assignment:', assignment.title, 'Status:', status, 'Past Due:', pastDue, 'Can Submit:', canSubmit);
                         return (
-                  <div key={assignment.id} className="p-4 border border-accent-200 rounded-lg bg-white hover:bg-accent-25 transition-colors">
-                    <button
-                      className="w-full text-left"
-                      onClick={() => setOpenAssignmentId(openAssignmentId === assignment.id ? null : assignment.id)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-primary-800 mb-2">
-                            {assignment.title}
-                          </h4>
-                          <div className="space-y-2">
-                            {assignment.skillName && (
-                              <div className="flex items-center gap-2">
-                                <div className="bg-accent2-200 px-3 py-1 rounded-lg">
-                                  <span className="text-sm font-medium text-primary-800">{assignment.skillName}</span>
-                                </div>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-primary-600" />
-                              <span className="text-sm font-medium text-primary-700">Due: {formatDateTime(assignment.dueDate)}</span>
-                            </div>
-                              {assignment.fileUrl && (
-                                <div className="flex items-center gap-3">
-                                  <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
-                                    <FileText className="w-4 h-4 text-blue-600" />
-                                    <span 
-                                      className="text-sm font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDownloadAssignment(assignment.id, `${assignment.title}.pdf`);
-                                      }}
-                                    >
-                                      Download Assignment File
-                                    </span>
+                            <Card key={assignment.id} className="p-6 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
+                              <div className="flex justify-between items-start mb-4">
+                                <div className="flex-1">
+                                  <h3 className="text-xl font-bold text-primary-800 mb-3">
+                                    {assignment.title}
+                                  </h3>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    {assignment.skillName && (
+                                      <div className="flex items-center gap-2 bg-accent2-200 px-3 py-2 rounded-lg">
+                                        <span className="text-sm font-medium text-primary-800">{assignment.skillName}</span>
+                                      </div>
+                                    )}
+                                    {assignment.fileUrl && (
+                                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                                        <FileText className="w-4 h-4 text-blue-600" />
+                                        <span 
+                                          className="text-sm font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleDownloadAssignment(assignment.id, `${assignment.title}.pdf`);
+                                          }}
+                                        >
+                                          Download Assignment File
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                              )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-8 ml-2">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
-                            status === "graded" ? "bg-success-500 text-white" :
-                            status === "submitted" ? "bg-accent-500 text-white" :
-                            status === "pending" ? "bg-warning-500 text-white" :
-                            status === "not_submitted" ? "bg-red-500 text-white" :
-                            "bg-neutral-400 text-white"
-                          }`}>
-                            {status === "graded" ? "Graded" :
-                             status === "submitted" ? "Submitted" :
-                             status === "pending" ? "Pending" :
-                             status === "not_submitted" ? "Not Submitted" : status}
-                          </span>
-                          {status === "pending" && !pastDue && (
-                            <div className="flex flex-col gap-2">
-                              {assignment.questionDataUrl && (
-                                <Button 
-                                  variant="primary"
-                                  size="sm"
-                                  className="bg-primary-600 hover:bg-primary-700"
-                                  iconLeft={<BookOpen className="w-4 h-4" />}
+                                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                                  pastDue 
+                                    ? 'bg-red-100 border border-red-300' 
+                                    : 'bg-green-100'
+                                }`}>
+                                  <Calendar className={`w-4 h-4 ${
+                                    pastDue 
+                                      ? 'text-red-600' 
+                                      : 'text-green-600'
+                                  }`} />
+                                  <span className={`text-sm font-medium ${
+                                    pastDue 
+                                      ? 'text-red-600' 
+                                     : 'text-green-600'
+                                  }`}>
+                                    Due: {formatDateTime(assignment.dueDate)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+                                    status === "graded" ? "bg-success-500 text-white" :
+                                    status === "submitted" ? "bg-accent-500 text-white" :
+                                    status === "pending" ? "bg-warning-500 text-white" :
+                                    status === "not_submitted" ? "bg-red-500 text-white" :
+                                    "bg-neutral-400 text-white"
+                                  }`}>
+                                    {status === "graded" ? "Graded" :
+                                     status === "submitted" ? "Submitted" :
+                                     status === "pending" ? "Pending" :
+                                     status === "not_submitted" ? "Not Submitted" : status}
+                                  </span>
+                                  {status === "not_submitted" && (
+                                    <span className="text-sm text-red-600 font-medium">Assignment is past due date</span>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  {status === "pending" && !pastDue && (
+                                    <>
+                                      {assignment.questionUrl && (
+                                        <Button 
+                                          variant="primary"
+                                          size="sm"
+                                          className="btn-primary"
+                                          iconLeft={<BookOpen className="w-4 h-4" />}
+                                          onClick={(e) => { 
+                                            e.preventDefault(); 
+                                            e.stopPropagation(); 
+                                            handleStartQuiz(assignment);
+                                          }}
+                                        >
+                                          Take Assignment
+                                        </Button>
+                                      )}
+                                      {!assignment.questionUrl && (
+                                        <Button 
+                                          variant="secondary"
+                                          size="sm"
+                                          className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-600 hover:to-yellow-700 shadow-lg shadow-yellow-500/25 hover:shadow-yellow-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
+                                          iconLeft={<Upload className="w-4 h-4" />}
                                   onClick={(e) => { 
-                                    e.preventDefault(); 
-                                    e.stopPropagation(); 
-                                    navigate(`/student/assignment/${assignment.id}/take`);
-                                  }}
-                                >
-                                  Take Assignment
-                                </Button>
-                              )}
-                              {!assignment.questionDataUrl && (
-                                <Button 
-                                  variant="primary"
-                                  size="sm"
-                                  className="bg-warning-500 hover:bg-warning-600"
-                                  iconLeft={<Upload className="w-4 h-4" />}
-                                  onClick={(e) => { 
-                                    console.log('Submit button clicked for assignment:', assignment.id);
-                                    e.preventDefault(); 
-                                    e.stopPropagation(); 
-                                    handleOpenUpload(assignment.id); 
-                                  }}
-                                >
-                                  Submit Assignment
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                          {status === "not_submitted" && (
-                            <span className="text-sm text-red-600 font-medium">Assignment is past due date</span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
+                                    e.preventDefault();
+                                            e.stopPropagation(); 
+                                            handleOpenUpload(assignment.id); 
+                                          }}
+                                        >
+                                          Submit Assignment
+                                        </Button>
+                                      )}
+                                    </>
+                                  )}
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setOpenAssignmentId(openAssignmentId === assignment.id ? null : assignment.id)}
+                                    className="btn-secondary"
+                                  >
+                                    {openAssignmentId === assignment.id ? "Hide Details" : "View Details"}
+                                  </Button>
+                                </div>
+                              </div>
 
                     {openAssignmentId === assignment.id && (
                       <div className="mt-4">
@@ -1101,12 +1116,11 @@ export default function SessionDetail() {
                               </div>
                               {status === "submitted" && !pastDue && (
                                 <Button 
-                                  variant="primary"
+                                  variant="secondary"
                                   size="sm"
-                                  className="bg-warning-500 hover:bg-warning-600"
+                                  className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-600 hover:to-yellow-700 shadow-lg shadow-yellow-500/25 hover:shadow-yellow-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
                                   iconLeft={<Upload className="w-4 h-4" />}
                                   onClick={(e) => { 
-                                    console.log('Resubmit button clicked for assignment:', assignment.id);
                                     e.preventDefault(); 
                                     e.stopPropagation(); 
                                     handleOpenUpload(assignment.id); 
@@ -1139,9 +1153,10 @@ export default function SessionDetail() {
                         {/* No inline action here; Submit button shown in header when pending */}
                       </div>
                     )}
-                  </div>
+                            </Card>
                         );
-                      })
+                      })}
+                      </div>
                     )}
                   </>
                 );
