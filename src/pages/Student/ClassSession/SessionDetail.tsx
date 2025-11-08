@@ -17,7 +17,8 @@ import {
   BookOpen,
   ExternalLink,
   Target,
-  CheckSquare
+  CheckSquare,
+  MessageSquare
 } from "lucide-react";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
@@ -25,6 +26,7 @@ import { getCoveredTopicByMeetingId, getAssignmentsByMeetingAndStudent, type Cov
 import { getClassMeetingsByClassId, type ClassMeeting } from "@/api/classMeetings.api";
 import { getStudentId } from "@/lib/utils";
 import { api, downloadSubmission } from "@/api";
+import { submitWritingAssignment } from "@/api/assignments.api";
 import type { ClassDetail } from "@/types/class";
 import type { LearningMaterial } from "@/types/learningMaterial";
 import { config } from "@/lib/config";
@@ -60,6 +62,15 @@ export default function SessionDetail() {
   const [confirmData, setConfirmData] = useState<{
     assignmentId: string;
     file: File;
+  } | null>(null);
+
+  // AI Score dialog state for writing assignments
+  const [aiScoreDialogOpen, setAiScoreDialogOpen] = useState<boolean>(false);
+  const [aiScoreData, setAiScoreData] = useState<{
+    score: number;
+    feedback: string;
+    submissionId: string;
+    isAiScore?: boolean; // lowercase to match API
   } | null>(null);
 
   // Cleanup preview URL
@@ -463,75 +474,188 @@ export default function SessionDetail() {
         return;
       }
 
-      console.log('Step 1: Calling submitAssignment API to get presigned URL...');
-      // Step 1: Call BE to get presigned URL
-      const submitResponse = await api.submitAssignment({
-        assignmentID: assignmentId,
-        studentID: studentId,
-        fileName: file.name,
-        contentType: file.type || 'application/octet-stream',
-        content: null,
+      // Find the assignment to check if it's a writing assignment
+      const currentAssignment = assignments?.find(a => a.id === assignmentId);
+      const isWritingAssignment = currentAssignment?.skillName?.toLowerCase() === 'writing';
+
+      console.log('Assignment type:', { 
+        skillName: currentAssignment?.skillName, 
+        isWritingAssignment 
       });
 
-      const { uploadUrl, storeUrl, contentType, id, createdAt } = submitResponse.data;
-      
-
-      if (!uploadUrl) {
-        throw new Error('No upload URL received from server');
-      }
-
-      
-      
-      // Step 2: Upload to R2 using EXACT same Content-Type as signed
-      const putResp = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': contentType || file.type || 'application/octet-stream' 
-        },
-        body: file,
-      });
-
-     
-      
-
-      // Step 3: Validate upload result
-      if (!putResp.ok) {
-        const errText = await putResp.text().catch(() => '');
-        console.error('R2 upload error details:', errText);
-        throw new Error(`R2 upload failed: ${putResp.status} ${putResp.statusText} ${errText}`);
-      }
-
-      console.log('File uploaded successfully to R2:', storeUrl);
-      alert('Upload / Resubmit thành công!');
-
-      console.log('API call successful, updating UI...');
-      // Update UI to show submission with real data from backend response
-      setAssignments(prev => {
-        if (!prev) return prev;
-        return prev.map(a => {
-          if (a.id !== assignmentId) return a;
-          return {
-            ...a,
-            submissions: [
-              {
-                id: id || `submission-${Date.now()}`, // Use real ID from backend if available
-                assignmentID: a.id,
-                studentID: studentId,
-                storeUrl: storeUrl,
-                content: file.name,
-                score: null,
-                feedback: null,
-                createdAt: createdAt || new Date().toISOString(),
-              },
-              ...(a.submissions || []),
-            ],
+      if (isWritingAssignment) {
+        // Handle writing assignment with AI grading
+        console.log('Step 1: Submitting writing assignment for AI grading...');
+        
+        // Validate file type for writing assignments
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        const allowedExtensions = ['docx', 'doc', 'pdf'];
+        
+        if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+          throw new Error('Only DOCX, DOC, and PDF files are allowed for writing assignments.');
+        }
+        
+        // Create FormData for writing submission
+        const formData = new FormData();
+        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        
+        // Set correct ContentType based on file extension
+        let contentType = file.type;
+        if (!contentType || contentType === 'application/octet-stream') {
+          // Map file extension to correct MIME type
+          const mimeTypes: { [key: string]: string } = {
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'doc': 'application/msword',
+            'pdf': 'application/pdf'
           };
-        });
-      });
+          contentType = mimeTypes[fileExtension] || 'application/octet-stream';
+        }
+        
+        formData.append('StudentId', studentId);
+        formData.append('AssignmentId', assignmentId);
+        formData.append('FileName', fileNameWithoutExt);
+        formData.append('ContentType', contentType);
+        formData.append('File', file);
 
-      setConfirmOpen(false);
-      setConfirmData(null);
-      resetUploadState();
+        
+
+        const writingResponse = await submitWritingAssignment(formData);
+        console.log('Writing response:', writingResponse.data);
+        console.log('Full response:', writingResponse);
+        
+        // Response structure: { success, data: { submissionId, score, feedback, uploadUrl, storeUrl, submittedAt, isAiScore } }
+        const responseData = writingResponse.data.data || writingResponse.data;
+        // API returns 'isAiScore' (lowercase 'i')
+        const { uploadUrl, storeUrl, submissionId, score, feedback, submittedAt, isAiScore } = responseData;
+
+        console.log('Parsed response data:', { uploadUrl, storeUrl, submissionId, score, feedback });
+
+        if (!uploadUrl) {
+          throw new Error('No upload URL received from server');
+        }
+
+        // Step 2: Upload to Cloudflare using PUT
+        console.log('Step 2: Uploading file to Cloudflare with ContentType:', contentType);
+        
+        const putResp = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': contentType,
+          },
+          body: file,
+        });
+
+        if (!putResp.ok) {
+          const errText = await putResp.text().catch(() => '');
+          console.error('Cloudflare upload error details:', errText);
+          throw new Error(`File upload failed: ${putResp.status} ${putResp.statusText}`);
+        }
+
+        console.log('File uploaded successfully to Cloudflare:', storeUrl);
+
+        // Update UI with AI-graded submission
+        setAssignments(prev => {
+          if (!prev) return prev;
+          return prev.map(a => {
+            if (a.id !== assignmentId) return a;
+            return {
+              ...a,
+              submissions: [
+                {
+                  id: submissionId || `submission-${Date.now()}`,
+                  assignmentID: a.id,
+                  studentID: studentId,
+                  storeUrl: storeUrl,
+                  content: file.name,
+                  score: score,
+                  feedback: feedback,
+                  createdAt: submittedAt || new Date().toISOString(),
+                  isAiScore: isAiScore, // lowercase to match API
+                },
+                ...(a.submissions || []),
+              ],
+            };
+          });
+        });
+
+        // Show AI score dialog
+        setAiScoreData({
+          score: score,
+          feedback: feedback,
+          submissionId: submissionId,
+          isAiScore: isAiScore, // lowercase to match API
+        });
+        setAiScoreDialogOpen(true);
+
+        setConfirmOpen(false);
+        setConfirmData(null);
+        resetUploadState();
+        
+      } else {
+        // Handle regular assignment submission
+        console.log('Step 1: Calling submitAssignment API to get presigned URL...');
+        const submitResponse = await api.submitAssignment({
+          assignmentID: assignmentId,
+          studentID: studentId,
+          fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          content: null,
+        });
+
+        const { uploadUrl, storeUrl, contentType, id, createdAt } = submitResponse.data;
+        
+        if (!uploadUrl) {
+          throw new Error('No upload URL received from server');
+        }
+        
+        // Step 2: Upload to R2 using EXACT same Content-Type as signed
+        const putResp = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': contentType || file.type || 'application/octet-stream' 
+          },
+          body: file,
+        });
+
+        // Step 3: Validate upload result
+        if (!putResp.ok) {
+          const errText = await putResp.text().catch(() => '');
+          console.error('R2 upload error details:', errText);
+          throw new Error(`R2 upload failed: ${putResp.status} ${putResp.statusText} ${errText}`);
+        }
+
+        console.log('File uploaded successfully to R2:', storeUrl);
+        alert('Upload / Resubmit thành công!');
+
+        console.log('API call successful, updating UI...');
+        // Update UI to show submission with real data from backend response
+        setAssignments(prev => {
+          if (!prev) return prev;
+          return prev.map(a => {
+            if (a.id !== assignmentId) return a;
+            return {
+              ...a,
+              submissions: [
+                {
+                  id: id || `submission-${Date.now()}`,
+                  assignmentID: a.id,
+                  studentID: studentId,
+                  storeUrl: storeUrl,
+                  content: file.name,
+                  score: null,
+                  feedback: null,
+                  createdAt: createdAt || new Date().toISOString(),
+                },
+                ...(a.submissions || []),
+              ],
+            };
+          });
+        });
+
+        setConfirmOpen(false);
+        setConfirmData(null);
+        resetUploadState();
+      }
       
       // Show success message
       console.log('Submission completed successfully');
@@ -936,11 +1060,20 @@ export default function SessionDetail() {
                       <div className="mt-4">
                         {/* Score Display */}
                         {submission?.score != null && (
-                          <div className="mb-4 p-3 bg-success-50 border border-success-200 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <CheckCircle className="w-5 h-5 text-success-600" />
-                              <span className="text-lg font-bold text-success-700">Score: {submission.score}</span>
+                          <div className="mb-4 space-y-2">
+                            <div className="p-3 bg-success-50 border border-success-200 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-success-600" />
+                                <span className="text-lg font-bold text-success-700">Score: {submission.score}</span>
+                              </div>
                             </div>
+                            {submission.isAiScore === true && (
+                              <div className="p-2 bg-warning-50 border-l-4 border-warning-400 rounded">
+                                <p className="text-xs text-warning-800 font-medium">
+                                  ⚠️ This score is AI-generated for reference only. Your final grade will be determined by your instructor.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -988,11 +1121,18 @@ export default function SessionDetail() {
                           <div className="mb-4 text-sm text-neutral-600">No submission yet.</div>
                         )}
 
-                        {/* Instructor Feedback */}
+                        {/* Feedback Display */}
                         {submission?.feedback && (
                           <div className="mb-4 p-3 bg-info-50 border border-info-200 rounded-lg">
-                            <h5 className="text-sm font-semibold text-info-800 mb-2">Instructor Feedback:</h5>
-                            <p className="text-sm text-info-700 leading-relaxed">{submission.feedback}</p>
+                            <h5 className="text-sm font-semibold text-info-800 mb-2">
+                              {submission.isAiScore === true ? 'AI-Generated Feedback:' : 'Instructor Feedback:'}
+                            </h5>
+                            <p className="text-sm text-info-700 leading-relaxed whitespace-pre-wrap">{submission.feedback}</p>
+                            {submission.isAiScore === true && (
+                              <p className="text-xs text-info-600 mt-2 italic">
+                                This feedback is automatically generated. Your instructor may provide additional feedback.
+                              </p>
+                            )}
                           </div>
                         )}
 
@@ -1145,6 +1285,84 @@ export default function SessionDetail() {
           cancelText="Cancel"
           type="warning"
         />
+
+        {/* AI Score Dialog for Writing Assignments */}
+        <Dialog open={aiScoreDialogOpen} onOpenChange={setAiScoreDialogOpen}>
+          <DialogContent size="lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-primary-800">
+                <CheckCircle className="w-6 h-6 text-success-600" />
+                Submission Successful!
+              </DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <div className="space-y-6">
+                {/* Success Message */}
+                <div className="bg-success-50 border-l-4 border-success-500 p-4 rounded">
+                  <p className="text-success-800 font-medium">
+                    Your writing assignment has been submitted successfully!
+                  </p>
+                </div>
+
+                {/* Score Section */}
+                {aiScoreData && (
+                  <>
+                    <div className="bg-gradient-to-br from-accent-50 to-accent-100 border border-accent-200 rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-16 h-16 bg-accent-500 rounded-full flex items-center justify-center">
+                          <span className="text-2xl font-bold text-white">{aiScoreData.score}</span>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-primary-800 mb-2">
+                            {aiScoreData.isAiScore === true ? 'AI-Generated Score' : 'Score'}
+                          </h3>
+                          {aiScoreData.isAiScore === true && (
+                            <div className="bg-warning-50 border-l-4 border-warning-500 p-3 rounded">
+                              <p className="text-sm text-warning-800 font-medium">
+                                ⚠️ <strong>Important Note:</strong> The score you see is generated by AI for reference only. 
+                                This is NOT your final grade. Your instructor will review your submission and provide the official grade.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Feedback Section */}
+                    {aiScoreData.feedback && (
+                      <div className="bg-white border border-accent-200 rounded-xl p-6">
+                        <h4 className="text-md font-bold text-primary-800 mb-3 flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-accent-500" />
+                          {aiScoreData.isAiScore === true ? 'AI Feedback' : 'Feedback'}
+                        </h4>
+                        <div className="bg-accent-25 rounded-lg p-4">
+                          <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
+                            {aiScoreData.feedback}
+                          </p>
+                        </div>
+                        {aiScoreData.isAiScore === true && (
+                          <p className="text-xs text-neutral-500 mt-3 italic">
+                            This feedback is automatically generated to help you understand your writing. 
+                            Your instructor may provide additional feedback.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </DialogBody>
+            <DialogFooter>
+              <Button 
+                variant="primary" 
+                onClick={() => setAiScoreDialogOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                Got it, thanks!
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
   );
 }

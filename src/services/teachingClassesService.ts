@@ -46,6 +46,7 @@ export interface AssignmentSubmission {
   score: number | null;
   feedback: string | null;
   createdAt: string;
+  isAiScore?: boolean; // API returns lowercase 'i'
 }
 
 export interface MeetingAssignment {
