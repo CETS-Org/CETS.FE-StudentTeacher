@@ -79,6 +79,12 @@ export const updateAssignment = (
   config?: AxiosRequestConfig
 ) => api.put(`/api/ACAD_Assignments/update/${assignmentId}`, assignmentData, config);
 
+// Delete assignment
+export const deleteAssignment = (
+  assignmentId: string,
+  config?: AxiosRequestConfig
+) => api.delete(`/api/ACAD_Assignments/delete/${assignmentId}`, config);
+
 // Download assignment
 export const downloadAssignment = (
   assignmentId: string,

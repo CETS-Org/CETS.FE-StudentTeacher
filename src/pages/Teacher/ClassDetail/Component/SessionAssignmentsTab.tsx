@@ -1,7 +1,7 @@
 // src/components/teacher/SessionAssignmentsTab.tsx
 
 import { useState, useMemo, useEffect } from "react";
-import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet, Bot } from "lucide-react";
+import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet, Bot, Edit2, Trash2 } from "lucide-react";
 import JSZip from 'jszip';
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -14,6 +14,7 @@ import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackP
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
 import BulkGradeImportPopup, { type GradeImportData } from "@/pages/Teacher/ClassDetail/Component/Popup/BulkGradeImportPopup";
 import WritingGradingView from "@/pages/Teacher/ClassDetail/Component/WritingGradingView";
+import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { 
   getAssignmentsByClassMeeting, 
   getSubmissionsByAssignment,
@@ -23,6 +24,7 @@ import {
   downloadAssignment,
   downloadSubmission,
   downloadAllSubmissions,
+  deleteAssignment,
   type AssignmentFromAPI,
   type SubmissionFromAPI 
 } from "@/api/assignments.api";
@@ -97,11 +99,13 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
   const [isBulkImportOpen, setBulkImportOpen] = useState(false);
   const [isWritingGradingOpen, setWritingGradingOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null);
 
   // State cho phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -399,6 +403,37 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
     setWritingGradingOpen(false);
     setSelectedAssignment(null);
     setViewMode('assignments');
+  };
+
+  const handleDeleteAssignment = (assignment: Assignment) => {
+    setAssignmentToDelete(assignment);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
+    
+    try {
+      setLoading(true);
+      await deleteAssignment(assignmentToDelete.assignmentId);
+      
+      // Remove from local state
+      setAssignments(prev => prev.filter(a => a.assignmentId !== assignmentToDelete.assignmentId));
+      
+      // Clear cache
+      if (classMeetingId) {
+        assignmentsCache.delete(classMeetingId);
+      }
+      
+      success('Assignment deleted successfully!');
+      setDeleteConfirmOpen(false);
+      setAssignmentToDelete(null);
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      showError('Failed to delete assignment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBulkGradeImport = async (gradesData: GradeImportData[]) => {
@@ -753,7 +788,21 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   >
                     Download
                   </Button>
-                  <Button variant="secondary">Edit</Button>
+                  <Button 
+                    variant="secondary"
+                    iconLeft={<Edit2 size={16} />}
+                    className="btn-secondary"
+                  >
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="secondary"
+                    onClick={() => handleDeleteAssignment(asm)}
+                    iconLeft={<Trash2 size={16} />}
+                    className="bg-red-100 text-red-700 hover:bg-red-200"
+                  >
+                    Delete
+                  </Button>
                 </div>
               </Card>
               ))}
@@ -955,6 +1004,21 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           onGradeSubmit={handleWritingGradeSubmit}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setAssignmentToDelete(null);
+        }}
+        onConfirm={confirmDeleteAssignment}
+        title="Delete Assignment"
+        message={`Are you sure you want to delete "${assignmentToDelete?.title}"? This action cannot be undone and will delete all submissions.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
 
       {/* Toast Notifications */}
       {toasts.map((toast) => (
