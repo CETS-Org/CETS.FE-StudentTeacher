@@ -38,6 +38,9 @@ export default function BasicInformationStep({
   onFilesChange,
   getMinDateTime,
 }: BasicInformationStepProps) {
+  
+  // Check if this is a speaking assignment
+  const isSpeakingAssignment = skills.find(s => s.lookUpId === selectedSkillId)?.name === "Speaking";
   return (
     <div className="space-y-6 min-h-full">
       <div>
@@ -76,7 +79,7 @@ export default function BasicInformationStep({
 
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-2">
-          Assignment Type
+          Assignment Type <span className="text-red-500">*</span>
         </label>
         <Select
           value={assignmentType}
@@ -84,11 +87,14 @@ export default function BasicInformationStep({
           options={[
             { value: "Homework", label: "Homework" },
             { value: "Quiz", label: "Quiz" },
-            { value: "Test", label: "Test" },
-            { value: "Project", label: "Project" },
-            { value: "Practice", label: "Practice" },
           ]}
+          required
         />
+        <p className="text-xs text-neutral-500 mt-1">
+          {assignmentType === "Homework" 
+            ? "Students will submit files for this assignment" 
+            : "Students will take a test with questions for this assignment"}
+        </p>
       </div>
 
       <div>
@@ -118,15 +124,17 @@ export default function BasicInformationStep({
         />
       </div>
 
-      {/* File Upload (Optional) */}
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
-          Attachments (Optional)
-        </label>
+      {/* File Upload - Required for Homework, Hidden for Quiz */}
+      {assignmentType === "Homework" && (
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">
+            Attachments <span className="text-red-500">*</span>
+          </label>
         <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4">
           <input
             type="file"
             multiple
+            accept=".pdf,.doc,.docx,.xlsx,.zip,.rar,image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-rar-compressed"
             onChange={(e) => {
               if (e.target.files) {
                 onFilesChange(Array.from(e.target.files));
@@ -144,7 +152,7 @@ export default function BasicInformationStep({
               Click to upload or drag and drop
             </span>
             <span className="text-xs text-neutral-500 mt-1">
-              PDF, DOC, DOCX, Images (Max 50MB)
+              PDF, DOC, DOCX, XLSX, ZIP, RAR, Images, Videos (Max 50MB)
             </span>
           </label>
           {files.length > 0 && (
@@ -163,7 +171,8 @@ export default function BasicInformationStep({
             </div>
           )}
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

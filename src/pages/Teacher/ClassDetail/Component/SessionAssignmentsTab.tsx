@@ -26,9 +26,12 @@ import {
   downloadSubmission,
   downloadAllSubmissions,
   createAssignment,
-  type AssignmentFromAPI,
-  type SubmissionFromAPI 
+  getAssignmentById,
 } from "@/api/assignments.api";
+import type {
+  AssignmentFromAPI,
+  SubmissionFromAPI
+} from '@/types/assignment';
 import { getTeacherId } from "@/lib/utils";
 
 // --- CẤU TRÚC DỮ LIỆU ---
@@ -55,29 +58,14 @@ type Assignment = {
   submissionCount: number;
   skillID?: string | null;
   skillName?: string | null;
+  assignmentType?: string; // "Homework", "Quiz", "Speaking", or "file"
+  questionUrl?: string | null; // URL to question JSON for Quiz/Speaking assignments
 };
 
 type AssignmentData = {
   title: string;
   instructions: string;
   dueDate: string;
-};
-
-// Types for Download All Submissions API
-type DownloadUrlItem = {
-  submissionId: string;
-  studentCode: string;
-  studentName: string;
-  downloadUrl: string;
-  fileName: string;
-};
-
-type DownloadAllResponse = {
-  assignmentInfo: {
-    id: string;
-    title: string;
-  };
-  downloadUrls: DownloadUrlItem[];
 };
 
 // --- COMPONENT CHÍNH ---
@@ -92,6 +80,24 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignmentsTabProps) {
   // Toast notifications
   const { toasts, hideToast, success, error: showError } = useToast();
+
+  // Helper function to format date with hours and minutes
+  const formatDueDate = (dueDateString: string): string => {
+    const dueDate = new Date(dueDateString);
+    const year = dueDate.getFullYear();
+    const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+    const day = String(dueDate.getDate()).padStart(2, '0');
+    const hours = String(dueDate.getHours()).padStart(2, '0');
+    const minutes = String(dueDate.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  };
+
+  // Helper function to check if due date has passed
+  const isPastDue = (dueDateString: string): boolean => {
+    const dueDate = new Date(dueDateString);
+    const now = new Date();
+    return dueDate < now;
+  };
   
   // State chung
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -99,12 +105,29 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'assignments' | 'submissions'>('assignments');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [selectedSkillTab, setSelectedSkillTab] = useState<string | null>('all'); // 'all' or skillID
+  // Persist selected skill tab in localStorage
+  const getInitialSkillTab = () => {
+    if (typeof window !== 'undefined' && classMeetingId) {
+      const saved = localStorage.getItem(`assignmentTab_${classMeetingId}`);
+      return saved || 'all';
+    }
+    return 'all';
+  };
+  const [selectedSkillTab, setSelectedSkillTab] = useState<string | null>(getInitialSkillTab()); // 'all' or skillID
+  
+  // Save selected skill tab to localStorage when it changes
+  useEffect(() => {
+    if (classMeetingId && selectedSkillTab) {
+      localStorage.setItem(`assignmentTab_${classMeetingId}`, selectedSkillTab);
+    }
+  }, [selectedSkillTab, classMeetingId]);
   
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [isAdvancedCreateOpen, setAdvancedCreateOpen] = useState(false);
+  const [isAdvancedEditOpen, setAdvancedEditOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
+  const [assignmentToEditAdvanced, setAssignmentToEditAdvanced] = useState<Assignment | null>(null);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const [isGradeOpen, setGradeOpen] = useState(false);
   const [isBulkImportOpen, setBulkImportOpen] = useState(false);
@@ -113,7 +136,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [assignmentToEdit, setAssignmentToEdit] = useState<Assignment | null>(null);
 
   // State cho phân trang
-  const [currentPage, setCurrentPage] = useState(1);
+
   const itemsPerPage = 5;
 
   // --- FETCH ASSIGNMENTS FROM API WITH CACHING ---
@@ -148,21 +171,22 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         
         // Transform API data to component format
         const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
-          // Format date without timezone issues
+          // Keep the full due date with time for comparison
           const dueDate = new Date(apiAsm.dueAt);
-          const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
           
           return {
             id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
             assignmentId: apiAsm.id, // Keep original UUID for API calls
             title: apiAsm.title,
             description: apiAsm.description,
-            dueDate: formattedDueDate,
+            dueDate: apiAsm.dueAt, // Keep full ISO string with time
             storeUrl: apiAsm.storeUrl,
             submissions: [], // Submissions will be loaded separately when viewing
             submissionCount: apiAsm.submissionCount,
             skillID: apiAsm.skillID,
             skillName: apiAsm.skillName,
+            assignmentType: (apiAsm as any).assignmentType || (apiAsm.storeUrl ? "Homework" : "Quiz"), // Determine type
+            questionUrl: (apiAsm as any).questionUrl || null,
           };
         });
         
@@ -173,48 +197,45 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         });
         
         setAssignments(transformedAssignments);
-      } catch (err) {
-        console.error('Error fetching assignments:', err);
-        setError('Failed to load assignments. Please try again later.');
-        setAssignments([]);
-      } finally {
         setLoading(false);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching assignments:', err);
+        setError(err?.message || 'Failed to load assignments');
+        setLoading(false);
+        setAssignments([]);
       }
     };
 
     fetchAssignments();
   }, [classMeetingId]);
 
-  // --- HÀM XỬ LÝ ---
-  // Helper function to refresh assignments
   const refreshAssignments = async () => {
     if (!classMeetingId) return;
     
-    // Clear cache for this classMeetingId
-    assignmentsCache.delete(classMeetingId);
-    
     try {
+      setError(null);
       const response = await getAssignmentsByClassMeeting(classMeetingId);
-      // Handle both response formats: { success: true, data: [...] } or direct array
       const apiAssignments: AssignmentFromAPI[] = response.data.data || response.data;
       
       // Transform API data to component format
       const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
-        // Format date without timezone issues
+        // Keep the full due date with time for comparison
         const dueDate = new Date(apiAsm.dueAt);
-        const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
         
           return {
             id: parseInt(apiAsm.id.split('-')[0], 16), // Convert UUID to number for display
             assignmentId: apiAsm.id, // Keep original UUID for API calls
             title: apiAsm.title,
             description: apiAsm.description,
-            dueDate: formattedDueDate,
+            dueDate: apiAsm.dueAt, // Keep full ISO string with time
             storeUrl: apiAsm.storeUrl,
             submissions: [], // Submissions will be loaded separately when viewing
             submissionCount: apiAsm.submissionCount,
             skillID: apiAsm.skillID,
             skillName: apiAsm.skillName,
+            assignmentType: (apiAsm as any).assignmentType || (apiAsm.storeUrl ? "Homework" : "Quiz"), // Determine type
+            questionUrl: (apiAsm as any).questionUrl || null,
           };
       });
       
@@ -248,73 +269,66 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
     timeLimitMinutes?: number;
     maxAttempts: number;
     isAutoGradable: boolean;
-    showAnswersAfterSubmission: boolean;
-    showAnswersAfterDueDate: boolean;
+    answerVisibility: "immediately" | "after_due_date" | "never";
     questionData: any;
     files: File[];
   }) => {
+    // The actual assignment creation is handled in AdvancedAssignmentPopup
+    // This callback is just to refresh the list after successful creation
     try {
-      // For now, we'll create the assignment with the question data
-      // Later, we'll upload the question JSON to storage and store the URL
-      const teacherId = getTeacherId();
-      if (!teacherId) {
-        showError("Teacher ID is missing. Please login again.");
-        return;
+      await refreshAssignments();
+      // If assignment has a skill, switch to that skill tab
+      if (assignmentData.skillID) {
+        setSelectedSkillTab(assignmentData.skillID);
       }
-
-      if (!classMeetingId) {
-        showError("Class meeting ID is missing.");
-        return;
-      }
-
-      // TODO: Upload questionData JSON to storage and get URL
-      // For now, we'll stringify it (will be replaced with storage upload)
-      const questionDataJson = assignmentData.questionData 
-        ? JSON.stringify(assignmentData.questionData)
-        : null;
-
-      // Create assignment with file if provided
-      if (assignmentData.files.length > 0) {
-        const file = assignmentData.files[0];
-        const contentType = file.type || 'application/octet-stream';
-        
-        const createData = {
-          classMeetingId,
-          teacherId,
-          title: assignmentData.title,
-          description: assignmentData.description,
-          dueDate: assignmentData.dueDate,
-          contentType: contentType,
-          fileName: file.name.replace(/\.[^/.]+$/, ""),
-          skillID: assignmentData.skillID,
-          // TODO: Add other fields when backend is updated
-        };
-
-        // Call create assignment API
-        const response = await createAssignment(createData);
-        
-        // TODO: Upload questionData JSON to storage
-        // const questionDataUrl = await uploadQuestionData(questionDataJson);
-        // Then update assignment with questionDataUrl
-
-        success("Advanced assignment created successfully!");
-      } else {
-        // Create assignment without file
-        // TODO: Implement create assignment without file endpoint
-        success("Assignment created successfully! (Question data will be uploaded separately)");
-      }
-
-      refreshAssignments();
-      setAdvancedCreateOpen(false);
     } catch (err: any) {
-      console.error('Error creating advanced assignment:', err);
-      showError(err?.message || "Failed to create assignment. Please try again.");
+      console.error('Error refreshing assignments after creation:', err);
+      // Don't show error here as the assignment was already created successfully
     }
   };
 
-  const handleEditAssignment = (assignment: Assignment) => {
-    setAssignmentToEdit(assignment);
-    setEditOpen(true);
+  const handleEditAssignment = async (assignment: Assignment) => {
+    // Determine assignment type based on storeUrl and questionUrl
+    const assignmentType = assignment.assignmentType || 
+      (assignment.questionUrl ? (assignment.skillName?.toLowerCase().includes('speaking') ? "Speaking" : "Quiz") : "Homework");
+    
+    if (assignmentType === "Quiz" || assignmentType === "Speaking") {
+      // For Quiz/Speaking assignments, fetch full assignment data to get questionUrl
+      try {
+        let fullAssignmentData = assignment;
+        
+        // Fetch full assignment details to get questionUrl
+        const response = await getAssignmentById(assignment.assignmentId);
+        const assignmentData = response.data;
+        if (assignmentData) {
+          fullAssignmentData = {
+            ...assignment,
+            assignmentId: assignmentData.id || assignment.assignmentId || (assignmentData as any).assignmentId,
+            questionUrl: assignmentData.questionUrl || null,
+            assignmentType: assignmentType,
+          };
+        } else {
+          // If fetch fails but we have the original assignment, use it
+          fullAssignmentData = assignment;
+        }
+        
+        // Use AdvancedAssignmentPopup in edit mode with full data
+        if (!fullAssignmentData.assignmentId) {
+          console.error("Assignment ID is missing in fullAssignmentData:", fullAssignmentData);
+        }
+        setAssignmentToEditAdvanced(fullAssignmentData);
+        setAdvancedEditOpen(true);
+      } catch (err) {
+        console.error("Error fetching assignment details:", err);
+        // Fallback to basic assignment data if fetch fails
+        setAssignmentToEditAdvanced(assignment);
+        setAdvancedEditOpen(true);
+      }
+    } else {
+      // For Homework assignments, use basic EditAssignmentPopup
+      setAssignmentToEdit(assignment);
+      setEditOpen(true);
+    }
   };
 
   const handleUpdateAssignment = async (assignmentData: AssignmentData) => {
@@ -332,426 +346,182 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   };
 
   const handleViewSubmissions = async (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setViewMode('submissions');
+    
     try {
       setLoading(true);
+      const response = await getSubmissionsByAssignment(assignment.assignmentId);
+      const apiSubmissions: SubmissionFromAPI[] = response.data.data || response.data || [];
       
-      // Validate assignmentId
-      if (!assignment.assignmentId || assignment.assignmentId.trim() === '') {
-        showError('Assignment ID is invalid. Please refresh the page and try again.');
-        return;
-      }
+      const transformedSubmissions: Submission[] = apiSubmissions.map((sub) => ({
+        id: sub.id,
+        studentId: sub.studentID,
+        studentName: sub.studentName,
+        studentCode: sub.studentCode,
+        file: sub.storeUrl,
+        content: sub.content,
+        submittedDate: sub.createdAt,
+        score: sub.score,
+        feedback: sub.feedback,
+      }));
       
-      // Fetch submissions from API (pass skillName for Writing assignments)
-      const response = await getSubmissionsByAssignment(
-        assignment.assignmentId,
-        assignment.skillName || undefined
-      );
-      // API returns { success: true, data: [...] } so we need response.data.data
-      const apiSubmissions: SubmissionFromAPI[] = response.data.data || response.data;
+      // Update the assignment with submissions
+      setAssignments(prev => prev.map(asm => 
+        asm.id === assignment.id 
+          ? { ...asm, submissions: transformedSubmissions }
+          : asm
+      ));
       
-      // Transform API data to component format
-      const transformedSubmissions: Submission[] = apiSubmissions.map((apiSub) => {
-        // Format submitted date
-        const submittedDate = new Date(apiSub.createdAt);
-        const formattedDate = `${submittedDate.getFullYear()}-${String(submittedDate.getMonth() + 1).padStart(2, '0')}-${String(submittedDate.getDate()).padStart(2, '0')}`;
-        
-        return {
-          id: apiSub.id,
-          studentId: apiSub.studentID,
-          studentName: apiSub.studentName,
-          studentCode: apiSub.studentCode,
-          file: apiSub.storeUrl,
-          content: apiSub.content,
-          submittedDate: formattedDate,
-          score: apiSub.score,
-          feedback: apiSub.feedback,
-        };
-      });
+      setSelectedAssignment(prev => prev ? {
+        ...prev,
+        submissions: transformedSubmissions
+      } : null);
       
-      // Update assignment with fetched submissions
-      const updatedAssignment = {
-        ...assignment,
-        submissions: transformedSubmissions,
-      };
-      
-      setSelectedAssignment(updatedAssignment);
-      
-      // Check if this is a Writing assignment - open special grading view
-      if (assignment.skillName?.toLowerCase() === 'writing') {
-        setWritingGradingOpen(true);
-      } else {
-        setViewMode('submissions');
-        setCurrentPage(1);
-      }
-    } catch (err) {
+      setLoading(false);
+    } catch (err: any) {
       console.error('Error fetching submissions:', err);
-      showError('Failed to load submissions. Please try again.');
-    } finally {
+      showError(err?.message || 'Failed to load submissions');
       setLoading(false);
     }
   };
 
   const handleBackToAssignments = () => {
-    setSelectedAssignment(null);
     setViewMode('assignments');
-  };
-
-  const handleOpenFeedback = (submission: Submission) => {
-    setSelectedSubmission(submission);
-    setFeedbackOpen(true);
-  };
-
-  const handleOpenGrade = (submission: Submission) => {
-    setSelectedSubmission(submission);
-    setGradeOpen(true);
-  };
-
-  const handleFeedbackSubmit = async (feedback: string, submissionId: string) => {
-    try {
-      await updateSubmissionFeedback(submissionId, feedback);
-      
-      // Refresh submissions after update
-      if (selectedAssignment) {
-        await handleViewSubmissions(selectedAssignment);
-      }
-      
-      setFeedbackOpen(false);
-      success('Feedback submitted successfully!');
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      showError('Failed to submit feedback. Please try again.');
-    }
-  };
-
-  const handleGradeSubmit = async (score: number, submissionId: string) => {
-    try {
-      await updateSubmissionScore(submissionId, score);
-      
-      // Refresh submissions after update
-      if (selectedAssignment) {
-        await handleViewSubmissions(selectedAssignment);
-      }
-      
-      setGradeOpen(false);
-      success('Score submitted successfully!');
-    } catch (error) {
-      console.error('Error submitting score:', error);
-      showError('Failed to submit score. Please try again.');
-    }
-  };
-
-  const handleWritingGradeSubmit = async (submissionId: string, score: number, feedback: string) => {
-    try {
-      // Update both score and feedback
-      const promises = [];
-      
-      if (score !== null && score !== undefined) {
-        promises.push(updateSubmissionScore(submissionId, score));
-      }
-      
-      if (feedback && feedback.trim() !== '') {
-        promises.push(updateSubmissionFeedback(submissionId, feedback));
-      }
-      
-      await Promise.all(promises);
-      
-      // Update the submission in the local state
-      if (selectedAssignment) {
-        const updatedSubmissions = selectedAssignment.submissions.map(sub =>
-          sub.id === submissionId
-            ? { ...sub, score, feedback }
-            : sub
-        );
-        setSelectedAssignment({
-          ...selectedAssignment,
-          submissions: updatedSubmissions
-        });
-      }
-      
-      success('Grade and feedback saved successfully!');
-    } catch (error) {
-      console.error('Error submitting grade:', error);
-      throw error; // Re-throw to be caught by WritingGradingView
-    }
-  };
-
-  const handleCloseWritingGrading = () => {
-    setWritingGradingOpen(false);
     setSelectedAssignment(null);
-    setViewMode('assignments');
-  };
-
-  const handleBulkGradeImport = async (gradesData: GradeImportData[]) => {
-    try {
-      // Format data for API - only include non-null fields
-      const submissions = gradesData.map((grade) => {
-        const submission: {
-          submissionId: string;
-          score?: number;
-          feedback?: string;
-        } = {
-          submissionId: grade.submissionId,
-        };
-        
-        // Only include score if it's not null
-        if (grade.score !== null) {
-          submission.score = grade.score;
-        }
-        
-        // Only include feedback if it's not null
-        if (grade.feedback !== null) {
-          submission.feedback = grade.feedback;
-        }
-        
-        return submission;
-      });
-
-      // Call bulk update API
-      const response = await bulkUpdateSubmissions(submissions);
-      
-      // Refresh submissions after update
-      if (selectedAssignment) {
-        await handleViewSubmissions(selectedAssignment);
-      }
-      
-      // Handle response
-      const { data } = response;
-      if (data.success) {
-        if (data.data.failedCount > 0) {
-          // Partial success
-          success(`Updated ${data.data.updatedCount} record(s). ${data.data.failedCount} failed.`);
-          
-          // Log failed items for debugging
-          const failedItems = data.data.results.filter((r: any) => r.status === 'failed');
-          if (failedItems.length > 0) {
-            console.warn('Failed to update:', failedItems);
-          }
-        } else {
-          // Complete success
-          success(`Successfully imported ${data.data.updatedCount} record(s)!`);
-        }
-      }
-    } catch (error: any) {
-      console.error('Error importing grades:', error);
-      
-      // Extract error message from response if available
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          'Failed to import grades and feedback. Please try again.';
-      
-      throw new Error(errorMessage);
-    }
   };
 
   const handleDownloadAssignment = async (assignment: Assignment) => {
     try {
-      setLoading(true);
-      
-      // Validate assignmentId
-      if (!assignment.assignmentId || assignment.assignmentId.trim() === '') {
-        showError('Assignment ID is invalid. Please refresh the page and try again.');
-        return;
-      }
-      
-      // Call download API
       const response = await downloadAssignment(assignment.assignmentId);
-      const { downloadUrl, assignmentInfo } = response.data;
-      
-      if (!downloadUrl) {
-        showError('No download URL available for this assignment.');
-        return;
-      }
-      
-      // Create a temporary link to download the file
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `${assignmentInfo.title || assignment.title}.docx`; // Default to DOCX for Word documents
-      link.target = '_blank';
-      
-      // Trigger download
+      link.href = url;
+      link.setAttribute('download', `${assignment.title}.pdf`);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      
-      success('Assignment downloaded successfully!');
-    } catch (error) {
-      console.error('Error downloading assignment:', error);
-      showError('Failed to download assignment. Please try again.');
-    } finally {
-      setLoading(false);
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      success("Assignment downloaded successfully!");
+    } catch (err: any) {
+      console.error('Error downloading assignment:', err);
+      showError(err?.message || 'Failed to download assignment');
     }
   };
 
   const handleDownloadSubmission = async (submission: Submission) => {
     try {
-      setLoading(true);
-      
-      // Validate submissionId
-      if (!submission.id || submission.id.trim() === '') {
-        showError('Submission ID is invalid. Please refresh the page and try again.');
-        return;
-      }
-      
-      // Call download API
       const response = await downloadSubmission(submission.id);
-      const { downloadUrl, submissionInfo } = response.data;
-      
-      if (!downloadUrl) {
-        showError('No download URL available for this submission.');
-        return;
-      }
-      
-      // Create a temporary link to download the file
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `${submission.studentName}_submission.docx`; // Default to DOCX for Word documents
-      link.target = '_blank';
-      
-      // Trigger download
+      link.href = url;
+      link.setAttribute('download', `submission_${submission.studentCode}.pdf`);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      
-      success('Submission downloaded successfully!');
-    } catch (error) {
-      console.error('Error downloading submission:', error);
-      showError('Failed to download submission. Please try again.');
-    } finally {
-      setLoading(false);
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      success("Submission downloaded successfully!");
+    } catch (err: any) {
+      console.error('Error downloading submission:', err);
+      showError(err?.message || 'Failed to download submission');
     }
   };
 
-  const handleDownloadAllSubmissions = async () => {
+  const handleDownloadAllSubmissions = async (assignment: Assignment) => {
     try {
-      setLoading(true);
-      
-      if (!selectedAssignment || selectedAssignment.submissions.length === 0) {
-        showError('No submissions to download.');
-        return;
-      }
-      
-      // Validate assignmentId
-      if (!selectedAssignment.assignmentId || selectedAssignment.assignmentId.trim() === '') {
-        showError('Assignment ID is invalid. Please refresh the page and try again.');
-        return;
-      }
-      
-      // Call download all submissions API
-      const response = await downloadAllSubmissions(selectedAssignment.assignmentId);
-      const data: DownloadAllResponse = response.data;
-      
-      if (!data.downloadUrls || data.downloadUrls.length === 0) {
-        showError('No submissions available for download.');
-        return;
-      }
-      
-      // Create ZIP file
-      const zip = new JSZip();
-      let successCount = 0;
-      let failCount = 0;
-      
-      // Download each submission and add to ZIP
-      for (const item of data.downloadUrls) {
-        try {
-          // Fetch file content from download URL
-          const fileResponse = await fetch(item.downloadUrl);
-          if (!fileResponse.ok) {
-            console.error(`Failed to fetch file for ${item.studentCode}`);
-            failCount++;
-            continue;
-          }
-          
-          const fileBlob = await fileResponse.blob();
-          
-          // Create folder structure: submissions/StudentCode/FileName
-          // Keep original extension but replace filename with student name
-          let fileName: string;
-          if (item.fileName && item.fileName.includes('.')) {
-            // Extract extension from original fileName
-            const fileExtension = item.fileName.split('.').pop();
-            fileName = `${item.studentName}_submission.${fileExtension}`;
-          } else {
-            // Fallback if no extension found
-            fileName = `${item.studentName}_submission.docx`;
-          }
-          const folderPath = `submissions/${item.studentCode}/${fileName}`;
-          
-          zip.file(folderPath, fileBlob);
-          successCount++;
-        } catch (error) {
-          console.error(`Error downloading submission for ${item.studentCode}:`, error);
-          failCount++;
-        }
-      }
-      
-      if (successCount === 0) {
-        showError('Failed to download any submissions. Please try again.');
-        return;
-      }
-      
-      // Generate ZIP file
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      
-      // Download ZIP file
+      const response = await downloadAllSubmissions(assignment.assignmentId);
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(zipBlob);
-      link.download = `${data.assignmentInfo.title}_submissions.zip`;
+      link.href = url;
+      link.setAttribute('download', `all_submissions_${assignment.title}.zip`);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      success("All submissions downloaded successfully!");
+    } catch (err: any) {
+      console.error('Error downloading all submissions:', err);
+      showError(err?.message || 'Failed to download all submissions');
+    }
+  };
+
+  const handleUpdateFeedback = async (feedback: string, submissionId: string) => {
+    try {
+      await updateSubmissionFeedback(submissionId, feedback);
+      success("Feedback updated successfully!");
       
-      // Clean up object URL
-      URL.revokeObjectURL(link.href);
-      
-      if (failCount === 0) {
-        success(`All ${successCount} submissions downloaded successfully!`);
-      } else {
-        success(`${successCount} submissions downloaded successfully. ${failCount} failed.`);
+      // Refresh submissions
+      if (selectedAssignment) {
+        await handleViewSubmissions(selectedAssignment);
       }
-    } catch (error) {
-      console.error('Error downloading all submissions:', error);
-      showError('Failed to download submissions. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      console.error('Error updating feedback:', err);
+      showError(err?.message || 'Failed to update feedback');
+    }
+  };
+
+  const handleUpdateScore = async (score: number, submissionId: string) => {
+        try {
+      await updateSubmissionScore(submissionId, score);
+      success("Score updated successfully!");
+      
+      // Refresh submissions
+      if (selectedAssignment) {
+        await handleViewSubmissions(selectedAssignment);
+      }
+    } catch (err: any) {
+      console.error('Error updating score:', err);
+      showError(err?.message || 'Failed to update score');
+    }
+  };
+
+  const handleBulkUpdate = async (updates: GradeImportData[]) => {
+    try {
+      const submissions = updates.map(update => ({
+        submissionId: update.submissionId,
+        score: update.score ?? null,
+        feedback: update.feedback ?? null,
+      }));
+      
+      await bulkUpdateSubmissions(submissions);
+      success("Bulk update completed successfully!");
+      
+      // Refresh submissions
+      if (selectedAssignment) {
+        await handleViewSubmissions(selectedAssignment);
+      }
+      
+      setBulkImportOpen(false);
+    } catch (err: any) {
+      console.error('Error bulk updating:', err);
+      showError(err?.message || 'Failed to bulk update submissions');
     }
   };
   
-  // --- LOGIC PHÂN TRANG ---
-  const submissionsToDisplay = selectedAssignment?.submissions || [];
-  const totalPages = Math.ceil(submissionsToDisplay.length / itemsPerPage);
-  const paginatedSubmissions = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return submissionsToDisplay.slice(startIndex, startIndex + itemsPerPage);
-  }, [currentPage, submissionsToDisplay]);
-  const handlePageChange = (page: number) => setCurrentPage(page);
-
-  // --- LOGIC GROUP BY SKILL ---
+  // Group assignments by skill
   const skillGroups = useMemo(() => {
     const groups: { [key: string]: { skillID: string | null; skillName: string; assignments: Assignment[] } } = {
-      'all': { skillID: null, skillName: 'All', assignments: [] },
-      'no-skill': { skillID: null, skillName: 'No Skill', assignments: [] }
+      'all': { skillID: null, skillName: 'All', assignments: [] }
     };
     
     assignments.forEach(asm => {
-      const skillKey = asm.skillID || 'no-skill';
+      const key = asm.skillID || 'no-skill';
       const skillName = asm.skillName || 'No Skill';
       
-      if (!groups[skillKey]) {
-        groups[skillKey] = {
-          skillID: asm.skillID || null,
-          skillName: skillName,
-          assignments: []
-        };
+      if (!groups[key]) {
+        groups[key] = { skillID: asm.skillID || null, skillName, assignments: [] };
       }
-      groups[skillKey].assignments.push(asm);
-    });
+      groups[key].assignments.push(asm);
     
-    // Add all assignments to 'all' group
-    groups['all'].assignments = assignments;
+      // Also add to 'all' group
+      groups['all'].assignments.push(asm);
+    });
     
     return groups;
   }, [assignments]);
 
+  // Filter assignments based on selected skill tab
   const filteredAssignments = useMemo(() => {
     if (selectedSkillTab === 'all') {
       return assignments;
@@ -759,70 +529,80 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
     return skillGroups[selectedSkillTab || 'all']?.assignments || [];
   }, [assignments, selectedSkillTab, skillGroups]);
 
-  // --- RENDER ---
-  // Show loading state
-  if (loading) {
+  // Pagination for submissions
+  const [currentPage, setCurrentPage] = useState(1);
+  const submissionsToDisplay = selectedAssignment?.submissions || [];
+  const totalPages = Math.ceil(submissionsToDisplay.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSubmissions = submissionsToDisplay.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Reset page when switching assignments
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedAssignment]);
+
+  if (loading && assignments.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Loader />
       </div>
     );
   }
 
-  // Show error state
-  if (error) {
+  if (error && assignments.length === 0) {
     return (
-      <div className="bg-warning-50 border border-warning-200 rounded-lg p-6 text-center">
-        <p className="text-warning-700 font-medium">{error}</p>
-        <Button
-          variant="primary"
-          onClick={() => window.location.reload()}
-          className="mt-4"
-        >
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <Button onClick={refreshAssignments} variant="secondary">
           Retry
         </Button>
       </div>
     );
   }
 
-  // Show message if no classMeetingId
-  if (!classMeetingId) {
     return (
-      <div className="bg-accent-50 border border-accent-200 rounded-lg p-8 text-center">
-        <Calendar className="w-12 h-12 text-accent-400 mx-auto mb-4" />
-        <p className="text-accent-700 font-medium">No class session selected</p>
-        <p className="text-accent-600 text-sm mt-2">
-          Please select a class session to view assignments.
-        </p>
-      </div>
-    );
-  }
+    <div className="space-y-6">
+      {/* Toast Notifications */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+          duration={3000}
+        />
+      ))}
 
-  return (
-    <div className="p-4 bg-white rounded-lg">
-      {/* Chế độ xem danh sách Assignments */}
-      {viewMode === 'assignments' && (
+      {viewMode === 'assignments' ? (
         <div>
+          {/* Header */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-primary-800">Session Assignments</h2>
+            <h2 className="text-2xl font-bold text-primary-900">Assignments</h2>
             <div className="flex gap-2">
               <Button 
+                variant="secondary"
                 onClick={() => setCreateOpen(true)} 
                 iconLeft={<PlusCircle size={16} />}
-                variant="secondary"
+                className="btn-secondary"
               >
-                Simple Assignment
+                Create Assignment
               </Button>
               <Button 
+                variant="primary"
                 onClick={() => setAdvancedCreateOpen(true)} 
                 iconLeft={<PlusCircle size={16} />}
                 className="btn-primary"
               >
-                Create Assignment
+                Create Advanced Assignment
               </Button>
             </div>
           </div>
-          
+
           {/* Skill Tabs */}
           {assignments.length > 0 && Object.keys(skillGroups).length > 1 && (
             <div className="mb-6 border-b border-accent-200">
@@ -844,16 +624,18 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             </div>
           )}
           
+          {/* Empty State */}
           {assignments.length === 0 ? (
             <div className="text-center py-12 bg-accent-25 rounded-lg">
               <Calendar className="w-16 h-16 text-accent-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-primary-800 mb-2">
                 No Assignments Yet
               </h3>
-              <p className="text-neutral-600 mb-6">
-                Create your first assignment for this session.
+              <p className="text-neutral-600 mb-4">
+                Create your first assignment to get started.
               </p>
               <Button 
+                variant="secondary"
                 onClick={() => setCreateOpen(true)} 
                 iconLeft={<PlusCircle size={16} />}
                 className="btn-secondary"
@@ -887,15 +669,29 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                           <span className="text-sm font-medium text-primary-800">{asm.skillName}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 bg-error-200 px-3 py-2 rounded-lg">
-                        <Calendar className="w-4 h-4 text-primary-600" />
-                        <span className="text-sm font-medium text-primary-700">Due: {asm.dueDate}</span>
-                      </div>
                       <div className="flex items-center gap-2 bg-warning-200 px-3 py-2 rounded-lg">
                         <Users className="w-4 h-4 text-primary-600" />
                         <span className="text-sm font-medium text-primary-700">{asm.submissionCount} Submissions</span>
                       </div>
                     </div>
+                  </div>
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                    isPastDue(asm.dueDate) 
+                      ? 'bg-red-100 border border-red-300' 
+                      : 'bg-green-100'
+                  }`}>
+                    <Calendar className={`w-4 h-4 ${
+                      isPastDue(asm.dueDate) 
+                        ? 'text-red-600' 
+                        : 'text-green-600'
+                    }`} />
+                    <span className={`text-sm font-medium ${
+                      isPastDue(asm.dueDate) 
+                        ? 'text-red-600' 
+                       : 'text-green-600'
+                    }`}>
+                      Due: {formatDueDate(asm.dueDate)}
+                    </span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 justify-between items-center">
@@ -906,22 +702,25 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   >
                     View Submissions
                   </Button>
-                  <div className="flex gap-3">
-                    <Button 
-                      variant="secondary"
-                      onClick={() => handleDownloadAssignment(asm)}
-                      iconLeft={<Download size={16} />}
-                      className="btn-secondary"
-                    >
-                      Download
-                    </Button>
+                  <div className="flex gap-2">
                     <Button 
                       variant="secondary"
                       onClick={() => handleEditAssignment(asm)}
-                      className="btn-secondary !bg-gradient-to-r !from-yellow-400 !to-yellow-500 hover:!from-yellow-600 hover:!to-yellow-700 !shadow-yellow-500/25 hover:!shadow-yellow-600/30"
+                      iconLeft={<FilePenLine size={16} />}
+                      className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-600 hover:to-yellow-700 shadow-lg shadow-yellow-500/25 hover:shadow-yellow-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
                     >
                       Edit
                     </Button>
+                    {asm.storeUrl && (
+                    <Button 
+                      variant="secondary"
+                        onClick={() => handleDownloadAssignment(asm)}
+                        iconLeft={<Download size={16} />}
+                        className="bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/25 hover:shadow-green-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
+                    >
+                        Download
+                    </Button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -930,140 +729,134 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             </div>
           )}
         </div>
-      )}
-
-      {/* Chế độ xem danh sách Submissions */}
-      {viewMode === 'submissions' && selectedAssignment && (
+      ) : (
         <div>
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <Button variant="ghost" onClick={handleBackToAssignments} className="mb-2 -ml-3">
-                <ArrowLeft size={16} className="mr-2"/> 
+          {/* Submissions View */}
+        <div className="mb-6">
+          <Button
+            variant="secondary"
+            onClick={handleBackToAssignments}
+            iconLeft={<ArrowLeft size={16} />}
+            className="btn-secondary"
+          >
+            Back to Assignments
               </Button>
-              <h2 className="text-xl font-semibold">{selectedAssignment.title}: Submissions</h2>
             </div>
-            <div className="flex gap-2">
+
+        {selectedAssignment && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-primary-900 mb-2">
+                {selectedAssignment.title}
+              </h2>
+              <p className="text-neutral-600">
+                {selectedAssignment.submissionCount} submission{selectedAssignment.submissionCount !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            <div className="flex gap-2 mb-6">
               <Button 
-                disabled={selectedAssignment.submissions.length === 0} 
+                variant="secondary"
                 onClick={() => setBulkImportOpen(true)}
-                className="btn-secondary flex items-center"
                 iconLeft={<FileSpreadsheet size={16} />}
-                variant="primary"
+                className="btn-secondary"
               >
-                Import Grades   
+                Bulk Import Grades
               </Button>
               <Button 
-                disabled={selectedAssignment.submissions.length === 0} 
-                onClick={handleDownloadAllSubmissions}
-                className="btn-primary flex items-center"
+                variant="secondary"
+                onClick={() => handleDownloadAllSubmissions(selectedAssignment)}
                 iconLeft={<Download size={16} />}
-                variant="primary"
+                className="btn-secondary"
               >
-                Download All
+                Download All Submissions
               </Button>
             </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center min-h-[200px]">
+                <Loader />
           </div>
-          <div className="overflow-x-auto border rounded-lg">
-            <table className="min-w-full bg-white">
-              <thead className="bg-gradient-to-r from-accent-200 to-accent-300">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">#</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Submission</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Submitted Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Score</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Feedback</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {paginatedSubmissions.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-neutral-500">
-                      No submissions yet
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedSubmissions.map((sub, index) => (
-                    <tr key={sub.id} className="hover:bg-accent-25/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-700">
-                        {(currentPage - 1) * itemsPerPage + index + 1}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-primary-800">{sub.studentName}</span>
-                          <span className="text-xs text-neutral-500">{sub.studentCode}</span>
+            ) : paginatedSubmissions.length === 0 ? (
+              <div className="text-center py-12 bg-accent-25 rounded-lg">
+                <Users className="w-16 h-16 text-accent-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-primary-800 mb-2">
+                  No Submissions Yet
+                </h3>
+                <p className="text-neutral-600">
+                  Students haven't submitted their work for this assignment yet.
+                </p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          {sub.file ? (
-                            <Button
-                              variant="secondary"
-                              onClick={() => handleDownloadSubmission(sub)}
-                              iconLeft={<Download size={14} />}
-                              className="btn-secondary text-[10px] px-1 py-0 h-5 leading-none"
-                            >
-                              Download
-                            </Button>
-                          ) : sub.content ? (
-                            <span className="text-sm text-neutral-600 max-w-xs truncate">
-                              {sub.content}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-neutral-400 italic">No submission</span>
-                          )}
+            ) : (
+              <div className="space-y-4">
+                {paginatedSubmissions.map((submission) => (
+                  <Card key={submission.id} className="p-6 border border-accent-200 bg-white">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-primary-800 mb-2">
+                          {submission.studentName}
+                        </h4>
+                        <p className="text-sm text-neutral-600 mb-1">
+                          Student Code: {submission.studentCode}
+                        </p>
+                        <p className="text-sm text-neutral-500">
+                          Submitted: {new Date(submission.submittedDate).toLocaleString()}
+                        </p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
-                        {sub.submittedDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {sub.score !== null ? (
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-success-100 text-success-700">
-                              {sub.score}
+                        {submission.score !== null && (
+                          <span className="text-lg font-bold text-primary-600">
+                            Score: {submission.score}
                             </span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-neutral-400 italic">Not graded</span>
                         )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {sub.feedback ? (
-                          <div className="max-w-xs">
-                            <p className="text-sm text-neutral-700 line-clamp-2" title={sub.feedback}>
-                              {sub.feedback}
+                      </div>
+                    </div>
+
+                    {submission.feedback && (
+                      <div className="mb-4 p-3 bg-neutral-50 rounded-lg">
+                        <p className="text-sm text-neutral-700">
+                          <span className="font-medium">Feedback:</span> {submission.feedback}
                             </p>
                           </div>
-                        ) : (
-                          <span className="text-sm text-neutral-400 italic">No feedback</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => handleOpenFeedback(sub)} 
-                            className="text-gray-500 hover:text-green-600 transition-colors"
-                            title="Give feedback"
-                          >
-                            <MessageSquare size={20} />
-                          </button>
-                          <button 
-                            onClick={() => handleOpenGrade(sub)} 
-                            className="text-gray-500 hover:text-purple-600 transition-colors"
-                            title="Grade submission"
-                          >
-                            <FilePenLine size={20} />
-                          </button>
+                    )}
+
+                    <div className="flex gap-2">
+                      {submission.file && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => handleDownloadSubmission(submission)}
+                          iconLeft={<Download size={16} />}
+                          className="btn-secondary"
+                        >
+                          Download Submission
+                        </Button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedSubmission(submission);
+                          setFeedbackOpen(true);
+                        }}
+                        iconLeft={<MessageSquare size={16} />}
+                        className="btn-secondary"
+                      >
+                        Add Feedback
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedSubmission(submission);
+                          setGradeOpen(true);
+                        }}
+                        iconLeft={<Eye size={16} />}
+                        className="btn-secondary"
+                      >
+                        Grade
+                      </Button>
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </Card>
+                ))}
+
           {totalPages > 1 && (
             <div className="mt-4">
               <Pagination
@@ -1071,6 +864,10 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                 totalItems={submissionsToDisplay.length} itemsPerPage={itemsPerPage}
                 onPageChange={handlePageChange}
               />
+                  </div>
+                )}
+              </div>
+            )}
             </div>
           )}
         </div>
@@ -1084,10 +881,21 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         classMeetingId={classMeetingId}
       />
       <AdvancedAssignmentPopup
-        open={isAdvancedCreateOpen}
-        onOpenChange={setAdvancedCreateOpen}
+        open={isAdvancedCreateOpen || isAdvancedEditOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAdvancedCreateOpen(false);
+            setAdvancedEditOpen(false);
+            setAssignmentToEditAdvanced(null);
+          } else if (isAdvancedEditOpen) {
+            setAdvancedEditOpen(open);
+          } else {
+            setAdvancedCreateOpen(open);
+          }
+        }}
         onSubmit={handleAdvancedCreateAssignment}
         classMeetingId={classMeetingId}
+        editAssignment={assignmentToEditAdvanced || undefined}
       />
       {assignmentToEdit && (
         <EditAssignmentPopup
@@ -1106,52 +914,59 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           }}
         />
       )}
+      {selectedSubmission && (
+        <>
       <FeedbackPopup 
         open={isFeedbackOpen} 
         onOpenChange={setFeedbackOpen} 
-        onSubmit={handleFeedbackSubmit}
-        initialFeedback={selectedSubmission?.feedback || ""}
-        submissionId={selectedSubmission?.id || ""}
+            submissionId={selectedSubmission.id}
+            initialFeedback={selectedSubmission.feedback || ""}
+            onSubmit={handleUpdateFeedback}
       />
       <GradeScorePopup 
         open={isGradeOpen} 
         onOpenChange={setGradeOpen} 
-        onSubmit={handleGradeSubmit}
-        initialScore={selectedSubmission?.score?.toString() || ""}
-        submissionId={selectedSubmission?.id || ""}
-      />
+            submissionId={selectedSubmission.id}
+            initialScore={selectedSubmission.score !== null ? selectedSubmission.score.toString() : ""}
+            onSubmit={handleUpdateScore}
+          />
+        </>
+      )}
+      {selectedAssignment && (
       <BulkGradeImportPopup 
         open={isBulkImportOpen} 
         onOpenChange={setBulkImportOpen} 
-        onSubmit={handleBulkGradeImport}
-        assignmentTitle={selectedAssignment?.title || ""}
-        submissions={selectedAssignment?.submissions.map(sub => ({
+          assignmentTitle={selectedAssignment.title}
+          submissions={selectedAssignment.submissions.map(sub => ({
           id: sub.id,
           studentCode: sub.studentCode,
           studentName: sub.studentName,
-        })) || []}
+          }))}
+          onSubmit={handleBulkUpdate}
       />
-
-      {/* Writing Grading View */}
-      {isWritingGradingOpen && selectedAssignment && (
+      )}
+      {selectedAssignment && selectedAssignment.skillName === "Writing" && (
         <WritingGradingView
           assignmentTitle={selectedAssignment.title}
           submissions={selectedAssignment.submissions}
-          onClose={handleCloseWritingGrading}
-          onGradeSubmit={handleWritingGradeSubmit}
+          onClose={() => setWritingGradingOpen(false)}
+          onGradeSubmit={async (submissionId: string, score: number, feedback: string) => {
+            try {
+              await updateSubmissionScore(submissionId, score);
+              if (feedback) {
+                await updateSubmissionFeedback(submissionId, feedback);
+              }
+              success("Grade submitted successfully!");
+              if (selectedAssignment) {
+                await handleViewSubmissions(selectedAssignment);
+              }
+            } catch (err: any) {
+              console.error('Error submitting grade:', err);
+              showError(err?.message || 'Failed to submit grade');
+            }
+          }}
         />
       )}
-
-      {/* Toast Notifications */}
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => hideToast(toast.id)}
-          duration={3000}
-        />
-      ))}
     </div>
   );
 }

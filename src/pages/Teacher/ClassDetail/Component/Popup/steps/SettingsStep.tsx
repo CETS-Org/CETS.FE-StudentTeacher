@@ -4,31 +4,45 @@ import Input from "@/components/ui/Input";
 interface SettingsStepProps {
   totalPoints: number;
   onTotalPointsChange: (value: number) => void;
+  assignmentType?: string;
   timeLimitMinutes: number | undefined;
   onTimeLimitChange: (value: number | undefined) => void;
   maxAttempts: number;
   onMaxAttemptsChange: (value: number) => void;
   isAutoGradable: boolean;
   onAutoGradableChange: (value: boolean) => void;
-  showAnswersAfterSubmission: boolean;
-  onShowAnswersAfterSubmissionChange: (value: boolean) => void;
-  showAnswersAfterDueDate: boolean;
-  onShowAnswersAfterDueDateChange: (value: boolean) => void;
+  answerVisibility: "immediately" | "after_due_date" | "never";
+  onAnswerVisibilityChange: (value: "immediately" | "after_due_date" | "never") => void;
+  allowBackNavigation: boolean;
+  onAllowBackNavigationChange: (value: boolean) => void;
+  showProgress: boolean;
+  onShowProgressChange: (value: boolean) => void;
+  showQuestionNumbers: boolean;
+  onShowQuestionNumbersChange: (value: boolean) => void;
+  autoSubmit: boolean;
+  onAutoSubmitChange: (value: boolean) => void;
 }
 
 export default function SettingsStep({
   totalPoints,
   onTotalPointsChange,
+  assignmentType,
   timeLimitMinutes,
   onTimeLimitChange,
   maxAttempts,
   onMaxAttemptsChange,
   isAutoGradable,
   onAutoGradableChange,
-  showAnswersAfterSubmission,
-  onShowAnswersAfterSubmissionChange,
-  showAnswersAfterDueDate,
-  onShowAnswersAfterDueDateChange,
+  answerVisibility,
+  onAnswerVisibilityChange,
+  allowBackNavigation,
+  onAllowBackNavigationChange,
+  showProgress,
+  onShowProgressChange,
+  showQuestionNumbers,
+  onShowQuestionNumbersChange,
+  autoSubmit,
+  onAutoSubmitChange,
 }: SettingsStepProps) {
   return (
     <div className="space-y-6 min-h-full">
@@ -45,8 +59,8 @@ export default function SettingsStep({
               type="number"
               value={totalPoints}
               onChange={(e) => onTotalPointsChange(parseInt(e.target.value) || 0)}
-              disabled
-              hint="Calculated from questions"
+              disabled={assignmentType === "Quiz"}
+              hint={assignmentType === "Quiz" ? "Calculated from questions" : "Enter total points for this assignment"}
             />
           </div>
           <div>
@@ -106,17 +120,19 @@ export default function SettingsStep({
           <Eye className="w-5 h-5 text-primary-600" />
           <h4 className="font-semibold text-neutral-900">Answer Visibility</h4>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
             <input
-              type="checkbox"
-              id="showAnswersAfterSubmission"
-              checked={showAnswersAfterSubmission}
-              onChange={(e) => onShowAnswersAfterSubmissionChange(e.target.checked)}
-              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+              type="radio"
+              id="showAnswersImmediately"
+              name="answerVisibility"
+              value="immediately"
+              checked={answerVisibility === "immediately"}
+              onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
+              className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
             />
             <div className="flex-1">
-              <label htmlFor="showAnswersAfterSubmission" className="text-sm font-medium text-neutral-900 cursor-pointer">
+              <label htmlFor="showAnswersImmediately" className="text-sm font-medium text-neutral-900 cursor-pointer">
                 Show correct answers immediately after submission
               </label>
               <p className="text-xs text-neutral-500 mt-1">
@@ -127,11 +143,13 @@ export default function SettingsStep({
 
           <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
             <input
-              type="checkbox"
+              type="radio"
               id="showAnswersAfterDueDate"
-              checked={showAnswersAfterDueDate}
-              onChange={(e) => onShowAnswersAfterDueDateChange(e.target.checked)}
-              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+              name="answerVisibility"
+              value="after_due_date"
+              checked={answerVisibility === "after_due_date"}
+              onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
+              className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
             />
             <div className="flex-1">
               <label htmlFor="showAnswersAfterDueDate" className="text-sm font-medium text-neutral-900 cursor-pointer">
@@ -139,6 +157,107 @@ export default function SettingsStep({
               </label>
               <p className="text-xs text-neutral-500 mt-1">
                 Students will see correct answers once the due date has passed
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+            <input
+              type="radio"
+              id="neverShowAnswers"
+              name="answerVisibility"
+              value="never"
+              checked={answerVisibility === "never"}
+              onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
+              className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
+            />
+            <div className="flex-1">
+              <label htmlFor="neverShowAnswers" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                Never show correct answers
+              </label>
+              <p className="text-xs text-neutral-500 mt-1">
+                Students will never see the correct answers
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Question Display Settings */}
+      <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Eye className="w-5 h-5 text-primary-600" />
+          <h4 className="font-semibold text-neutral-900">Question Display Settings</h4>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+            <input
+              type="checkbox"
+              id="allowBackNavigation"
+              checked={allowBackNavigation}
+              onChange={(e) => onAllowBackNavigationChange(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+            />
+            <div className="flex-1">
+              <label htmlFor="allowBackNavigation" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                Allow back navigation
+              </label>
+              <p className="text-xs text-neutral-500 mt-1">
+                Students can go back to previous questions during the assignment
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+            <input
+              type="checkbox"
+              id="showProgress"
+              checked={showProgress}
+              onChange={(e) => onShowProgressChange(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+            />
+            <div className="flex-1">
+              <label htmlFor="showProgress" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                Show progress indicator
+              </label>
+              <p className="text-xs text-neutral-500 mt-1">
+                Display progress bar showing how many questions students have completed
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+            <input
+              type="checkbox"
+              id="showQuestionNumbers"
+              checked={showQuestionNumbers}
+              onChange={(e) => onShowQuestionNumbersChange(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+            />
+            <div className="flex-1">
+              <label htmlFor="showQuestionNumbers" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                Show question numbers
+              </label>
+              <p className="text-xs text-neutral-500 mt-1">
+                Display question numbers (e.g., Question 1 of 10)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+            <input
+              type="checkbox"
+              id="autoSubmit"
+              checked={autoSubmit}
+              onChange={(e) => onAutoSubmitChange(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+            />
+            <div className="flex-1">
+              <label htmlFor="autoSubmit" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                Auto-submit when time expires
+              </label>
+              <p className="text-xs text-neutral-500 mt-1">
+                Automatically submit the assignment when the time limit is reached
               </p>
             </div>
           </div>

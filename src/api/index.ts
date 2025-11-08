@@ -24,7 +24,7 @@ import {
   getCoursePackageDetail,
   getCoursePackageById,
 } from './coursePackage.api';
-import { uploadToPresignedUrl } from './file.api';
+import { uploadToPresignedUrl, uploadJsonToPresignedUrl } from './file.api';
 import { createMonthlyPayment, createFullPayment } from './payment.api';
 import {
   getReservationItems,
@@ -45,7 +45,7 @@ import {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
 } from './classMeetings.api';
-import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl, getUpcomingAssignmentsForStudent, downloadAssignment, downloadSubmission, getAssignmentById, submitAssignmentAnswers } from './assignments.api';
+import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl, getUpcomingAssignmentsForStudent, downloadAssignment, downloadSubmission, getAssignmentById, submitAssignmentAnswers, createSpeakingAssignment, createQuizAssignment, createAssignment, deleteAssignment } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
 import { getAcademicResults, getCourseDetails } from './academicResults.api';
 import { 
@@ -104,6 +104,7 @@ export const api = {
 
   // File upload
   uploadToPresignedUrl,
+  uploadJsonToPresignedUrl,
 
   // Payments
   createMonthlyPayment,
@@ -134,6 +135,10 @@ export const api = {
   downloadSubmission,
   getAssignmentById,
   submitAssignmentAnswers,
+  createSpeakingAssignment,
+  createQuizAssignment,
+  createAssignment,
+  deleteAssignment,
   // HR Teacher Availability
   createTeacherAvailability,
   updateTeacherAvailability,
@@ -183,6 +188,7 @@ export {
   getCoursePackageDetail,
   getCoursePackageById,
   uploadToPresignedUrl,
+  uploadJsonToPresignedUrl,
   createMonthlyPayment,
   createFullPayment,
   getReservationItems,
@@ -203,6 +209,9 @@ export {
   downloadSubmission,
   getAssignmentById,
   submitAssignmentAnswers,
+  createSpeakingAssignment,
+  createQuizAssignment,
+  createAssignment,
   createTeacherAvailability,
   updateTeacherAvailability,
   deleteTeacherAvailability,

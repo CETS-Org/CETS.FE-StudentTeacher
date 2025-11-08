@@ -12,8 +12,7 @@ interface PreviewStepProps {
   timeLimitMinutes: number | undefined;
   maxAttempts: number;
   isAutoGradable: boolean;
-  showAnswersAfterSubmission: boolean;
-  showAnswersAfterDueDate: boolean;
+  answerVisibility: "immediately" | "after_due_date" | "never";
 }
 
 export default function PreviewStep({
@@ -27,8 +26,7 @@ export default function PreviewStep({
   timeLimitMinutes,
   maxAttempts,
   isAutoGradable,
-  showAnswersAfterSubmission,
-  showAnswersAfterDueDate,
+  answerVisibility,
 }: PreviewStepProps) {
   return (
     <div className="space-y-6 min-h-full">
@@ -81,14 +79,19 @@ export default function PreviewStep({
             <span className={`px-3 py-1 rounded-full ${isAutoGradable ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-600'}`}>
               {isAutoGradable ? '✓ Auto-Grading Enabled' : 'Manual Grading'}
             </span>
-            {showAnswersAfterSubmission && (
+            {answerVisibility === "immediately" && (
               <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700">
                 Answers after submission
               </span>
             )}
-            {showAnswersAfterDueDate && (
+            {answerVisibility === "after_due_date" && (
               <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700">
                 Answers after due date
+              </span>
+            )}
+            {answerVisibility === "never" && (
+              <span className="px-3 py-1 rounded-full bg-neutral-100 text-neutral-600">
+                Answers never shown
               </span>
             )}
           </div>

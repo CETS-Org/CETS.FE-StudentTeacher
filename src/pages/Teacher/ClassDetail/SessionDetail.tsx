@@ -30,7 +30,26 @@ const tabs = [
 
 export default function ClassDetailPage() {
   const { id: classId, sessionId: classMeetingId } = useParams<{ id: string; sessionId: string }>();
-  const [activeTab, setActiveTab] = useState(tabs[0].id);
+  
+  // Persist active tab in localStorage
+  const getInitialTab = () => {
+    if (typeof window !== 'undefined' && classMeetingId) {
+      const saved = localStorage.getItem(`sessionTab_${classMeetingId}`);
+      // Validate that the saved tab exists in tabs array
+      if (saved && tabs.some(tab => tab.id === saved)) {
+        return saved;
+      }
+    }
+    return tabs[0].id;
+  };
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+  
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    if (classMeetingId && activeTab) {
+      localStorage.setItem(`sessionTab_${classMeetingId}`, activeTab);
+    }
+  }, [activeTab, classMeetingId]);
   const [loadingContext, setLoadingContext] = useState(false);
   const [errorContext, setErrorContext] = useState<string | null>(null);
   const [sessionContent, setSessionContent] = useState<SessionContent | null>(null);

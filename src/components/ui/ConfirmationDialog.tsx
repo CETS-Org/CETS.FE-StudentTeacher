@@ -24,10 +24,10 @@ export default function ConfirmationDialog({
   cancelText = 'Cancel',
   type = 'danger'
 }: ConfirmationDialogProps) {
-  if (!isOpen) return null;
-
   // Handle escape key
   useEffect(() => {
+    if (!isOpen) return;
+    
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
@@ -36,7 +36,12 @@ export default function ConfirmationDialog({
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+  }, [isOpen, onClose]);
+
+
+  if (!isOpen) {
+    return null;
+  }
 
   const getIconColor = () => {
     switch (type) {
@@ -68,15 +73,15 @@ export default function ConfirmationDialog({
     <>
       {/* Background overlay */}
       <div 
-        className="fixed inset-0 bg-black/20 transition-opacity"
+        className="fixed inset-0 bg-black/20 transition-opacity z-[60]"
         onClick={onClose}
       ></div>
       
       {/* Dialog Container */}
-      <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex items-center justify-center min-h-full p-4 text-center">
+      <div className="fixed inset-0 z-[60] overflow-y-auto pointer-events-none">
+        <div className="flex items-center justify-center min-h-full p-4 text-center pointer-events-auto">
           {/* Dialog */}
-          <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8">
+          <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full max-w-md">
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
               <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10 ${getIconColor()}`}>

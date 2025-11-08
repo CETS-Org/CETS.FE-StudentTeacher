@@ -1,5 +1,22 @@
 import type { AxiosRequestConfig } from 'axios';
 import { api, endpoint } from './api';
+import type {
+  AssignmentFromAPI,
+  SubmissionFromAPI,
+  UpcomingAssignment,
+  CreateSpeakingAssignmentRequest,
+  SpeakingAssignmentFromAPI,
+  CreateQuizAssignmentRequest,
+  QuizAssignmentFromAPI,
+  CreateAssignmentRequest,
+  UpdateAssignmentRequest,
+  CreateSubmissionRequest,
+  CreateSubmissionWithPresignedUrlRequest,
+  SubmitAssignmentAnswersRequest,
+  UpdateSubmissionFeedbackRequest,
+  UpdateSubmissionScoreRequest,
+  BulkUpdateSubmissionsRequest,
+} from '@/types/assignment';
 
 export const getAssignmentsByMeetingAndStudent = (
   classMeetingId: string,
@@ -31,53 +48,45 @@ export const updateSubmissionFeedback = (
   submissionId: string,
   feedback: string,
   config?: AxiosRequestConfig
-) => api.put(`/api/ACAD_Submissions/update-feedback`, { submissionId, feedback }, config);
+) => api.put(`/api/ACAD_Submissions/update-feedback`, { submissionId, feedback } as UpdateSubmissionFeedbackRequest, config);
 
 // Update submission score
 export const updateSubmissionScore = (
   submissionId: string,
   score: number,
   config?: AxiosRequestConfig
-) => api.put(`/api/ACAD_Submissions/update-score`, { submissionId, score }, config);
+) => api.put(`/api/ACAD_Submissions/update-score`, { submissionId, score } as UpdateSubmissionScoreRequest, config);
 
 // Bulk update submission scores and feedback
 export const bulkUpdateSubmissions = (
-  submissions: Array<{ 
-    submissionId: string; 
-    score?: number | null; 
-    feedback?: string | null;
-  }>,
+  submissions: BulkUpdateSubmissionsRequest['submissions'],
   config?: AxiosRequestConfig
-) => api.put(`/api/ACAD_Submissions/bulk-update`, { submissions }, config);
+) => api.put(`/api/ACAD_Submissions/bulk-update`, { submissions } as BulkUpdateSubmissionsRequest, config);
 
 // Create assignment
 export const createAssignment = (
-  assignmentData: {
-    classMeetingId: string;
-    teacherId: string;
-    title: string;
-    description: string;
-    dueDate: string;
-    contentType: string;
-    fileName: string;
-  },
+  assignmentData: CreateAssignmentRequest,
   config?: AxiosRequestConfig
 ) => api.post(`/api/ACAD_Assignments/create-assignment`, assignmentData, config);
 
 // Update assignment
 export const updateAssignment = (
   assignmentId: string,
-  assignmentData: {
-    id: string;
-    title: string;
-    description: string;
-    dueDate: string;
-    storeUrl?: string;
-    contentType?: string;
-    fileName?: string;
-  },
+  assignmentData: UpdateAssignmentRequest,
   config?: AxiosRequestConfig
 ) => api.put(`/api/ACAD_Assignments/update/${assignmentId}`, assignmentData, config);
+
+// Delete assignment
+export const deleteAssignment = (
+  assignmentId: string,
+  config?: AxiosRequestConfig
+) => api.delete(`/api/ACAD_Assignments/${assignmentId}`, config);
+
+// Get presigned URL for question JSON upload (for updates)
+export const getQuestionJsonUploadUrl = (
+  fileName?: string,
+  config?: AxiosRequestConfig
+) => api.get(`/api/ACAD_Assignments/question-json-upload-url${fileName ? `?fileName=${encodeURIComponent(fileName)}` : ''}`, config);
 
 // Download assignment
 export const downloadAssignment = (
@@ -107,54 +116,15 @@ export const downloadAllSubmissions = (
 
 // Create submission with presigned URL
 export const createSubmissionWithPresignedUrl = (
-  submissionData: {
-    assignmentID: string;
-    studentID: string;
-    fileName: string;
-    contentType: string;
-  },
+  submissionData: CreateSubmissionWithPresignedUrlRequest,
   config?: AxiosRequestConfig
 ) => api.post('/api/ACAD_Submissions/create-with-presigned-url', submissionData, config);
 
 // Submit assignment
 export const submitAssignment = (
-  submissionData: {
-    assignmentID: string;
-    studentID: string;
-    fileName: string;
-    contentType: string;
-    content: string | null;
-  },
+  submissionData: CreateSubmissionRequest,
   config?: AxiosRequestConfig
 ) => api.post('/api/ACAD_Submissions/submit', submissionData, config);
-
-// Types for Assignment API
-export interface AssignmentFromAPI {
-  id: string;
-  classMeetingId: string;
-  title: string;
-  description: string | null;
-  storeUrl: string | null;
-  dueAt: string;
-  createdAt: string;
-  submissionCount: number;
-  skillID?: string | null;
-  skillName?: string | null;
-}
-
-// Types for Submission API
-export interface SubmissionFromAPI {
-  id: string;
-  assignmentID: string;
-  studentID: string;
-  studentName: string;
-  studentCode: string;
-  storeUrl: string | null;
-  content: string | null;
-  score: number | null;
-  feedback: string | null;
-  createdAt: string;
-}
 
 // Get assignment by ID
 export const getAssignmentById = (
@@ -164,15 +134,7 @@ export const getAssignmentById = (
 
 // Submit assignment answers (for question-based assignments)
 export const submitAssignmentAnswers = (
-  submissionData: {
-    assignmentID: string;
-    answers: Array<{
-      questionId: string;
-      answer: any;
-      timestamp?: string;
-    }>;
-    audioBlob?: Blob | null;
-  },
+  submissionData: SubmitAssignmentAnswersRequest,
   config?: AxiosRequestConfig
 ) => api.post('/api/ACAD_Submissions/submit-answers', submissionData, config);
 
@@ -245,15 +207,16 @@ export const getUpcomingAssignmentsForStudent = async (
   }
 };
 
-export interface UpcomingAssignment {
-  id: string;
-  title: string;
-  dueAt: string;
-  className: string;
-  classId: string;
-  classMeetingId: string;
-  hasSubmission: boolean;
-  isOverdue: boolean;
-}
+// Create speaking assignment
+export const createSpeakingAssignment = (
+  assignmentData: CreateSpeakingAssignmentRequest,
+  config?: AxiosRequestConfig
+) => api.post(`${endpoint.assignments}/create-speaking-assignment`, assignmentData, config);
 
+
+// Create quiz assignment
+export const createQuizAssignment = (
+  assignmentData: CreateQuizAssignmentRequest,
+  config?: AxiosRequestConfig
+) => api.post(`${endpoint.assignments}/create-quiz-assignment`, assignmentData, config);
 

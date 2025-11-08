@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { cn, getStudentId } from "@/lib/utils";
 import { getUpcomingAssignmentsForStudent } from "@/api/assignments.api";
-import type { UpcomingAssignment } from "@/api/assignments.api";
+import type { UpcomingAssignment } from "@/types/assignment";
 
 export interface SubItem {
   id: string;

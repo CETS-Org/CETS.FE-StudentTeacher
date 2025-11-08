@@ -78,7 +78,7 @@ export default function Toast({ message, type = 'info', duration = 5000, onClose
   };
 
   return (
-    <div className={`fixed top-4 right-4 z-50 max-w-md w-full animate-slide-in-right`}>
+    <div className={`fixed top-4 right-4 z-[60] max-w-md w-full animate-slide-in-right`}>
       <div className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${getStyles()}`}>
         <div className="flex-shrink-0 mt-0.5">
           {getIcon()}
