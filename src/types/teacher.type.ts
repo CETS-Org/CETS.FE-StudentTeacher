@@ -14,7 +14,9 @@ import type { Account } from "./account.type";
 //     updatedAt: string | null;
 //     isDeleted: boolean;
 //   }
-
+export interface Teacher extends Account {
+  teacherInfo: TeacherInfo | null;
+}
 export interface TeacherCredentialResponse {
   credentialId: string;
   credentialTypeId: string;

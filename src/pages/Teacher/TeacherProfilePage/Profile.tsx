@@ -1,9 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
+import Loader from "@/components/ui/Loader";
+import { getUserInfo } from "@/lib/utils";
+import { getTeacherById, getListCredentialType, getListCredentialByTeacherId, updateTeacher } from "@/api/teacher.api";
+import type { Teacher, CredentialTypeResponse, TeacherCredentialResponse, UpdateTeacherProfile } from "@/types/teacher.type";
+import { formatDate } from "@/helper/helper.service";
+import { checkEmailExist, checkCIDExist } from "@/api/account.api";
 import {
+  User as UserIcon,
   User2,
   Camera,
   Trash2,
@@ -16,33 +23,67 @@ import {
   FileText,
   Award,
   Edit3,
+  Copy,
+  GraduationCap,
 } from "lucide-react";
 
 const crumbs: Crumb[] = [{ label: "Profile" }];
 
 export default function TeacherProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const userInfo = getUserInfo();
+  const id = userInfo?.id || null;
+  const [credentialTypes, setCredentialTypes] = useState<CredentialTypeResponse[]>([]);
+  const [certificates, setCertificates] = useState<TeacherCredentialResponse[]>([]);
+  const [qualifications, setQualifications] = useState<TeacherCredentialResponse[]>([]);
+  const [credentialsLoading, setCredentialsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [emailCheckTimer, setEmailCheckTimer] = useState<number | null>(null);
+  const [cidCheckTimer, setCidCheckTimer] = useState<number | null>(null);
+  const [newCertName, setNewCertName] = useState("");
+  const [newCertLevel, setNewCertLevel] = useState("");
 
-  // mock state
-  const [profile, setProfile] = useState({
-    fullName: "Joe Johnson",
-    dob: "1995-03-15",
-    email: "joe.johnson@email.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Main Street, Apt 4B\nNew York, NY 10001\nUnited States",
-    teacherCode: "INT-2025-001234",
-    years: "4",
-    bio:
-      "I have over 5 years of experience teaching English, specializing in IELTS and academic writing. I have helped more than 200 students achieve their target band scores, with a focus on practical strategies and confidence building. My teaching style is interactive and student-centered, encouraging learners to actively participate and apply their knowledge in real-life situations.",
-    certs: ["TESOL Certificate", "IELTS Trainer Certification", "CELTA"],
+  // edit model aligned with UpdateTeacherProfile
+  const [profile, setProfile] = useState<UpdateTeacherProfile>({
+    teacherCode: null,
+    email: "",
+    phoneNumber: "",
+    yearsExperience: 0,
+    fullName: "",
+    dateOfBirth: "",
+    cid: "",
+    address: "",
+    avatarUrl: null,
+    bio: "",
+    credentials: null,
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const onChange =
-    (key: keyof typeof profile) =>
+    (key: keyof UpdateTeacherProfile) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setProfile((p) => ({ ...p, [key]: e.target.value }));
+      const v = e.target.value;
+      if (key === "cid") {
+        const vv = v.replace(/\D/g, "").slice(0, 12);
+        setProfile((p) => ({ ...p, cid: vv }));
+      } else if (key === "yearsExperience") {
+        setProfile((p) => ({ ...p, yearsExperience: Number(v || 0) }));
+      } else if (key === "phoneNumber") {
+        setProfile((p) => ({ ...p, phoneNumber: v }));
+      } else if (key === "dateOfBirth") {
+        setProfile((p) => ({ ...p, dateOfBirth: v }));
+      } else if (key === "email") {
+        setProfile((p) => ({ ...p, email: v }));
+      } else if (key === "address") {
+        setProfile((p) => ({ ...p, address: v }));
+      } else if (key === "bio") {
+        setProfile((p) => ({ ...p, bio: v }));
+      } else if (key === "fullName") {
+        setProfile((p) => ({ ...p, fullName: v }));
+      }
     };
 
   const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,22 +94,263 @@ export default function TeacherProfilePage() {
   };
 
   const onRemoveAvatar = () => setAvatarUrl(null);
-  const onToggleEdit = () => setIsEditing((s) => !s);
-
-  const onSave = () => {
-    // TODO: call API
-    setIsEditing(false);
+  const onToggleEdit = () => {
+    if (!isEditing) {
+      // starting edit: clear temp certificate inputs
+      setNewCertName("");
+      setNewCertLevel("");
+    }
+    setIsEditing((s) => !s);
   };
 
-  const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-    <input
-      {...props}
-      disabled={!isEditing}
-      className={`w-full border rounded-md px-3 py-2 text-sm ${
-        props.className || ""
-      } ${!isEditing ? "bg-gray-50" : ""}`}
-    />
-  );
+  const onSave = async () => {
+    if (!id) return;
+    // validate all fields
+    const newErrors: Record<string, string> = {};
+    const e1 = validateFullName(profile.fullName); if (e1) newErrors.fullName = e1;
+    const e2 = validateEmail(profile.email || ""); if (e2) newErrors.email = e2;
+    const e3 = validatePhone(profile.phoneNumber || null); if (e3) newErrors.phone = e3;
+    const e4 = validateDateOfBirth(profile.dateOfBirth || null); if (e4) newErrors.dob = e4;
+    const e5 = validateCID(profile.cid || null); if (e5) newErrors.cid = e5;
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    try {
+      await updateTeacher(id, profile);
+      const fresh = await getTeacherById(id);
+      setAvatarUrl(fresh.avatarUrl || null);
+      setProfile((p) => ({
+        ...p,
+        fullName: fresh.fullName || "",
+        dateOfBirth: fresh.dateOfBirth || "",
+        email: fresh.email || "",
+        phoneNumber: fresh.phoneNumber || "",
+        address: fresh.address || "",
+        cid: fresh.cid || "",
+        teacherCode: fresh.teacherInfo?.teacherCode || null,
+        yearsExperience: fresh.teacherInfo?.yearsExperience ?? 0,
+        bio: fresh.teacherInfo?.bio || "",
+        avatarUrl: fresh.avatarUrl || null,
+        credentials: null,
+      }));
+      // reload credentials lists
+      try {
+        setCredentialsLoading(true);
+        const types: CredentialTypeResponse[] = await getListCredentialType();
+        setCredentialTypes(types);
+        const creds: TeacherCredentialResponse[] = await getListCredentialByTeacherId(id);
+        const certificateType = types.find((t) => t.name === "Certificate");
+        const qualificationType = types.find((t) => t.name === "Qualification");
+        const certList = creds.filter((c) => certificateType && c.credentialTypeId === certificateType.id);
+        const qualList = creds.filter((c) => qualificationType && c.credentialTypeId === qualificationType.id);
+        setCertificates(certList);
+        setQualifications(qualList);
+      } finally {
+        setCredentialsLoading(false);
+      }
+      setIsEditing(false);
+      setNewCertName("");
+      setNewCertLevel("");
+    } catch (err) {
+      setError("Failed to update teacher profile");
+    }
+  };
+
+  // Removed Input component wrapper to prevent focus loss on re-render
+  
+  // Validation helpers (mirroring Student)
+  const validateEmail = (email: string): string => {
+    if (!email || email.trim() === "") return "Email is required";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    return "";
+  };
+
+  const validatePhone = (phone: string | null): string => {
+    if (!phone || phone.trim() === "") return "Phone number is required";
+    const phoneRegex = /^0\d{9,10}$/;
+    if (!phoneRegex.test(phone)) return "Phone must start with 0 and have 10 or 11 digits";
+    return "";
+  };
+
+  const validateDateOfBirth = (dateOfBirth: string | null): string => {
+    if (!dateOfBirth || dateOfBirth.trim() === "") return "Date of birth is required";
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+    if (actualAge < 18) return "You must be at least 18 years old";
+    if (birthDate > today) return "Date of birth cannot be in the future";
+    return "";
+  };
+
+  const validateCID = (cid: string | null): string => {
+    if (!cid || cid.trim() === "") return "CID is required";
+    const cidRegex = /^\d{12}$/;
+    if (!cidRegex.test(cid)) return "CID must be exactly 12 digits";
+    return "";
+  };
+
+  const validateFullName = (fullName: string | null): string => {
+    if (!fullName || fullName.trim() === "") return "Full name is required";
+    const trimmed = fullName.trim();
+    if (trimmed.length < 2) return "Full name must be at least 2 characters";
+    const nameRegex = /^[\p{L}\s'-]+$/u;
+    if (!nameRegex.test(trimmed)) return "Only letters, spaces, hyphens, apostrophes allowed";
+    if (!/[\p{L}]/u.test(trimmed)) return "Full name must contain at least one letter";
+    if (/\s{2,}/.test(trimmed)) return "Full name cannot contain consecutive spaces";
+    if (/^[-']|[-']$/.test(trimmed)) return "Full name cannot start or end with - or '";
+    return "";
+  };
+
+  const handleFieldChange = (field: keyof UpdateTeacherProfile, value: string | null) => {
+    // Update state
+    if (field === "cid") {
+      const v = (value || "").replace(/\D/g, "").slice(0, 12);
+      setProfile((p) => ({ ...p, cid: v }));
+    } else if (field === "yearsExperience") {
+      setProfile((p) => ({ ...p, yearsExperience: Number(value || 0) }));
+    } else if (field === "phoneNumber") {
+      setProfile((p) => ({ ...p, phoneNumber: value || "" }));
+    } else if (field === "dateOfBirth") {
+      setProfile((p) => ({ ...p, dateOfBirth: value || "" }));
+    } else if (field === "email") {
+      setProfile((p) => ({ ...p, email: value || "" }));
+    } else if (field === "address") {
+      setProfile((p) => ({ ...p, address: value || "" }));
+    } else if (field === "bio") {
+      setProfile((p) => ({ ...p, bio: value || "" }));
+    } else if (field === "fullName") {
+      setProfile((p) => ({ ...p, fullName: value || "" }));
+    }
+    let err = "";
+    switch (field) {
+      case "fullName":
+        err = validateFullName(value);
+        break;
+      case "email": {
+        const v = value || "";
+        err = validateEmail(v);
+        if (!err && id && v) {
+          if (emailCheckTimer) window.clearTimeout(emailCheckTimer);
+          const t = window.setTimeout(async () => {
+            try {
+              const exists = await checkEmailExist(v);
+              setErrors((prev) => ({ ...prev, email: exists ? "" : "Email already exists" }));
+            } catch {}
+          }, 500);
+          setEmailCheckTimer(t as unknown as number);
+        }
+        break;
+      }
+      case "phoneNumber":
+        err = validatePhone(value);
+        break;
+      case "dateOfBirth":
+        err = validateDateOfBirth(value);
+        break;
+      case "cid": {
+        const v = (value || "").replace(/\D/g, "").slice(0, 12);
+        err = validateCID(v);
+        if (!err && id && v) {
+          if (cidCheckTimer) window.clearTimeout(cidCheckTimer);
+          const t = window.setTimeout(async () => {
+            try {
+              const exists = await checkCIDExist(v);
+              setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
+            } catch {}
+          }, 500);
+          setCidCheckTimer(t as unknown as number);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    setErrors((prev) => {
+      const n = { ...prev };
+      if (err) n[field] = err; else delete n[field];
+      return n;
+    });
+  };
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) {
+        setError("Teacher ID is required");
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const teacher: Teacher = await getTeacherById(id);
+        setAvatarUrl(teacher.avatarUrl || null);
+        setProfile((p) => ({
+          ...p,
+          fullName: teacher.fullName || "",
+          dateOfBirth: teacher.dateOfBirth || "",
+          email: teacher.email || "",
+          phoneNumber: teacher.phoneNumber || "",
+          address: teacher.address || "",
+          cid: teacher.cid || "",
+          teacherCode: teacher.teacherInfo?.teacherCode || null,
+          yearsExperience: teacher.teacherInfo?.yearsExperience ?? 0,
+          bio: teacher.teacherInfo?.bio || "",
+          avatarUrl: teacher.avatarUrl || null,
+        }));
+
+        // Load credential types and lists
+        try {
+          setCredentialsLoading(true);
+          const types: CredentialTypeResponse[] = await getListCredentialType();
+          setCredentialTypes(types);
+          const creds: TeacherCredentialResponse[] = await getListCredentialByTeacherId(id);
+          const certificateType = types.find((t) => t.name === "Certificate");
+          const qualificationType = types.find((t) => t.name === "Qualification");
+          const certList = creds.filter((c) => certificateType && c.credentialTypeId === certificateType.id);
+          const qualList = creds.filter((c) => qualificationType && c.credentialTypeId === qualificationType.id);
+          setCertificates(certList);
+          setQualifications(qualList);
+        } catch {
+          setCertificates([]);
+          setQualifications([]);
+        } finally {
+          setCredentialsLoading(false);
+        }
+      } catch (err) {
+        setError(`Failed to load teacher data`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="p-6 mx-auto mt-16">
+        <div className="flex items-center justify-center h-64">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 mx-auto mt-16">
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+            <UserIcon className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Teacher</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()} variant="secondary" size="sm">Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   const Textarea = (
     props: React.TextareaHTMLAttributes<HTMLTextAreaElement>
@@ -83,245 +365,430 @@ export default function TeacherProfilePage() {
   );
 
   return (
-    <div className="p-6 max-w-full space-y-8">
+    <div className="sm:p-6">
       <Breadcrumbs items={crumbs} />
-    
-      <div className="p-4 md:p-6 mx-6 md:mx-48">
-        {/* Page Title */}
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <User2 className="w-6 h-6 text-neutral-700" />
-              <h1 className="text-xl font-semibold">Teacher Profile</h1>
-            </div>
-          </div>
 
-          {/* EDIT BUTTON — icon + text cùng hàng */}
-          <Button
-            onClick={onToggleEdit}
-            iconLeft={<Edit3 className="w-4 h-4" />}
-            size="md"
-            variant="primary"
-            className="px-4 py-2 font-medium bg-sky-500 hover:bg-sky-600 text-white"
-            >
-            {isEditing ? "Stop Editing" : "Edit Profile"}
-          </Button>
-
-        </div>
-
-        {/* Profile Picture */}
-        <Card className="mb-6 border border-gray-200 shadow-md ">
-          <div className="p-4">
-            
-            <div className="flex items-center gap-4">
-              <div className="relative ">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="avatar"
-                    className="w-20 h-20 rounded-full object-cover border "
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full bg-neutral-200 grid place-content-center border ">
-                    <User2 className="w-8 h-8 text-neutral-500" />
+      {/* Header aligned with Student profile */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mt-3">
+          <h1 className="text-2xl font-bold text-gray-900"></h1>
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <>
+                <Button onClick={onSave} variant="secondary" size="sm" disabled={Object.values(errors).some((e) => e && e !== "")}> 
+                  <div className="flex items-center ">
+                    <Edit3 className="w-4 h-4 mr-1" />
+                    Save
                   </div>
-                )}
-                <span className="absolute -bottom-1 -right-1 bg-white border rounded-full p-1">
-                  <Camera className="w-4 h-4" />
-                </span>
-              </div>
-
-             {isEditing && (
-                <div className="flex flex-wrap gap-2">
-                    {/* UPLOAD BUTTON */}
-                    <label
-                    className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-neutral-800 text-white hover:bg-neutral-900 cursor-pointer"
-                    >
-                    <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={onUpload}
-                    />
-                    <Camera className="w-4 h-4" />
-                    <span>Upload New</span>
-                    </label>
-
-                    {/* REMOVE BUTTON */}
-                    <Button
-                    onClick={onRemoveAvatar}
-                    disabled={!avatarUrl}
-                    iconLeft={<Trash2 className="w-4 h-4" />}
-                    size="md"
-                    variant="primary"
-                    >
-                    Remove
-                    </Button>
+                </Button>
+                <Button onClick={() => setIsEditing(false)} variant="danger" size="sm">
+                  <div className="flex items-center ">
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Cancel
+                  </div>
+                </Button>
+              </>
+            ) : (
+              <Button onClick={onToggleEdit} variant="secondary" size="sm">
+                <div className="flex items-center ">
+                  <Edit3 className="w-4 h-4 mr-1" />
+                  Edit Profile
                 </div>
-                )}
-            </div>
+              </Button>
+            )}
           </div>
-        
+        </div>
+      </div>
 
-        {/* Personal Information */}
-        
-          <div className="p-4 ">
-            <h3 className="font-medium mb-4">Personal Information</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <User2 className="w-3.5 h-3.5" />
-                  Full Name
-                </label>
-                <Input value={profile.fullName} onChange={onChange("fullName")} className="border border-gray-200"/>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <Calendar className="w-3.5 h-3.5" />
-                  Date of Birth
-                </label>
-                <Input type="date" value={profile.dob} onChange={onChange("dob")} className="border border-gray-200" />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <Mail className="w-3.5 h-3.5" />
-                  Email Address
-                </label>
-                <Input type="email" value={profile.email} onChange={onChange("email")} className="border border-gray-200" />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <Phone className="w-3.5 h-3.5" />
-                  Phone Number
-                </label>
-                <Input value={profile.phone} onChange={onChange("phone")} className="border border-gray-200" />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  Address
-                </label>
-                <Textarea value={profile.address} onChange={onChange("address")} className="border border-gray-200" />
-              </div>
-            </div>
-          </div>
-       
-
-        {/* Teacher Information */}
-        
-          <div className="p-4">
-            <h3 className="font-medium mb-4">Teacher Information</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <IdCard className="w-3.5 h-3.5" />
-                  Teacher Code
-                </label>
-                <Input value={profile.teacherCode} onChange={onChange("teacherCode")} readOnly  className="border border-gray-200" />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <BookOpenCheck className="w-3.5 h-3.5" />
-                  Years of Experience
-                </label>
-                <Input type="number" min={0} value={profile.years} onChange={onChange("years")} className="border border-gray-200" />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-1">
-                  <FileText className="w-3.5 h-3.5" />
-                  Bio
-                </label>
-                <Textarea value={profile.bio} onChange={onChange("bio")} className="border border-gray-200" />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-neutral-500 flex items-center gap-1 mb-2">
-                  <Award className="w-3.5 h-3.5" />
-                  Certificates
-                </label>
-
-                <div className="space-y-2">
-                  {profile.certs.map((c, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between rounded-md border px-3 py-2 bg-neutral-50 border border-gray-200"
+      {/* Main layout: Left avatar, Right info cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-1">
+          <Card>
+            <div className="text-center py-4">
+              <div className="relative w-50 h-50 mx-auto mb-3 group">
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-md hover:shadow-lg transition-all duration-300">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={profile.fullName}
+                      className="w-full h-full object-cover transition-transform duration-300"
+                    />
+                  ) : (
+                    <UserIcon className="w-10 h-10 text-indigo-600 transition-colors" />
+                  )}
+                </div>
+                {isEditing && (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={onUpload}
+                      className="hidden"
+                      id="teacher-avatar-upload"
+                    />
+                    <label
+                      htmlFor="teacher-avatar-upload"
+                      className="absolute bottom-0 right-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors shadow-md border-2 border-white"
+                      title="Change avatar"
                     >
-                      <span className="text-sm">{c}</span>
-                      {isEditing && (
-                        <button
-                          onClick={() =>
+                      <Camera className="w-4 h-4 text-white" />
+                    </label>
+                  </>
+                )}
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">{profile.fullName}</h2>
+              {profile.teacherCode && (
+                <div
+                  className="flex items-center justify-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-2.5 py-1.5 mx-auto max-w-fit hover:bg-gray-100 transition-colors cursor-pointer group"
+                  onClick={() => navigator.clipboard.writeText(profile.teacherCode || "")}
+                >
+                  <IdCard className="w-3.5 h-3.5" />
+                  <span className="font-mono">{profile.teacherCode}</span>
+                  <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              )}
+              {isEditing && (
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <Button onClick={onRemoveAvatar} disabled={!avatarUrl} size="sm" variant="secondary">
+                    Remove Avatar
+                  </Button>
+                </div>
+              )}
+              {/* Editable block under avatar */}
+              <div className="mt-5 text-left p-4 border border-gray-200 rounded-lg bg-white">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">About</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Years of Experience</label>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min={0}
+                        value={String(profile.yearsExperience ?? 0)}
+                        onChange={(e) => onChange("yearsExperience")(e as any)}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-900 font-medium">{profile.yearsExperience ?? 0}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Bio</label>
+                    {isEditing ? (
+                      <Textarea value={profile.bio || ""} onChange={onChange("bio") as any} />
+                    ) : (
+                      <p className="text-sm text-gray-900 font-medium whitespace-pre-wrap">{profile.bio || "N/A"}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Certificates under avatar */}
+              <div className="mt-5 text-left">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-emerald-600" />
+                  Certificates
+                </h3>
+                {credentialsLoading ? (
+                  <div className="py-2 text-sm text-gray-500">Loading...</div>
+                ) : certificates.length > 0 ? (
+                  <ul className="space-y-2">
+                    {certificates.map((c) => (
+                      <li key={c.credentialId} className="flex items-start gap-2">
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-800 truncate">{c.name || `Certificate - ${formatDate(c.createdAt)}`}</p>
+                          {c.level && (
+                            <p className="text-xs text-emerald-700">{c.level}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">No certificates available</p>
+                )}
+                {isEditing && (
+                  <div className="mt-3">
+                    <div className="grid grid-cols-1 gap-2">
+                      <input
+                        value={newCertName}
+                        onChange={(e) => setNewCertName(e.target.value)}
+                        placeholder="Certificate name"
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={newCertLevel}
+                        onChange={(e) => setNewCertLevel(e.target.value)}
+                        placeholder="Level (optional)"
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={() => {
+                            const certType = credentialTypes.find((t) => t.name === "Certificate");
+                            if (!certType) return;
+                            const name = newCertName.trim();
+                            const level = newCertLevel.trim();
+                            if (!name) return;
+                            // add to payload credentials
                             setProfile((p) => ({
                               ...p,
-                              certs: p.certs.filter((_, idx) => idx !== i),
-                            }))
-                          }
-                          className="inline-flex items-center gap-1 text-red-600 text-sm hover:underline"
+                              credentials: [
+                                ...(p.credentials || []),
+                                { credentialTypeId: certType.id, pictureUrl: null, name, level: level || null },
+                              ],
+                            }));
+                            // optimistic add to UI list
+                            setCertificates((prev) => [
+                              ...prev,
+                              {
+                                credentialId: `new-${Date.now()}`,
+                                credentialTypeId: certType.id,
+                                teacherId: id || "",
+                                pictureUrl: null,
+                                name,
+                                level: level || null,
+                                createdAt: new Date().toISOString(),
+                                updatedAt: null,
+                              },
+                            ]);
+                            setNewCertName("");
+                            setNewCertLevel("");
+                          }}
+                          className="px-3 py-2"
                         >
-                          remove
-                        </button>
-                      )}
+                          Add Certificate
+                        </Button>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+                )}
+              </div>
+              {/* Qualifications under avatar */}
+              <div className="mt-4 text-left">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-green-700" />
+                  Qualifications
+                </h3>
+                {credentialsLoading ? (
+                  <div className="py-2 text-sm text-gray-500">Loading...</div>
+                ) : qualifications.length > 0 ? (
+                  <ul className="space-y-2">
+                    {qualifications.map((q) => (
+                      <li key={q.credentialId} className="flex items-start gap-2">
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full bg-green-600"></span>
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-800 truncate">{q.name || `Qualification - ${formatDate(q.createdAt)}`}</p>
+                          {q.level && (
+                            <p className="text-xs text-green-700">{q.level}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">No qualifications available</p>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
 
-                  {isEditing && (
-                    <div className="flex gap-2">
+        <div className="lg:col-span-2 space-y-4">
+          <Card title="Personal Information">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <UserIcon className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+                  {isEditing ? (
+                    <>
                       <input
-                        placeholder="Add certificate..."
-                        className="flex-1 border rounded-md px-3 py-2 text-sm"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            const val = (e.target as HTMLInputElement).value.trim();
-                            if (val) {
-                              setProfile((p) => ({ ...p, certs: [...p.certs, val] }));
-                              (e.target as HTMLInputElement).value = "";
-                            }
+                        value={profile.fullName}
+                        onChange={onChange("fullName")}
+                        className={`w-full border rounded-md px-3 py-2 text-sm ${errors.fullName ? "border-red-500" : ""}`}
+                        placeholder="Enter full name"
+                      />
+                      {errors.fullName && (
+                        <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-900 font-medium">{profile.fullName || "N/A"}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Mail className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                  {isEditing ? (
+                    <>
+                      <input
+                        type="email"
+                        value={profile.email || ""}
+                        onChange={(e) => onChange("email")(e)}
+                        onBlur={(e) => {
+                          const v = e.target.value || "";
+                          if (!validateEmail(v)) {
+                            void (async () => {
+                              try {
+                                const exists = await checkEmailExist(v);
+                                setErrors((prev) => ({ ...prev, email: exists ? "" : "Email already exists" }));
+                              } catch {}
+                            })();
                           }
                         }}
+                        className={`w-full border rounded-md px-3 py-2 text-sm ${errors.email ? "border-red-500" : ""}`}
+                        placeholder="Enter email address"
                       />
-                      {/* ADD BUTTON */}
-                      <Button className="inline-flex items-center gap-2 bg-neutral-800 text-white hover:bg-neutral-900 px-3 py-2 rounded-md">
-                        Add
-                      </Button>
-                    </div>
+                      {errors.email && (
+                        <p className="mt-1 text-xs text-red-600">{errors.email}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p
+                      className="text-sm text-gray-900 font-medium truncate hover:text-blue-600 transition-colors cursor-pointer"
+                      onClick={() => window.open(`mailto:${profile.email || ""}`)}
+                      title={profile.email || undefined}
+                    >
+                      {profile.email || "N/A"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Phone className="w-4 h-4 text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
+                  {isEditing ? (
+                    <>
+                      <input
+                        value={profile.phoneNumber || ""}
+                        onChange={(e) => onChange("phoneNumber")(e)}
+                        className={`w-full border rounded-md px-3 py-2 text-sm ${errors.phone ? "border-red-500" : ""}`}
+                        placeholder="Enter phone (e.g., 0123456789)"
+                      />
+                      {errors.phone && (
+                        <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p
+                      className="text-sm text-gray-900 font-medium hover:text-green-600 transition-colors cursor-pointer"
+                      onClick={() => (profile.phoneNumber || "") && window.open(`tel:${profile.phoneNumber}`)}
+                    >
+                      {profile.phoneNumber || "N/A"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* CID */}
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <IdCard className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">CID</label>
+                  {isEditing ? (
+                    <>
+                      <input
+                        value={profile.cid || ""}
+                        onChange={(e) => onChange("cid")(e)}
+                        onBlur={(e) => {
+                          const v = (e.target.value || "").replace(/\D/g, "");
+                          if (!validateCID(v)) {
+                            void (async () => {
+                              try {
+                                const exists = await checkCIDExist(v);
+                                setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
+                              } catch {}
+                            })();
+                          }
+                        }}
+                        className={`w-full border rounded-md px-3 py-2 text-sm font-mono ${errors.cid ? "border-red-500" : ""}`}
+                        maxLength={12}
+                        placeholder="Enter 12-digit CID"
+                      />
+                      {errors.cid && (
+                        <p className="mt-1 text-xs text-red-600">{errors.cid}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-900 font-medium font-mono">{profile.cid || "N/A"}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Calendar className="w-4 h-4 text-purple-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Date of Birth</label>
+                  {isEditing ? (
+                    <>
+                      <input
+                        type="date"
+                        value={profile.dateOfBirth || ""}
+                        onChange={(e) => onChange("dateOfBirth")(e)}
+                        className={`w-full border rounded-md px-3 py-2 text-sm ${errors.dob ? "border-red-500" : ""}`}
+                        max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                      />
+                      {errors.dob && (
+                        <p className="mt-1 text-xs text-red-600">{errors.dob}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-900 font-medium">{profile.dateOfBirth || "N/A"}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="md:col-span-2 flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4 text-red-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
+                  {isEditing ? (
+                    <Textarea value={profile.address || ""} onChange={(e) => onChange("address")(e as any)} />
+                  ) : (
+                    <p className="text-sm text-gray-900 font-medium whitespace-pre-wrap">{profile.address || "N/A"}</p>
                   )}
                 </div>
               </div>
             </div>
+          </Card>
 
-            {/* Footer actions */}
-           <div className="mt-6 flex justify-end gap-2">
-                {isEditing && (
-                    <>
-                    {/* CANCEL BUTTON */}
-                    <Button
-                        onClick={() => setIsEditing(false)}
-                        className="inline-flex items-center gap-2 bg-white border hover:bg-neutral-50 px-4 py-2 rounded-md"
-                    >
-                        Cancel
-                    </Button>
+          <Card title="Teacher Information">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <IdCard className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Teacher Code</label>
+                  <p className="text-sm text-gray-900 font-medium font-mono">{profile.teacherCode || "N/A"}</p>
+                </div>
+              </div>
 
-                    {/* SAVE BUTTON */}
-                    <Button
-                        onClick={onSave}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md font-medium bg-sky-500 hover:bg-sky-600 text-white"
-                    >
-                        Save Changes
-                    </Button>
-                    </>
-                )}
+
+              
             </div>
-          </div>
-        </Card>
+          </Card>
+          
+        </div>
       </div>
-     
     </div>
   );
 }
