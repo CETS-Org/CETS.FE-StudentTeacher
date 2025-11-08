@@ -39,7 +39,7 @@ import SettingsStep from "./steps/SettingsStep";
 import PreviewStep from "./steps/PreviewStep";
 import { api, endpoint } from "@/api/api";
 import { createSpeakingAssignment, createQuizAssignment, createAssignment, uploadJsonToPresignedUrl, uploadToPresignedUrl } from "@/api";
-import { updateAssignment, getQuestionJsonUploadUrl } from "@/api/assignments.api";
+import { updateAssignment, getQuestionJsonUploadUrl, getQuestionDataUrl } from "@/api/assignments.api";
 
 // Types
 export type QuestionType =
@@ -237,8 +237,12 @@ export default function AdvancedAssignmentPopup({
       // Load question data if it's a Quiz or Speaking assignment
       if ((type === "Quiz" || type === "Speaking") && editAssignment.questionUrl) {
         try {
-          console.log("Loading question data from URL:", editAssignment.questionUrl);
-          const questionResponse = await fetch(editAssignment.questionUrl);
+          // Get presigned URL for question data
+          const questionUrlResponse = await getQuestionDataUrl(editAssignment.assignmentId);
+          const presignedUrl = questionUrlResponse.data.questionDataUrl;
+          
+          console.log("Loading question data from URL:", presignedUrl);
+          const questionResponse = await fetch(presignedUrl);
           
           if (!questionResponse.ok) {
             throw new Error(`Failed to fetch question data: ${questionResponse.status} ${questionResponse.statusText}`);

@@ -47,11 +47,14 @@ import PaymentCallback from './pages/Common/PaymentCallback'
 import ClassReservationDetails from './pages/Student/ChoosePaidItem/ClassReservationDetails/ClassReservationDetails'
 import UniversalLayout from './Shared/UniversalLayout'
 import StudentDetailPage from './pages/Student/Profile/StudentDetailPage'
+import ScrollToTop from './components/ScrollToTop'
 
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       {/* Public routes - no layout */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -116,5 +119,6 @@ export default function App() {
         </UniversalLayout>
       } />
     </Routes>
+    </>
   )
 }

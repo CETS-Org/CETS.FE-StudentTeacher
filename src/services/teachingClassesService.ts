@@ -56,7 +56,7 @@ export interface MeetingAssignment {
   title: string;
   description: string | null;
   fileUrl?: string | null;
-  questionDataUrl?: string | null;
+  questionUrl?: string | null; // File path for question JSON (for Quiz assignments)
   dueDate: string;
   createdAt: string;
   submissions: AssignmentSubmission[];

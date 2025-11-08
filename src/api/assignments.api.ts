@@ -132,6 +132,12 @@ export const getAssignmentById = (
   config?: AxiosRequestConfig
 ) => api.get(`${endpoint.assignments}/${assignmentId}`, config);
 
+// Get presigned URL for question data (used when taking test, viewing details, or editing)
+export const getQuestionDataUrl = (
+  assignmentId: string,
+  config?: AxiosRequestConfig
+) => api.get(`${endpoint.assignments}/${assignmentId}/question-data-url`, config);
+
 // Submit assignment answers (for question-based assignments)
 export const submitAssignmentAnswers = (
   submissionData: SubmitAssignmentAnswersRequest,
@@ -149,73 +155,137 @@ export const submitWritingAssignment = (
   ...config,
 });
 
+const pendingRequests = new Map<string, Promise<UpcomingAssignment[]>>();
+
+const resultCache = new Map<string, { data: UpcomingAssignment[]; timestamp: number }>();
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes cache
+
 // Get upcoming assignments for a student (across all classes)
 export const getUpcomingAssignmentsForStudent = async (
   studentId: string,
   limit: number = 5
 ): Promise<UpcomingAssignment[]> => {
-  try {
-    // Get all student's learning classes
-    const classesResponse = await api.get(`${endpoint.classes}/learningClass?studentId=${studentId}`);
-    const classes = classesResponse.data;
-    
-    // Get class meetings and assignments for each class
-    const allAssignments: UpcomingAssignment[] = [];
-    
-    for (const classItem of classes) {
-      try {
-        // Get class meetings for this class
-        const meetingsResponse = await api.get(`${endpoint.classMeetings}/class/${classItem.id}`);
-        const meetings = meetingsResponse.data;
-        
-        // For each meeting, get assignments
+  // Create a unique cache key for this request
+  const cacheKey = `upcoming-assignments-${studentId}-${limit}`;
+  
+  // Check if there's a pending request
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey)!;
+  }
+  
+  // Check result cache
+  const cached = resultCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+    return cached.data;
+  }
+  
+  // Create the request promise
+  const requestPromise = (async () => {
+    try {
+      // Get all student's learning classes
+      const classesResponse = await api.get(`${endpoint.classes}/learningClass?studentId=${studentId}`);
+      const classes = Array.isArray(classesResponse.data) ? classesResponse.data : [];
+      
+      if (classes.length === 0) {
+        return [];
+      }
+      
+      // Fetch all class meetings in parallel
+      const meetingPromises = classes.map(async (classItem) => {
+        try {
+          const meetingsResponse = await api.get(`${endpoint.classMeetings}/${classItem.id}`);
+          const meetings = Array.isArray(meetingsResponse.data) ? meetingsResponse.data : [];
+          return { classItem, meetings };
+        } catch (err: any) {
+          console.error(`Error fetching meetings for class ${classItem.id}:`, err?.response?.data || err?.message || err);
+          return { classItem, meetings: [] };
+        }
+      });
+      
+      const classMeetingsResults = await Promise.all(meetingPromises);
+      
+      // Collect all meetings with their class info
+      const meetingsWithClass: Array<{ meeting: any; classItem: any }> = [];
+      for (const { classItem, meetings } of classMeetingsResults) {
         for (const meeting of meetings) {
-          try {
-            const assignmentsResponse = await api.get(
-              `${endpoint.assignments}/class-meeting/${meeting.id}/student/${studentId}/assignments`
-            );
-            const assignments = assignmentsResponse.data;
-            
-            // Map assignments to include class info
-            assignments.forEach((assignment: any) => {
-              // Only include assignments that haven't been submitted or are upcoming
-              const dueDate = new Date(assignment.dueAt);
-              const now = new Date();
-              
-              // Check if assignment is upcoming (due date in the future or within last 7 days)
-              if (dueDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)) {
-                const hasSubmission = assignment.submissions && assignment.submissions.length > 0;
-                
-                allAssignments.push({
-                  id: assignment.id,
-                  title: assignment.title,
-                  dueAt: assignment.dueAt,
-                  className: classItem.className,
-                  classId: classItem.id,
-                  classMeetingId: meeting.id,
-                  hasSubmission,
-                  isOverdue: dueDate < now && !hasSubmission
-                });
-              }
+          meetingsWithClass.push({ meeting, classItem });
+        }
+      }
+      
+      if (meetingsWithClass.length === 0) {
+        return [];
+      }
+      
+      // Fetch all assignments in parallel
+      const assignmentPromises = meetingsWithClass.map(async ({ meeting, classItem }) => {
+        try {
+          const assignmentsResponse = await api.get(
+            `${endpoint.assignments}/class-meeting/${meeting.id}/student/${studentId}/assignments`
+          );
+          const assignments = Array.isArray(assignmentsResponse.data) ? assignmentsResponse.data : [];
+          return { assignments, classItem, meeting };
+        } catch (err: any) {
+          console.error(`Error fetching assignments for meeting ${meeting.id}:`, err?.response?.data || err?.message || err);
+          return { assignments: [], classItem, meeting };
+        }
+      });
+      
+      const assignmentResults = await Promise.all(assignmentPromises);
+      
+      // Process all assignments
+      const allAssignments: UpcomingAssignment[] = [];
+      const now = new Date();
+      
+      for (const { assignments, classItem, meeting } of assignmentResults) {
+        for (const assignment of assignments) {
+          const dueDateValue = assignment.dueDate;
+          if (!dueDateValue) {
+            continue;
+          }
+          
+          const dueDate = new Date(dueDateValue);
+          const hasSubmission = assignment.submissions && assignment.submissions.length > 0;
+          
+          // Only include assignments that are upcoming (due date in the future)
+          if (dueDate >= now) {
+            allAssignments.push({
+              id: assignment.id,
+              title: assignment.title,
+              dueAt: dueDateValue,
+              className: classItem.className || 'Unknown Class',
+              classId: classItem.id,
+              classMeetingId: meeting.id,
+              hasSubmission,
+              isOverdue: false
             });
-          } catch (err) {
-            console.error(`Error fetching assignments for meeting ${meeting.id}:`, err);
           }
         }
-      } catch (err) {
-        console.error(`Error fetching meetings for class ${classItem.id}:`, err);
       }
-    }
-    
-    // Sort by due date (ascending) and take the first 'limit' items
-    return allAssignments
-      .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
-      .slice(0, limit);
       
-  } catch (error) {
-    console.error('Error fetching upcoming assignments:', error);
-    return [];
-  }
+      // Sort by due date (ascending) and take the first 'limit' items
+      const sortedAssignments = allAssignments
+        .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
+        .slice(0, limit);
+      
+      // Cache the result
+      resultCache.set(cacheKey, { data: sortedAssignments, timestamp: Date.now() });
+      
+      return sortedAssignments;
+        
+    } catch (error: any) {
+      console.error('Error fetching upcoming assignments:', error?.response?.data || error?.message || error);
+      return [];
+    } finally {
+      // Remove from pending requests after completion
+      pendingRequests.delete(cacheKey);
+    }
+  })();
+  
+  // Store the pending request
+  pendingRequests.set(cacheKey, requestPromise);
+  
+  return requestPromise;
 };
 
 // Create speaking assignment
