@@ -149,35 +149,6 @@ export const submitWritingAssignment = (
   ...config,
 });
 
-// Types for Assignment API
-export interface AssignmentFromAPI {
-  id: string;
-  classMeetingId: string;
-  title: string;
-  description: string | null;
-  storeUrl: string | null;
-  dueAt: string;
-  createdAt: string;
-  submissionCount: number;
-  skillID?: string | null;
-  skillName?: string | null;
-}
-
-// Types for Submission API
-export interface SubmissionFromAPI {
-  id: string;
-  assignmentID: string;
-  studentID: string;
-  studentName: string;
-  studentCode: string;
-  storeUrl: string | null;
-  content: string | null;
-  score: number | null;
-  feedback: string | null;
-  createdAt: string;
-  isAiScore?: boolean; // API returns lowercase 'i'
-}
-
 // Get upcoming assignments for a student (across all classes)
 export const getUpcomingAssignmentsForStudent = async (
   studentId: string,

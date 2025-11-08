@@ -24,6 +24,7 @@ export interface SubmissionFromAPI {
   score: number | null;
   feedback: string | null;
   createdAt: string;
+  isAiScore?: boolean; // API returns lowercase 'i'
 }
 
 // Upcoming Assignment

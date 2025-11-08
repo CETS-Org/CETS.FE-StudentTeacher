@@ -12,7 +12,6 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Toast from "@/components/ui/Toast";
-import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { useToast } from "@/hooks/useToast";
 import { getTeacherId } from "@/lib/utils";
 import { 
@@ -40,7 +39,7 @@ import SettingsStep from "./steps/SettingsStep";
 import PreviewStep from "./steps/PreviewStep";
 import { api, endpoint } from "@/api/api";
 import { createSpeakingAssignment, createQuizAssignment, createAssignment, uploadJsonToPresignedUrl, uploadToPresignedUrl } from "@/api";
-import { updateAssignment, getQuestionJsonUploadUrl, deleteAssignment } from "@/api/assignments.api";
+import { updateAssignment, getQuestionJsonUploadUrl } from "@/api/assignments.api";
 
 // Types
 export type QuestionType =
@@ -206,9 +205,6 @@ export default function AdvancedAssignmentPopup({
   // Files
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const assignmentIdToDeleteRef = useRef<string | null>(null);
   
   // Find the selected skill object
   const selectedSkill = skills.find(s => s.lookUpId === selectedSkillId);
@@ -527,48 +523,6 @@ export default function AdvancedAssignmentPopup({
     }
   };
 
-  const handleDelete = async () => {
-
-    const assignmentIdToDelete = assignmentIdToDeleteRef.current;
-    
-    if (!assignmentIdToDelete) {
-      console.error("Assignment ID is missing. editAssignment:", editAssignment);
-      showError("Assignment ID is missing");
-      setShowDeleteConfirm(false);
-      assignmentIdToDeleteRef.current = null;
-      return;
-    }
-
-    try {
-      await deleteAssignment(assignmentIdToDelete);
-      success("Assignment deleted successfully!");
-      setShowDeleteConfirm(false);
-      assignmentIdToDeleteRef.current = null;
-      onOpenChange(false);
-      if (onSubmit) {
-        // Trigger refresh by calling onSubmit with empty data
-        onSubmit({
-          title: "",
-          description: "",
-          dueDate: new Date().toISOString(),
-          skillID: null,
-          assignmentType: "",
-          totalPoints: 0,
-          timeLimitMinutes: undefined,
-          maxAttempts: 1,
-          isAutoGradable: false,
-          answerVisibility: "never",
-          questionData: null,
-          files: [],
-        });
-      }
-    } catch (err: any) {
-      console.error("Error deleting assignment:", err);
-      showError(err?.response?.data?.message || err?.message || "Failed to delete assignment");
-      setShowDeleteConfirm(false);
-      assignmentIdToDeleteRef.current = null;
-    }
-  };
 
   const handleSubmit = async () => {
     if (!validateStep("preview")) return;
@@ -1301,25 +1255,6 @@ export default function AdvancedAssignmentPopup({
 
         <DialogFooter className="flex justify-between px-0 pb-6">
           <div className="flex gap-2">
-            {editAssignment && (
-              <Button
-                variant="danger"
-                onClick={() => {
-                  // Capture assignmentId when delete button is clicked
-                  const assignmentId = editAssignment?.assignmentId || (editAssignment as any)?.id;
-                  if (assignmentId) {
-                    assignmentIdToDeleteRef.current = assignmentId;
-                    setShowDeleteConfirm(true);
-                  } else {
-                    console.error("Cannot delete: assignmentId is missing", editAssignment);
-                    showError("Cannot delete: Assignment ID is missing");
-                  }
-                }}
-                iconLeft={<Trash2 className="w-4 h-4" />}
-              >
-                Delete Assignment
-              </Button>
-            )}
             <Button
               variant="secondary"
               onClick={handleSaveDraft}
@@ -1372,20 +1307,6 @@ export default function AdvancedAssignmentPopup({
       document.body
     )}
 
-    {/* Delete Confirmation Dialog */}
-    {showDeleteConfirm && (
-      <ConfirmationDialog
-        isOpen={showDeleteConfirm}
-        onClose={() => {
-          setShowDeleteConfirm(false);
-          assignmentIdToDeleteRef.current = null;
-        }}
-        title="Delete Assignment"
-        message={`Are you sure you want to delete "${editAssignment?.title || 'this assignment'}"? This action cannot be undone.`}
-        confirmText="Delete"
-        onConfirm={handleDelete}
-      />
-    )}
     </>
   );
 }
