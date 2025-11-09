@@ -196,23 +196,43 @@ export default function WritingGradingView({
     const hasExtension = fileUrl.includes('.') && fileUrl.lastIndexOf('.') > fileUrl.lastIndexOf('/');
     const fileExtension = hasExtension ? fileUrl.split('.').pop()?.toLowerCase() : null;
 
-    // For PDF files, we can use direct iframe
+    console.log('Getting viewer URL:', {
+      fileUrl,
+      fullUrl,
+      hasExtension,
+      fileExtension
+    });
+
+    // For PDF files, use direct iframe
     if (fileExtension === 'pdf') {
+      console.log('Using direct PDF viewer');
       return fullUrl;
     }
 
     // For DOCX and other Office files, use Microsoft Office Online Viewer
     if (fileExtension === 'docx' || fileExtension === 'doc' || fileExtension === 'xlsx' || fileExtension === 'pptx') {
+      console.log('Using Office Online Viewer for Office files');
       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
     }
 
-    // If no extension detected, assume it's a Word document (common for writing assignments)
-    // Use Office Online Viewer as default
+    // If no extension detected:
+    // - For submissions (student uploaded files), use Google Docs Viewer (supports both PDF and DOC/DOCX)
+    // - For assignments (teacher uploaded), use Office viewer as they're likely Word docs
     if (!fileExtension) {
-      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
+      if (fileUrl.includes('submissions/')) {
+        console.log('No extension but is submission - using Google Docs Viewer (supports PDF and DOC)');
+        // Submissions can be PDF (from text editor) or DOC/DOCX (from file upload)
+        // Google Docs Viewer supports both formats
+        return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
+      } else if (fileUrl.includes('assignments/')) {
+        console.log('No extension but is assignment - using Office Online Viewer');
+        // Assignments are likely Word docs from teacher
+        return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
+      }
     }
 
     // For other files, use Google Docs Viewer as fallback
+    console.log('Using Google Docs Viewer as fallback');
     return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
   };
 
