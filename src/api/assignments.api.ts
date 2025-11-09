@@ -88,6 +88,12 @@ export const getQuestionJsonUploadUrl = (
   config?: AxiosRequestConfig
 ) => api.get(`/api/ACAD_Assignments/question-json-upload-url${fileName ? `?fileName=${encodeURIComponent(fileName)}` : ''}`, config);
 
+// Get presigned URL for audio file upload
+export const getAudioUploadUrl = (
+  fileName: string,
+  config?: AxiosRequestConfig
+) => api.get(`/api/ACAD_Assignments/audio-url?fileName=${encodeURIComponent(fileName)}`, config);
+
 // Download assignment
 export const downloadAssignment = (
   assignmentId: string,

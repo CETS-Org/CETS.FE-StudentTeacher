@@ -39,7 +39,8 @@ import SettingsStep from "./steps/SettingsStep";
 import PreviewStep from "./steps/PreviewStep";
 import { api, endpoint } from "@/api/api";
 import { createSpeakingAssignment, createQuizAssignment, createAssignment, uploadJsonToPresignedUrl, uploadToPresignedUrl } from "@/api";
-import { updateAssignment, getQuestionJsonUploadUrl } from "@/api/assignments.api";
+import { updateAssignment, getQuestionJsonUploadUrl, getAudioUploadUrl } from "@/api/assignments.api";
+import { config } from "@/lib/config";
 
 // Types
 export type QuestionType =
@@ -401,18 +402,92 @@ export default function AdvancedAssignmentPopup({
     setQuestions([...questions, ...newQuestions]);
   };
 
-  const generateQuestionData = (): AssignmentQuestionData | null => {
+  // Helper function to normalize audio URL (convert filePath to full URL if needed)
+  const normalizeAudioUrl = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+    // If already a full URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    // Convert filePath to full URL
+    return `${config.storagePublicUrl}${url.startsWith('/') ? url : '/' + url}`;
+  };
+
+  const generateQuestionData = (audioFileUrls?: Map<File, string>): AssignmentQuestionData | null => {
     if (questions.length === 0) return null;
-    
+
+    const sortedQuestions = questions.sort((a, b) => a.order - b.order);
+
+    let readingPassage: string | undefined;
+    let audioUrl: string | undefined;
+
+    const passageCounts = new Map<string, number>();
+    const audioCounts = new Map<string, number>();
+
+    // Process questions and replace audio files with URLs
+    const processedQuestions = sortedQuestions.map(q => {
+      const question = { ...q };
+      
+      // Handle audio files - replace with uploaded URLs
+      if ((question as any)._audioFile && audioFileUrls) {
+        const uploadedUrl = audioFileUrls.get((question as any)._audioFile);
+        if (uploadedUrl) {
+          (question as any)._audioUrl = uploadedUrl;
+          question.reference = uploadedUrl;
+        }
+      } else {
+        // Normalize existing audio URLs (convert filePath to full URL if needed)
+        const existingAudio = (question as any)._audioUrl || question.reference;
+        if (existingAudio) {
+          const normalizedAudio = normalizeAudioUrl(existingAudio);
+          if (normalizedAudio) {
+            (question as any)._audioUrl = normalizedAudio;
+            question.reference = normalizedAudio;
+          }
+        }
+      }
+
+      const passage = (question as any)._passage;
+      const audio = (question as any)._audioUrl || question.reference;
+
+      if (passage) {
+        passageCounts.set(passage, (passageCounts.get(passage) || 0) + 1);
+      }
+      if (audio) {
+        audioCounts.set(audio, (audioCounts.get(audio) || 0) + 1);
+      }
+
+      // Clean up temporary fields
+      const { _passage, _audioFile, ...cleanedQ } = question as any;
+      return cleanedQ;
+    });
+
+    if (passageCounts.size > 0) {
+      readingPassage = Array.from(passageCounts.entries())
+        .sort((a, b) => b[1] - a[1])[0][0];
+    }
+    if (audioCounts.size > 0) {
+      const mostCommonAudio = Array.from(audioCounts.entries())
+        .sort((a, b) => b[1] - a[1])[0][0];
+      // Normalize audio URL (ensure it's a full URL)
+      audioUrl = normalizeAudioUrl(mostCommonAudio);
+    }
+
     return {
       version: "1.0",
-      questions: questions.sort((a, b) => a.order - b.order),
+      questions: processedQuestions,
       settings: {
         shuffleQuestions: false,
         allowBackNavigation,
         showProgress,
         showQuestionNumbers,
       },
+      ...(readingPassage && { readingPassage }),
+      ...(audioUrl && {
+        media: {
+          audioUrl,
+        },
+      }),
     };
   };
 
@@ -682,7 +757,48 @@ export default function AdvancedAssignmentPopup({
           return;
         }
 
-        const questionData = generateQuestionData();
+        // Collect unique audio files from questions
+        const audioFiles = new Set<File>();
+        for (const q of questions) {
+          if ((q as any)._audioFile) {
+            audioFiles.add((q as any)._audioFile);
+          }
+        }
+
+        // Upload audio files and get URLs
+        const audioFileUrls = new Map<File, string>();
+        if (audioFiles.size > 0) {
+          try {
+            for (const audioFile of audioFiles) {
+              // Get presigned URL for audio upload using the new API
+              const fileName = audioFile.name;
+              const audioUrlResponse = await getAudioUploadUrl(fileName);
+              const audioUrlData = audioUrlResponse.data;
+
+              if (audioUrlData && typeof audioUrlData === 'object' && 'uploadUrl' in audioUrlData && 'publicUrl' in audioUrlData) {
+                const { uploadUrl, publicUrl } = audioUrlData as { uploadUrl: string; publicUrl: string };
+                
+                // Upload audio file to presigned URL
+                const uploadResponse = await uploadToPresignedUrl(uploadUrl, audioFile, audioFile.type || "audio/mpeg");
+                
+                if (!uploadResponse.ok) {
+                  throw new Error(`Audio file upload failed: ${uploadResponse.status}`);
+                }
+
+                // Use the publicUrl directly from API response
+                audioFileUrls.set(audioFile, publicUrl);
+              } else {
+                throw new Error("Failed to get upload URL for audio file");
+              }
+            }
+          } catch (error) {
+            console.error("Error uploading audio files:", error);
+            showError("Failed to upload audio files. Please try again.");
+            return;
+          }
+        }
+
+        const questionData = generateQuestionData(audioFileUrls);
         if (!questionData) {
           showError("Failed to generate question data");
           return;
@@ -693,6 +809,8 @@ export default function AdvancedAssignmentPopup({
           version: questionData.version,
           questions: questionData.questions,
           settings: questionData.settings,
+          ...(questionData.readingPassage && { readingPassage: questionData.readingPassage }),
+          ...(questionData.media && { media: questionData.media }),
         });
 
         if (isEditMode) {
@@ -702,8 +820,25 @@ export default function AdvancedAssignmentPopup({
             return;
           }
           
-          // Generate updated question JSON
-          const updatedQuestionJson = JSON.stringify(questionData);
+          // Generate updated question JSON with normalized URLs
+          const updatedQuestionJson = JSON.stringify({
+            version: questionData.version,
+            questions: questionData.questions.map(q => {
+              // Ensure audio URLs are normalized
+              if (q.reference) {
+                q.reference = normalizeAudioUrl(q.reference) || q.reference;
+              }
+              return q;
+            }),
+            settings: questionData.settings,
+            ...(questionData.readingPassage && { readingPassage: questionData.readingPassage }),
+            ...(questionData.media && {
+              media: {
+                ...questionData.media,
+                audioUrl: questionData.media.audioUrl ? normalizeAudioUrl(questionData.media.audioUrl) : undefined,
+              },
+            }),
+          });
           
           // Get presigned URL for uploading updated JSON (without creating an assignment)
           const jsonFileName = `quiz-assignment-${editAssignment.assignmentId}.json`;
@@ -755,7 +890,7 @@ export default function AdvancedAssignmentPopup({
               maxAttempts,
               isAutoGradable,
               answerVisibility,
-              questionData: generateQuestionData(),
+              questionData: questionData,
               files: [],
             });
           }
@@ -805,7 +940,7 @@ export default function AdvancedAssignmentPopup({
               maxAttempts,
               isAutoGradable,
               answerVisibility,
-              questionData: generateQuestionData(),
+              questionData: questionData,
               files: [],
             });
           }

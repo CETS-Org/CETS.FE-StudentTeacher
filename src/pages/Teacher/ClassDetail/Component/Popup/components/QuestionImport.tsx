@@ -75,11 +75,20 @@ export default function QuestionImport({ onImport, skillType }: Props) {
         const answerCol = findColumn(headers, ["answer", "correct answer", "correct", "key"]);
         const pointsCol = findColumn(headers, ["points", "point", "score", "marks"]);
         const explanationCol = findColumn(headers, ["explanation", "explain", "note"]);
+        
+        // Reading: Passage column
+        const passageCol = findColumn(headers, ["passage", "reading passage", "text"]);
+        // Listening: Audio column
+        const audioCol = findColumn(headers, ["audio", "audio url", "audiourl", "audio file", "sound"]);
 
         if (questionCol === -1) {
           showError("Could not find 'Question' column in the file");
           return;
         }
+
+        // Track current passage and audio for grouping questions
+        let currentPassage = "";
+        let currentAudioUrl = "";
 
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i];
@@ -91,6 +100,22 @@ export default function QuestionImport({ onImport, skillType }: Props) {
             continue;
           }
 
+          // Reading: Get passage (can be shared across multiple questions)
+          // If passage is empty, use the previous passage
+          const rowPassage = passageCol !== -1 ? row[passageCol]?.toString().trim() : "";
+          if (rowPassage) {
+            currentPassage = rowPassage;
+          }
+          const passage = currentPassage;
+
+          // Listening: Get audio URL (can be shared across multiple questions)
+          // If audio is empty, use the previous audio
+          const rowAudioUrl = audioCol !== -1 ? row[audioCol]?.toString().trim() : "";
+          if (rowAudioUrl) {
+            currentAudioUrl = rowAudioUrl;
+          }
+          const audioUrl = currentAudioUrl;
+
           const questionType = (row[typeCol]?.toString().toLowerCase().trim() || "multiple_choice")
             .replace(/\s+/g, "_")
             .replace(/[^a-z_]/g, "");
@@ -99,7 +124,7 @@ export default function QuestionImport({ onImport, skillType }: Props) {
           const correctAnswer = row[answerCol]?.toString().trim() || "";
           const explanation = row[explanationCol]?.toString().trim() || "";
 
-          let question: Question = {
+          let question: Question & { _passage?: string; _audioUrl?: string } = {
             id: `imported-${Date.now()}-${i}`,
             type: questionType as any,
             order: i,
@@ -108,6 +133,15 @@ export default function QuestionImport({ onImport, skillType }: Props) {
             explanation: explanation || undefined,
             requiresManualGrading: questionType === "essay" || questionType === "short_answer",
           };
+
+          // Store passage and audio URL as temporary fields
+          if (passage) {
+            (question as any)._passage = passage;
+          }
+          if (audioUrl) {
+            (question as any)._audioUrl = audioUrl;
+            question.reference = audioUrl; // Also store in reference for backward compatibility
+          }
 
           // Handle multiple choice
           if (questionType === "multiple_choice" || questionType === "mc") {
@@ -294,11 +328,31 @@ export default function QuestionImport({ onImport, skillType }: Props) {
           <p>
             <strong>Optional columns:</strong> Type, Option A, Option B, Option C, Option D, Answer
             (or Correct Answer), Points, Explanation
+            {skillType.toLowerCase() === "reading" && (
+              <>, <strong>Passage</strong> (for reading assignments - can be shared across multiple questions)</>
+            )}
+            {skillType.toLowerCase() === "listening" && (
+              <>, <strong>Audio</strong> (for listening assignments - can be shared across multiple questions)</>
+            )}
           </p>
           <p className="mt-2">
             <strong>Question Types:</strong> multiple_choice, true_false, fill_in_the_blank,
             short_answer, essay
           </p>
+          {skillType.toLowerCase() === "reading" && (
+            <p className="mt-2 text-blue-800">
+              <strong>Note:</strong> For Reading assignments, you can add a "Passage" column. 
+              Multiple questions can share the same passage. If a row has an empty Passage, 
+              it will use the passage from the previous row.
+            </p>
+          )}
+          {skillType.toLowerCase() === "listening" && (
+            <p className="mt-2 text-blue-800">
+              <strong>Note:</strong> For Listening assignments, you can add an "Audio" column with audio URLs. 
+              Multiple questions can share the same audio. If a row has an empty Audio, 
+              it will use the audio from the previous row.
+            </p>
+          )}
         </div>
       </div>
 
@@ -327,6 +381,20 @@ export default function QuestionImport({ onImport, skillType }: Props) {
                   </span>
                   <span className="text-xs text-neutral-500">{q.points} pts</span>
                 </div>
+                {/* Display Passage for Reading */}
+                {(q as any)._passage && skillType.toLowerCase() === "reading" && (
+                  <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                    <strong className="text-blue-800">Passage:</strong>
+                    <p className="text-blue-700 mt-1 line-clamp-3">{(q as any)._passage}</p>
+                  </div>
+                )}
+                {/* Display Audio URL for Listening */}
+                {(q as any)._audioUrl && skillType.toLowerCase() === "listening" && (
+                  <div className="mb-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+                    <strong className="text-purple-800">Audio:</strong>
+                    <p className="text-purple-700 mt-1 break-all">{(q as any)._audioUrl}</p>
+                  </div>
+                )}
                 <p className="text-sm text-neutral-800">{q.question}</p>
                 {q.options && q.options.length > 0 && (
                   <div className="ml-4 mt-2 space-y-1">
@@ -389,32 +457,133 @@ export default function QuestionImport({ onImport, skillType }: Props) {
           variant="secondary"
           size="sm"
           onClick={() => {
-            // Create sample Excel file
-            const sampleData = [
-              {
-                Question: "What is the capital of France?",
-                Type: "multiple_choice",
-                "Option A": "London",
-                "Option B": "Berlin",
-                "Option C": "Paris",
-                "Option D": "Madrid",
-                Answer: "C",
-                Points: 2,
-                Explanation: "Paris is the capital city of France.",
-              },
-              {
-                Question: "The Earth is round.",
-                Type: "true_false",
-                Answer: "True",
-                Points: 1,
-                Explanation: "The Earth is approximately spherical.",
-              },
-            ];
+            // Create sample Excel file based on skill type
+            let sampleData: any[] = [];
+            
+            if (skillType.toLowerCase() === "reading") {
+              sampleData = [
+                {
+                  Passage: "Climate change represents one of the most pressing challenges facing humanity. The scientific consensus is clear: Earth's climate is warming at an unprecedented rate, primarily due to human activities.",
+                  Question: "What is the main cause of climate change?",
+                  Type: "multiple_choice",
+                  "Option A": "Natural weather patterns",
+                  "Option B": "Human activities",
+                  "Option C": "Solar radiation",
+                  "Option D": "Ocean currents",
+                  Answer: "B",
+                  Points: 2,
+                  Explanation: "Human activities are the primary cause of climate change.",
+                },
+                {
+                  Passage: "", // Empty passage to indicate shared passage
+                  Question: "According to the passage, what is warming at an unprecedented rate?",
+                  Type: "multiple_choice",
+                  "Option A": "Ocean temperatures",
+                  "Option B": "Earth's climate",
+                  "Option C": "Solar activity",
+                  "Option D": "Atmospheric pressure",
+                  Answer: "B",
+                  Points: 2,
+                  Explanation: "The passage states that Earth's climate is warming.",
+                },
+              ];
+            } else if (skillType.toLowerCase() === "listening") {
+              sampleData = [
+                {
+                  Audio: "https://example.com/audio1.mp3",
+                  Question: "What is the main topic of the conversation?",
+                  Type: "multiple_choice",
+                  "Option A": "Weather",
+                  "Option B": "Travel plans",
+                  "Option C": "Food",
+                  "Option D": "Sports",
+                  Answer: "B",
+                  Points: 2,
+                  Explanation: "The conversation is about travel plans.",
+                },
+                {
+                  Audio: "", // Empty audio to indicate shared audio
+                  Question: "Where are they planning to go?",
+                  Type: "multiple_choice",
+                  "Option A": "Paris",
+                  "Option B": "London",
+                  "Option C": "Tokyo",
+                  "Option D": "New York",
+                  Answer: "A",
+                  Points: 2,
+                  Explanation: "They are planning to go to Paris.",
+                },
+              ];
+            } else {
+              // Default sample data for other skill types
+              sampleData = [
+                {
+                  Question: "What is the capital of France?",
+                  Type: "multiple_choice",
+                  "Option A": "London",
+                  "Option B": "Berlin",
+                  "Option C": "Paris",
+                  "Option D": "Madrid",
+                  Answer: "C",
+                  Points: 2,
+                  Explanation: "Paris is the capital city of France.",
+                },
+                {
+                  Question: "The Earth is round.",
+                  Type: "true_false",
+                  Answer: "True",
+                  Points: 1,
+                  Explanation: "The Earth is approximately spherical.",
+                },
+              ];
+            }
 
             const ws = XLSX.utils.json_to_sheet(sampleData);
+            
+            // Set column widths for better readability
+            if (skillType.toLowerCase() === "reading") {
+              ws['!cols'] = [
+                { wch: 50 }, // Passage
+                { wch: 40 }, // Question
+                { wch: 15 }, // Type
+                { wch: 25 }, // Option A
+                { wch: 25 }, // Option B
+                { wch: 25 }, // Option C
+                { wch: 25 }, // Option D
+                { wch: 10 }, // Answer
+                { wch: 8 },  // Points
+                { wch: 40 }, // Explanation
+              ];
+            } else if (skillType.toLowerCase() === "listening") {
+              ws['!cols'] = [
+                { wch: 40 }, // Audio
+                { wch: 40 }, // Question
+                { wch: 15 }, // Type
+                { wch: 25 }, // Option A
+                { wch: 25 }, // Option B
+                { wch: 25 }, // Option C
+                { wch: 25 }, // Option D
+                { wch: 10 }, // Answer
+                { wch: 8 },  // Points
+                { wch: 40 }, // Explanation
+              ];
+            } else {
+              ws['!cols'] = [
+                { wch: 40 }, // Question
+                { wch: 15 }, // Type
+                { wch: 25 }, // Option A
+                { wch: 25 }, // Option B
+                { wch: 25 }, // Option C
+                { wch: 25 }, // Option D
+                { wch: 10 }, // Answer
+                { wch: 8 },  // Points
+                { wch: 40 }, // Explanation
+              ];
+            }
+            
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Questions");
-            XLSX.writeFile(wb, "question_template.xlsx");
+            XLSX.writeFile(wb, `question_template_${skillType.toLowerCase()}.xlsx`);
             success("Template downloaded!");
           }}
           iconLeft={<FileText className="w-4 h-4" />}
