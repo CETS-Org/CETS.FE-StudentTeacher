@@ -559,6 +559,7 @@ export default function AdvancedAssignmentPopup({
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
             skillID: selectedSkillId || null,
+            assignmentType: assignmentType,
           };
           
           // If new file is uploaded, include file info
@@ -732,6 +733,7 @@ export default function AdvancedAssignmentPopup({
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
             skillID: selectedSkillId || null,
+            assignmentType: assignmentType,
           };
           
           // Include question file path if we have it
@@ -858,6 +860,7 @@ export default function AdvancedAssignmentPopup({
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
             skillID: selectedSkillId || null,
+            assignmentType: assignmentType,
           };
           
           await updateAssignment(editAssignment.assignmentId, updateData);
