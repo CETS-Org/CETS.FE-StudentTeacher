@@ -226,6 +226,9 @@ export interface QuizAssignmentQuestionData {
     allowBackNavigation: boolean;
     showProgress: boolean;
     showQuestionNumbers: boolean;
+    timeLimitMinutes?: number;
+    allowMultipleRecordings?: boolean;
+    maxRecordings?: number;
   };
 }
 

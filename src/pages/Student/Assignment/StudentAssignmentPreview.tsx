@@ -22,8 +22,9 @@ import {
   MessageSquare
 } from "lucide-react";
 import { api } from "@/api";
-import { startAttempt, getSubmissionsByAssignment } from "@/api/assignments.api";
+import { startAttempt, getSubmissionsByAssignment, getQuestionDataUrl } from "@/api/assignments.api";
 import { getStudentId } from "@/lib/utils";
+import type { AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 
 interface AssignmentDetails {
   id: string;
@@ -79,6 +80,31 @@ export default function StudentAssignmentPreview() {
         const assignmentResponse = await api.getAssignmentById(assignmentId);
         const assignmentData = assignmentResponse.data;
         
+        // Load question data if QuestionUrl exists (quiz assignment) to get timeLimitMinutes from settings
+        let questionDataTimeLimit: number | undefined = undefined;
+        if (assignmentData.questionUrl) {
+          try {
+            // Get presigned URL for question data
+            const questionUrlResponse = await getQuestionDataUrl(assignmentId);
+            const presignedUrl = questionUrlResponse.data.questionDataUrl;
+            
+            // Fetch question data using presigned URL
+            const questionResponse = await fetch(presignedUrl);
+            const questionData: AssignmentQuestionData = await questionResponse.json();
+            
+            // Get timeLimitMinutes from question data settings if available
+            if (questionData.settings?.timeLimitMinutes !== undefined) {
+              questionDataTimeLimit = questionData.settings.timeLimitMinutes;
+            }
+          } catch (err) {
+            console.error("Failed to load question data:", err);
+            // Continue with assignment-level timeLimitMinutes if question data fails to load
+          }
+        }
+
+        // Priority: question data settings > assignment-level timeLimitMinutes
+        const timeLimitToUse = questionDataTimeLimit ?? assignmentData.timeLimitMinutes;
+        
         setAssignment({
           id: assignmentData.id,
           title: assignmentData.title,
@@ -87,7 +113,7 @@ export default function StudentAssignmentPreview() {
           skillID: assignmentData.skillID,
           skillName: assignmentData.skillName,
           totalPoints: assignmentData.totalPoints || 0,
-          timeLimitMinutes: assignmentData.timeLimitMinutes,
+          timeLimitMinutes: timeLimitToUse,
           maxAttempts: assignmentData.maxAttempts || 1,
           isAutoGradable: assignmentData.isAutoGradable || false,
           showAnswersAfterSubmission: assignmentData.showAnswersAfterSubmission || false,

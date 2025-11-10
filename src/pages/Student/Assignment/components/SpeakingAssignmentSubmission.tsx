@@ -18,6 +18,7 @@ interface SpeakingAssignmentSubmissionProps {
   getAudioBlob: (questionId?: string) => Promise<Blob | null>;
   onSuccess: () => void;
   onError: (error: string) => void;
+  forceSubmit?: boolean; // When true, bypass validation (e.g., when time is up)
 }
 
 /**
@@ -34,6 +35,7 @@ export const submitSpeakingAssignment = async ({
   getAudioBlob,
   onSuccess,
   onError,
+  forceSubmit = false,
 }: SpeakingAssignmentSubmissionProps): Promise<void> => {
   try {
     // Step 1: Collect audio question IDs
@@ -57,11 +59,19 @@ export const submitSpeakingAssignment = async ({
       }
     }
 
-    if (audioQuestionIds.length === 0) {
+    // Skip validation if force submitting (e.g., when time is up)
+    // Still try to submit what we have, even if incomplete
+    if (audioQuestionIds.length === 0 && !forceSubmit) {
       throw new Error("No audio recordings found. Please record your voice before submitting.");
+    }
+    
+    // If force submitting with no recordings, submit with empty audio (answers only)
+    if (audioQuestionIds.length === 0 && forceSubmit) {
+      console.warn("Force submitting speaking assignment with no recordings (time expired)");
     }
 
     // Step 2: Get presigned URLs
+    // Even with empty audioQuestionIds, we still need to call the API to get the answers JSON upload URL
     const uploadUrlsResponse = await getSpeakingSubmissionUploadUrls(
       assignmentId,
       studentId,
@@ -115,15 +125,20 @@ export const submitSpeakingAssignment = async ({
       audioUrls: audioUrls
     };
 
-    // Step 4: Upload answers JSON to presigned URL
-    const answersJson = JSON.stringify(submissionData);
-    const jsonUploadResponse = await uploadJsonToPresignedUrl(
-      uploadUrls.answersJsonUploadUrl,
-      answersJson
-    );
+    // Step 4: Upload answers JSON to presigned URL (if available)
+    if (uploadUrls.answersJsonUploadUrl) {
+      const answersJson = JSON.stringify(submissionData);
+      const jsonUploadResponse = await uploadJsonToPresignedUrl(
+        uploadUrls.answersJsonUploadUrl,
+        answersJson
+      );
 
-    if (!jsonUploadResponse.ok) {
-      throw new Error(`Failed to upload answers JSON: ${jsonUploadResponse.status}`);
+      if (!jsonUploadResponse.ok) {
+        throw new Error(`Failed to upload answers JSON: ${jsonUploadResponse.status}`);
+      }
+    } else if (forceSubmit) {
+      // When force submitting, we still need to submit even if JSON upload URL is not available
+      console.warn("No answersJsonUploadUrl available, proceeding with submission");
     }
 
     // Step 5: Upload audio files to presigned URLs
@@ -169,7 +184,7 @@ export const submitSpeakingAssignment = async ({
     await submitSpeakingSubmission(
       assignmentId,
       studentId,
-      uploadUrls.answersJsonFilePath
+      uploadUrls.answersJsonFilePath || "" // Use empty string if null when force submitting
     );
 
     onSuccess();

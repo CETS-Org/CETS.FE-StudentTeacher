@@ -84,114 +84,107 @@ export default function SettingsStep({
             />
           </div>
         </div>
-
-        <div className="mt-4">
-          <Input
-            label="Maximum Attempts"
-            type="number"
-            value={maxAttempts}
-            onChange={(e) => onMaxAttemptsChange(parseInt(e.target.value) || 1)}
-            min={1}
-            hint="Number of times students can submit this assignment"
-          />
-        </div>
       </div>
 
-      {/* Grading Settings */}
-      <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <CheckCircle className="w-5 h-5 text-primary-600" />
-          <h4 className="font-semibold text-neutral-900">Grading Settings</h4>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
-            <input
-              type="checkbox"
-              id="autoGradable"
-              checked={isAutoGradable}
-              onChange={(e) => onAutoGradableChange(e.target.checked)}
-              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
-            />
-            <div className="flex-1">
-              <label htmlFor="autoGradable" className="text-sm font-medium text-neutral-900 cursor-pointer">
-                Enable Auto-Grading
-              </label>
-              <p className="text-xs text-neutral-500 mt-1">
-                Automatically grade multiple choice, true/false, and fill-in-the-blank questions
-              </p>
+      {/* Grading Settings - Hide for speaking assignments */}
+      {!isSpeakingAssignment && (
+        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle className="w-5 h-5 text-primary-600" />
+            <h4 className="font-semibold text-neutral-900">Grading Settings</h4>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+              <input
+                type="checkbox"
+                id="autoGradable"
+                checked={isAutoGradable}
+                onChange={(e) => onAutoGradableChange(e.target.checked)}
+                className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+              />
+              <div className="flex-1">
+                <label htmlFor="autoGradable" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                  Enable Auto-Grading
+                </label>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Automatically grade multiple choice, true/false, and fill-in-the-blank questions
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Answer Visibility */}
-      <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Eye className="w-5 h-5 text-primary-600" />
-          <h4 className="font-semibold text-neutral-900">Answer Visibility</h4>
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
-            <input
-              type="radio"
-              id="showAnswersImmediately"
-              name="answerVisibility"
-              value="immediately"
-              checked={answerVisibility === "immediately"}
-              onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
-              className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
-            />
-            <div className="flex-1">
-              <label htmlFor="showAnswersImmediately" className="text-sm font-medium text-neutral-900 cursor-pointer">
-                Show correct answers immediately after submission
-              </label>
-              <p className="text-xs text-neutral-500 mt-1">
-                Students will see correct answers right after they submit their assignment
-              </p>
-            </div>
+      {/* Answer Visibility - Hide for speaking assignments */}
+      {!isSpeakingAssignment && (
+        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Eye className="w-5 h-5 text-primary-600" />
+            <h4 className="font-semibold text-neutral-900">Answer Visibility</h4>
           </div>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+              <input
+                type="radio"
+                id="showAnswersImmediately"
+                name="answerVisibility"
+                value="immediately"
+                checked={answerVisibility === "immediately"}
+                onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
+                className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
+              />
+              <div className="flex-1">
+                <label htmlFor="showAnswersImmediately" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                  Show correct answers immediately after submission
+                </label>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Students will see correct answers right after they submit their assignment
+                </p>
+              </div>
+            </div>
 
-          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
-            <input
-              type="radio"
-              id="showAnswersAfterDueDate"
-              name="answerVisibility"
-              value="after_due_date"
-              checked={answerVisibility === "after_due_date"}
-              onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
-              className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
-            />
-            <div className="flex-1">
-              <label htmlFor="showAnswersAfterDueDate" className="text-sm font-medium text-neutral-900 cursor-pointer">
-                Show correct answers after due date
-              </label>
-              <p className="text-xs text-neutral-500 mt-1">
-                Students will see correct answers once the due date has passed
-              </p>
+            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+              <input
+                type="radio"
+                id="showAnswersAfterDueDate"
+                name="answerVisibility"
+                value="after_due_date"
+                checked={answerVisibility === "after_due_date"}
+                onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
+                className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
+              />
+              <div className="flex-1">
+                <label htmlFor="showAnswersAfterDueDate" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                  Show correct answers after due date
+                </label>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Students will see correct answers once the due date has passed
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
-            <input
-              type="radio"
-              id="neverShowAnswers"
-              name="answerVisibility"
-              value="never"
-              checked={answerVisibility === "never"}
-              onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
-              className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
-            />
-            <div className="flex-1">
-              <label htmlFor="neverShowAnswers" className="text-sm font-medium text-neutral-900 cursor-pointer">
-                Never show correct answers
-              </label>
-              <p className="text-xs text-neutral-500 mt-1">
-                Students will never see the correct answers
-              </p>
+            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
+              <input
+                type="radio"
+                id="neverShowAnswers"
+                name="answerVisibility"
+                value="never"
+                checked={answerVisibility === "never"}
+                onChange={(e) => onAnswerVisibilityChange(e.target.value as "immediately" | "after_due_date" | "never")}
+                className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500 mt-0.5"
+              />
+              <div className="flex-1">
+                <label htmlFor="neverShowAnswers" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                  Never show correct answers
+                </label>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Students will never see the correct answers
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Question Display Settings */}
       <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-5">

@@ -113,6 +113,7 @@ export default function StudentAssignmentTaking() {
         });
 
         // Load question data if QuestionUrl exists (quiz assignment)
+        let questionDataTimeLimit: number | undefined = undefined;
         if (assignmentData.questionUrl) {
           try {
             // Get presigned URL for question data
@@ -132,6 +133,10 @@ export default function StudentAssignmentTaking() {
               if (questionData.settings.maxRecordings !== undefined) {
                 setMaxRecordings(questionData.settings.maxRecordings);
               }
+              // Get timeLimitMinutes from question data settings if available
+              if (questionData.settings.timeLimitMinutes !== undefined) {
+                questionDataTimeLimit = questionData.settings.timeLimitMinutes;
+              }
             }
           } catch (err) {
             console.error("Failed to load question data:", err);
@@ -140,8 +145,10 @@ export default function StudentAssignmentTaking() {
         }
 
         // Initialize timer if time limit exists
-        if (assignmentData.timeLimitMinutes) {
-          const timeInSeconds = assignmentData.timeLimitMinutes * 60;
+        // Priority: question data settings > assignment-level timeLimitMinutes
+        const timeLimitToUse = questionDataTimeLimit ?? assignmentData.timeLimitMinutes;
+        if (timeLimitToUse) {
+          const timeInSeconds = timeLimitToUse * 60;
           setTimeRemaining(timeInSeconds);
           setIsTimerRunning(true);
         }
@@ -358,8 +365,8 @@ export default function StudentAssignmentTaking() {
       assignment?.assignmentType?.toLowerCase() === "speaking" ||
       questions.some(q => q.type === "speaking");
     
-    // Validate speaking assignment before submission
-    if (isSpeakingAssignment) {
+    // Validate speaking assignment before submission (skip validation if auto-submitting due to time up)
+    if (isSpeakingAssignment && !autoSubmit) {
       const validation = validateSpeakingSubmission(questions, questionRecordings, allowMultipleRecordings);
       if (!validation.isValid) {
         alert(validation.errorMessage);
@@ -394,6 +401,7 @@ export default function StudentAssignmentTaking() {
           questionRecordings,
           allowMultipleRecordings,
           getAudioBlob,
+          forceSubmit: autoSubmit, // Force submit when time is up
           onSuccess: () => {
             alert("Assignment submitted successfully!");
             navigate(-1);
@@ -611,6 +619,27 @@ export default function StudentAssignmentTaking() {
                         {currentQuestion.type === "speaking" && (
                           <div className="mb-6">
                             <h3 className="text-lg font-semibold text-neutral-900 mb-4">{currentQuestion.question}</h3>
+                            {currentQuestion.explanation && (
+                              <div className="mb-4 p-4 bg-info-50 border border-info-200 rounded-lg">
+                                <p className="text-sm text-info-800">
+                                  <span className="font-medium">Explanation:</span> {currentQuestion.explanation}
+                                </p>
+                              </div>
+                            )}
+                            {currentQuestion.audioTimestamp && (
+                              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-blue-700">
+                                  <span className="font-medium">Audio Timestamp:</span> {currentQuestion.audioTimestamp}
+                                </p>
+                              </div>
+                            )}
+                            {currentQuestion.reference && (
+                              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-blue-700">
+                                  <span className="font-medium">Reference:</span> {currentQuestion.reference}
+                                </p>
+                              </div>
+                            )}
                             {currentQuestion.maxLength && (
                               <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                 <p className="text-sm text-blue-700">
@@ -787,7 +816,9 @@ export default function StudentAssignmentTaking() {
             <DialogBody>
               <div className="space-y-3">
                 <p className="text-neutral-700">
-                  Are you sure you want to submit this assignment? You have answered {answeredCount} out of {questions.length} questions.
+                  Are you sure you want to submit this assignment? 
+                  <br></br> 
+                  You have answered {answeredCount} out of {questions.length} questions.
                 </p>
                 {answeredCount < questions.length && (
                   <p className="text-yellow-600 text-sm">

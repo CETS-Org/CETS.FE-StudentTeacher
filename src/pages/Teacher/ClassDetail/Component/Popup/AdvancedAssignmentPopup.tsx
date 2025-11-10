@@ -115,6 +115,7 @@ export interface AssignmentQuestionData {
     showQuestionNumbers: boolean;
     allowMultipleRecordings?: boolean;
     maxRecordings?: number;
+    timeLimitMinutes?: number;
   };
   media?: {
     audioUrl?: string;
@@ -430,6 +431,7 @@ export default function AdvancedAssignmentPopup({
         showQuestionNumbers,
         allowMultipleRecordings,
         maxRecordings,
+        timeLimitMinutes,
       },
     };
   };
@@ -899,6 +901,7 @@ export default function AdvancedAssignmentPopup({
                   allowBackNavigation,
                   showProgress,
                   showQuestionNumbers,
+                  timeLimitMinutes,
                 },
                 media: questionData.media,
               },
@@ -1014,6 +1017,9 @@ export default function AdvancedAssignmentPopup({
             showProgress,
             showQuestionNumbers,
             autoSubmit,
+            allowMultipleRecordings,
+            maxRecordings,
+            timeLimitMinutes,
             maxRetries: timeLimitMinutes ? Math.floor(timeLimitMinutes * 60 / questions.length) : undefined,
           },
           media: {

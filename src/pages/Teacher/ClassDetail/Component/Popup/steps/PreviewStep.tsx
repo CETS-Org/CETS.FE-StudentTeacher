@@ -67,10 +67,6 @@ export default function PreviewStep({
               <span className="font-semibold text-neutral-900">{timeLimitMinutes} minutes</span>
             </div>
           )}
-          <div className="bg-white/60 rounded-md p-3">
-            <span className="text-neutral-600 text-xs block mb-1">Max Attempts</span>
-            <span className="font-semibold text-neutral-900">{maxAttempts}</span>
-          </div>
         </div>
         
         {/* Settings Summary */}
