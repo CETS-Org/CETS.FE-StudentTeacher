@@ -36,6 +36,7 @@ import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession/ClassDetaill'
 import StudentSessionDetail from './pages/Student/ClassSession/SessionDetail'
+import StudentAssignmentPreview from './pages/Student/Assignment/StudentAssignmentPreview'
 import StudentAssignmentTaking from './pages/Student/Assignment/StudentAssignmentTaking'
 import TestPage from './pages/Student/Assignment/TestPage'
 import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
@@ -47,11 +48,14 @@ import PaymentCallback from './pages/Common/PaymentCallback'
 import ClassReservationDetails from './pages/Student/ChoosePaidItem/ClassReservationDetails/ClassReservationDetails'
 import UniversalLayout from './Shared/UniversalLayout'
 import StudentDetailPage from './pages/Student/Profile/StudentDetailPage'
+import ScrollToTop from './components/ScrollToTop'
 
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       {/* Public routes - no layout */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -83,6 +87,7 @@ export default function App() {
             <Route path="/student/my-classes" element={<MyClasses />} /> 
             <Route path="/student/class/:classId" element={<ClassSession />} />
             <Route path="/student/class/:classId/session/:sessionId" element={<StudentSessionDetail />} />
+            <Route path="/student/assignment/:assignmentId/preview" element={<StudentAssignmentPreview />} />
             <Route path="/student/assignment/:assignmentId/take" element={<StudentAssignmentTaking />} />
             <Route path="/student/assignment/test" element={<TestPage />} />
             <Route path="/student/schedule" element={<Schedule />} />
@@ -116,5 +121,6 @@ export default function App() {
         </UniversalLayout>
       } />
     </Routes>
+    </>
   )
 }

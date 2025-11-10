@@ -104,7 +104,7 @@ export default function QuestionBuilder({
   // Helper function to get default question type - must be defined before useState
   const getDefaultQuestionType = (): QuestionType => {
     if (skillType.toLowerCase().includes("speaking")) {
-      return "short_answer";
+      return "speaking";
     } else if (skillType.toLowerCase().includes("writing")) {
       return "essay";
     }
@@ -126,6 +126,7 @@ export default function QuestionBuilder({
     { value: "short_answer", label: "Short Answer", icon: "✍️" },
     { value: "matching", label: "Matching", icon: "🔗" },
     { value: "essay", label: "Essay", icon: "📝" },
+    { value: "speaking", label: "Speaking", icon: "🎤" },
   ];
 
   const resetForm = () => {
@@ -397,7 +398,7 @@ export default function QuestionBuilder({
       audioTimestamp: newQuestion.audioTimestamp,
       reference: newQuestion.reference,
       shuffleOptions: newQuestion.shuffleOptions,
-      requiresManualGrading: newQuestion.type === "essay" || newQuestion.type === "short_answer",
+      requiresManualGrading: newQuestion.type === "essay" || newQuestion.type === "short_answer" || newQuestion.type === "speaking",
     };
 
     // For Reading: attach passage to question
@@ -489,6 +490,8 @@ export default function QuestionBuilder({
       audioTimestamp: question.audioTimestamp,
       reference: question.reference,
       shuffleOptions: question.shuffleOptions,
+      keywords: question.keywords,
+      maxLength: question.maxLength,
     });
     // Load passage if exists (for Reading)
     if (skillType.toLowerCase() === "reading") {
@@ -810,6 +813,25 @@ export default function QuestionBuilder({
                 min={1}
               />
             </div>
+            {/* Speaking Time Limit for Speaking skills */}
+            {(skillType === "Speaking" || skillType.toLowerCase().includes("speaking")) && (
+              <div>
+                <Input
+                  label="Speaking Time Limit (seconds)"
+                  type="number"
+                  placeholder="e.g., 120 for 2 minutes"
+                  value={newQuestion.maxLength ? newQuestion.maxLength.toString() : ""}
+                  onChange={(e) =>
+                    setNewQuestion({
+                      ...newQuestion,
+                      maxLength: e.target.value ? parseInt(e.target.value) : undefined,
+                    })
+                  }
+                  hint="Maximum time students have to record their response"
+                />
+              </div>
+            )}
+            {/* Shuffle options for multiple choice/matching */}
             {(newQuestion.type === "multiple_choice" || newQuestion.type === "matching") && 
              !(skillType === "Speaking" || skillType.toLowerCase().includes("speaking") || 
                skillType === "Writing" || skillType.toLowerCase().includes("writing")) && (
@@ -1023,39 +1045,6 @@ export default function QuestionBuilder({
                   setNewQuestion({ ...newQuestion, reference: e.target.value })
                 }
               />
-            </div>
-          )}
-
-          {/* Speaking Time Limits (for Speaking) */}
-          {(skillType === "Speaking" || skillType.toLowerCase().includes("speaking")) && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Input
-                  label="Speaking Time Limit (seconds)"
-                  type="number"
-                  placeholder="e.g., 120 for 2 minutes"
-                  value={newQuestion.maxLength ? newQuestion.maxLength.toString() : ""}
-                  onChange={(e) =>
-                    setNewQuestion({
-                      ...newQuestion,
-                      maxLength: e.target.value ? parseInt(e.target.value) : undefined,
-                    })
-                  }
-                  hint="Maximum time students have to record their response"
-                />
-              </div>
-              <div>
-                <Input
-                  label="Preparation Time (seconds, Optional)"
-                  type="number"
-                  placeholder="e.g., 30"
-                  value={newQuestion.audioTimestamp || ""}
-                  onChange={(e) =>
-                    setNewQuestion({ ...newQuestion, audioTimestamp: e.target.value })
-                  }
-                  hint="Time students have to prepare before speaking"
-                />
-              </div>
             </div>
           )}
 
@@ -1299,6 +1288,15 @@ export default function QuestionBuilder({
                   <div className="ml-2 mb-3">
                     <div className="bg-neutral-100 text-neutral-600 px-3 py-2 rounded inline-block">
                       <span className="text-sm italic">Requires manual grading</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Speaking - Show indicator */}
+                {question.type === "speaking" && (
+                  <div className="ml-2 mb-3">
+                    <div className="bg-neutral-100 text-neutral-600 px-3 py-2 rounded inline-block">
+                      <span className="text-sm italic">🎤 Voice recording required - Requires manual grading</span>
                     </div>
                   </div>
                 )}

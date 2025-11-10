@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Loader from "@/components/ui/Loader";
-import PageHeader from "@/components/ui/PageHeader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
+import StudentLayout from "@/Shared/StudentLayout";
 import { 
   Clock, 
   CheckCircle, 
@@ -24,17 +23,22 @@ import {
   FileText,
   Eye,
   EyeOff
+  
 } from "lucide-react";
 import { api, apiClient } from "@/api";
+import { getQuestionDataUrl } from "@/api/assignments.api";
 import { getStudentId } from "@/lib/utils";
 import { config } from "@/lib/config";
-import type { Question, QuestionType, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 import MultipleChoiceQuestion from "./components/MultipleChoiceQuestion";
 import TrueFalseQuestion from "./components/TrueFalseQuestion";
 import FillInBlankQuestion from "./components/FillInBlankQuestion";
 import ShortAnswerQuestion from "./components/ShortAnswerQuestion";
 import EssayQuestion from "./components/EssayQuestion";
 import MatchingQuestion from "./components/MatchingQuestion";
+import type { Question, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
+import QuizQuestion from "./components/QuizQuestion";
+import SpeakingAssignment from "./components/SpeakingAssignment";
+import { submitSpeakingAssignment, validateSpeakingSubmission } from "./components/SpeakingAssignmentSubmission";
 
 interface AssignmentDetails {
   id: string;
@@ -43,6 +47,7 @@ interface AssignmentDetails {
   dueDate: string;
   skillID: string | null;
   skillName: string | null;
+  assignmentType?: string | null;
   totalPoints: number;
   timeLimitMinutes?: number;
   maxAttempts: number;
@@ -92,6 +97,17 @@ export default function StudentAssignmentTaking() {
   const [questionAudioPlaying, setQuestionAudioPlaying] = useState<Record<string, boolean>>({});
   const [showReadingPassage, setShowReadingPassage] = useState(true); // Default to showing passage
   const [currentPassageIndex, setCurrentPassageIndex] = useState(0); // Track current passage for multi-passage reading
+  const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(false);
+  const [maxRecordings, setMaxRecordings] = useState(3);
+  
+  // Store recordings per question
+  interface QuestionRecording {
+    recordings: Array<{ id: string; blobUrl: string; duration: number; timestamp: Date }>;
+    selectedId: string | null;
+    recordingTime: number;
+    currentBlobUrl: string | null;
+  }
+  const [questionRecordings, setQuestionRecordings] = useState<Record<string, QuestionRecording>>({});
   
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -121,6 +137,7 @@ export default function StudentAssignmentTaking() {
           dueDate: assignmentData.dueDate,
           skillID: assignmentData.skillID,
           skillName: assignmentData.skillName,
+          assignmentType: assignmentData.assignmentType || null,
           totalPoints: assignmentData.totalPoints || 0,
           timeLimitMinutes: assignmentData.timeLimitMinutes,
           maxAttempts: assignmentData.maxAttempts || 1,
@@ -130,17 +147,17 @@ export default function StudentAssignmentTaking() {
           showAnswersAfterDueDate: assignmentData.showAnswersAfterDueDate || false,
         });
 
-        // Load question data if URL exists
+        // Load question data if QuestionUrl exists (quiz assignment)
+        let questionDataTimeLimit: number | undefined = undefined;
         if (assignmentData.questionUrl) {
           try {
             // Normalize question URL (add base URL if needed)
-            let questionDataUrl = assignmentData.questionUrl;
-            if (!questionDataUrl.startsWith('http://') && !questionDataUrl.startsWith('https://')) {
-              // If it's a relative path, add storage public URL
-              questionDataUrl = `${config.storagePublicUrl}${questionDataUrl.startsWith('/') ? questionDataUrl : '/' + questionDataUrl}`;
-            }
+            // Get presigned URL for question data
+            const questionUrlResponse = await getQuestionDataUrl(assignmentId);
+            const presignedUrl = questionUrlResponse.data.questionDataUrl;
             
-            const questionResponse = await fetch(questionDataUrl);
+            // Fetch question data using presigned URL
+            const questionResponse = await fetch(presignedUrl);
             const questionData: AssignmentQuestionData = await questionResponse.json();
             setQuestionData(questionData);
             
@@ -183,6 +200,20 @@ export default function StudentAssignmentTaking() {
             })));
             
             setQuestions(processedQuestions);
+            
+            // Load settings
+            if (questionData.settings) {
+              if (questionData.settings.allowMultipleRecordings !== undefined) {
+                setAllowMultipleRecordings(questionData.settings.allowMultipleRecordings);
+              }
+              if (questionData.settings.maxRecordings !== undefined) {
+                setMaxRecordings(questionData.settings.maxRecordings);
+              }
+              // Get timeLimitMinutes from question data settings if available
+              if (questionData.settings.timeLimitMinutes !== undefined) {
+                questionDataTimeLimit = questionData.settings.timeLimitMinutes;
+              }
+            }
           } catch (err) {
             console.error("Failed to load question data:", err);
             setError("Failed to load assignment questions");
@@ -190,8 +221,10 @@ export default function StudentAssignmentTaking() {
         }
 
         // Initialize timer if time limit exists
-        if (assignmentData.timeLimitMinutes) {
-          const timeInSeconds = assignmentData.timeLimitMinutes * 60;
+        // Priority: question data settings > assignment-level timeLimitMinutes
+        const timeLimitToUse = questionDataTimeLimit ?? assignmentData.timeLimitMinutes;
+        if (timeLimitToUse) {
+          const timeInSeconds = timeLimitToUse * 60;
           setTimeRemaining(timeInSeconds);
           setIsTimerRunning(true);
         }
@@ -252,10 +285,9 @@ export default function StudentAssignmentTaking() {
       const interval = setInterval(() => {
         saveAnswers();
       }, 30000); // Auto-save every 30 seconds
-      setAutoSaveInterval(interval);
 
       return () => {
-        if (interval) clearInterval(interval);
+        clearInterval(interval);
       };
     }
   }, [answers]);
@@ -650,7 +682,125 @@ export default function StudentAssignmentTaking() {
     return finalScore;
   };
 
+  // Get current question's recording data
+  const getCurrentQuestionRecording = (): QuestionRecording => {
+    const currentQ = questions[currentQuestionIndex];
+    if (!currentQ) {
+      return { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+    }
+    return questionRecordings[currentQ.id] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+  };
+
+  // Handle speaking assignment recording updates
+  const handleRecordingUpdate = useCallback((questionId: string, data: Partial<QuestionRecording>) => {
+    setQuestionRecordings(prev => {
+      const current = prev[questionId] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+      const updated = { ...current, ...data };
+      
+      // Mark question as answered if there's a selected recording
+      if (updated.selectedId && updated.recordings.length > 0) {
+        const selectedRecording = updated.recordings.find(r => r.id === updated.selectedId);
+        if (selectedRecording) {
+          handleAnswerChange(questionId, "recorded");
+        }
+      }
+      
+      return { ...prev, [questionId]: updated };
+    });
+  }, [handleAnswerChange]);
+
+  // Handle recording complete (for single recording mode or when selection changes)
+  const handleRecordingComplete = useCallback((blobUrl: string | null) => {
+    const currentQ = questions[currentQuestionIndex];
+    const isSpeakingAssignment = assignment?.skillName?.toLowerCase().includes("speaking");
+    const questionId = currentQ?.id || (isSpeakingAssignment && questions.length === 0 ? "pure-speaking" : null);
+    
+    if (!questionId) return;
+    
+    setQuestionRecordings(prev => {
+      const current = prev[questionId] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+      return { ...prev, [questionId]: { ...current, currentBlobUrl: blobUrl } };
+    });
+    
+    // Mark the current speaking question as answered only if there's a recording
+    if (blobUrl && currentQ) {
+      handleAnswerChange(currentQ.id, "recorded");
+    }
+  }, [questions, currentQuestionIndex, handleAnswerChange, assignment]);
+
+  // Convert blob URL to blob for submission
+  const getAudioBlob = async (questionId?: string): Promise<Blob | null> => {
+    // Import blobStorage dynamically to avoid circular dependency
+    const { blobStorage, getPersistedBlob } = await import('./components/SpeakingAssignment');
+    
+    // If questionId is provided, get the recording for that specific question
+    if (questionId && questionRecordings[questionId]) {
+      const questionRec = questionRecordings[questionId];
+      const selectedRecording = questionRec.recordings.find(r => r.id === questionRec.selectedId);
+      if (selectedRecording) {
+        // Get blob from persistent storage
+        const storageKey = `${questionId}-${selectedRecording.id}`;
+        const blob =
+          blobStorage.get(storageKey) ||
+          getPersistedBlob(questionId, selectedRecording.id);
+        if (blob) {
+          return blob;
+        }
+        // Fallback: try to fetch from URL
+        try {
+          const response = await fetch(selectedRecording.blobUrl);
+          return await response.blob();
+        } catch (err) {
+          console.error('Failed to convert audio URL to blob:', err);
+          return null;
+        }
+      }
+      // Fallback to currentBlobUrl for single recording mode
+      const storageKey = `${questionId}-current`;
+      const blob =
+        blobStorage.get(storageKey) ||
+        getPersistedBlob(questionId, "current");
+      if (blob) {
+        return blob;
+      }
+      // Fallback: try to fetch from URL
+      if (questionRec.currentBlobUrl) {
+        try {
+          const response = await fetch(questionRec.currentBlobUrl);
+          return await response.blob();
+        } catch (err) {
+          console.error('Failed to convert audio URL to blob:', err);
+          return null;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  const formatRecordingTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleSubmit = async (autoSubmit: boolean = false) => {
+    // Check if speaking assignment requires audio recording
+    // Check by skillName, assignmentType, or if there are speaking questions
+    const isSpeakingAssignment = 
+      assignment?.skillName?.toLowerCase().includes("speaking") ||
+      assignment?.assignmentType?.toLowerCase() === "speaking" ||
+      questions.some(q => q.type === "speaking");
+    
+    // Validate speaking assignment before submission (skip validation if auto-submitting due to time up)
+    if (isSpeakingAssignment && !autoSubmit) {
+      const validation = validateSpeakingSubmission(questions, questionRecordings, allowMultipleRecordings);
+      if (!validation.isValid) {
+        alert(validation.errorMessage);
+        return;
+      }
+    }
+
     if (!autoSubmit) {
       setShowSubmitDialog(true);
       return;
@@ -663,6 +813,11 @@ export default function StudentAssignmentTaking() {
 
     if (!studentId) {
       alert("Student ID is missing. Please login again.");
+      return;
+    }
+
+    if (!studentId) {
+      alert("Student ID is missing. Please try again.");
       return;
     }
 
@@ -755,6 +910,43 @@ export default function StudentAssignmentTaking() {
         setShowScoreDialog(true);
       } else {
         // If no score, just show success and navigate
+        alert("Assignment submitted successfully!");
+        navigate(-1);
+      }
+      if (isSpeakingAssignment) {
+        // Handle speaking assignment submission using dedicated component
+        await submitSpeakingAssignment({
+          assignmentId,
+          studentId,
+          questions,
+          answers,
+          questionRecordings,
+          allowMultipleRecordings,
+          getAudioBlob,
+          forceSubmit: autoSubmit, // Force submit when time is up
+          onSuccess: () => {
+            alert("Assignment submitted successfully!");
+            navigate(-1);
+          },
+          onError: (errorMessage) => {
+            alert(errorMessage);
+          }
+        });
+      } else {
+        // Handle regular quiz assignment (non-speaking)
+        // TODO: Implement quiz submission endpoint if needed
+        // For now, use the existing submitAssignmentAnswers
+        const submissionData: any = {
+          assignmentID: assignmentId,
+          answers: Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+            timestamp: new Date().toISOString(),
+          })),
+        };
+
+        await api.submitAssignmentAnswers(submissionData);
+        
         alert("Assignment submitted successfully!");
         navigate(-1);
       }
@@ -903,6 +1095,14 @@ export default function StudentAssignmentTaking() {
         {questionComponent}
       </div>
     );
+    return (
+      <QuizQuestion
+        question={question}
+        answer={answer}
+        onAnswerChange={(answer: any) => handleAnswerChange(question.id, answer)}
+        skillType={assignment?.skillName || ""}
+      />
+    );
   };
 
   const getSkillIcon = (skillName: string | null) => {
@@ -917,47 +1117,52 @@ export default function StudentAssignmentTaking() {
 
   if (loading) {
     return (
-      <StudentLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader />
-        </div>
-      </StudentLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
     );
   }
 
   if (error || !assignment) {
     return (
-      <StudentLayout>
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
-            <p className="text-neutral-600">{error || "Assignment not found"}</p>
-            <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-          </div>
+      <div className="px-6 py-6">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
+          <p className="text-neutral-600">{error || "Assignment not found"}</p>
+          <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
-  if (questions.length === 0) {
+  // Check if current question has a recording
+  const currentQ = questions[currentQuestionIndex];
+  const currentQuestionRec = currentQ ? questionRecordings[currentQ.id] : null;
+  const hasRecording = currentQuestionRec ? (
+    allowMultipleRecordings 
+      ? (currentQuestionRec.selectedId && currentQuestionRec.recordings.length > 0)
+      : !!currentQuestionRec.currentBlobUrl
+  ) : false;
+
+  const isSpeaking = assignment?.skillName?.toLowerCase().includes("speaking") || false;
+  // If no questions and it's not a speaking assignment, show error
+  if (questions.length === 0 && !isSpeaking) {
     return (
-      <StudentLayout>
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-yellow-600 mb-2">No Questions</h2>
-            <p className="text-neutral-600">This assignment doesn't have any questions yet.</p>
-            <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-          </div>
+      <div className="px-6 py-6">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-yellow-600 mb-2">No Questions</h2>
+          <p className="text-neutral-600">This assignment doesn't have any questions yet.</p>
+          <Button onClick={() => navigate(-1)} className="mt-4" variant="secondary">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
@@ -1019,11 +1224,10 @@ export default function StudentAssignmentTaking() {
     };
   };
 
-  const currentQuestion = questions[currentQuestionIndex];
+  const currentQuestion = questions.length > 0 ? questions[currentQuestionIndex] : null;
   const answeredCount = Object.keys(answers).length;
-  const isSpeaking = assignment.skillName?.toLowerCase().includes("speaking");
-  const isWriting = assignment.skillName?.toLowerCase().includes("writing");
-  const isReading = assignment.skillName?.toLowerCase().includes("reading");
+  const isWriting = assignment?.skillName?.toLowerCase().includes("writing") || false;
+  const isReading = assignment?.skillName?.toLowerCase().includes("reading") || false;
   
   const { passages, questionsWithoutPassage } = groupQuestionsByPassage();
   const hasMultiplePassages = passages.length > 1 || (passages.length > 0 && questionsWithoutPassage.length > 0);
@@ -1047,17 +1251,9 @@ export default function StudentAssignmentTaking() {
       <div className="min-h-screen bg-neutral-50">
         {/* Header */}
         <div className="bg-white border-b border-neutral-200 sticky top-0 z-10">
-          <div className="px-4 py-4 sm:px-6 lg:px-8">
+          <div className="px-6 py-4 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleExit}
-                  iconLeft={<ArrowLeft className="w-4 h-4" />}
-                >
-                  Exit
-                </Button>
                 <div>
                   <h1 className="text-xl font-semibold text-primary-800">{assignment.title}</h1>
                   {assignment.skillName && (
@@ -1161,7 +1357,7 @@ export default function StudentAssignmentTaking() {
                         <div className="lg:w-[60%] space-y-4">
                           {currentPassage.questions.map((question, qIndex) => {
                             const globalIndex = questions.findIndex(q => q.id === question.id);
-                            const isCurrent = question.id === currentQuestion.id;
+                            const isCurrent = currentQuestion && question.id === currentQuestion.id;
                             const isAnswered = answers[question.id] !== undefined && answers[question.id] !== null && answers[question.id] !== "";
                             
                             return (
@@ -1290,7 +1486,7 @@ export default function StudentAssignmentTaking() {
                                 Question {currentQuestionIndex + 1} of {questions.length}
                               </span>
                               <span className="ml-2 text-sm text-neutral-500">
-                                ({currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''})
+                                ({currentQuestion?.points || 0} point{(currentQuestion?.points || 0) !== 1 ? 's' : ''})
                               </span>
                             </div>
                             <div className="text-sm text-neutral-600 font-medium">
@@ -1299,9 +1495,11 @@ export default function StudentAssignmentTaking() {
                           </div>
 
                           {/* Question Text and Answer */}
-                          <div className="mb-6">
-                            {renderQuestion(currentQuestion)}
-                          </div>
+                          {currentQuestion && (
+                            <div className="mb-6">
+                              {renderQuestion(currentQuestion)}
+                            </div>
+                          )}
 
                           {/* Navigation Buttons */}
                           <div className="flex justify-between items-center pt-4 border-t">
@@ -1389,7 +1587,7 @@ export default function StudentAssignmentTaking() {
                         <div className="space-y-6">
                           {questionsWithoutPassage.map((question) => {
                             const globalIndex = questions.findIndex(q => q.id === question.id);
-                            const isCurrent = question.id === currentQuestion.id;
+                            const isCurrent = currentQuestion && question.id === currentQuestion.id;
                             const isAnswered = answers[question.id] !== undefined && answers[question.id] !== null && answers[question.id] !== "";
                             
                             return (
@@ -1465,14 +1663,31 @@ export default function StudentAssignmentTaking() {
               <DialogTitle>Submit Assignment</DialogTitle>
             </DialogHeader>
             <DialogBody>
-              <p className="text-neutral-700">
-                Are you sure you want to submit this assignment? You have answered {answeredCount} out of {questions.length} questions.
-              </p>
-              {answeredCount < questions.length && (
-                <p className="text-yellow-600 mt-2 text-sm">
-                  You have {questions.length - answeredCount} unanswered questions.
+              <div className="space-y-3">
+                <p className="text-neutral-700">
+                  Are you sure you want to submit this assignment? 
+                  <br></br> 
+                  You have answered {answeredCount} out of {questions.length} questions.
                 </p>
-              )}
+                {answeredCount < questions.length && (
+                  <p className="text-yellow-600 text-sm">
+                    You have {questions.length - answeredCount} unanswered questions.
+                  </p>
+                )}
+                {isSpeaking && hasRecording && (() => {
+                  const pureSpeakingKey = "pure-speaking";
+                  const questionRec = questionRecordings[pureSpeakingKey] || (currentQ ? questionRecordings[currentQ.id] : null);
+                  const recTime = questionRec?.recordingTime || 0;
+                  return (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-800 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Voice recording included ({formatRecordingTime(recTime)})
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
             </DialogBody>
             <DialogFooter>
               <Button variant="secondary" onClick={() => setShowSubmitDialog(false)}>

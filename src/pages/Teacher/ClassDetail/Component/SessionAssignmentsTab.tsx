@@ -11,6 +11,7 @@ import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import CreateAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
 import AdvancedAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
+import AIReadingTestGeneratorPopup from "@/pages/Teacher/ClassDetail/Component/Popup/AIReadingTestGeneratorPopup";
 import EditAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/EditAssignmentPopup";
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
@@ -128,6 +129,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [isAdvancedCreateOpen, setAdvancedCreateOpen] = useState(false);
+  const [isAIReadingTestOpen, setAIReadingTestOpen] = useState(false);
   const [isAdvancedEditOpen, setAdvancedEditOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
   const [assignmentToEditAdvanced, setAssignmentToEditAdvanced] = useState<Assignment | null>(null);
@@ -171,14 +173,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         setError(null);
         
         const response = await getAssignmentsByClassMeeting(classMeetingId);
-        console.log('Assignments response:', response.data);
+        
         
         // Handle nested response structure: { success, data: [...] } or direct array
         const apiAssignments: AssignmentFromAPI[] = Array.isArray(response.data)
           ? response.data
           : (response.data.data || []);
         
-        console.log('Parsed assignments:', apiAssignments);
+        
         
         // Transform API data to component format
         const transformedAssignments: Assignment[] = apiAssignments.map((apiAsm) => {
@@ -211,7 +213,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         setLoading(false);
         setError(null);
       } catch (err: any) {
-        console.error('Error fetching assignments:', err);
+        
         setError(err?.message || 'Failed to load assignments');
         setLoading(false);
         setAssignments([]);
@@ -258,7 +260,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       
       setAssignments(transformedAssignments);
     } catch (err) {
-      console.error('Error refreshing assignments:', err);
+      
       showError('Failed to refresh assignments list.');
     }
   };
@@ -293,7 +295,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         setSelectedSkillTab(assignmentData.skillID);
       }
     } catch (err: any) {
-      console.error('Error refreshing assignments after creation:', err);
+      
       // Don't show error here as the assignment was already created successfully
     }
   };
@@ -325,12 +327,12 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         
         // Use AdvancedAssignmentPopup in edit mode with full data
         if (!fullAssignmentData.assignmentId) {
-          console.error("Assignment ID is missing in fullAssignmentData:", fullAssignmentData);
+          
         }
         setAssignmentToEditAdvanced(fullAssignmentData);
         setAdvancedEditOpen(true);
       } catch (err) {
-        console.error("Error fetching assignment details:", err);
+        
         // Fallback to basic assignment data if fetch fails
         setAssignmentToEditAdvanced(assignment);
         setAdvancedEditOpen(true);
@@ -385,7 +387,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           
           setAssignments(transformedAssignments);
         } catch (err) {
-          console.error('Error refreshing assignments:', err);
+          
           showError('Failed to refresh assignments list.');
         }
       };
@@ -396,21 +398,20 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
 
   const handleViewSubmissions = async (assignment: Assignment) => {
     setSelectedAssignment(assignment);
-    setViewMode('submissions');
     
     try {
       setLoading(true);
       
       // Fetch submissions from API
       const response = await getSubmissionsByAssignment(assignment.assignmentId);
-      console.log('Submissions response:', response.data);
+      
       
       // Handle nested response structure: { success, data: [...] } or direct array
       const apiSubmissions: SubmissionFromAPI[] = Array.isArray(response.data) 
         ? response.data 
         : (response.data.data || []);
       
-      console.log('Parsed submissions:', apiSubmissions);
+      
       
       // Transform API data to component format
       const transformedSubmissions: Submission[] = apiSubmissions.map((apiSub) => {
@@ -422,12 +423,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         // Backend returns 'isAiScore' (lowercase 'i')
         const isAiScore = apiSub.isAiScore === true;
         
-        console.log('Transforming submission:', {
-          studentName: apiSub.studentName,
-          isAiScore: apiSub.isAiScore,
-          normalizedIsAiScore: isAiScore,
-          score: apiSub.score
-        });
+        
         
         return {
           id: apiSub.id,
@@ -444,14 +440,22 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       });
       
       // Update selected assignment with submissions
-      setSelectedAssignment({
+      const updatedAssignment = {
         ...assignment,
         submissions: transformedSubmissions
-      });
+      };
+      setSelectedAssignment(updatedAssignment);
+      
+      // Check if this is a Writing assignment - open special grading view
+      if (assignment.skillName?.toLowerCase() === 'writing') {
+        setWritingGradingOpen(true);
+      } else {
+        setViewMode('submissions');
+      }
       
       setLoading(false);
     } catch (err: any) {
-      console.error('Error fetching submissions:', err);
+      
       showError(err?.message || 'Failed to load submissions');
       setLoading(false);
     }
@@ -484,7 +488,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       setFeedbackOpen(false);
       success('Feedback submitted successfully!');
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      
       showError('Failed to submit feedback. Please try again.');
     }
   };
@@ -501,7 +505,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       setGradeOpen(false);
       success('Score submitted successfully!');
     } catch (error) {
-      console.error('Error submitting score:', error);
+      
       showError('Failed to submit score. Please try again.');
     }
   };
@@ -537,7 +541,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       
       success('Grade and feedback saved successfully!');
     } catch (error) {
-      console.error('Error submitting grade:', error);
+      
       throw error; // Re-throw to be caught by WritingGradingView
     }
   };
@@ -572,7 +576,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       setDeleteConfirmOpen(false);
       setAssignmentToDelete(null);
     } catch (error) {
-      console.error('Error deleting assignment:', error);
+      
       showError('Failed to delete assignment. Please try again.');
     } finally {
       setLoading(false);
@@ -622,7 +626,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           // Log failed items for debugging
           const failedItems = data.data.results.filter((r: any) => r.status === 'failed');
           if (failedItems.length > 0) {
-            console.warn('Failed to update:', failedItems);
+            
           }
         } else {
           // Complete success
@@ -630,7 +634,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         }
       }
     } catch (error: any) {
-      console.error('Error importing grades:', error);
+      
       
       // Extract error message from response if available
       const errorMessage = error.response?.data?.message || 
@@ -654,7 +658,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       window.URL.revokeObjectURL(url);
       success("Assignment downloaded successfully!");
     } catch (err: any) {
-      console.error('Error downloading assignment:', err);
+      
       showError(err?.message || 'Failed to download assignment');
     }
   };
@@ -672,7 +676,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       window.URL.revokeObjectURL(url);
       success("Submission downloaded successfully!");
     } catch (err: any) {
-      console.error('Error downloading submission:', err);
+      
       showError(err?.message || 'Failed to download submission');
     }
   };
@@ -691,7 +695,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       window.URL.revokeObjectURL(url);
       success("All submissions downloaded successfully!");
     } catch (err: any) {
-      console.error('Error downloading all submissions:', err);
+      
       showError(err?.message || 'Failed to download all submissions');
     }
   };
@@ -706,7 +710,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         await handleViewSubmissions(selectedAssignment);
       }
     } catch (err: any) {
-      console.error('Error updating feedback:', err);
+      
       showError(err?.message || 'Failed to update feedback');
     }
   };
@@ -721,7 +725,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         await handleViewSubmissions(selectedAssignment);
       }
     } catch (err: any) {
-      console.error('Error updating score:', err);
+      
       showError(err?.message || 'Failed to update score');
     }
   };
@@ -744,7 +748,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       
       setBulkImportOpen(false);
     } catch (err: any) {
-      console.error('Error bulk updating:', err);
+      
       showError(err?.message || 'Failed to bulk update submissions');
     }
   };
@@ -844,6 +848,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                 className="btn-secondary"
               >
                 Create Assignment
+              </Button>
+              <Button 
+                variant="secondary"
+                onClick={() => setAIReadingTestOpen(true)} 
+                iconLeft={<Bot size={16} />}
+                className="btn-secondary"
+              >
+                AI Reading Test
               </Button>
               <Button 
                 variant="primary"
@@ -1212,28 +1224,31 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           onSubmit={handleBulkUpdate}
       />
       )}
-      {selectedAssignment && selectedAssignment.skillName === "Writing" && (
-        <WritingGradingView
-          assignmentTitle={selectedAssignment.title}
-          submissions={selectedAssignment.submissions}
-          onClose={() => setWritingGradingOpen(false)}
-          onGradeSubmit={async (submissionId: string, score: number, feedback: string) => {
-            try {
-              await updateSubmissionScore(submissionId, score);
-              if (feedback) {
-                await updateSubmissionFeedback(submissionId, feedback);
-              }
-              success("Grade submitted successfully!");
-              if (selectedAssignment) {
-                await handleViewSubmissions(selectedAssignment);
-              }
-            } catch (err: any) {
-              console.error('Error submitting grade:', err);
-              showError(err?.message || 'Failed to submit grade');
-            }
-          }}
-        />
-      )}
+       {isWritingGradingOpen && selectedAssignment && selectedAssignment.skillName === "Writing" && (
+         <WritingGradingView
+           assignmentTitle={selectedAssignment.title}
+           submissions={selectedAssignment.submissions}
+           onClose={() => {
+             setWritingGradingOpen(false);
+             setViewMode('assignments');
+             setSelectedAssignment(null);
+           }}
+           onGradeSubmit={async (submissionId: string, score: number, feedback: string) => {
+             try {
+               await updateSubmissionScore(submissionId, score);
+               if (feedback) {
+                 await updateSubmissionFeedback(submissionId, feedback);
+               }
+               success("Grade submitted successfully!");
+               if (selectedAssignment) {
+                 await handleViewSubmissions(selectedAssignment);
+               }
+             } catch (err: any) {              
+               showError(err?.message || 'Failed to submit grade');
+             }
+           }}
+         />
+       )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
@@ -1248,6 +1263,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      {/* AI Reading Test Generator Popup */}
+      <AIReadingTestGeneratorPopup
+        open={isAIReadingTestOpen}
+        onOpenChange={setAIReadingTestOpen}
+        classMeetingId={classMeetingId}
+        onSubmit={refreshAssignments}
       />
     </div>
   );

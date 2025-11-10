@@ -89,7 +89,34 @@ export interface TeachingClassResponse {
   className: string;
   classNumber: string;
   classSession: ClassSession | null;
+  endDate : string
 }
+
+export interface WeeklyFeedbackPayload {
+  classId: string;
+  teacherId: string;
+  weekNumber: number;
+  studentFeedback: {
+    studentId: string;
+    insights: string[];      // 3-4 insight cá nhân cho học sinh này
+    customNote?: string;     // tùy chọn
+  }[];
+}
+
+//Weekly feedback
+export const submitWeeklyFeedback = async (payload: WeeklyFeedbackPayload) => {
+  try {
+    console.log("Submitting weekly feedback payload:", payload);
+    // const res = await api.post(`${endpoint.weeklyFeedback}/submit`, payload);
+    // return res.data;
+    return { ok: true };
+  } catch (err) {
+    console.error("Error submitting weekly feedback:", err);
+    throw err;
+  }
+};
+
+
 
 // Time slot calculation function 
 export const calculateTimeSlot = (slot: string): { startTime: string; endTime: string } => {
@@ -203,7 +230,7 @@ export const transformTeachingClass = (apiClass: TeachingClassResponse) => {
     category: "General", // Default category, can be enhanced later
     enrolledDate: sessionDate,
     startDate: sessionDate,
-    endDate: sessionDate,
+    endDate: apiClass.endDate,
     status: classStatus,
     capacity: apiClass.capacity,
     enrolledCount: apiClass.enrolledCount,
@@ -246,3 +273,5 @@ export const teachingClassesService = {
     }
   }
 };
+
+

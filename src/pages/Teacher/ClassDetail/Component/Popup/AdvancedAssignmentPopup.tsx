@@ -39,7 +39,7 @@ import SettingsStep from "./steps/SettingsStep";
 import PreviewStep from "./steps/PreviewStep";
 import { api, endpoint } from "@/api/api";
 import { createSpeakingAssignment, createQuizAssignment, createAssignment, uploadJsonToPresignedUrl, uploadToPresignedUrl } from "@/api";
-import { updateAssignment, getQuestionJsonUploadUrl, getAudioUploadUrl } from "@/api/assignments.api";
+import { updateAssignment, getQuestionJsonUploadUrl, getQuestionDataUrl, getAudioUploadUrl } from "@/api/assignments.api";
 import { config } from "@/lib/config";
 
 // Types
@@ -114,6 +114,9 @@ export interface AssignmentQuestionData {
     allowBackNavigation: boolean;
     showProgress: boolean;
     showQuestionNumbers: boolean;
+    allowMultipleRecordings?: boolean;
+    maxRecordings?: number;
+    timeLimitMinutes?: number;
   };
   media?: {
     audioUrl?: string;
@@ -202,6 +205,8 @@ export default function AdvancedAssignmentPopup({
   const [showProgress, setShowProgress] = useState(true);
   const [showQuestionNumbers, setShowQuestionNumbers] = useState(true);
   const [autoSubmit, setAutoSubmit] = useState(false);
+  const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(false);
+  const [maxRecordings, setMaxRecordings] = useState(3);
   
   // Files
   const [files, setFiles] = useState<File[]>([]);
@@ -238,8 +243,12 @@ export default function AdvancedAssignmentPopup({
       // Load question data if it's a Quiz or Speaking assignment
       if ((type === "Quiz" || type === "Speaking") && editAssignment.questionUrl) {
         try {
-          console.log("Loading question data from URL:", editAssignment.questionUrl);
-          const questionResponse = await fetch(editAssignment.questionUrl);
+          // Get presigned URL for question data
+          const questionUrlResponse = await getQuestionDataUrl(editAssignment.assignmentId);
+          const presignedUrl = questionUrlResponse.data.questionDataUrl;
+          
+          console.log("Loading question data from URL:", presignedUrl);
+          const questionResponse = await fetch(presignedUrl);
           
           if (!questionResponse.ok) {
             throw new Error(`Failed to fetch question data: ${questionResponse.status} ${questionResponse.statusText}`);
@@ -293,6 +302,12 @@ export default function AdvancedAssignmentPopup({
             }
             if (questionData.settings.autoSubmit !== undefined) {
               setAutoSubmit(questionData.settings.autoSubmit);
+            }
+            if (questionData.settings.allowMultipleRecordings !== undefined) {
+              setAllowMultipleRecordings(questionData.settings.allowMultipleRecordings);
+            }
+            if (questionData.settings.maxRecordings !== undefined) {
+              setMaxRecordings(questionData.settings.maxRecordings);
             }
           }
         } catch (err) {
@@ -358,7 +373,9 @@ export default function AdvancedAssignmentPopup({
     setAllowBackNavigation(true);
     setShowProgress(true);
     setShowQuestionNumbers(true);
-    setAutoSubmit(true);
+    setAutoSubmit(false);
+    setAllowMultipleRecordings(false);
+    setMaxRecordings(3);
     setFiles([]);
     setError(null);
     setCurrentStep("basic");
@@ -547,25 +564,6 @@ export default function AdvancedAssignmentPopup({
               return false;
             }
           }
-          
-          if (q.type === "speaking") {
-            if (!q.instructions) {
-              setError(`Question ${q.order} (Speaking) needs instructions for students`);
-              return false;
-            }
-            if (!q.maxDuration || q.maxDuration <= 0) {
-              setError(`Question ${q.order} (Speaking) needs a valid maximum duration`);
-              return false;
-            }
-            // Validate audio timestamp format if provided
-            if (q.audioTimestamp && q.audioTimestamp !== "-1") {
-              const timestampRegex = /^\d{1,2}:\d{2}$/;
-              if (!timestampRegex.test(q.audioTimestamp)) {
-                setError(`Question ${q.order} (Speaking) has invalid audio timestamp format. Use MM:SS format`);
-                return false;
-              }
-            }
-          }
         }
         return true;
         
@@ -636,6 +634,7 @@ export default function AdvancedAssignmentPopup({
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
             skillID: selectedSkillId || null,
+            assignmentType: assignmentType,
           };
           
           // If new file is uploaded, include file info
@@ -868,6 +867,8 @@ export default function AdvancedAssignmentPopup({
             title,
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
+            skillID: selectedSkillId || null,
+            assignmentType: assignmentType,
           };
           
           // Include question file path if we have it
@@ -993,6 +994,8 @@ export default function AdvancedAssignmentPopup({
             title,
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
+            skillID: selectedSkillId || null,
+            assignmentType: assignmentType,
           };
           
           await updateAssignment(editAssignment.assignmentId, updateData);
@@ -1031,6 +1034,7 @@ export default function AdvancedAssignmentPopup({
                   allowBackNavigation,
                   showProgress,
                   showQuestionNumbers,
+                  timeLimitMinutes,
                 },
                 media: questionData.media,
               },
@@ -1146,6 +1150,9 @@ export default function AdvancedAssignmentPopup({
             showProgress,
             showQuestionNumbers,
             autoSubmit,
+            allowMultipleRecordings,
+            maxRecordings,
+            timeLimitMinutes,
             maxRetries: timeLimitMinutes ? Math.floor(timeLimitMinutes * 60 / questions.length) : undefined,
           },
           media: {
@@ -1369,6 +1376,11 @@ export default function AdvancedAssignmentPopup({
               onShowQuestionNumbersChange={setShowQuestionNumbers}
               autoSubmit={autoSubmit}
               onAutoSubmitChange={setAutoSubmit}
+              isSpeakingAssignment={selectedSkill?.name === "Speaking"}
+              allowMultipleRecordings={allowMultipleRecordings}
+              onAllowMultipleRecordingsChange={setAllowMultipleRecordings}
+              maxRecordings={maxRecordings}
+              onMaxRecordingsChange={setMaxRecordings}
             />
           )}
 
