@@ -188,6 +188,7 @@ export interface TeacherCourse {
   level: "Beginner" | "Intermediate" | "Advanced";
   format: "Online" | "Offline" | "Hybrid";
   category?: string;
+  activeClassCount?: number;
   
   // Schedule information
   schedule?: string;
@@ -214,6 +215,7 @@ export interface TeachingCourseApiResponse {
   categoryName: string;
   courseLevel: string;
   formatName: string;
+  activeClassCount: number;
 }
 
 // Utility function to convert API response to TeacherCourse
@@ -246,6 +248,7 @@ export function apiResponseToTeacherCourse(apiCourse: TeachingCourseApiResponse)
     format: formatMap[apiCourse.formatName] || "Offline",
     category: apiCourse.categoryName,
     image: apiCourse.courseImageUrl,
+    activeClassCount: apiCourse.activeClassCount
   };
 }
 
