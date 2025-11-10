@@ -106,7 +106,7 @@ export default function QuestionImport({ onImport, skillType }: Props) {
             question: questionText,
             points,
             explanation: explanation || undefined,
-            requiresManualGrading: questionType === "essay" || questionType === "short_answer",
+            requiresManualGrading: questionType === "essay" || questionType === "short_answer" || questionType === "speaking",
           };
 
           // Handle multiple choice
@@ -192,7 +192,7 @@ export default function QuestionImport({ onImport, skillType }: Props) {
             question.correctAnswer = correctAnswer;
           }
           // Handle Short Answer / Essay
-          else if (questionType === "short_answer" || questionType === "essay") {
+          else if (questionType === "short_answer" || questionType === "essay" || questionType === "speaking") {
             question.requiresManualGrading = true;
           }
 

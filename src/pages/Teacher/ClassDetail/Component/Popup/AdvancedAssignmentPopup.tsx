@@ -113,6 +113,8 @@ export interface AssignmentQuestionData {
     allowBackNavigation: boolean;
     showProgress: boolean;
     showQuestionNumbers: boolean;
+    allowMultipleRecordings?: boolean;
+    maxRecordings?: number;
   };
   media?: {
     audioUrl?: string;
@@ -201,6 +203,8 @@ export default function AdvancedAssignmentPopup({
   const [showProgress, setShowProgress] = useState(true);
   const [showQuestionNumbers, setShowQuestionNumbers] = useState(true);
   const [autoSubmit, setAutoSubmit] = useState(false);
+  const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(false);
+  const [maxRecordings, setMaxRecordings] = useState(3);
   
   // Files
   const [files, setFiles] = useState<File[]>([]);
@@ -297,6 +301,12 @@ export default function AdvancedAssignmentPopup({
             if (questionData.settings.autoSubmit !== undefined) {
               setAutoSubmit(questionData.settings.autoSubmit);
             }
+            if (questionData.settings.allowMultipleRecordings !== undefined) {
+              setAllowMultipleRecordings(questionData.settings.allowMultipleRecordings);
+            }
+            if (questionData.settings.maxRecordings !== undefined) {
+              setMaxRecordings(questionData.settings.maxRecordings);
+            }
           }
         } catch (err) {
           console.error("Error loading question data:", err);
@@ -361,7 +371,9 @@ export default function AdvancedAssignmentPopup({
     setAllowBackNavigation(true);
     setShowProgress(true);
     setShowQuestionNumbers(true);
-    setAutoSubmit(true);
+    setAutoSubmit(false);
+    setAllowMultipleRecordings(false);
+    setMaxRecordings(3);
     setFiles([]);
     setError(null);
     setCurrentStep("basic");
@@ -416,6 +428,8 @@ export default function AdvancedAssignmentPopup({
         allowBackNavigation,
         showProgress,
         showQuestionNumbers,
+        allowMultipleRecordings,
+        maxRecordings,
       },
     };
   };
@@ -473,25 +487,6 @@ export default function AdvancedAssignmentPopup({
             if (!q.correctAnswer) {
               setError(`Question ${q.order} (Multiple Choice) needs a correct answer`);
               return false;
-            }
-          }
-          
-          if (q.type === "speaking") {
-            if (!q.instructions) {
-              setError(`Question ${q.order} (Speaking) needs instructions for students`);
-              return false;
-            }
-            if (!q.maxDuration || q.maxDuration <= 0) {
-              setError(`Question ${q.order} (Speaking) needs a valid maximum duration`);
-              return false;
-            }
-            // Validate audio timestamp format if provided
-            if (q.audioTimestamp && q.audioTimestamp !== "-1") {
-              const timestampRegex = /^\d{1,2}:\d{2}$/;
-              if (!timestampRegex.test(q.audioTimestamp)) {
-                setError(`Question ${q.order} (Speaking) has invalid audio timestamp format. Use MM:SS format`);
-                return false;
-              }
             }
           }
         }
@@ -736,6 +731,7 @@ export default function AdvancedAssignmentPopup({
             title,
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
+            skillID: selectedSkillId || null,
           };
           
           // Include question file path if we have it
@@ -861,6 +857,7 @@ export default function AdvancedAssignmentPopup({
             title,
             description: description || "",
             dueDate: new Date(dueDate).toISOString(),
+            skillID: selectedSkillId || null,
           };
           
           await updateAssignment(editAssignment.assignmentId, updateData);
@@ -1236,6 +1233,11 @@ export default function AdvancedAssignmentPopup({
               onShowQuestionNumbersChange={setShowQuestionNumbers}
               autoSubmit={autoSubmit}
               onAutoSubmitChange={setAutoSubmit}
+              isSpeakingAssignment={selectedSkill?.name === "Speaking"}
+              allowMultipleRecordings={allowMultipleRecordings}
+              onAllowMultipleRecordingsChange={setAllowMultipleRecordings}
+              maxRecordings={maxRecordings}
+              onMaxRecordingsChange={setMaxRecordings}
             />
           )}
 
