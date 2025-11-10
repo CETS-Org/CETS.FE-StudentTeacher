@@ -9,13 +9,15 @@ import { useNavigate } from "react-router-dom";
 import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
 import type { ClassMeeting } from "@/api/classMeetings.api";
 import Loader from "@/components/ui/Loader";
+import WeeklyFeedbackModal from "@/pages/Teacher/ClassDetail/Component/WeeklyFeedbackModal";
 
 type Props = {
   classId?: string;
 };
 
 // === Helpers ===
-const stripTime = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const stripTime = (d: Date) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 /** ISO week/year (Tuần ISO: tuần bắt đầu vào Thứ Hai) */
 function getISOWeekYear(dateStr: string) {
@@ -29,7 +31,7 @@ function getISOWeekYear(dateStr: string) {
   return { year, week, key: `${year}-W${String(week).padStart(2, "0")}` };
 }
 
-/** dd/mm/yyyy (theo yêu cầu trước đó) */
+/** dd/mm/yyyy */
 const formatDateDDMMYYYY = (dateString: string) => {
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return dateString;
@@ -44,7 +46,19 @@ export default function SessionsTab({ classId }: Props) {
   const [sessions, setSessions] = useState<ClassMeeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pinnedId, setPinnedId] = useState<string | null>(null); // buổi “next session”
+
+  // Pin "next session"
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+
+  // Weekly feedback modal state
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [selectedWeekNumber, setSelectedWeekNumber] = useState<number | null>(
+    null
+  );
+  const [selectedClassMeetingId, setSelectedClassMeetingId] = useState<
+    string | null
+  >(null);
+
   const itemsPerPage = 4;
   const navigate = useNavigate();
 
@@ -59,6 +73,7 @@ export default function SessionsTab({ classId }: Props) {
       try {
         setLoading(true);
         setError(null);
+
         const data = await getClassMeetingsByClassId(classId);
 
         // sort tăng dần theo ngày
@@ -151,21 +166,25 @@ export default function SessionsTab({ classId }: Props) {
             <div className="w-16 h-16 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mb-4">
               <NotebookPen className="w-8 h-8 text-accent-600" />
             </div>
-            <h3 className="text-lg font-semibold text-primary-800 mb-2">No Sessions Yet</h3>
-            <p className="text-neutral-600">There are no sessions scheduled for this class yet.</p>
+            <h3 className="text-lg font-semibold text-primary-800 mb-2">
+              No Sessions Yet
+            </h3>
+            <p className="text-neutral-600">
+              There are no sessions scheduled for this class yet.
+            </p>
           </div>
         </Card>
       ) : (
         <>
           <div className="space-y-4">
-            {currentSessions.map((session) => {
-              const isPinned = session.id === pinnedId;
-              const isLastOfWeek = lastOfWeekIdSet.has(session.id);
-              const { year, week, key } = getISOWeekYear(session.date);
+            {currentSessions.map((sess) => {
+              const isPinned = sess.id === pinnedId;
+              const isLastOfWeek = lastOfWeekIdSet.has(sess.id);
+              const { week } = getISOWeekYear(sess.date);
 
               return (
                 <Card
-                  key={session.id}
+                  key={sess.id}
                   className={`p-6 border border-accent-100 shadow-lg bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300 hover:shadow-xl ${
                     isPinned ? "ring-2 ring-accent-400" : ""
                   }`}
@@ -181,7 +200,7 @@ export default function SessionsTab({ classId }: Props) {
                             {isPinned ? "Next session" : "Session"}{" "}
                             {!isPinned && (
                               <span className="text-neutral-500 font-normal">
-                                ({formatDateDDMMYYYY(session.date)})
+                                ({formatDateDDMMYYYY(sess.date)})
                               </span>
                             )}
                           </h3>
@@ -192,12 +211,12 @@ export default function SessionsTab({ classId }: Props) {
                             </span>
                           )}
 
-                          {session.isStudy && (
+                          {sess.isStudy && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-success-400 to-success-500 text-white">
                               Study Session
                             </span>
                           )}
-                          {!session.isActive && (
+                          {!sess.isActive && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-neutral-400 to-neutral-500 text-white">
                               Inactive
                             </span>
@@ -208,30 +227,30 @@ export default function SessionsTab({ classId }: Props) {
                           <div className="flex items-center gap-2 text-sm text-neutral-600">
                             <Calendar className="w-4 h-4 text-accent-500" />
                             <span className="font-medium">
-                              {formatDateDDMMYYYY(session.date)}
+                              {formatDateDDMMYYYY(sess.date)}
                             </span>
                           </div>
 
-                          {session.onlineMeetingUrl && (
+                          {sess.onlineMeetingUrl && (
                             <div className="flex items-center gap-2 text-sm text-neutral-600">
                               <Globe className="w-4 h-4 text-accent-500" />
                               <span className="font-medium">Online Meeting</span>
-                              {session.passcode && (
+                              {sess.passcode && (
                                 <span className="ml-2 px-2 py-1 bg-accent-100 rounded text-xs font-semibold text-accent-700">
-                                  Code: {session.passcode}
+                                  Code: {sess.passcode}
                                 </span>
                               )}
                             </div>
                           )}
 
-                          {session.roomID && !session.onlineMeetingUrl && (
+                          {sess.roomID && !sess.onlineMeetingUrl && (
                             <div className="flex items-center gap-2 text-sm text-neutral-600">
                               <MapPin className="w-4 h-4 text-accent-500" />
                               <span className="font-medium">In-person</span>
                             </div>
                           )}
 
-                          {session.recordingUrl && (
+                          {sess.recordingUrl && (
                             <div className="flex items-center gap-2 text-sm text-neutral-600">
                               <Video className="w-4 h-4 text-accent-500" />
                               <span className="font-medium">Recording Available</span>
@@ -242,27 +261,29 @@ export default function SessionsTab({ classId }: Props) {
                     </div>
 
                     <div className="flex gap-2 lg:flex-shrink-0">
-                      {session.onlineMeetingUrl && (
+                      {sess.onlineMeetingUrl && (
                         <Button
                           variant="secondary"
                           className="border-accent-300 text-accent-700 hover:bg-accent-50"
-                          onClick={() => window.open(session.onlineMeetingUrl!, "_blank")}
+                          onClick={() =>
+                            window.open(sess.onlineMeetingUrl!, "_blank")
+                          }
                           iconLeft={<Globe className="w-4 h-4" />}
                         >
                           Join
                         </Button>
                       )}
 
-                      {/* Weekly feedback cho buổi CUỐI tuần */}
+                      {/* Weekly Feedback ở BUỔI CUỐI CỦA TUẦN */}
                       {isLastOfWeek && (
                         <Button
                           variant="secondary"
                           className="border-primary-300 text-primary-700 hover:bg-primary-50"
-                          onClick={() =>
-                            navigate(
-                              `/teacher/class/${classId}/weekly-feedback?week=${key}&year=${year}`
-                            )
-                          }
+                          onClick={() => {
+                            setSelectedClassMeetingId(sess.id);
+                            setSelectedWeekNumber(week);
+                            setFeedbackOpen(true);
+                          }}
                         >
                           Weekly Feedback
                         </Button>
@@ -272,7 +293,7 @@ export default function SessionsTab({ classId }: Props) {
                         variant="primary"
                         className="btn-secondary"
                         onClick={() =>
-                          navigate(`/teacher/class/${classId}/session/${session.id}`)
+                          navigate(`/teacher/class/${classId}/session/${sess.id}`)
                         }
                       >
                         Go to Session
@@ -295,6 +316,20 @@ export default function SessionsTab({ classId }: Props) {
               />
             </div>
           )}
+
+          {/* >>> NEW: Weekly Feedback Modal (cần classMeetingId để lấy attendance/status) */}
+          {feedbackOpen &&
+            selectedWeekNumber !== null &&
+            classId &&
+            selectedClassMeetingId && (
+              <WeeklyFeedbackModal
+                classId={classId}
+                classMeetingId={selectedClassMeetingId}
+                weekNumber={selectedWeekNumber}
+                isOpen={feedbackOpen}
+                onClose={() => setFeedbackOpen(false)}
+              />
+            )}
         </>
       )}
     </div>
