@@ -1016,7 +1016,7 @@ export default function SessionDetail() {
                           </span>
                           {status === "pending" && !pastDue && (
                             <div className="flex flex-col gap-2">
-                              {assignment.questionDataUrl && (
+                              {assignment.questionUrl && (
                                 <Button 
                                   variant="primary"
                                   size="sm"
@@ -1031,7 +1031,7 @@ export default function SessionDetail() {
                                   Take Assignment
                                 </Button>
                               )}
-                              {!assignment.questionDataUrl && (
+                              {!assignment.questionUrl && (
                                 <Button 
                                   variant="primary"
                                   size="sm"
@@ -1077,49 +1077,60 @@ export default function SessionDetail() {
                           </div>
                         )}
 
-                        {/* Submitted File */}
-                        {submission?.storeUrl ? (
-                          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <FileText className="w-5 h-5 text-green-600" />
-                                <div>
-                                  <span 
-                                    className="text-sm font-semibold text-green-800 hover:text-green-900 underline cursor-pointer"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleDownloadSubmission(submission.id);
+                        {/* Submitted File - Only show for non-reading/listening assignments */}
+                        {(() => {
+                          const skillName = assignment.skillName?.toLowerCase() || '';
+                          const isReadingOrListening = skillName.includes('reading') || skillName.includes('listening');
+                          
+                          // Don't show storeUrl for reading/listening assignments
+                          if (isReadingOrListening) {
+                            return null;
+                          }
+                          
+                          // Show storeUrl for other assignments (writing, speaking, etc.)
+                          return submission?.storeUrl ? (
+                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <FileText className="w-5 h-5 text-green-600" />
+                                  <div>
+                                    <span 
+                                      className="text-sm font-semibold text-green-800 hover:text-green-900 underline cursor-pointer"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDownloadSubmission(submission.id);
+                                      }}
+                                    >
+                                      {getFileNameFromUrl(submission.storeUrl)}
+                                    </span>
+                                    {submission.createdAt && (
+                                      <p className="text-xs text-green-600">Submitted at: {formatDateTime(submission.createdAt)}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                {status === "submitted" && !pastDue && (
+                                  <Button 
+                                    variant="primary"
+                                    size="sm"
+                                    className="bg-warning-500 hover:bg-warning-600"
+                                    iconLeft={<Upload className="w-4 h-4" />}
+                                    onClick={(e) => { 
+                                      console.log('Resubmit button clicked for assignment:', assignment.id);
+                                      e.preventDefault(); 
+                                      e.stopPropagation(); 
+                                      handleOpenUpload(assignment.id); 
                                     }}
                                   >
-                                    {getFileNameFromUrl(submission.storeUrl)}
-                                  </span>
-                                  {submission.createdAt && (
-                                    <p className="text-xs text-green-600">Submitted at: {formatDateTime(submission.createdAt)}</p>
-                                  )}
-                                </div>
+                                    Resubmit
+                                  </Button>
+                                )}
                               </div>
-                              {status === "submitted" && !pastDue && (
-                                <Button 
-                                  variant="primary"
-                                  size="sm"
-                                  className="bg-warning-500 hover:bg-warning-600"
-                                  iconLeft={<Upload className="w-4 h-4" />}
-                                  onClick={(e) => { 
-                                    console.log('Resubmit button clicked for assignment:', assignment.id);
-                                    e.preventDefault(); 
-                                    e.stopPropagation(); 
-                                    handleOpenUpload(assignment.id); 
-                                  }}
-                                >
-                                  Resubmit
-                                </Button>
-                              )}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="mb-4 text-sm text-neutral-600">No submission yet.</div>
-                        )}
+                          ) : (
+                            <div className="mb-4 text-sm text-neutral-600">No submission yet.</div>
+                          );
+                        })()}
 
                         {/* Feedback Display */}
                         {submission?.feedback && (

@@ -143,13 +143,14 @@ export interface UpdateAssignmentRequest {
   questionUrl?: string; // File path for question JSON (for Quiz/Speaking assignments)
 }
 
-// Create Submission Request
+// Create Submission Request (matches SubmitAssignmentRequest from backend)
 export interface CreateSubmissionRequest {
   assignmentID: string;
   studentID: string;
-  fileName: string;
-  contentType: string;
-  content: string | null;
+  fileName: string | null; // Can be null for reading/listening assignments
+  contentType: string | null; // Can be null for reading/listening assignments
+  content: string | null; // Can be null for reading/listening assignments
+  score?: number; // Calculated score for auto-gradable assignments (reading/listening)
 }
 
 // Create Submission with Presigned URL Request
@@ -169,6 +170,7 @@ export interface SubmitAssignmentAnswersRequest {
     timestamp?: string;
   }>;
   audioBlob?: Blob | null;
+  score?: number; // Calculated score for auto-gradable assignments (reading/listening)
 }
 
 // Update Submission Feedback Request

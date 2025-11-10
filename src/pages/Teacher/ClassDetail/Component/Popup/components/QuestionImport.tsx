@@ -101,12 +101,16 @@ export default function QuestionImport({ onImport, skillType }: Props) {
           }
 
           // Reading: Get passage (can be shared across multiple questions)
-          // If passage is empty, use the previous passage
+          // If passage is empty in the row, the question will have no passage
+          // If passage has value, update currentPassage and assign to question
           const rowPassage = passageCol !== -1 ? row[passageCol]?.toString().trim() : "";
+          let passage: string | undefined = undefined;
           if (rowPassage) {
+            // Passage has value - update currentPassage and assign to question
             currentPassage = rowPassage;
+            passage = currentPassage;
           }
-          const passage = currentPassage;
+          // If rowPassage is empty, passage remains undefined (question will have no passage)
 
           // Listening: Get audio URL (can be shared across multiple questions)
           // If audio is empty, use the previous audio
@@ -135,7 +139,8 @@ export default function QuestionImport({ onImport, skillType }: Props) {
           };
 
           // Store passage and audio URL as temporary fields
-          if (passage) {
+          // Only assign passage if it has a value (undefined means no passage)
+          if (passage !== undefined && passage) {
             (question as any)._passage = passage;
           }
           if (audioUrl) {
@@ -342,8 +347,8 @@ export default function QuestionImport({ onImport, skillType }: Props) {
           {skillType.toLowerCase() === "reading" && (
             <p className="mt-2 text-blue-800">
               <strong>Note:</strong> For Reading assignments, you can add a "Passage" column. 
-              Multiple questions can share the same passage. If a row has an empty Passage, 
-              it will use the passage from the previous row.
+              If a row has a Passage value, that question will use that passage. 
+              If a row has an empty Passage, that question will have no passage (standalone question).
             </p>
           )}
           {skillType.toLowerCase() === "listening" && (
@@ -475,16 +480,28 @@ export default function QuestionImport({ onImport, skillType }: Props) {
                   Explanation: "Human activities are the primary cause of climate change.",
                 },
                 {
-                  Passage: "", // Empty passage to indicate shared passage
-                  Question: "According to the passage, what is warming at an unprecedented rate?",
+                  Passage: "", // Empty passage - this question will have no passage
+                  Question: "What is the capital of France?",
                   Type: "multiple_choice",
-                  "Option A": "Ocean temperatures",
-                  "Option B": "Earth's climate",
-                  "Option C": "Solar activity",
-                  "Option D": "Atmospheric pressure",
+                  "Option A": "London",
+                  "Option B": "Berlin",
+                  "Option C": "Paris",
+                  "Option D": "Madrid",
+                  Answer: "C",
+                  Points: 1,
+                  Explanation: "Paris is the capital city of France.",
+                },
+                {
+                  Passage: "The quick brown fox jumps over the lazy dog.",
+                  Question: "What animal jumps over the dog?",
+                  Type: "multiple_choice",
+                  "Option A": "Cat",
+                  "Option B": "Fox",
+                  "Option C": "Rabbit",
+                  "Option D": "Bird",
                   Answer: "B",
-                  Points: 2,
-                  Explanation: "The passage states that Earth's climate is warming.",
+                  Points: 1,
+                  Explanation: "The fox jumps over the lazy dog.",
                 },
               ];
             } else if (skillType.toLowerCase() === "listening") {

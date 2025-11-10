@@ -457,8 +457,9 @@ export default function AdvancedAssignmentPopup({
         audioCounts.set(audio, (audioCounts.get(audio) || 0) + 1);
       }
 
-      // Clean up temporary fields
-      const { _passage, _audioFile, ...cleanedQ } = question as any;
+      // Keep _passage and _audioUrl in questions for grouping multiple passages/audios
+      // Only clean up _audioFile (temporary file object that can't be serialized)
+      const { _audioFile, ...cleanedQ } = question as any;
       return cleanedQ;
     });
 
@@ -1340,6 +1341,7 @@ export default function AdvancedAssignmentPopup({
               onUpdateQuestion={handleUpdateQuestion}
               onDeleteQuestion={handleDeleteQuestion}
               onReorderQuestions={handleReorderQuestions}
+              onImportQuestions={handleImportQuestions}
               selectedSkill={selectedSkill}
               totalPoints={totalPoints}
             />

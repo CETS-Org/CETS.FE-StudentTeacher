@@ -334,14 +334,70 @@ export default function PreviewStep({
           
           {/* Questions without passage */}
           {questionsWithoutPassage.length > 0 && (
-            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
-              <p className="text-sm font-medium text-yellow-800 mb-2">
-                ⚠️ {questionsWithoutPassage.length} question{questionsWithoutPassage.length !== 1 ? 's' : ''} without passage
-              </p>
-              <div className="space-y-1">
+            <div className="bg-neutral-50 border-2 border-neutral-200 rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <PenTool className="w-5 h-5 text-neutral-600" />
+                <h4 className="font-semibold text-neutral-900">
+                  Questions without Passage ({questionsWithoutPassage.length} question{questionsWithoutPassage.length !== 1 ? 's' : ''})
+                </h4>
+              </div>
+              <div className="space-y-3">
                 {questionsWithoutPassage.map((q) => (
-                  <div key={q.id} className="text-xs text-yellow-700">
-                    Q{q.order}: {q.question.substring(0, 50)}{q.question.length > 50 ? '...' : ''}
+                  <div key={q.id} className="bg-white border border-neutral-200 rounded-md p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded">
+                        Q{q.order}
+                      </span>
+                      <span className="text-xs text-neutral-500 uppercase">
+                        {q.type.replace("_", " ")}
+                      </span>
+                      <span className="text-xs text-green-600 font-medium">
+                        {q.points} pt{q.points !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <p className="text-sm text-neutral-800 mb-2">{q.question}</p>
+                    {q.options && q.options.length > 0 && (
+                      <div className="mt-2 ml-4 space-y-1">
+                        {q.options.map((opt) => (
+                          <div
+                            key={opt.id}
+                            className={`text-xs p-1.5 rounded ${
+                              q.correctAnswer === opt.id
+                                ? "bg-green-50 text-green-700 border border-green-200"
+                                : "bg-neutral-50 text-neutral-600"
+                            }`}
+                          >
+                            <span className="font-medium">{opt.label}.</span> {opt.text}
+                            {q.correctAnswer === opt.id && (
+                              <span className="ml-2 text-green-600 font-semibold">✓</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Show correct answer for True/False */}
+                    {q.type === "true_false" && getCorrectAnswerDisplay(q) && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                        <span className="font-semibold text-green-700">Correct Answer: </span>
+                        <span className="text-green-700 font-bold">{getCorrectAnswerDisplay(q)}</span>
+                      </div>
+                    )}
+                    {/* Show correct answer for Fill in the Blank */}
+                    {q.type === "fill_in_the_blank" && getCorrectAnswerDisplay(q) && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                        <span className="font-semibold text-green-700">
+                          Correct Answer{Array.isArray(q.correctAnswer) && q.correctAnswer.length > 1 ? "s" : ""}: 
+                        </span>
+                        <span className="text-green-700 font-semibold ml-1">{getCorrectAnswerDisplay(q)}</span>
+                      </div>
+                    )}
+                    {q.explanation && (
+                      <div className="mt-2 pt-2 border-t border-neutral-100">
+                        <p className="text-xs text-neutral-500 italic">
+                          <span className="font-medium text-neutral-600">Explanation:</span> {q.explanation}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

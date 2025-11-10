@@ -10,6 +10,7 @@ interface QuestionsStepProps {
   onUpdateQuestion: (id: string, question: Partial<Question>) => void;
   onDeleteQuestion: (id: string) => void;
   onReorderQuestions: (fromIndex: number, toIndex: number) => void;
+  onImportQuestions?: (questions: Question[]) => void; // Optional: for bulk import
   selectedSkill: Skill | undefined;
   totalPoints: number;
 }
@@ -20,6 +21,7 @@ export default function QuestionsStep({
   onUpdateQuestion,
   onDeleteQuestion,
   onReorderQuestions,
+  onImportQuestions,
   selectedSkill,
   totalPoints,
 }: QuestionsStepProps) {
@@ -31,7 +33,15 @@ export default function QuestionsStep({
       id: q.id || `q-${Date.now()}-${idx}`,
       order: questions.length + idx + 1,
     }));
-    newQuestions.forEach((q) => onAddQuestion(q));
+    
+    // If onImportQuestions is provided, use it for bulk import (more efficient)
+    // Otherwise, fall back to adding questions one by one
+    if (onImportQuestions) {
+      onImportQuestions(newQuestions);
+    } else {
+      // Fallback: add questions one by one (may have state update issues with multiple questions)
+      newQuestions.forEach((q) => onAddQuestion(q));
+    }
     setActiveTab("builder");
   };
 

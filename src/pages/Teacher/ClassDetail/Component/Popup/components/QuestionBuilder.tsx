@@ -537,8 +537,7 @@ export default function QuestionBuilder({
           {(skillType === "Reading" || skillType.toLowerCase().includes("reading")) && (
             <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
               <label className="block text-sm font-medium text-blue-800 mb-2">
-                Reading Passage 
-                {!getExistingPassage && questions.length === 0 && <span className="text-red-500">*</span>}
+                Reading Passage (Optional)
                 {getExistingPassage && !currentPassage && (
                   <span className="text-xs text-blue-600 ml-2">(Using passage from imported questions)</span>
                 )}
@@ -546,7 +545,7 @@ export default function QuestionBuilder({
               <p className="text-xs text-blue-700 mb-3">
                 {getExistingPassage && !currentPassage 
                   ? "Passage is already set from imported questions. You can modify it below or add more questions."
-                  : "Enter the passage text. You can add multiple questions for this passage."}
+                  : "Enter the passage text (optional). You can add multiple questions for this passage, or create questions without a passage."}
               </p>
               <textarea
                 value={currentPassage || getExistingPassage || ""}
@@ -1115,10 +1114,6 @@ export default function QuestionBuilder({
             <Button 
               onClick={handleSaveQuestion}
               disabled={
-                (skillType.toLowerCase() === "reading" && 
-                !currentPassage.trim() && 
-                !getExistingPassage &&
-                questions.length === 0) ||
                 (skillType.toLowerCase() === "listening" && 
                 !currentAudioFile && 
                 !currentAudioUrl.trim() && 

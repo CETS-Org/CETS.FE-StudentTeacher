@@ -23,13 +23,13 @@ export default function TrueFalseQuestion({ question, answer, onAnswerChange, sk
             </p>
           </div>
         )}
-        {question.reference && (
+        {/* {question.reference && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-700">
               <span className="font-medium">Reference:</span> {question.reference}
             </p>
           </div>
-        )}
+        )} */}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
