@@ -92,6 +92,30 @@ export interface TeachingClassResponse {
   endDate : string
 }
 
+export interface WeeklyFeedbackPayload {
+  classId: string;
+  teacherId: string;
+  weekNumber: number;
+  studentFeedback: {
+    studentId: string;
+    insights: string[];      // 3-4 insight cá nhân cho học sinh này
+    customNote?: string;     // tùy chọn
+  }[];
+}
+
+//Weekly feedback
+export const submitWeeklyFeedback = async (payload: WeeklyFeedbackPayload) => {
+  try {
+    console.log("Submitting weekly feedback payload:", payload);
+    // const res = await api.post(`${endpoint.weeklyFeedback}/submit`, payload);
+    // return res.data;
+    return { ok: true };
+  } catch (err) {
+    console.error("Error submitting weekly feedback:", err);
+    throw err;
+  }
+};
+
 
 
 // Time slot calculation function 
