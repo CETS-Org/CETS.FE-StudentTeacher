@@ -11,6 +11,7 @@ import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import CreateAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
 import AdvancedAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
+import AIReadingTestGeneratorPopup from "@/pages/Teacher/ClassDetail/Component/Popup/AIReadingTestGeneratorPopup";
 import EditAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/EditAssignmentPopup";
 import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackPopup";
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
@@ -128,6 +129,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   // State cho các popup
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [isAdvancedCreateOpen, setAdvancedCreateOpen] = useState(false);
+  const [isAIReadingTestOpen, setAIReadingTestOpen] = useState(false);
   const [isAdvancedEditOpen, setAdvancedEditOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
   const [assignmentToEditAdvanced, setAssignmentToEditAdvanced] = useState<Assignment | null>(null);
@@ -848,6 +850,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                 Create Assignment
               </Button>
               <Button 
+                variant="secondary"
+                onClick={() => setAIReadingTestOpen(true)} 
+                iconLeft={<Bot size={16} />}
+                className="btn-secondary"
+              >
+                AI Reading Test
+              </Button>
+              <Button 
                 variant="primary"
                 onClick={() => setAdvancedCreateOpen(true)} 
                 iconLeft={<PlusCircle size={16} />}
@@ -1253,6 +1263,14 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      {/* AI Reading Test Generator Popup */}
+      <AIReadingTestGeneratorPopup
+        open={isAIReadingTestOpen}
+        onOpenChange={setAIReadingTestOpen}
+        classMeetingId={classMeetingId}
+        onSubmit={refreshAssignments}
       />
     </div>
   );
