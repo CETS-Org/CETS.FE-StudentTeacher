@@ -89,7 +89,10 @@ export interface TeachingClassResponse {
   className: string;
   classNumber: string;
   classSession: ClassSession | null;
+  endDate : string
 }
+
+
 
 // Time slot calculation function 
 export const calculateTimeSlot = (slot: string): { startTime: string; endTime: string } => {
@@ -203,7 +206,7 @@ export const transformTeachingClass = (apiClass: TeachingClassResponse) => {
     category: "General", // Default category, can be enhanced later
     enrolledDate: sessionDate,
     startDate: sessionDate,
-    endDate: sessionDate,
+    endDate: apiClass.endDate,
     status: classStatus,
     capacity: apiClass.capacity,
     enrolledCount: apiClass.enrolledCount,
@@ -246,3 +249,5 @@ export const teachingClassesService = {
     }
   }
 };
+
+

@@ -108,6 +108,12 @@ const CourseCard: React.FC<{ course: TeacherCourse }> = ({ course }) => {
                 <span>{course.enrolled} enrolled</span>
               </div>
             )}
+            {typeof course.activeClassCount === "number" && (
+              <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2.5 py-1 rounded-md border border-green-100">
+                <Users className="w-4 h-4" />
+                <span>{course.activeClassCount} Ongoing Classes</span>
+              </div>
+            )}
             {typeof course.rating === "number" && (
               <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-md border border-yellow-100">
                 <Star className="w-4 h-4" />
