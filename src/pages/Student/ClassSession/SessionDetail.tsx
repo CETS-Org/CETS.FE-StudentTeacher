@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
@@ -36,6 +36,7 @@ import { submitWritingAssignment } from "@/api/assignments.api";
 import type { ClassDetail } from "@/types/class";
 import type { LearningMaterial } from "@/types/learningMaterial";
 import { config } from "@/lib/config";
+import WritingAssignmentView from "./WritingAssignmentView";
 
 const tabs = [
   { id: "context", label: "Session Context" },
@@ -83,6 +84,10 @@ export default function SessionDetail() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [selectedSkillTab, setSelectedSkillTab] = useState<string | null>('all'); // 'all' or skillID
   
+  // Writing Assignment View state
+  const [isWritingViewOpen, setIsWritingViewOpen] = useState<boolean>(false);
+  const [writingAssignment, setWritingAssignment] = useState<MeetingAssignment | null>(null);
+  const [writingSubmissionSuccess, setWritingSubmissionSuccess] = useState<boolean>(false);
   
   // Store data for confirm dialog
   const [confirmData, setConfirmData] = useState<{
@@ -183,66 +188,52 @@ export default function SessionDetail() {
     return () => { mounted = false; };
   }, [sessionId]);
 
-  // Load assignments when sessionId changes or when page becomes visible
-  useEffect(() => {
-    let mounted = true;
-    async function loadAssignments() {
-      if (!sessionId) { setErrorAssignments("Missing sessionId"); setLoadingAssignments(false); return; }
-      
-      // Get student ID from authentication
-      const studentId = getStudentId();
-      if (!studentId) { 
-        setErrorAssignments("User not authenticated. Please login again."); 
-        setLoadingAssignments(false); 
-        return; 
-      }
-      
-      try {
-        const data = await getAssignmentsByMeetingAndStudent(sessionId, studentId);
-        if (mounted) setAssignments(data);
-      } catch (e: any) {
-        if (mounted) setErrorAssignments(e?.message || "Failed to load assignments");
-      } finally {
-        if (mounted) setLoadingAssignments(false);
-      }
+  // Define loadAssignments as a reusable function (outside useEffect so it can be called anywhere)
+  const loadAssignments = useCallback(async () => {
+    if (!sessionId) { 
+      setErrorAssignments("Missing sessionId"); 
+      setLoadingAssignments(false); 
+      return; 
     }
-    loadAssignments();
-    return () => { mounted = false; };
+    
+    // Get student ID from authentication
+    const studentId = getStudentId();
+    if (!studentId) { 
+      setErrorAssignments("User not authenticated. Please login again."); 
+      setLoadingAssignments(false); 
+      return; 
+    }
+    
+    try {
+      console.log('Loading assignments for session:', sessionId);
+      const data = await getAssignmentsByMeetingAndStudent(sessionId, studentId);
+      setAssignments(data);
+      console.log('Assignments loaded:', data);
+    } catch (e: any) {
+      setErrorAssignments(e?.message || "Failed to load assignments");
+      console.error('Error loading assignments:', e);
+    } finally {
+      setLoadingAssignments(false);
+    }
   }, [sessionId]);
 
-  // Refresh assignments when navigating back to this page (e.g., after submission)
-  // Also refresh when assignments tab becomes active
+  // Load assignments on mount and refresh when navigating back to this page
+  useEffect(() => {
+    loadAssignments();
+  }, [loadAssignments]);
+
+  // Refresh assignments when assignments tab becomes active or window gains focus
   useEffect(() => {
     if (!sessionId || activeTab !== 'assignments') return;
     
-    const refreshAssignments = async () => {
-      const studentId = getStudentId();
-      if (!studentId) return;
-      
-      try {
-        setLoadingAssignments(true);
-        const data = await getAssignmentsByMeetingAndStudent(sessionId, studentId);
-        setAssignments(data);
-        setErrorAssignments(null);
-      } catch (e: any) {
-        console.error('Failed to refresh assignments:', e);
-        setErrorAssignments(e?.message || 'Failed to refresh assignments');
-      } finally {
-        setLoadingAssignments(false);
-      }
-    };
-
     // Refresh on window focus (when user returns to tab)
     const handleFocus = () => {
-      refreshAssignments();
+      loadAssignments();
     };
-
-  
-    refreshAssignments();
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [sessionId, location.key, location.pathname, activeTab]);
+  }, [sessionId, activeTab, loadAssignments]);
 
   // Load Materials via API
   useEffect(() => {
@@ -482,6 +473,179 @@ export default function SessionDetail() {
     setIsUploadOpen(true);
   };
 
+  // Writing Assignment handlers
+  const handleOpenWritingView = (assignment: MeetingAssignment) => {
+    setWritingAssignment(assignment);
+    setIsWritingViewOpen(true);
+  };
+
+  const handleCloseWritingView = () => {
+    setIsWritingViewOpen(false);
+    setWritingAssignment(null);
+    
+    // Always refresh assignments when closing view to ensure latest data
+    // This handles both successful submissions and cancellations
+    setTimeout(async () => {
+      try {
+        console.log('Refreshing assignments after closing writing view...');
+        await loadAssignments();
+        console.log('Assignments refreshed after closing view');
+        
+        // If submission was successful, try one more refresh after a delay
+        // to ensure backend has fully processed the submission
+        if (writingSubmissionSuccess) {
+          setWritingSubmissionSuccess(false);
+          setTimeout(async () => {
+            try {
+              console.log('Second refresh to ensure submission is processed...');
+              await loadAssignments();
+              console.log('Second refresh completed');
+            } catch (error) {
+              console.warn('Second refresh failed:', error);
+            }
+          }, 1500);
+        }
+      } catch (error) {
+        console.error('Failed to refresh assignments after closing view:', error);
+        // Force reload if refresh fails
+        if (writingSubmissionSuccess) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      }
+    }, 300);
+  };
+
+  const handleWritingSubmit = async (file: File) => {
+    if (!writingAssignment) {
+      throw new Error("No assignment selected");
+    }
+
+    const studentId = getStudentId();
+    if (!studentId) {
+      throw new Error("Student ID not found");
+    }
+
+    try {
+      // Prepare file metadata following teacher's standard
+      const contentType = file.type || 'application/octet-stream';
+      const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+      
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("assignmentID", writingAssignment.id);
+      formData.append("studentID", studentId);
+      formData.append("FileName", fileNameWithoutExtension);
+      formData.append("ContentType", contentType);
+
+      console.log('Submitting writing assignment:', {
+        originalFileName: file.name,
+        fileName: fileNameWithoutExtension,
+        contentType: contentType,
+        fileSize: file.size,
+        assignmentId: writingAssignment.id,
+        studentId: studentId
+      });
+
+      const response = await submitWritingAssignment(formData);
+
+      console.log('Writing assignment submission response:', {
+        status: response.status,
+        data: response.data
+      });
+
+      // Handle nested response structure: { success: true, data: {...} } or direct data
+      let responseData = response.data;
+      if (responseData && responseData.data) {
+        responseData = responseData.data;
+      }
+
+      console.log('Parsed response data:', responseData);
+
+      // Extract uploadUrl and other data
+      const { uploadUrl, storeUrl, submissionId, score, feedback, submittedAt, isAiScore } = responseData;
+
+      // Step 2: Upload file to Cloudflare using uploadUrl
+      if (uploadUrl) {
+        console.log('Uploading file to Cloudflare:', uploadUrl);
+        
+        const putResp = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': contentType,
+          },
+          body: file,
+        });
+
+        if (!putResp.ok) {
+          throw new Error(`File upload to Cloudflare failed: ${putResp.status} ${putResp.statusText}`);
+        }
+
+        console.log('File uploaded to Cloudflare successfully');
+      } else {
+        console.warn('No uploadUrl received from server, skipping file upload');
+      }
+
+      // Check if AI scored
+      const hasAiScore = score !== undefined && score !== null;
+
+      if (hasAiScore) {
+        // Show AI score dialog
+        setAiScoreData({
+          score: score || 0,
+          feedback: feedback || "No feedback provided",
+          submissionId: submissionId || "",
+          isAiScore: isAiScore || false,
+        });
+        setAiScoreDialogOpen(true);
+      }
+
+      // Mark submission as successful
+      setWritingSubmissionSuccess(true);
+
+      // Wait a bit for backend to process the submission before refreshing
+      // This ensures the API returns the updated submission status
+      setTimeout(async () => {
+        try {
+          console.log('Refreshing assignments after submission...');
+          await loadAssignments();
+          console.log('Assignments refreshed successfully');
+        } catch (refreshError) {
+          console.warn('Failed to refresh assignments after submission:', refreshError);
+          // Try one more time after a longer delay
+          setTimeout(async () => {
+            try {
+              console.log('Retrying assignments refresh...');
+              await loadAssignments();
+              console.log('Assignments refreshed on retry');
+            } catch (retryError) {
+              console.error('Retry refresh also failed:', retryError);
+            }
+          }, 1000);
+        }
+      }, 1000); // Wait 1 second for backend to process
+      
+      return response;
+    } catch (error: any) {
+      // Reset success flag on error
+      setWritingSubmissionSuccess(false);
+      
+      console.error("Writing assignment submission error:", error);
+      
+      // Check if it's an axios error with response
+      if (error.response) {
+        const errorMessage = error.response?.data?.message 
+          || error.response?.data?.title 
+          || error.response?.data?.errors 
+          || "Failed to submit assignment";
+        throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+      }
+      
+      throw new Error(error.message || "Failed to submit assignment");
+    }
+  };
+
   const handleFileChange = (file: File | null) => {
     if (filePreviewUrl) {
       URL.revokeObjectURL(filePreviewUrl);
@@ -555,13 +719,13 @@ export default function SessionDetail() {
           throw new Error('Only DOCX, DOC, and PDF files are allowed for writing assignments.');
         }
         
-        // Create FormData for writing submission
+        // Create FormData for writing submission following teacher's standard
         const formData = new FormData();
-        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
         
-        // Set correct ContentType based on file extension
-        let contentType = file.type;
-        if (!contentType || contentType === 'application/octet-stream') {
+        // Set correct ContentType based on file extension, fallback to octet-stream
+        let contentType = file.type || 'application/octet-stream';
+        if (contentType === 'application/octet-stream') {
           // Map file extension to correct MIME type
           const mimeTypes: { [key: string]: string } = {
             'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -571,13 +735,21 @@ export default function SessionDetail() {
           contentType = mimeTypes[fileExtension] || 'application/octet-stream';
         }
         
-        formData.append('StudentId', studentId);
-        formData.append('AssignmentId', assignmentId);
+        formData.append('file', file);
+        formData.append('assignmentID', assignmentId);
+        formData.append('studentID', studentId);
         formData.append('FileName', fileNameWithoutExt);
         formData.append('ContentType', contentType);
-        formData.append('File', file);
 
-        
+        console.log('Submitting writing assignment (file upload):', {
+          originalFileName: file.name,
+          fileName: fileNameWithoutExt,
+          contentType: contentType,
+          fileExtension: fileExtension,
+          fileSize: file.size,
+          assignmentId: assignmentId,
+          studentId: studentId
+        });
 
         const writingResponse = await submitWritingAssignment(formData);
         
@@ -1129,14 +1301,19 @@ export default function SessionDetail() {
                                           variant="secondary"
                                           size="sm"
                                           className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-600 hover:to-yellow-700 shadow-lg shadow-yellow-500/25 hover:shadow-yellow-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
-                                          iconLeft={<Upload className="w-4 h-4" />}
+                                          iconLeft={assignment.skillName?.toLowerCase() === 'writing' ? <PenTool className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
                                   onClick={(e) => { 
                                     e.preventDefault();
                                             e.stopPropagation(); 
-                                            handleOpenUpload(assignment.id); 
+                                            // Check if writing assignment
+                                            if (assignment.skillName?.toLowerCase() === 'writing') {
+                                              handleOpenWritingView(assignment);
+                                            } else {
+                                              handleOpenUpload(assignment.id);
+                                            }
                                           }}
                                         >
-                                          Submit Assignment
+                                          {assignment.skillName?.toLowerCase() === 'writing' ? 'Write Answer' : 'Submit Assignment'}
                                         </Button>
                                       )}
                                     </>
@@ -1200,14 +1377,19 @@ export default function SessionDetail() {
                                   variant="secondary"
                                   size="sm"
                                   className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-600 hover:to-yellow-700 shadow-lg shadow-yellow-500/25 hover:shadow-yellow-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
-                                  iconLeft={<Upload className="w-4 h-4" />}
+                                  iconLeft={assignment.skillName?.toLowerCase() === 'writing' ? <PenTool className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
                                   onClick={(e) => { 
                                     e.preventDefault(); 
                                     e.stopPropagation(); 
-                                    handleOpenUpload(assignment.id); 
+                                    // Check if writing assignment
+                                    if (assignment.skillName?.toLowerCase() === 'writing') {
+                                      handleOpenWritingView(assignment);
+                                    } else {
+                                      handleOpenUpload(assignment.id);
+                                    }
                                   }}
                                 >
-                                  Resubmit
+                                  {assignment.skillName?.toLowerCase() === 'writing' ? 'Rewrite Answer' : 'Resubmit'}
                                 </Button>
                               )}
                             </div>
@@ -1383,7 +1565,24 @@ export default function SessionDetail() {
         />
 
         {/* AI Score Dialog for Writing Assignments */}
-        <Dialog open={aiScoreDialogOpen} onOpenChange={setAiScoreDialogOpen}>
+        <Dialog 
+          open={aiScoreDialogOpen} 
+          onOpenChange={(open) => {
+            setAiScoreDialogOpen(open);
+            // When dialog closes, refresh assignments to show updated status
+            if (!open) {
+              setTimeout(async () => {
+                try {
+                  console.log('Refreshing assignments after closing AI score dialog...');
+                  await loadAssignments();
+                  console.log('Assignments refreshed after closing AI dialog');
+                } catch (error) {
+                  console.error('Failed to refresh assignments after closing AI dialog:', error);
+                }
+              }, 300);
+            }
+          }}
+        >
           <DialogContent size="lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-primary-800">
@@ -1451,7 +1650,19 @@ export default function SessionDetail() {
             <DialogFooter>
               <Button 
                 variant="primary" 
-                onClick={() => setAiScoreDialogOpen(false)}
+                onClick={async () => {
+                  setAiScoreDialogOpen(false);
+                  // Refresh assignments when closing dialog
+                  setTimeout(async () => {
+                    try {
+                      console.log('Refreshing assignments after clicking "Got it" button...');
+                      await loadAssignments();
+                      console.log('Assignments refreshed after button click');
+                    } catch (error) {
+                      console.error('Failed to refresh assignments:', error);
+                    }
+                  }, 300);
+                }}
                 className="w-full sm:w-auto"
               >
                 Got it, thanks!
@@ -1459,6 +1670,22 @@ export default function SessionDetail() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Writing Assignment View */}
+        {isWritingViewOpen && writingAssignment && (
+          <WritingAssignmentView
+            assignment={{
+              id: writingAssignment.id,
+              title: writingAssignment.title,
+              description: writingAssignment.description || "",
+              dueDate: writingAssignment.dueDate,
+              attachmentUrl: writingAssignment.fileUrl || undefined,
+            }}
+            existingContent=""
+            onClose={handleCloseWritingView}
+            onSubmit={handleWritingSubmit}
+          />
+        )}
       </div>
   );
 }

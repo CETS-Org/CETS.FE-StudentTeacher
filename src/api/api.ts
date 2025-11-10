@@ -30,6 +30,7 @@ export const endpoint = {
   attendance: '/api/ACAD_Attendance',
   wishlist: '/api/ACAD_CourseWishlist',
   enrollment: '/api/ACAD_Enrollment',
+  teacherCredential: '/api/IDN_TeacherCredential',
 };
 
 // Request interceptor to add auth token

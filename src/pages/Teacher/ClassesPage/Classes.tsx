@@ -59,6 +59,7 @@ interface TeacherClass {
   };
 }
 
+
 // Mock data removed - now using API data
 
 const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) => {
@@ -95,6 +96,17 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
     }
   };
 
+  function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // fallback nếu input không hợp lệ
+
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
   return (
     <Card className="overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:via-white hover:to-accent-25">
       {/* Class Content */}
@@ -130,6 +142,13 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
                   <Users className="w-3 h-3 text-accent-600" />
                   <span className="text-xs font-semibold text-accent-700">{classItem.courseFormat || 'N/A'}</span>
                 </span>
+                <span className="inline-flex items-center gap-1 bg-secondary-200 text-accent-700 px-2 py-1 rounded-md border border-accent-100 ml-2">
+                  <Calendar className="w-4 h-4 text-primary-600" />
+                  <span className="text-neutral-500">End Date:</span>
+                  <span className="font-semibold px-2 py-0.5 rounded-md bg-secondary-200 ">
+                    {formatDate(classItem.endDate)}
+                  </span>
+                </span>
               </p>
             </div>
 
@@ -154,7 +173,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
               
               {/* Meeting Time */}
               <div className="mb-3">
-                <p className="text-sm font-medium text-accent-700">
+                <p className="font-semibold text-primary-700">
                   {new Date(classItem.nextMeeting.startsAt).toLocaleDateString('en-US', { 
                     month: 'short', 
                     day: 'numeric',
@@ -167,7 +186,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
               {classItem.nextMeeting.roomName && (
                 <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
                   <MapPin className="w-3.5 h-3.5" />
-                  <span className="font-medium">{classItem.nextMeeting.roomName}</span>
+                  <span className="font-semibold text-primary-700">{classItem.nextMeeting.roomName}</span>
                 </div>
               )}
               
@@ -185,17 +204,22 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
 
               {/* Topic */}
               {classItem.nextMeeting.coveredTopic && (
-                <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span className="font-medium">Topic: {classItem.nextMeeting.coveredTopic}</span>
-                </div>
-              )}
+                  <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span className="font-semibold text-primary-700">
+                      Session’s Topic:
+                    </span>
+                    <span className="font-semibold text-primary-700">
+                      {classItem.nextMeeting.coveredTopic}
+                    </span>
+                  </div>
+                )}
 
               {/* Class Stats */}
               <div className="flex flex-wrap gap-2 text-xs text-accent-600 mt-3">
                 <div className="flex items-center gap-1">
                   <Users className="w-3.5 h-3.5" />
-                  <span className="font-medium">{classItem.enrolledCount}/{classItem.capacity} students</span>
+                  <span className="font-semibold text-primary-700">{classItem.enrolledCount} students</span>
                 </div>
                 {classItem.attendanceRate && (
                   <div className="flex items-center gap-1">
@@ -209,6 +233,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
                     <span className="font-medium">{classItem.rating.toFixed(1)} rating</span>
                   </div>
                 )}
+               
               </div>
             </div>
           </div>
@@ -229,7 +254,7 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
               <div className="flex flex-wrap gap-2 text-xs text-neutral-600">
                 <div className="flex items-center gap-1">
                   <Users className="w-3.5 h-3.5" />
-                  <span className="font-medium">{classItem.enrolledCount}/{classItem.capacity} students</span>
+                  <span className="font-medium">{classItem.enrolledCount} students</span>
                 </div>
                 {classItem.attendanceRate && (
                   <div className="flex items-center gap-1">
@@ -243,6 +268,8 @@ const TeacherClassCard: React.FC<{ classItem: TeacherClass }> = ({ classItem }) 
                     <span className="font-medium">{classItem.rating.toFixed(1)} rating</span>
                   </div>
                 )}
+                
+               
               </div>
             </div>
           </div>
