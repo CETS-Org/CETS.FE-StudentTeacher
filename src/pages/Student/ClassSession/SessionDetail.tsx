@@ -1350,8 +1350,8 @@ export default function SessionDetail() {
                           </div>
                         )}
 
-                        {/* Submitted File */}
-                        {submission?.storeUrl ? (
+                        {/* Submitted File - Hide for quiz assignments */}
+                        {submission?.storeUrl && !assignment.questionUrl ? (
                           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
@@ -1392,6 +1392,19 @@ export default function SessionDetail() {
                                   {assignment.skillName?.toLowerCase() === 'writing' ? 'Rewrite Answer' : 'Resubmit'}
                                 </Button>
                               )}
+                            </div>
+                          </div>
+                        ) : submission?.storeUrl && assignment.questionUrl ? (
+                          // For quiz assignments, only show submission timestamp without file details
+                          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                              <div>
+                                <p className="text-sm font-semibold text-green-800">Quiz completed</p>
+                                {submission.createdAt && (
+                                  <p className="text-xs text-green-600">Submitted at: {formatDateTime(submission.createdAt)}</p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ) : (

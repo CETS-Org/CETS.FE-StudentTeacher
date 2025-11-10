@@ -163,7 +163,7 @@ export const getSpeakingSubmissionUploadUrls = (
 ) => api.post('/api/ACAD_Submissions/speaking-upload-urls', {
   assignmentID: assignmentId,
   studentID: studentId,
-  AudioQuestionIds: audioQuestionIds || [] // Match backend DTO property name (PascalCase)
+  AudioQuestionIds: audioQuestionIds || [] 
 }, config);
 
 // Submit speaking assignment after files are uploaded
