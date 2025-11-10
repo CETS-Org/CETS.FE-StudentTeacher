@@ -144,6 +144,40 @@ export const submitAssignmentAnswers = (
   config?: AxiosRequestConfig
 ) => api.post('/api/ACAD_Submissions/submit-answers', submissionData, config);
 
+// Start an attempt for a quiz/assignment (counts as an attempt)
+export const startAttempt = (
+  assignmentId: string,
+  studentId: string,
+  config?: AxiosRequestConfig
+) => api.post('/api/ACAD_Submissions/start-attempt', {
+  assignmentID: assignmentId,
+  studentID: studentId
+}, config);
+
+// Get presigned URLs for uploading speaking assignment files
+export const getSpeakingSubmissionUploadUrls = (
+  assignmentId: string,
+  studentId: string,
+  audioQuestionIds?: string[],
+  config?: AxiosRequestConfig
+) => api.post('/api/ACAD_Submissions/speaking-upload-urls', {
+  assignmentID: assignmentId,
+  studentID: studentId,
+  AudioQuestionIds: audioQuestionIds || [] // Match backend DTO property name (PascalCase)
+}, config);
+
+// Submit speaking assignment after files are uploaded
+export const submitSpeakingSubmission = (
+  assignmentId: string,
+  studentId: string,
+  answersJsonFilePath: string,
+  config?: AxiosRequestConfig
+) => api.post('/api/ACAD_Submissions/submit-speaking', {
+  assignmentID: assignmentId,
+  studentID: studentId,
+  answersJsonFilePath
+}, config);
+
 // Submit writing assignment with AI grading
 export const submitWritingAssignment = (
   formData: FormData,

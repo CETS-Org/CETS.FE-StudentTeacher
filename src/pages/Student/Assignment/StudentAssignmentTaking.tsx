@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Loader from "@/components/ui/Loader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
-import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { 
   Clock, 
   CheckCircle, 
@@ -16,21 +15,15 @@ import {
   BookOpen,
   PenTool,
   MessageSquare,
-  Play,
-  Pause,
-  Mic,
   FileText
 } from "lucide-react";
 import { api } from "@/api";
 import { getQuestionDataUrl } from "@/api/assignments.api";
 import { getStudentId } from "@/lib/utils";
-import type { Question, QuestionType, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
-import MultipleChoiceQuestion from "./components/MultipleChoiceQuestion";
-import TrueFalseQuestion from "./components/TrueFalseQuestion";
-import FillInBlankQuestion from "./components/FillInBlankQuestion";
-import ShortAnswerQuestion from "./components/ShortAnswerQuestion";
-import EssayQuestion from "./components/EssayQuestion";
-import MatchingQuestion from "./components/MatchingQuestion";
+import type { Question, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
+import QuizQuestion from "./components/QuizQuestion";
+import SpeakingAssignment from "./components/SpeakingAssignment";
+import { submitSpeakingAssignment, validateSpeakingSubmission } from "./components/SpeakingAssignmentSubmission";
 
 interface AssignmentDetails {
   id: string;
@@ -39,6 +32,7 @@ interface AssignmentDetails {
   dueDate: string;
   skillID: string | null;
   skillName: string | null;
+  assignmentType?: string | null;
   totalPoints: number;
   timeLimitMinutes?: number;
   maxAttempts: number;
@@ -69,15 +63,20 @@ export default function StudentAssignmentTaking() {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
-  const [showExitDialog, setShowExitDialog] = useState(false);
-  const [autoSaveInterval, setAutoSaveInterval] = useState<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(false);
+  const [maxRecordings, setMaxRecordings] = useState(3);
+  
+  // Store recordings per question
+  interface QuestionRecording {
+    recordings: Array<{ id: string; blobUrl: string; duration: number; timestamp: Date }>;
+    selectedId: string | null;
+    recordingTime: number;
+    currentBlobUrl: string | null;
+  }
+  const [questionRecordings, setQuestionRecordings] = useState<Record<string, QuestionRecording>>({});
   
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
   // Load assignment data
   useEffect(() => {
@@ -103,6 +102,7 @@ export default function StudentAssignmentTaking() {
           dueDate: assignmentData.dueDate,
           skillID: assignmentData.skillID,
           skillName: assignmentData.skillName,
+          assignmentType: assignmentData.assignmentType || null,
           totalPoints: assignmentData.totalPoints || 0,
           timeLimitMinutes: assignmentData.timeLimitMinutes,
           maxAttempts: assignmentData.maxAttempts || 1,
@@ -123,6 +123,16 @@ export default function StudentAssignmentTaking() {
             const questionResponse = await fetch(presignedUrl);
             const questionData: AssignmentQuestionData = await questionResponse.json();
             setQuestions(questionData.questions || []);
+            
+            // Load settings
+            if (questionData.settings) {
+              if (questionData.settings.allowMultipleRecordings !== undefined) {
+                setAllowMultipleRecordings(questionData.settings.allowMultipleRecordings);
+              }
+              if (questionData.settings.maxRecordings !== undefined) {
+                setMaxRecordings(questionData.settings.maxRecordings);
+              }
+            }
           } catch (err) {
             console.error("Failed to load question data:", err);
             setError("Failed to load assignment questions");
@@ -180,10 +190,9 @@ export default function StudentAssignmentTaking() {
       const interval = setInterval(() => {
         saveAnswers();
       }, 30000); // Auto-save every 30 seconds
-      setAutoSaveInterval(interval);
 
       return () => {
-        if (interval) clearInterval(interval);
+        clearInterval(interval);
       };
     }
   }, [answers]);
@@ -239,7 +248,125 @@ export default function StudentAssignmentTaking() {
     setCurrentQuestionIndex(index);
   };
 
+  // Get current question's recording data
+  const getCurrentQuestionRecording = (): QuestionRecording => {
+    const currentQ = questions[currentQuestionIndex];
+    if (!currentQ) {
+      return { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+    }
+    return questionRecordings[currentQ.id] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+  };
+
+  // Handle speaking assignment recording updates
+  const handleRecordingUpdate = useCallback((questionId: string, data: Partial<QuestionRecording>) => {
+    setQuestionRecordings(prev => {
+      const current = prev[questionId] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+      const updated = { ...current, ...data };
+      
+      // Mark question as answered if there's a selected recording
+      if (updated.selectedId && updated.recordings.length > 0) {
+        const selectedRecording = updated.recordings.find(r => r.id === updated.selectedId);
+        if (selectedRecording) {
+          handleAnswerChange(questionId, "recorded");
+        }
+      }
+      
+      return { ...prev, [questionId]: updated };
+    });
+  }, [handleAnswerChange]);
+
+  // Handle recording complete (for single recording mode or when selection changes)
+  const handleRecordingComplete = useCallback((blobUrl: string | null) => {
+    const currentQ = questions[currentQuestionIndex];
+    const isSpeakingAssignment = assignment?.skillName?.toLowerCase().includes("speaking");
+    const questionId = currentQ?.id || (isSpeakingAssignment && questions.length === 0 ? "pure-speaking" : null);
+    
+    if (!questionId) return;
+    
+    setQuestionRecordings(prev => {
+      const current = prev[questionId] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+      return { ...prev, [questionId]: { ...current, currentBlobUrl: blobUrl } };
+    });
+    
+    // Mark the current speaking question as answered only if there's a recording
+    if (blobUrl && currentQ) {
+      handleAnswerChange(currentQ.id, "recorded");
+    }
+  }, [questions, currentQuestionIndex, handleAnswerChange, assignment]);
+
+  // Convert blob URL to blob for submission
+  const getAudioBlob = async (questionId?: string): Promise<Blob | null> => {
+    // Import blobStorage dynamically to avoid circular dependency
+    const { blobStorage, getPersistedBlob } = await import('./components/SpeakingAssignment');
+    
+    // If questionId is provided, get the recording for that specific question
+    if (questionId && questionRecordings[questionId]) {
+      const questionRec = questionRecordings[questionId];
+      const selectedRecording = questionRec.recordings.find(r => r.id === questionRec.selectedId);
+      if (selectedRecording) {
+        // Get blob from persistent storage
+        const storageKey = `${questionId}-${selectedRecording.id}`;
+        const blob =
+          blobStorage.get(storageKey) ||
+          getPersistedBlob(questionId, selectedRecording.id);
+        if (blob) {
+          return blob;
+        }
+        // Fallback: try to fetch from URL
+        try {
+          const response = await fetch(selectedRecording.blobUrl);
+          return await response.blob();
+        } catch (err) {
+          console.error('Failed to convert audio URL to blob:', err);
+          return null;
+        }
+      }
+      // Fallback to currentBlobUrl for single recording mode
+      const storageKey = `${questionId}-current`;
+      const blob =
+        blobStorage.get(storageKey) ||
+        getPersistedBlob(questionId, "current");
+      if (blob) {
+        return blob;
+      }
+      // Fallback: try to fetch from URL
+      if (questionRec.currentBlobUrl) {
+        try {
+          const response = await fetch(questionRec.currentBlobUrl);
+          return await response.blob();
+        } catch (err) {
+          console.error('Failed to convert audio URL to blob:', err);
+          return null;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  const formatRecordingTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleSubmit = async (autoSubmit: boolean = false) => {
+    // Check if speaking assignment requires audio recording
+    // Check by skillName, assignmentType, or if there are speaking questions
+    const isSpeakingAssignment = 
+      assignment?.skillName?.toLowerCase().includes("speaking") ||
+      assignment?.assignmentType?.toLowerCase() === "speaking" ||
+      questions.some(q => q.type === "speaking");
+    
+    // Validate speaking assignment before submission
+    if (isSpeakingAssignment) {
+      const validation = validateSpeakingSubmission(questions, questionRecordings, allowMultipleRecordings);
+      if (!validation.isValid) {
+        alert(validation.errorMessage);
+        return;
+      }
+    }
+
     if (!autoSubmit) {
       setShowSubmitDialog(true);
       return;
@@ -250,24 +377,49 @@ export default function StudentAssignmentTaking() {
       return;
     }
 
+    if (!studentId) {
+      alert("Student ID is missing. Please try again.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // Prepare submission data
-      const submissionData = {
-        assignmentID: assignmentId,
-        answers: Object.entries(answers).map(([questionId, answer]) => ({
-          questionId,
-          answer,
-          timestamp: new Date().toISOString(),
-        })),
-        audioBlob: audioBlob, // For speaking assignments
-      };
+      if (isSpeakingAssignment) {
+        // Handle speaking assignment submission using dedicated component
+        await submitSpeakingAssignment({
+          assignmentId,
+          studentId,
+          questions,
+          answers,
+          questionRecordings,
+          allowMultipleRecordings,
+          getAudioBlob,
+          onSuccess: () => {
+            alert("Assignment submitted successfully!");
+            navigate(-1);
+          },
+          onError: (errorMessage) => {
+            alert(errorMessage);
+          }
+        });
+      } else {
+        // Handle regular quiz assignment (non-speaking)
+        // TODO: Implement quiz submission endpoint if needed
+        // For now, use the existing submitAssignmentAnswers
+        const submissionData: any = {
+          assignmentID: assignmentId,
+          answers: Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+            timestamp: new Date().toISOString(),
+          })),
+        };
 
-      // Submit via API
-      await api.submitAssignmentAnswers(submissionData);
-      
-      alert("Assignment submitted successfully!");
-      navigate(-1);
+        await api.submitAssignmentAnswers(submissionData);
+        
+        alert("Assignment submitted successfully!");
+        navigate(-1);
+      }
     } catch (err: any) {
       console.error("Failed to submit assignment:", err);
       alert(err.response?.data?.message || err.message || "Failed to submit assignment");
@@ -282,40 +434,16 @@ export default function StudentAssignmentTaking() {
     handleSubmit(true);
   };
 
-  const handleExit = () => {
-    setShowExitDialog(true);
-  };
-
-  const confirmExit = () => {
-    saveAnswers();
-    navigate(-1);
-  };
-
   const renderQuestion = (question: Question) => {
     const answer = answers[question.id];
-    const commonProps = {
-      question,
-      answer,
-      onAnswerChange: (answer: any) => handleAnswerChange(question.id, answer),
-      skillType: assignment?.skillName || "",
-    };
-
-    switch (question.type) {
-      case "multiple_choice":
-        return <MultipleChoiceQuestion {...commonProps} />;
-      case "true_false":
-        return <TrueFalseQuestion {...commonProps} />;
-      case "fill_in_the_blank":
-        return <FillInBlankQuestion {...commonProps} />;
-      case "short_answer":
-        return <ShortAnswerQuestion {...commonProps} />;
-      case "essay":
-        return <EssayQuestion {...commonProps} />;
-      case "matching":
-        return <MatchingQuestion {...commonProps} />;
-      default:
-        return <div>Unknown question type</div>;
-    }
+    return (
+      <QuizQuestion
+        question={question}
+        answer={answer}
+        onAnswerChange={(answer: any) => handleAnswerChange(question.id, answer)}
+        skillType={assignment?.skillName || ""}
+      />
+    );
   };
 
   const getSkillIcon = (skillName: string | null) => {
@@ -352,7 +480,18 @@ export default function StudentAssignmentTaking() {
     );
   }
 
-  if (questions.length === 0) {
+  const isSpeaking = assignment.skillName?.toLowerCase().includes("speaking");
+  // Check if current question has a recording
+  const currentQ = questions[currentQuestionIndex];
+  const currentQuestionRec = currentQ ? questionRecordings[currentQ.id] : null;
+  const hasRecording = currentQuestionRec ? (
+    allowMultipleRecordings 
+      ? (currentQuestionRec.selectedId && currentQuestionRec.recordings.length > 0)
+      : !!currentQuestionRec.currentBlobUrl
+  ) : false;
+
+  // If no questions and it's not a speaking assignment, show error
+  if (questions.length === 0 && !isSpeaking) {
     return (
       <div className="px-6 py-6">
         <div className="text-center">
@@ -368,10 +507,8 @@ export default function StudentAssignmentTaking() {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
+  const currentQuestion = questions.length > 0 ? questions[currentQuestionIndex] : null;
   const answeredCount = Object.keys(answers).length;
-  const isSpeaking = assignment.skillName?.toLowerCase().includes("speaking");
-  const isWriting = assignment.skillName?.toLowerCase().includes("writing");
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -380,14 +517,6 @@ export default function StudentAssignmentTaking() {
           <div className="px-6 py-4 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleExit}
-                  iconLeft={<ArrowLeft className="w-4 h-4" />}
-                >
-                  Exit
-                </Button>
                 <div>
                   <h1 className="text-xl font-semibold text-primary-800">{assignment.title}</h1>
                   {assignment.skillName && (
@@ -427,96 +556,225 @@ export default function StudentAssignmentTaking() {
 
         <div className="py-6">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Question Navigation Sidebar */}
-              <div className="lg:col-span-1">
-                <Card className="p-4">
-                  <h3 className="font-semibold text-sm text-neutral-700 mb-3">
-                    Questions ({answeredCount}/{questions.length})
-                  </h3>
-                  <div className="grid grid-cols-5 lg:grid-cols-1 gap-2 max-h-[600px] overflow-y-auto">
-                    {questions.map((q, index) => {
-                      const isAnswered = answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== "";
-                      const isCurrent = index === currentQuestionIndex;
+            {questions.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Question Navigation Sidebar */}
+                <div className="lg:col-span-1">
+                  <Card className="p-4">
+                    <h3 className="font-semibold text-sm text-neutral-700 mb-3">
+                      Questions ({answeredCount}/{questions.length})
+                    </h3>
+                    <div className="grid grid-cols-5 lg:grid-cols-1 gap-2 max-h-[600px] overflow-y-auto">
+                      {questions.map((q, index) => {
+                        const isAnswered = answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== "";
+                        const isCurrent = index === currentQuestionIndex;
+                        return (
+                          <button
+                            key={q.id}
+                            onClick={() => handleQuestionClick(index)}
+                            className={`p-2 rounded text-sm font-medium transition-colors ${
+                              isCurrent
+                                ? "bg-primary-600 text-white"
+                                : isAnswered
+                                ? "bg-green-100 text-green-700 border border-green-300"
+                                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                            }`}
+                          >
+                            Q{index + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Main Question Area */}
+                <div className="lg:col-span-3">
+                  <Card className="p-6">
+                    {currentQuestion && (
+                      <>
+                        <div className="mb-4 flex items-center justify-between">
+                          <div>
+                            <span className="text-sm font-medium text-primary-600">
+                              Question {currentQuestionIndex + 1} of {questions.length}
+                            </span>
+                            <span className="ml-2 text-sm text-neutral-500">
+                              ({currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''})
+                            </span>
+                          </div>
+                          <div className="text-sm text-neutral-600">
+                            {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}% Complete
+                          </div>
+                        </div>
+
+                        {/* Show question prompt for speaking questions */}
+                        {currentQuestion.type === "speaking" && (
+                          <div className="mb-6">
+                            <h3 className="text-lg font-semibold text-neutral-900 mb-4">{currentQuestion.question}</h3>
+                            {currentQuestion.maxLength && (
+                              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-blue-700">
+                                  <span className="font-medium">Time limit:</span> {currentQuestion.maxLength} seconds
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Render regular question for non-speaking types */}
+                        {currentQuestion.type !== "speaking" && (
+                          <div className="mb-6">
+                            {renderQuestion(currentQuestion)}
+                          </div>
+                        )}
+
+                        {/* Voice Recording Section for Speaking Questions */}
+                        {currentQuestion.type === "speaking" && (() => {
+                          const questionRec = questionRecordings[currentQuestion.id] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+                          return (
+                            <SpeakingAssignment
+                              questionId={currentQuestion.id}
+                              recordingTime={questionRec.recordingTime}
+                              setRecordingTime={(time) => {
+                                setQuestionRecordings(prev => ({
+                                  ...prev,
+                                  [currentQuestion.id]: {
+                                    ...(prev[currentQuestion.id] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null }),
+                                    recordingTime: typeof time === 'function' ? time(questionRec.recordingTime) : time
+                                  }
+                                }));
+                              }}
+                              onRecordingComplete={handleRecordingComplete}
+                              allowMultipleRecordings={allowMultipleRecordings}
+                              maxRecordings={maxRecordings}
+                              initialRecordings={questionRec.recordings}
+                              initialSelectedId={questionRec.selectedId}
+                              onRecordingsUpdate={(recordings, selectedId) => {
+                                setQuestionRecordings(prev => ({
+                                  ...prev,
+                                  [currentQuestion.id]: {
+                                    ...(prev[currentQuestion.id] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null }),
+                                    recordings,
+                                    selectedId
+                                  }
+                                }));
+                              }}
+                            />
+                          );
+                        })()}
+                      </>
+                    )}
+
+                    {/* Voice Recording Section for Speaking Assignments (when no questions but skill is speaking) */}
+                    {!currentQuestion && isSpeaking && (() => {
+                      // For pure speaking assignments without questions, use a special key
+                      const pureSpeakingKey = "pure-speaking";
+                      const questionRec = questionRecordings[pureSpeakingKey] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
                       return (
-                        <button
-                          key={q.id}
-                          onClick={() => handleQuestionClick(index)}
-                          className={`p-2 rounded text-sm font-medium transition-colors ${
-                            isCurrent
-                              ? "bg-primary-600 text-white"
-                              : isAnswered
-                              ? "bg-green-100 text-green-700 border border-green-300"
-                              : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                          }`}
-                        >
-                          Q{index + 1}
-                        </button>
+                        <SpeakingAssignment
+                          questionId={pureSpeakingKey}
+                          recordingTime={questionRec.recordingTime}
+                          setRecordingTime={(time) => {
+                            setQuestionRecordings(prev => ({
+                              ...prev,
+                              [pureSpeakingKey]: {
+                                ...(prev[pureSpeakingKey] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null }),
+                                recordingTime: typeof time === 'function' ? time(questionRec.recordingTime) : time
+                              }
+                            }));
+                          }}
+                          onRecordingComplete={handleRecordingComplete}
+                          allowMultipleRecordings={allowMultipleRecordings}
+                          maxRecordings={maxRecordings}
+                          initialRecordings={questionRec.recordings}
+                          initialSelectedId={questionRec.selectedId}
+                          onRecordingsUpdate={(recordings, selectedId) => {
+                            setQuestionRecordings(prev => ({
+                              ...prev,
+                              [pureSpeakingKey]: {
+                                ...(prev[pureSpeakingKey] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null }),
+                                recordings,
+                                selectedId
+                              }
+                            }));
+                          }}
+                        />
                       );
-                    })}
-                  </div>
-                </Card>
-              </div>
+                    })()}
 
-              {/* Main Question Area */}
-              <div className="lg:col-span-3">
+                    {/* Navigation Buttons */}
+                    {questions.length > 0 && (
+                      <div className="flex justify-between items-center pt-4 border-t">
+                        <Button
+                          variant="secondary"
+                          onClick={handlePrevious}
+                          disabled={currentQuestionIndex === 0}
+                        >
+                          Previous
+                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            onClick={saveAnswers}
+                            iconLeft={<Save className="w-4 h-4" />}
+                          >
+                            Save
+                          </Button>
+                          {currentQuestionIndex < questions.length - 1 && (
+                            <Button
+                              variant="primary"
+                              onClick={handleNext}
+                            >
+                              Next
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              // Pure speaking assignment without questions
+              <div className="max-w-4xl mx-auto">
                 <Card className="p-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-primary-600">
-                        Question {currentQuestionIndex + 1} of {questions.length}
-                      </span>
-                      <span className="ml-2 text-sm text-neutral-500">
-                        ({currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''})
-                      </span>
-                    </div>
-                    <div className="text-sm text-neutral-600">
-                      {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}% Complete
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    {renderQuestion(currentQuestion)}
-                  </div>
-
-                  {/* Navigation Buttons */}
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <Button
-                      variant="secondary"
-                      onClick={handlePrevious}
-                      disabled={currentQuestionIndex === 0}
-                    >
-                      Previous
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="secondary"
-                        onClick={saveAnswers}
-                        iconLeft={<Save className="w-4 h-4" />}
-                      >
-                        Save
-                      </Button>
-                      {currentQuestionIndex < questions.length - 1 ? (
-                        <Button
-                          variant="primary"
-                          onClick={handleNext}
-                        >
-                          Next
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="primary"
-                          onClick={() => handleSubmit(false)}
-                          iconLeft={<Send className="w-4 h-4" />}
-                        >
-                          Submit Assignment
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  {(() => {
+                    const pureSpeakingKey = "pure-speaking";
+                    const questionRec = questionRecordings[pureSpeakingKey] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
+                    return (
+                      <SpeakingAssignment
+                        questionId={pureSpeakingKey}
+                        recordingTime={questionRec.recordingTime}
+                        setRecordingTime={(time) => {
+                          setQuestionRecordings(prev => ({
+                            ...prev,
+                            [pureSpeakingKey]: {
+                              ...(prev[pureSpeakingKey] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null }),
+                              recordingTime: typeof time === 'function' ? time(questionRec.recordingTime) : time
+                            }
+                          }));
+                        }}
+                        onRecordingComplete={handleRecordingComplete}
+                        allowMultipleRecordings={allowMultipleRecordings}
+                        maxRecordings={maxRecordings}
+                        initialRecordings={questionRec.recordings}
+                        initialSelectedId={questionRec.selectedId}
+                        onRecordingsUpdate={(recordings, selectedId) => {
+                          setQuestionRecordings(prev => ({
+                            ...prev,
+                            [pureSpeakingKey]: {
+                              ...(prev[pureSpeakingKey] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null }),
+                              recordings,
+                              selectedId
+                            }
+                          }));
+                        }}
+                      />
+                    );
+                  })()}
                 </Card>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -527,14 +785,29 @@ export default function StudentAssignmentTaking() {
               <DialogTitle>Submit Assignment</DialogTitle>
             </DialogHeader>
             <DialogBody>
-              <p className="text-neutral-700">
-                Are you sure you want to submit this assignment? You have answered {answeredCount} out of {questions.length} questions.
-              </p>
-              {answeredCount < questions.length && (
-                <p className="text-yellow-600 mt-2 text-sm">
-                  You have {questions.length - answeredCount} unanswered questions.
+              <div className="space-y-3">
+                <p className="text-neutral-700">
+                  Are you sure you want to submit this assignment? You have answered {answeredCount} out of {questions.length} questions.
                 </p>
-              )}
+                {answeredCount < questions.length && (
+                  <p className="text-yellow-600 text-sm">
+                    You have {questions.length - answeredCount} unanswered questions.
+                  </p>
+                )}
+                {isSpeaking && hasRecording && (() => {
+                  const pureSpeakingKey = "pure-speaking";
+                  const questionRec = questionRecordings[pureSpeakingKey] || (currentQ ? questionRecordings[currentQ.id] : null);
+                  const recTime = questionRec?.recordingTime || 0;
+                  return (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-800 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Voice recording included ({formatRecordingTime(recTime)})
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
             </DialogBody>
             <DialogFooter>
               <Button variant="secondary" onClick={() => setShowSubmitDialog(false)}>
@@ -546,17 +819,6 @@ export default function StudentAssignmentTaking() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Exit Confirmation Dialog */}
-        <ConfirmationDialog
-          isOpen={showExitDialog}
-          onClose={() => setShowExitDialog(false)}
-          onConfirm={confirmExit}
-          title="Exit Assignment"
-          message="Your progress will be saved. You can return to complete this assignment later."
-          confirmText="Exit"
-          cancelText="Continue"
-        />
     </div>
   );
 }

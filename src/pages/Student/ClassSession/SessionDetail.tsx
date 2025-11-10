@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -37,10 +37,29 @@ import type { ClassDetail } from "@/types/class";
 import type { LearningMaterial } from "@/types/learningMaterial";
 import { config } from "@/lib/config";
 
+const tabs = [
+  { id: "context", label: "Session Context" },
+  { id: "materials", label: "Materials" },
+  { id: "assignments", label: "Assignments" }
+];
+
 export default function SessionDetail() {
   const { classId, sessionId } = useParams<{ classId: string; sessionId: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("context");
+  const location = useLocation();
+  
+  // Persist active tab in localStorage
+  const getInitialTab = (currentSessionId: string | undefined) => {
+    if (typeof window !== 'undefined' && currentSessionId) {
+      const saved = localStorage.getItem(`sessionTab_${currentSessionId}`);
+      // Validate that the saved tab exists in tabs array
+      if (saved && tabs.some(tab => tab.id === saved)) {
+        return saved;
+      }
+    }
+    return tabs[0].id;
+  };
+  const [activeTab, setActiveTab] = useState(() => getInitialTab(sessionId));
   const [context, setContext] = useState<CoveredTopic | null>(null);
   const [assignments, setAssignments] = useState<MeetingAssignment[] | null>(null);
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
@@ -164,6 +183,7 @@ export default function SessionDetail() {
     return () => { mounted = false; };
   }, [sessionId]);
 
+  // Load assignments when sessionId changes or when page becomes visible
   useEffect(() => {
     let mounted = true;
     async function loadAssignments() {
@@ -190,6 +210,40 @@ export default function SessionDetail() {
     return () => { mounted = false; };
   }, [sessionId]);
 
+  // Refresh assignments when navigating back to this page (e.g., after submission)
+  // Also refresh when assignments tab becomes active
+  useEffect(() => {
+    if (!sessionId || activeTab !== 'assignments') return;
+    
+    const refreshAssignments = async () => {
+      const studentId = getStudentId();
+      if (!studentId) return;
+      
+      try {
+        setLoadingAssignments(true);
+        const data = await getAssignmentsByMeetingAndStudent(sessionId, studentId);
+        setAssignments(data);
+        setErrorAssignments(null);
+      } catch (e: any) {
+        console.error('Failed to refresh assignments:', e);
+        setErrorAssignments(e?.message || 'Failed to refresh assignments');
+      } finally {
+        setLoadingAssignments(false);
+      }
+    };
+
+    // Refresh on window focus (when user returns to tab)
+    const handleFocus = () => {
+      refreshAssignments();
+    };
+
+  
+    refreshAssignments();
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [sessionId, location.key, location.pathname, activeTab]);
+
   // Load Materials via API
   useEffect(() => {
     let mounted = true;
@@ -212,6 +266,21 @@ export default function SessionDetail() {
     }
     loadMaterials();
     return () => { mounted = false; };
+  }, [sessionId]);
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    if (sessionId && activeTab) {
+      localStorage.setItem(`sessionTab_${sessionId}`, activeTab);
+    }
+  }, [activeTab, sessionId]);
+
+  // Update active tab when sessionId changes (e.g., navigating to different session)
+  useEffect(() => {
+    if (sessionId) {
+      const savedTab = getInitialTab(sessionId);
+      setActiveTab(savedTab);
+    }
   }, [sessionId]);
   
   const handleDownloadFile = async (material: LearningMaterial) => {
@@ -401,17 +470,11 @@ export default function SessionDetail() {
     }
   };
 
-  // Quiz handling - navigate to quiz taking page
+  // Quiz handling - navigate to quiz preview page
   const handleStartQuiz = (assignment: MeetingAssignment) => {
     if (!assignment.questionUrl) return;
-    navigate(`/student/assignment/${assignment.id}/take`);
+    navigate(`/student/assignment/${assignment.id}/preview`);
   };
-
-  const tabs = [
-    { id: "context", label: "Session Context" },
-    { id: "materials", label: "Materials" },
-    { id: "assignments", label: "Assignments" }
-  ];
 
   // Upload flow handlers
   const handleOpenUpload = (assignmentId: string) => {
@@ -915,10 +978,28 @@ export default function SessionDetail() {
                   skillGroups[skillKey].assignments.push(asm);
                 });
                 
-                skillGroups['all'].assignments = assignments;
+                // Sort assignments by createdAt (latest first)
+                const sortedAssignments = [...assignments].sort((a, b) => {
+                  const dateA = new Date(a.createdAt).getTime();
+                  const dateB = new Date(b.createdAt).getTime();
+                  return dateB - dateA; // Descending order (latest first)
+                });
+                
+                // Sort assignments in each skill group
+                Object.keys(skillGroups).forEach(key => {
+                  if (key !== 'all') {
+                    skillGroups[key].assignments.sort((a, b) => {
+                      const dateA = new Date(a.createdAt).getTime();
+                      const dateB = new Date(b.createdAt).getTime();
+                      return dateB - dateA; // Descending order (latest first)
+                    });
+                  }
+                });
+                
+                skillGroups['all'].assignments = sortedAssignments;
                 
                 const filteredAssignments = selectedSkillTab === 'all' 
-                  ? assignments 
+                  ? sortedAssignments 
                   : skillGroups[selectedSkillTab || 'all']?.assignments || [];
                 
                 return (
@@ -972,7 +1053,7 @@ export default function SessionDetail() {
                                       </div>
                                     )}
                                     {assignment.fileUrl && (
-                                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                                      <div className="flex items-center gap-2 bg-blue-100 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-200 transition-colors">
                                         <FileText className="w-4 h-4 text-blue-600" />
                                         <span 
                                           className="text-sm font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer"

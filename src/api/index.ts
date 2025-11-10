@@ -45,7 +45,7 @@ import {
   getClassMeetingCoveredTopic,
   getTeacherSchedule,
 } from './classMeetings.api';
-import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl, getUpcomingAssignmentsForStudent, downloadAssignment, downloadSubmission, getAssignmentById, submitAssignmentAnswers, createSpeakingAssignment, createQuizAssignment, createAssignment, deleteAssignment } from './assignments.api';
+import { getAssignmentsByMeetingAndStudent, submitAssignment, createSubmissionWithPresignedUrl, getUpcomingAssignmentsForStudent, downloadAssignment, downloadSubmission, getAssignmentById, submitAssignmentAnswers, startAttempt, getSpeakingSubmissionUploadUrls, submitSpeakingSubmission, createSpeakingAssignment, createQuizAssignment, createAssignment, deleteAssignment } from './assignments.api';
 import { getStudentsInClass } from './attendance.api';
 import { getAcademicResults, getCourseDetails } from './academicResults.api';
 import { 
@@ -135,6 +135,9 @@ export const api = {
   downloadSubmission,
   getAssignmentById,
   submitAssignmentAnswers,
+  startAttempt,
+  getSpeakingSubmissionUploadUrls,
+  submitSpeakingSubmission,
   createSpeakingAssignment,
   createQuizAssignment,
   createAssignment,
@@ -209,6 +212,9 @@ export {
   downloadSubmission,
   getAssignmentById,
   submitAssignmentAnswers,
+  startAttempt,
+  getSpeakingSubmissionUploadUrls,
+  submitSpeakingSubmission,
   createSpeakingAssignment,
   createQuizAssignment,
   createAssignment,

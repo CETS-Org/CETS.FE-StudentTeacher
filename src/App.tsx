@@ -36,6 +36,7 @@ import ChangePassword from './pages/Common/ChangePassword'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession/ClassDetaill'
 import StudentSessionDetail from './pages/Student/ClassSession/SessionDetail'
+import StudentAssignmentPreview from './pages/Student/Assignment/StudentAssignmentPreview'
 import StudentAssignmentTaking from './pages/Student/Assignment/StudentAssignmentTaking'
 import TestPage from './pages/Student/Assignment/TestPage'
 import AttendanceReport from './pages/Student/Attendances/AttendanceReport'
@@ -86,6 +87,7 @@ export default function App() {
             <Route path="/student/my-classes" element={<MyClasses />} /> 
             <Route path="/student/class/:classId" element={<ClassSession />} />
             <Route path="/student/class/:classId/session/:sessionId" element={<StudentSessionDetail />} />
+            <Route path="/student/assignment/:assignmentId/preview" element={<StudentAssignmentPreview />} />
             <Route path="/student/assignment/:assignmentId/take" element={<StudentAssignmentTaking />} />
             <Route path="/student/assignment/test" element={<TestPage />} />
             <Route path="/student/schedule" element={<Schedule />} />
