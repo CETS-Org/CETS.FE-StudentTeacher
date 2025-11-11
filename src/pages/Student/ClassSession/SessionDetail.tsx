@@ -36,7 +36,7 @@ import { submitWritingAssignment } from "@/api/assignments.api";
 import type { ClassDetail } from "@/types/class";
 import type { LearningMaterial } from "@/types/learningMaterial";
 import { config } from "@/lib/config";
-import WritingAssignmentView from "./WritingAssignmentView";
+import WritingAssignmentEditor from "@/pages/Student/Assignment/components/WritingAssignmentEditor";
 
 const tabs = [
   { id: "context", label: "Session Context" },
@@ -1700,9 +1700,9 @@ export default function SessionDetail() {
           </DialogContent>
         </Dialog>
 
-        {/* Writing Assignment View */}
+        {/* Writing Assignment Editor */}
         {isWritingViewOpen && writingAssignment && (
-          <WritingAssignmentView
+          <WritingAssignmentEditor
             assignment={{
               id: writingAssignment.id,
               title: writingAssignment.title,

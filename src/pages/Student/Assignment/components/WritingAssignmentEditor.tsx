@@ -7,13 +7,8 @@ import {
   Bold,
   Italic,
   Underline,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   List,
   ListOrdered,
-  Undo,
-  Redo,
   FileText,
   Download,
   Loader2,
@@ -26,7 +21,7 @@ import jsPDF from "jspdf";
 
 const CDN_BASE_URL = import.meta.env.VITE_STORAGE_PUBLIC_URL || '';
 
-interface WritingAssignmentViewProps {
+interface WritingAssignmentEditorProps {
   assignment: {
     id: string;
     title: string;
@@ -39,14 +34,17 @@ interface WritingAssignmentViewProps {
   onSubmit: (file: File) => Promise<void>;
 }
 
-type ExportFormat = "pdf";
-
-export default function WritingAssignmentView({
+/**
+ * Writing Assignment Editor Component
+ * Provides a split-screen interface for viewing assignment instructions and writing answers
+ * Features: Rich text editor, auto-save, PDF export, document viewer
+ */
+export default function WritingAssignmentEditor({
   assignment,
   existingContent = "",
   onClose,
   onSubmit,
-}: WritingAssignmentViewProps) {
+}: WritingAssignmentEditorProps) {
   const { toasts, hideToast, success, error: showError } = useToast();
   
   const [content, setContent] = useState(existingContent);
@@ -89,20 +87,18 @@ export default function WritingAssignmentView({
     };
   }, [content, assignment.id]);
 
-  // Load draft from localStorage on mount and set to editor
+  // Load draft from localStorage on mount
   useEffect(() => {
     if (!existingContent) {
       const draft = localStorage.getItem(`writing-draft-${assignment.id}`);
       if (draft) {
         setContent(draft);
-        // Set content to editor if it exists
         if (editorRef.current) {
           editorRef.current.innerHTML = draft;
         }
         success("Draft loaded from auto-save");
       }
     } else if (existingContent && editorRef.current) {
-      // Set existing content to editor
       editorRef.current.innerHTML = existingContent;
     }
   }, [assignment.id, existingContent]);
@@ -116,55 +112,35 @@ export default function WritingAssignmentView({
 
   const getFullFileUrl = (fileUrl: string): string => {
     if (!fileUrl) return "";
-    // Ensure proper URL formatting (add / if needed)
     const normalizedUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
     return `${CDN_BASE_URL}${normalizedUrl}`;
   };
 
   const getDocumentViewerUrl = (fileUrl: string): string => {
     const fullUrl = getFullFileUrl(fileUrl);
-    
-    // Check if URL has proper extension
     const hasExtension = fileUrl.includes('.') && fileUrl.lastIndexOf('.') > fileUrl.lastIndexOf('/');
     const fileExtension = hasExtension ? fileUrl.split('.').pop()?.toLowerCase() : null;
 
-    console.log('Getting viewer URL:', {
-      fileUrl,
-      fullUrl,
-      hasExtension,
-      fileExtension
-    });
-
     // For PDF files, use direct iframe
     if (fileExtension === 'pdf') {
-      console.log('Using direct PDF viewer');
       return fullUrl;
     }
 
-    // For DOCX and other Office files, use Microsoft Office Online Viewer
+    // For Office files, use Microsoft Office Online Viewer
     if (fileExtension === 'docx' || fileExtension === 'doc' || fileExtension === 'xlsx' || fileExtension === 'pptx') {
-      console.log('Using Office Online Viewer for Office files');
       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
     }
 
-    // If no extension detected:
-    // - For submissions (student uploaded files), use Google Docs Viewer (supports both PDF and DOC/DOCX)
-    // - For assignments (teacher uploaded), use Office viewer as they're likely Word docs
+    // Handle files without extension
     if (!fileExtension) {
       if (fileUrl.includes('submissions/')) {
-        console.log('No extension but is submission - using Google Docs Viewer (supports PDF and DOC)');
-        // Submissions can be PDF (from text editor) or DOC/DOCX (from file upload)
-        // Google Docs Viewer supports both formats
         return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
       } else if (fileUrl.includes('assignments/')) {
-        console.log('No extension but is assignment - using Office Online Viewer');
-        // Assignments are likely Word docs from teacher
         return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
       }
     }
 
-    // For other files, use Google Docs Viewer as fallback
-    console.log('Using Google Docs Viewer as fallback');
+    // Fallback to Google Docs Viewer
     return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
   };
 
@@ -184,13 +160,11 @@ export default function WritingAssignmentView({
     }, 500);
   };
 
-  const createFile = async (): Promise<File> => {
-    // Create safe filename following teacher's standard
+  const createPdfFile = async (): Promise<File> => {
     const timestamp = new Date().getTime();
-    const safeTitle = assignment.title.replace(/[^a-z0-9]/gi, '_').substring(0, 50); // Limit length
+    const safeTitle = assignment.title.replace(/[^a-z0-9]/gi, '_').substring(0, 50);
     const fileName = `${safeTitle}_Submission_${timestamp}.pdf`;
     
-    // Create PDF
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -233,9 +207,7 @@ export default function WritingAssignmentView({
     }
 
     const pdfBlob = doc.output("blob");
-    return new File([pdfBlob], fileName, {
-      type: "application/pdf",
-    });
+    return new File([pdfBlob], fileName, { type: "application/pdf" });
   };
 
   const handleDownload = async () => {
@@ -245,7 +217,7 @@ export default function WritingAssignmentView({
     }
 
     try {
-      const file = await createFile();
+      const file = await createPdfFile();
       const url = URL.createObjectURL(file);
       const link = document.createElement("a");
       link.href = url;
@@ -274,18 +246,9 @@ export default function WritingAssignmentView({
 
     try {
       setIsSubmitting(true);
-      const file = await createFile();
+      const file = await createPdfFile();
       
-      console.log('Created file for submission:', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        format: 'pdf'
-      });
-      
-      const result = await onSubmit(file);
-      
-      console.log('Submit result:', result);
+      await onSubmit(file);
       
       // Clear draft after successful submission
       localStorage.removeItem(`writing-draft-${assignment.id}`);
@@ -297,7 +260,6 @@ export default function WritingAssignmentView({
     } catch (error: any) {
       console.error("Submit error:", error);
       
-      // Extract meaningful error message
       let errorMessage = "Failed to submit assignment";
       if (error.message) {
         errorMessage = error.message;
@@ -317,13 +279,9 @@ export default function WritingAssignmentView({
     const editor = editorRef.current;
     if (!editor) return;
 
-    // Focus editor first
     editor.focus();
-
-    // Apply formatting using execCommand
     document.execCommand(command, false);
     
-    // Update content from editor
     const htmlContent = editor.innerHTML;
     setContent(htmlContent);
   };
@@ -331,18 +289,10 @@ export default function WritingAssignmentView({
   // Document loading timeout
   useEffect(() => {
     if (assignment.attachmentUrl) {
-      console.log('Loading assignment file:', {
-        fileUrl: assignment.attachmentUrl,
-        fullUrl: getFullFileUrl(assignment.attachmentUrl),
-        viewerUrl: getDocumentViewerUrl(assignment.attachmentUrl)
-      });
-      
       setDocumentLoading(true);
       setDocumentError(false);
       
-      // Fallback timeout: hide loading after 10 seconds if iframe doesn't trigger onLoad
       const loadingTimeout = setTimeout(() => {
-        console.log('Document loading timeout - hiding spinner');
         setDocumentLoading(false);
       }, 10000);
       
@@ -361,7 +311,7 @@ export default function WritingAssignmentView({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [content, handleManualSave]);
+  }, [content]);
 
   const renderDocumentViewer = () => {
     if (!assignment.attachmentUrl) {
@@ -410,12 +360,8 @@ export default function WritingAssignmentView({
           key={assignment.attachmentUrl}
           src={getDocumentViewerUrl(assignment.attachmentUrl)}
           className="w-full h-full border-none"
-          onLoad={() => {
-            console.log('Document loaded successfully');
-            setDocumentLoading(false);
-          }}
+          onLoad={() => setDocumentLoading(false)}
           onError={() => {
-            console.error('Document failed to load');
             setDocumentLoading(false);
             setDocumentError(true);
           }}
@@ -606,7 +552,6 @@ export default function WritingAssignmentView({
                 setContent(htmlContent);
               }}
               onPaste={(e) => {
-                // Prevent default paste to avoid unwanted formatting
                 e.preventDefault();
                 const text = e.clipboardData.getData('text/plain');
                 document.execCommand('insertText', false, text);
@@ -634,4 +579,3 @@ export default function WritingAssignmentView({
     </div>
   );
 }
-

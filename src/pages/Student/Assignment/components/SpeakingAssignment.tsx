@@ -762,10 +762,8 @@ export default function SpeakingAssignment({
 
   return (
     <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
-          <Mic className="w-6 h-6 text-white" />
-        </div>
+      <div className="flex items-center gap-3 mb-4">
+        
         <div>
           <h3 className="text-lg font-bold text-blue-900">Voice Recording</h3>
           <p className="text-sm text-blue-700">Record your answer for this speaking question</p>
@@ -773,10 +771,10 @@ export default function SpeakingAssignment({
       </div>
 
       {!isRecording && recordings.length === 0 && !hasRecording && (
-        <div className="text-center py-8">
+        <div className="text-center py-4">
           <div className="mb-6">
-            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mic className="w-10 h-10 text-blue-600" />
+            <div className="w-15 h-15 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mic className="w-8 h-8 text-blue-600" />
             </div>
             <p className="text-neutral-600 mb-2">Click the button below to start recording</p>
             <p className="text-sm text-neutral-500">Make sure your microphone is connected and working</p>
@@ -890,15 +888,6 @@ export default function SpeakingAssignment({
               ))}
             </div>
           </div>
-
-          {selectedRecordingId && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-sm text-green-800 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                Your selected recording is ready to submit. Click "Submit" when you're done.
-              </p>
-            </div>
-          )}
         </>
       )}
 

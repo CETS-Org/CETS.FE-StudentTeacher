@@ -5,7 +5,7 @@ import Card from "@/components/ui/Card";
 import Loader from "@/components/ui/Loader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
-import StudentLayout from "@/Shared/StudentLayout";
+
 import { 
   Clock, 
   CheckCircle, 
@@ -29,17 +29,19 @@ import { api, apiClient } from "@/api";
 import { getQuestionDataUrl } from "@/api/assignments.api";
 import { getStudentId } from "@/lib/utils";
 import { config } from "@/lib/config";
-import MultipleChoiceQuestion from "./components/MultipleChoiceQuestion";
-import TrueFalseQuestion from "./components/TrueFalseQuestion";
-import FillInBlankQuestion from "./components/FillInBlankQuestion";
-import ShortAnswerQuestion from "./components/ShortAnswerQuestion";
-import EssayQuestion from "./components/EssayQuestion";
-import MatchingQuestion from "./components/MatchingQuestion";
-import SpeakingQuestion from "./components/SpeakingQuestion";
 import type { Question, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
-import QuizQuestion from "./components/QuizQuestion";
-import SpeakingAssignment from "./components/SpeakingAssignment";
 import { submitSpeakingAssignment, validateSpeakingSubmission } from "./components/SpeakingAssignmentSubmission";
+
+// Refactored hooks
+import { useAssignmentTimer } from "./hooks/useAssignmentTimer";
+import { useQuestionAudio } from "./hooks/useQuestionAudio";
+import { useAutoSave } from "./hooks/useAutoSave";
+
+// Refactored components
+import AssignmentHeader from "./components/AssignmentHeader";
+import ProgressIndicator from "./components/ProgressIndicator";
+import QuestionRenderer from "./components/QuestionRenderer";
+import ScoreResultDialog from "./components/ScoreResultDialog";
 
 interface AssignmentDetails {
   id: string;
@@ -77,8 +79,6 @@ export default function StudentAssignmentTaking() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [initialTimeLimit, setInitialTimeLimit] = useState<number | null>(null); // Store initial time limit
   const [showTimeWarning, setShowTimeWarning] = useState(false); // Show warning when time is running out
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
@@ -92,12 +92,6 @@ export default function StudentAssignmentTaking() {
     correctAnswers: number;
     answeredQuestions: number;
   } | null>(null);
-  const [autoSaveInterval, setAutoSaveInterval] = useState<NodeJS.Timeout | null>(null);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [questionAudioPlaying, setQuestionAudioPlaying] = useState<Record<string, boolean>>({});
   const [showReadingPassage, setShowReadingPassage] = useState(true); // Default to showing passage
   const [currentPassageIndex, setCurrentPassageIndex] = useState(0); // Track current passage for multi-passage reading
   const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(true); // Default to true for speaking
@@ -111,10 +105,26 @@ export default function StudentAssignmentTaking() {
     currentBlobUrl: string | null;
   }
   const [questionRecordings, setQuestionRecordings] = useState<Record<string, QuestionRecording>>({});
-  
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const questionAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
+
+  // Use refactored hooks
+  const { timeRemaining, isTimerRunning, startTimer, stopTimer, formatTime } = useAssignmentTimer({
+    timeLimitMinutes: assignment?.timeLimitMinutes,
+    onTimeUp: () => {
+      setShowTimeWarning(true);
+      handleSubmit(true); // Force submit when time is up
+    }
+  });
+
+  const { questionAudioPlaying, questionAudioRefs, toggleQuestionAudio, normalizeAudioUrl } = useQuestionAudio();
+
+  const { lastSaved, isSaving, triggerSave } = useAutoSave({
+    enabled: !submitting && !loading,
+    intervalMs: 30000,
+    onSave: async () => {
+      // Auto-save logic will be implemented here
+      console.log("Auto-saving progress...");
+    }
+  });
 
   // Load assignment data
   useEffect(() => {
@@ -228,9 +238,8 @@ export default function StudentAssignmentTaking() {
         const timeLimitToUse = questionDataTimeLimit ?? assignmentData.timeLimitMinutes;
         if (timeLimitToUse) {
           const timeInSeconds = timeLimitToUse * 60;
-          setTimeRemaining(timeInSeconds);
           setInitialTimeLimit(timeInSeconds); // Store initial time limit for progress calculation
-          setIsTimerRunning(true);
+          startTimer(); // Start the timer using the hook
         }
 
       } catch (err: any) {
@@ -256,43 +265,12 @@ export default function StudentAssignmentTaking() {
     };
   }, []);
 
-  // Timer countdown
+  // Show warning when less than 5 minutes remaining
   useEffect(() => {
-    if (isTimerRunning && timeRemaining !== null && timeRemaining > 0) {
-      timerIntervalRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev === null || prev <= 1) {
-            setIsTimerRunning(false);
-            handleTimeUp();
-            return 0;
-          }
-          
-          // Show warning when less than 5 minutes (300 seconds) remaining
-          if (prev <= 300 && prev > 299) {
-            setShowTimeWarning(true);
-          }
-          
-          // Show critical warning when less than 1 minute (60 seconds) remaining
-          if (prev <= 60 && prev > 59) {
-            // Could show a more urgent warning here if needed
-          }
-          
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
+    if (timeRemaining !== null && timeRemaining <= 300 && timeRemaining > 0 && !showTimeWarning) {
+      setShowTimeWarning(true);
     }
-
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, [isTimerRunning, timeRemaining]);
+  }, [timeRemaining, showTimeWarning]);
   
   // Auto-hide warning after 10 seconds
   useEffect(() => {
@@ -323,7 +301,7 @@ export default function StudentAssignmentTaking() {
     try {
       // Save answers to localStorage as backup
       localStorage.setItem(`assignment_${assignmentId}_answers`, JSON.stringify(answers));
-      setLastSaved(new Date());
+      // lastSaved is now managed by useAutoSave hook
     } catch (err) {
       console.error("Failed to save answers:", err);
     }
@@ -332,17 +310,6 @@ export default function StudentAssignmentTaking() {
   const handleTimeUp = () => {
     alert("Time is up! Your assignment will be automatically submitted.");
     handleSubmit(true);
-  };
-
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleAnswerChange = (questionId: string, answer: any) => {
@@ -713,52 +680,6 @@ export default function StudentAssignmentTaking() {
     return finalScore;
   };
 
-  // Get current question's recording data
-  const getCurrentQuestionRecording = (): QuestionRecording => {
-    const currentQ = questions[currentQuestionIndex];
-    if (!currentQ) {
-      return { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
-    }
-    return questionRecordings[currentQ.id] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
-  };
-
-  // Handle speaking assignment recording updates
-  const handleRecordingUpdate = useCallback((questionId: string, data: Partial<QuestionRecording>) => {
-    setQuestionRecordings(prev => {
-      const current = prev[questionId] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
-      const updated = { ...current, ...data };
-      
-      // Mark question as answered if there's a selected recording
-      if (updated.selectedId && updated.recordings.length > 0) {
-        const selectedRecording = updated.recordings.find(r => r.id === updated.selectedId);
-        if (selectedRecording) {
-          handleAnswerChange(questionId, "recorded");
-        }
-      }
-      
-      return { ...prev, [questionId]: updated };
-    });
-  }, [handleAnswerChange]);
-
-  // Handle recording complete (for single recording mode or when selection changes)
-  const handleRecordingComplete = useCallback((blobUrl: string | null) => {
-    const currentQ = questions[currentQuestionIndex];
-    const isSpeakingAssignment = assignment?.skillName?.toLowerCase().includes("speaking");
-    const questionId = currentQ?.id || (isSpeakingAssignment && questions.length === 0 ? "pure-speaking" : null);
-    
-    if (!questionId) return;
-    
-    setQuestionRecordings(prev => {
-      const current = prev[questionId] || { recordings: [], selectedId: null, recordingTime: 0, currentBlobUrl: null };
-      return { ...prev, [questionId]: { ...current, currentBlobUrl: blobUrl } };
-    });
-    
-    // Mark the current speaking question as answered only if there's a recording
-    if (blobUrl && currentQ) {
-      handleAnswerChange(currentQ.id, "recorded");
-    }
-  }, [questions, currentQuestionIndex, handleAnswerChange, assignment]);
-
   // Convert blob URL to blob for submission
   const getAudioBlob = async (questionId?: string): Promise<Blob | null> => {
     // Import blobStorage dynamically to avoid circular dependency
@@ -807,12 +728,6 @@ export default function StudentAssignmentTaking() {
     }
     
     return null;
-  };
-
-  const formatRecordingTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSubmit = async (autoSubmit: boolean = false) => {
@@ -874,8 +789,7 @@ export default function StudentAssignmentTaking() {
         skillName: assignment?.skillName,
         isReading,
         isListening,
-        calculatedScore,
-        hasAudioBlob: !!audioBlob
+        calculatedScore
       });
 
       // Prepare submission data according to SubmitAssignmentRequest from backend controller
@@ -890,9 +804,9 @@ export default function StudentAssignmentTaking() {
         submissionData.contentType = null;
         submissionData.content = null;
       } else {
-        // For other assignments (writing, speaking, etc.), include fileName and content
-        submissionData.fileName = audioBlob ? 'recording.webm' : 'answers.json';
-        submissionData.contentType = audioBlob ? 'audio/webm' : 'application/json';
+        // For other assignments (writing, etc.), include fileName and content
+        submissionData.fileName = 'answers.json';
+        submissionData.contentType = 'application/json';
         submissionData.content = JSON.stringify(answersArray);
       }
 
@@ -918,16 +832,6 @@ export default function StudentAssignmentTaking() {
       // Log final payload before sending
       console.log('📤 Final submission payload:', JSON.stringify(submissionData, null, 2));
       console.log('📤 Payload includes score:', 'score' in submissionData ? `Yes (${submissionData.score})` : 'No');
-
-      // If audioBlob exists, we need to handle it differently
-      // For now, we'll send the answers as JSON content
-      // Audio can be handled separately if needed via a different endpoint
-      if (audioBlob) {
-        // Convert audioBlob to base64 and include in content or handle separately
-        // For now, we'll send answers as JSON and note that audio needs separate handling
-        // You may need to upload audio first and then submit with the audio URL
-        console.warn('Audio blob detected. Consider uploading audio separately first.');
-      }
 
       // Handle speaking assignment submission separately
       if (isSpeakingAssignment) {
@@ -1033,56 +937,16 @@ export default function StudentAssignmentTaking() {
     navigate(-1);
   };
 
-  // Helper function to normalize audio URL
-  const normalizeAudioUrl = (url: string | undefined): string | undefined => {
-    if (!url) return undefined;
-    // If already a full URL, return as is
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    // Convert filePath to full URL
-    return `${config.storagePublicUrl}${url.startsWith('/') ? url : '/' + url}`;
-  };
-
-  // Get audio URL for a question
+  // Get audio URL for a question (helper function)
   const getQuestionAudioUrl = (question: Question): string | null => {
     const audioUrl = (question as any)._audioUrl || question.reference;
     if (!audioUrl) return null;
-    return normalizeAudioUrl(audioUrl) || audioUrl;
-  };
-
-  // Toggle audio playback for a question
-  const toggleQuestionAudio = (question: Question) => {
-    const audioUrl = getQuestionAudioUrl(question);
-    if (!audioUrl) return;
-
-    const normalizedUrl = normalizeAudioUrl(audioUrl) || audioUrl;
-    
-    if (!questionAudioRefs.current[normalizedUrl]) {
-      const audio = new Audio(normalizedUrl);
-      questionAudioRefs.current[normalizedUrl] = audio;
-      audio.onended = () => {
-        setQuestionAudioPlaying((prev) => ({ ...prev, [normalizedUrl]: false }));
-      };
-      audio.onerror = (e) => {
-        console.error("Audio playback error:", e);
-        alert("Failed to load audio. Please check the audio URL.");
-        setQuestionAudioPlaying((prev) => ({ ...prev, [normalizedUrl]: false }));
-      };
+    // If already a full URL, return as is
+    if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
+      return audioUrl;
     }
-
-    const audio = questionAudioRefs.current[normalizedUrl];
-    if (questionAudioPlaying[normalizedUrl]) {
-      audio.pause();
-      audio.currentTime = 0;
-      setQuestionAudioPlaying((prev) => ({ ...prev, [normalizedUrl]: false }));
-    } else {
-      audio.play().catch((error) => {
-        console.error("Audio play error:", error);
-        alert("Failed to play audio. Please check the audio URL.");
-      });
-      setQuestionAudioPlaying((prev) => ({ ...prev, [normalizedUrl]: true }));
-    }
+    // Convert filePath to full URL
+    return `${config.storagePublicUrl}${audioUrl.startsWith('/') ? audioUrl : '/' + audioUrl}`;
   };
 
   // Memoized callback for recording updates to prevent infinite loops
@@ -1098,96 +962,25 @@ export default function StudentAssignmentTaking() {
   const renderQuestion = (question: Question) => {
     const answer = answers[question.id];
     const questionAudioUrl = getQuestionAudioUrl(question);
-    const commonProps = {
-      question,
-      answer,
-      onAnswerChange: (answer: any) => handleAnswerChange(question.id, answer),
-      skillType: assignment?.skillName || "",
-    };
-
-    let questionComponent;
-    switch (question.type) {
-      case "multiple_choice":
-        questionComponent = <MultipleChoiceQuestion {...commonProps} />;
-        break;
-      case "true_false":
-        questionComponent = <TrueFalseQuestion {...commonProps} />;
-        break;
-      case "fill_in_the_blank":
-        questionComponent = <FillInBlankQuestion {...commonProps} />;
-        break;
-      case "short_answer":
-        questionComponent = <ShortAnswerQuestion {...commonProps} />;
-        break;
-      case "essay":
-        questionComponent = <EssayQuestion {...commonProps} />;
-        break;
-      case "matching":
-        questionComponent = <MatchingQuestion {...commonProps} />;
-        break;
-      case "speaking":
-        // Speaking questions are self-contained with SpeakingAssignment inside
-        questionComponent = (
-          <SpeakingQuestion 
-            {...commonProps}
-            onRecordingUpdate={handleRecordingUpdateForQuestion(question.id)}
-            initialRecordingData={questionRecordings[question.id]}
-            allowMultipleRecordings={allowMultipleRecordings}
-            maxRecordings={maxRecordings}
-          />
-        );
-        break;
-      default:
-        questionComponent = <div className="text-red-600">Unknown question type: {question.type}</div>;
-    }
 
     return (
-      <div className="space-y-4">
-        {/* Audio Player for Question */}
-        {questionAudioUrl && (
-          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => toggleQuestionAudio(question)}
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-                title={questionAudioPlaying[normalizeAudioUrl(questionAudioUrl) || questionAudioUrl] ? "Pause" : "Play"}
-              >
-                {questionAudioPlaying[normalizeAudioUrl(questionAudioUrl) || questionAudioUrl] ? (
-                  <Pause className="w-5 h-5" />
-                ) : (
-                  <Play className="w-5 h-5 ml-0.5" />
-                )}
-              </button>
-              <div className="flex-1 flex items-center gap-2">
-                <Headphones className="w-5 h-5 text-purple-600" />
-                <div>
-                  <p className="text-sm font-medium text-purple-900">
-                    {questionAudioPlaying[normalizeAudioUrl(questionAudioUrl) || questionAudioUrl] ? "Playing audio..." : "Click to play audio for this question"}
-                  </p>
-                  {question.audioTimestamp && (
-                    <p className="text-xs text-purple-600 mt-1">
-                      Timestamp: {question.audioTimestamp}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {questionComponent}
-      </div>
+      <QuestionRenderer
+        question={question}
+        answer={answer}
+        onAnswerChange={(answer: any) => handleAnswerChange(question.id, answer)}
+        skillType={assignment?.skillName || ""}
+        questionRecordings={questionRecordings}
+        allowMultipleRecordings={allowMultipleRecordings}
+        maxRecordings={maxRecordings}
+        onRecordingUpdate={handleRecordingUpdateForQuestion}
+        questionAudioUrl={questionAudioUrl || undefined}
+        questionAudioPlaying={questionAudioPlaying}
+        toggleQuestionAudio={toggleQuestionAudio}
+        normalizeAudioUrl={normalizeAudioUrl}
+      />
     );
   };
 
-  const getSkillIcon = (skillName: string | null) => {
-    if (!skillName) return <FileText className="w-5 h-5" />;
-    const skill = skillName.toLowerCase();
-    if (skill.includes("listening")) return <Headphones className="w-5 h-5" />;
-    if (skill.includes("reading")) return <BookOpen className="w-5 h-5" />;
-    if (skill.includes("writing")) return <PenTool className="w-5 h-5" />;
-    if (skill.includes("speaking")) return <MessageSquare className="w-5 h-5" />;
-    return <FileText className="w-5 h-5" />;
-  };
 
   if (loading) {
     return (
@@ -1321,80 +1114,18 @@ export default function StudentAssignmentTaking() {
   })));
 
   return (
-    <StudentLayout>
       <div className="min-h-screen bg-neutral-50">
         {/* Header */}
-        <div className="bg-white border-b border-neutral-200 sticky top-0 z-10">
-          <div className="px-6 py-4 max-w-7xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h1 className="text-xl font-semibold text-primary-800">{assignment.title}</h1>
-                  {assignment.skillName && (
-                    <div className="flex items-center gap-2 mt-1">
-                      {getSkillIcon(assignment.skillName)}
-                      <span className="text-sm text-neutral-600">{assignment.skillName}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                {timeRemaining !== null && initialTimeLimit !== null && (
-                  <div className="flex items-center gap-3">
-                    {/* Timer Display */}
-                    <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                      timeRemaining < 60 
-                        ? "bg-red-500 text-white border-red-600 animate-pulse" 
-                        : timeRemaining < 300 
-                        ? "bg-red-100 text-red-700 border-red-300" 
-                        : "bg-blue-100 text-blue-700 border-blue-300"
-                    }`}>
-                      <Clock className={`w-5 h-5 ${timeRemaining < 60 ? "animate-spin" : ""}`} />
-                      <div className="flex flex-col">
-                        <span className="font-mono font-bold text-lg leading-tight">{formatTime(timeRemaining)}</span>
-                        <span className="text-xs font-medium opacity-75">Time Remaining</span>
-                      </div>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    {initialTimeLimit > 0 && (
-                      <div className="hidden md:flex flex-col items-end gap-1 w-32">
-                        <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
-                          <div 
-                            className={`h-2 rounded-full transition-all ${
-                              timeRemaining < 60 
-                                ? "bg-red-500" 
-                                : timeRemaining < 300 
-                                ? "bg-red-400" 
-                                : "bg-blue-500"
-                            }`}
-                            style={{ width: `${(timeRemaining / initialTimeLimit) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-neutral-600">
-                          {Math.round((timeRemaining / initialTimeLimit) * 100)}% left
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {lastSaved && (
-                  <div className="text-xs text-neutral-500">
-                    Last saved: {lastSaved.toLocaleTimeString()}
-                  </div>
-                )}
-                <Button
-                  variant="primary"
-                  onClick={() => handleSubmit(false)}
-                  disabled={submitting}
-                  iconLeft={submitting ? <Loader /> : <Send className="w-4 h-4" />}
-                >
-                  {submitting ? "Submitting..." : "Submit"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AssignmentHeader
+          title={assignment.title}
+          skillName={assignment.skillName}
+          lastSaved={lastSaved}
+          isSaving={isSaving}
+          onBack={() => navigate(-1)}
+          onSave={saveAnswers}
+          onSubmit={() => handleSubmit(false)}
+          canSubmit={!submitting}
+        />
 
         {/* Time Warning Banner */}
         {showTimeWarning && timeRemaining !== null && timeRemaining < 300 && (
@@ -1543,7 +1274,7 @@ export default function StudentAssignmentTaking() {
                             return (
                               <div className="space-y-4">
                                 {/* Current Question Display */}
-                                <div className="p-4 rounded-lg border-2 border-primary-500 bg-white">
+                                <div className="p-4 rounded-lg border-1 border-gray-200 bg-white shadow-md bg-white">
                                   <div className="mb-4 flex items-center justify-between">
                                     <div>
                                       <span className="text-sm font-medium text-primary-600">
@@ -1630,9 +1361,17 @@ export default function StudentAssignmentTaking() {
                       </div>
                     </Card>
 
-                    {/* Passage Navigation */}
-                    <Card className="p-4 bg-primary-50 border-primary-200">
-                      <div className="flex justify-between items-center">
+                    {/* Progress and Passage Navigation */}
+                    <Card className="p-6 border-primary-200">
+                      <ProgressIndicator
+                        currentQuestionIndex={currentQuestionIndex}
+                        totalQuestions={questions.length}
+                        answeredCount={answeredCount}
+                        timeRemaining={timeRemaining}
+                        formatTime={formatTime}
+                      />
+                      
+                      <div className="flex justify-between items-center mt-4 pt-4 border-t border-neutral-200">
                         <div className="text-sm text-neutral-700">
                           Passage {currentPassageIndex + 1} of {passages.length}
                         </div>
@@ -1644,22 +1383,13 @@ export default function StudentAssignmentTaking() {
                           >
                             Previous Passage
                           </Button>
-                          {currentPassageIndex < passages.length - 1 ? (
-                            <Button
-                              variant="primary"
-                              onClick={handleNextPassage}
-                            >
-                              Next Passage
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="primary"
-                              onClick={() => handleSubmit(false)}
-                              iconLeft={<Send className="w-4 h-4" />}
-                            >
-                              Submit Assignment
-                            </Button>
-                          )}
+                          <Button
+                            variant="primary"
+                            onClick={handleNextPassage}
+                            disabled={currentPassageIndex === passages.length - 1}
+                          >
+                            Next Passage
+                          </Button>
                         </div>
                       </div>
                     </Card>
@@ -1675,7 +1405,8 @@ export default function StudentAssignmentTaking() {
                 if (hasReadingPassage && isReading) {
                   // Reading Assignment with Single Passage - Three Column Layout
                   return (
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                       {/* Left Sidebar - Question Navigation */}
                       <div className="xl:col-span-2">
                         <Card className="p-4">
@@ -1795,189 +1526,122 @@ export default function StudentAssignmentTaking() {
                           )}
                         </Card>
                       </div>
+                      </div>
+                    
+                      {/* Progress Indicator for Single Passage Layout */}
+                      <Card className="p-6 border-primary-200">
+                        <ProgressIndicator
+                          currentQuestionIndex={currentQuestionIndex}
+                          totalQuestions={questions.length}
+                          answeredCount={answeredCount}
+                          timeRemaining={timeRemaining}
+                          formatTime={formatTime}
+                        />
+                      </Card>
                     </div>
                   );
                 }
 
-                // Standard Layout - Check if speaking assignment
-                const hasSpeakingQuestions = questionsWithoutPassage.some(q => q.type === "speaking");
-                const isSpeakingAssignment = assignment?.skillName?.toLowerCase().includes("speaking");
-                
-                // Use dedicated speaking layout if it's a speaking assignment
-                if (hasSpeakingQuestions || isSpeakingAssignment) {
-                  return (
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                      {/* Left Sidebar - Question Navigation */}
-                      <div className="lg:col-span-1">
-                        <Card className="p-4">
-                          <h3 className="font-semibold text-sm text-neutral-700 mb-3">
-                            Questions ({answeredCount}/{questions.length})
-                          </h3>
-                          <div className="grid grid-cols-5 lg:grid-cols-1 gap-2 max-h-[600px] overflow-y-auto">
-                            {questions.map((q, index) => {
-                              const isAnswered = answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== "";
-                              const isCurrent = index === currentQuestionIndex;
-                              return (
-                                <button
-                                  key={q.id}
-                                  onClick={() => handleQuestionClick(index)}
-                                  className={`p-2 rounded text-sm font-medium transition-colors ${
-                                    isCurrent
-                                      ? "bg-primary-600 text-white"
-                                      : isAnswered
-                                      ? "bg-green-100 text-green-700 border border-green-300"
-                                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                                  }`}
-                                >
-                                  Q{index + 1}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </Card>
-                      </div>
-
-                      {/* Main Question Area */}
-                      <div className="lg:col-span-3">
-                        <Card className="p-6">
-                          <div className="mb-4 flex items-center justify-between">
-                            <div>
-                              <span className="text-sm font-medium text-primary-600">
-                                Question {currentQuestionIndex + 1} of {questions.length}
-                              </span>
-                              <span className="ml-2 text-sm text-neutral-500">
-                                ({currentQuestion?.points || 0} point{(currentQuestion?.points || 0) !== 1 ? 's' : ''})
-                              </span>
-                            </div>
-                            <div className="text-sm text-neutral-600">
-                              {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}% Complete
-                            </div>
-                          </div>
-
-                          <div className="mb-6">
-                            {currentQuestion && renderQuestion(currentQuestion)}
-                          </div>
-
-                          {/* Navigation Buttons */}
-                          <div className="flex justify-between items-center pt-4 border-t">
-                            <Button
-                              variant="secondary"
-                              onClick={handlePrevious}
-                              disabled={currentQuestionIndex === 0}
-                            >
-                              Previous
-                            </Button>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="secondary"
-                                onClick={saveAnswers}
-                                iconLeft={<Save className="w-4 h-4" />}
-                              >
-                                Save
-                              </Button>
-                              {currentQuestionIndex < questions.length - 1 ? (
-                                <Button
-                                  variant="primary"
-                                  onClick={handleNext}
-                                >
-                                  Next
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="primary"
-                                  onClick={() => handleSubmit(false)}
-                                  iconLeft={<Send className="w-4 h-4" />}
-                                >
-                                  Submit Assignment
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </Card>
-                      </div>
-                    </div>
-                  );
-                }
-                
-                // Standard Layout for non-speaking questions
+                // Standard Question Navigation Layout (for questions without passages)
                 return (
                   <div className="space-y-6">
-                    {/* Questions without passage (if any) */}
-                    {questionsWithoutPassage.length > 0 && (
-                      <Card className="p-6">
-                        <div className="mb-6 pb-4 border-b border-neutral-200">
-                          <h2 className="text-xl font-semibold text-primary-800">
-                            Additional Questions
-                          </h2>
-                          <p className="text-sm text-neutral-600 mt-1">
-                            {questionsWithoutPassage.length} question{questionsWithoutPassage.length !== 1 ? 's' : ''} without passage
-                          </p>
-                        </div>
-
-                        <div className="space-y-6">
-                          {questionsWithoutPassage.map((question) => {
-                            const globalIndex = questions.findIndex(q => q.id === question.id);
-                            const isCurrent = currentQuestion && question.id === currentQuestion.id;
-                            const isAnswered = answers[question.id] !== undefined && answers[question.id] !== null && answers[question.id] !== "";
-                            
-                            return (
-                              <div
-                                key={question.id}
-                                className={`p-4 rounded-lg border-2 transition-all ${
-                                  isCurrent
-                                    ? "border-primary-500 bg-white"
-                                    : "border-neutral-200 bg-white"
-                                }`}
-                              >
-                                <div className="mb-4 flex items-center justify-between">
-                                  <div>
-                                    <span className="text-sm font-medium text-primary-600">
-                                      Question {globalIndex + 1} of {questions.length}
-                                    </span>
-                                    <span className="ml-2 text-sm text-neutral-500">
-                                      ({question.points} point{question.points !== 1 ? 's' : ''})
-                                    </span>
-                                  </div>
-                                  {isAnswered && (
-                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
-                                      Answered
-                                    </span>
-                                  )}
+                    <Card className="p-6">
+                      {currentQuestion && (() => {
+                        const globalIndex = currentQuestionIndex;
+                        const isAnswered = answers[currentQuestion.id] !== undefined && 
+                                         answers[currentQuestion.id] !== null && 
+                                         answers[currentQuestion.id] !== "";
+                        
+                        return (
+                          <div className="space-y-4">
+                            {/* Current Question Display */}
+                            <div className="p-4 rounded-lg border-1 border-gray-200 bg-white shadow-md">
+                              <div className="mb-4 flex items-center justify-between">
+                                <div>
+                                  <span className="text-sm font-medium text-primary-600">
+                                    Question {globalIndex + 1} of {questions.length}
+                                  </span>
+                                  <span className="ml-2 text-sm text-neutral-500">
+                                    ({currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''})
+                                  </span>
                                 </div>
+                                {isAnswered && (
+                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                    Answered
+                                  </span>
+                                )}
+                              </div>
 
-                                <div className="mb-4">
-                                  {renderQuestion(question)}
+                              <div className="mb-4">
+                                {renderQuestion(currentQuestion)}
+                              </div>
+                            </div>
+                            
+                            {/* Navigation Buttons */}
+                            <div className="flex justify-between items-center pt-4 border-t border-neutral-200">
+                              <Button
+                                variant="secondary"
+                                onClick={handlePrevious}
+                                disabled={currentQuestionIndex === 0}
+                              >
+                                Previous
+                              </Button>
+                              <Button
+                                variant="primary"
+                                onClick={handleNext}
+                                disabled={currentQuestionIndex === questions.length - 1}
+                              >
+                                Next
+                              </Button>
+                            </div>
+                            
+                            {/* Question Number List */}
+                            {questions.length > 1 && (
+                              <div className="pt-4 border-t border-neutral-200">
+                                <p className="text-sm font-medium text-neutral-700 mb-3">
+                                  All Questions:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {questions.map((q, qIndex) => {
+                                    const qIsAnswered = answers[q.id] !== undefined && 
+                                                      answers[q.id] !== null && 
+                                                      answers[q.id] !== "";
+                                    const qIsCurrent = qIndex === currentQuestionIndex;
+                                    
+                                    return (
+                                      <button
+                                        key={q.id}
+                                        onClick={() => handleQuestionClick(qIndex)}
+                                        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                                          qIsCurrent
+                                            ? "bg-primary-600 text-white"
+                                            : qIsAnswered
+                                            ? "bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
+                                            : "bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200"
+                                        }`}
+                                      >
+                                        {qIndex + 1}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </Card>
-                    )}
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </Card>
 
-                    {/* Navigation and Submit Section */}
-                    <Card className="p-6 bg-primary-50 border-primary-200">
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-neutral-700">
-                          Progress: {answeredCount} of {questions.length} questions answered
-                        </div>
-                        <div className="flex gap-2">
-                          {/* <Button
-                            variant="secondary"
-                            onClick={saveAnswers}
-                            iconLeft={<Save className="w-4 h-4" />}
-                          >
-                            Save Progress
-                          </Button> */}
-                          <Button
-                            variant="primary"
-                            onClick={() => handleSubmit(false)}
-                            iconLeft={<Send className="w-4 h-4" />}
-                          >
-                            Submit Assignment
-                          </Button>
-                        </div>
-                      </div>
+                    {/* Progress and Submit Section */}
+                    <Card className="p-6 border-primary-200">
+                      <ProgressIndicator
+                        currentQuestionIndex={currentQuestionIndex}
+                        totalQuestions={questions.length}
+                        answeredCount={answeredCount}
+                        timeRemaining={timeRemaining}
+                        formatTime={formatTime}
+                      />
+                 
                     </Card>
                   </div>
                 );
@@ -2008,11 +1672,14 @@ export default function StudentAssignmentTaking() {
                   const pureSpeakingKey = "pure-speaking";
                   const questionRec = questionRecordings[pureSpeakingKey] || (currentQ ? questionRecordings[currentQ.id] : null);
                   const recTime = questionRec?.recordingTime || 0;
+                  const mins = Math.floor(recTime / 60);
+                  const secs = recTime % 60;
+                  const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                   return (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                       <p className="text-sm text-green-800 flex items-center gap-2">
                         <CheckCircle className="w-4 h-4" />
-                        Voice recording included ({formatRecordingTime(recTime)})
+                        Voice recording included ({formattedTime})
                       </p>
                     </div>
                   );
@@ -2042,97 +1709,16 @@ export default function StudentAssignmentTaking() {
         />
 
         {/* Score Result Dialog */}
-        <Dialog open={showScoreDialog} onOpenChange={setShowScoreDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center">Assignment Submitted!</DialogTitle>
-            </DialogHeader>
-            <DialogBody>
-              {submissionScore && (
-                <div className="space-y-6 py-4">
-                  {/* Score Display */}
-                  <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 mb-4">
-                      <div className="text-center">
-                        <div className="text-4xl font-bold text-white">
-                          {submissionScore.score.toFixed(1)}
-                        </div>
-                        <div className="text-sm text-primary-100">out of 10</div>
-                      </div>
-                    </div>
-                    <h3 className="text-xl font-semibold text-neutral-800 mt-2">
-                      {submissionScore.score >= 8 ? "Excellent!" : 
-                       submissionScore.score >= 6 ? "Good Job!" : 
-                       submissionScore.score >= 4 ? "Keep Trying!" : "Practice More!"}
-                    </h3>
-                  </div>
-
-                  {/* Score Details */}
-                  <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-neutral-600">Correct Answers:</span>
-                      <span className="font-semibold text-green-600">
-                        {submissionScore.correctAnswers} / {submissionScore.totalQuestions}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-neutral-600">Points Earned:</span>
-                      <span className="font-semibold text-primary-600">
-                        {submissionScore.earnedPoints} / {submissionScore.totalPoints}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-neutral-600">Questions Answered:</span>
-                      <span className="font-semibold text-neutral-800">
-                        {submissionScore.answeredQuestions} / {submissionScore.totalQuestions}
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t border-neutral-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-neutral-600 font-medium">Final Score:</span>
-                        <span className="text-xl font-bold text-primary-700">
-                          {submissionScore.score.toFixed(2)} / 10
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-neutral-600">
-                      <span>Progress</span>
-                      <span>{Math.round((submissionScore.score / 10) * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-neutral-200 rounded-full h-3">
-                      <div 
-                        className={`h-3 rounded-full transition-all ${
-                          submissionScore.score >= 8 ? "bg-green-500" :
-                          submissionScore.score >= 6 ? "bg-blue-500" :
-                          submissionScore.score >= 4 ? "bg-yellow-500" : "bg-red-500"
-                        }`}
-                        style={{ width: `${(submissionScore.score / 10) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </DialogBody>
-            <DialogFooter>
-              <Button 
-                variant="primary" 
-                onClick={() => {
-                  setShowScoreDialog(false);
-                  navigate(-1);
-                }}
-                className="w-full"
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ScoreResultDialog
+          isOpen={showScoreDialog}
+          onClose={() => {
+            setShowScoreDialog(false);
+            navigate(-1);
+          }}
+          submissionScore={submissionScore}
+        />
       </div>
-    </StudentLayout>
+   
   );
 }
 
