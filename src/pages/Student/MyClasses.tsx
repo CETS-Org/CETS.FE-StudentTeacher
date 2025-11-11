@@ -295,6 +295,17 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
     }
   };
 
+  function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // fallback nếu input không hợp lệ
+
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 
   return (
     <Card className="overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-accent-100 bg-white hover:bg-gradient-to-br hover:from-white hover:via-white hover:to-accent-25">
@@ -311,6 +322,9 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusColor(classItem.status)}`}>
                 {getStatusIcon(classItem.status)}
                 {getStatusLabel(classItem.status)}
+              </span>
+               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusColor(classItem.status)}`}>
+                End Date: {formatDate(classItem.endDate)}
               </span>
               {/* Certificate Badge */}
               {classItem.certificate && (
@@ -404,7 +418,7 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
                   {nextMeeting.coveredTopic && (
                 <div className="flex items-center gap-2 text-xs text-accent-600 mb-2">
                   <BookOpen className="w-3.5 h-3.5" />
-                      <span className="font-medium">Topic: {nextMeeting.coveredTopic}</span>
+                      <span className="font-medium">Session's Topic: {nextMeeting.coveredTopic}</span>
                 </div>
               )}
             </div>
