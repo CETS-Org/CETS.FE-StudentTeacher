@@ -5,6 +5,7 @@ import FillInBlankQuestion from "./FillInBlankQuestion";
 import ShortAnswerQuestion from "./ShortAnswerQuestion";
 import EssayQuestion from "./EssayQuestion";
 import MatchingQuestion from "./MatchingQuestion";
+import SpeakingQuestion from "./SpeakingQuestion";
 
 interface QuizQuestionProps {
   question: Question;
@@ -40,7 +41,7 @@ export default function QuizQuestion({
     case "matching":
       return <MatchingQuestion {...commonProps} />;
     case "speaking":
-      return <ShortAnswerQuestion {...commonProps} />;
+      return <SpeakingQuestion {...commonProps} />;
     default:
       return <div>Unknown question type</div>;
   }

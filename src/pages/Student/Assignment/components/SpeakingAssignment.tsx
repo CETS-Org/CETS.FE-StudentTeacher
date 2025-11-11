@@ -215,18 +215,18 @@ export default function SpeakingAssignment({
     prevQuestionIdRef.current = questionId;
     if (questionChanged) {
       latestBlobUrlRef.current = null;
-    }
-    
-    // Stop any ongoing recording when question changes
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-    
-    // Stop recording if in progress
-    if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+      
+      // Stop any ongoing recording when question changes
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      
+      // Stop recording if in progress
+      if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+      }
     }
     
     // Revoke old blob URLs and recreate from storage
@@ -395,6 +395,14 @@ export default function SpeakingAssignment({
         const restoredUrl = URL.createObjectURL(blob);
         latestBlobUrlRef.current = restoredUrl; // Track restored URL too
         setCurrentBlobUrl(restoredUrl);
+        
+        // Restore recording time from persisted state
+        const persisted = retrieveQuestionState(questionId);
+        if (persisted && persisted.recordingTime) {
+          setLocalRecordingTime(persisted.recordingTime);
+          setRecordingTime(persisted.recordingTime);
+        }
+        
         // Notify parent of restored recording
         if (onRecordingComplete && lastNotifiedBlobUrlRef.current !== restoredUrl) {
           lastNotifiedBlobUrlRef.current = restoredUrl;
@@ -402,7 +410,7 @@ export default function SpeakingAssignment({
         }
       }
     }
-  }, [questionId, allowMultipleRecordings, currentBlobUrl, isRecording, onRecordingComplete]);
+  }, [questionId, allowMultipleRecordings, currentBlobUrl, isRecording, onRecordingComplete, setRecordingTime]);
 
   const hasRecording = currentBlobUrl !== null;
   const canRecordMore = allowMultipleRecordings ? recordings.length < maxRecordings : !hasRecording;
@@ -497,6 +505,7 @@ export default function SpeakingAssignment({
           // Create blob from chunks
           if (audioChunksRef.current.length === 0) {
             console.error('No audio chunks recorded');
+            alert('Recording failed: No audio data captured. Please try recording for at least 1 second.');
             setIsRecording(false);
             return;
           }
@@ -586,8 +595,8 @@ export default function SpeakingAssignment({
       };
       
       // Start recording with timeslice to ensure data chunks are collected
-      // Timeslice of 1000ms ensures we get chunks every second
-      mediaRecorderRef.current.start(1000);
+      // Timeslice of 100ms ensures we get chunks frequently (important for short recordings)
+      mediaRecorderRef.current.start(100);
       setIsRecording(true);
       
       // Start recording timer - only update local state during recording
@@ -603,13 +612,20 @@ export default function SpeakingAssignment({
   };
 
   const stopRecording = () => {
-    if (!mediaRecorderRef.current || !isRecording) return;
+    if (!mediaRecorderRef.current || !isRecording) {
+      return;
+    }
     
     try {
       // Clear recording timer first
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
         recordingTimerRef.current = null;
+      }
+      
+      // Request any pending data before stopping (important for short recordings)
+      if (mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.requestData();
       }
       
       // Stop the MediaRecorder (onstop event will handle the rest)
@@ -723,25 +739,26 @@ export default function SpeakingAssignment({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Cleanup on unmount - only revoke if component is actually unmounting
-  // Don't revoke recordings as they're stored in parent state
+  // Cleanup on unmount ONLY - no dependencies to avoid interfering with active recording
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
-      // Only revoke currentBlobUrl if it's not in recordings
-      // Recordings are preserved in parent state, so don't revoke them
-      if (currentBlobUrl) {
-        const isInRecordings = recordings.some(r => r.blobUrl === currentBlobUrl);
-        if (!isInRecordings) {
-          URL.revokeObjectURL(currentBlobUrl);
-        }
+      // Stop recording if still active
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
       }
-      // Don't revoke recordings here - they're managed by parent state
-      // They will be revoked when actually deleted or when parent unmounts
+      // Revoke blob URLs
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
+      }
+      recordings.forEach(recording => {
+        URL.revokeObjectURL(recording.blobUrl);
+      });
     };
-  }, [recordings, currentBlobUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps = only run on mount/unmount
 
   return (
     <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">

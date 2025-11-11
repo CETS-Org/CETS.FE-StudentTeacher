@@ -35,6 +35,7 @@ import FillInBlankQuestion from "./components/FillInBlankQuestion";
 import ShortAnswerQuestion from "./components/ShortAnswerQuestion";
 import EssayQuestion from "./components/EssayQuestion";
 import MatchingQuestion from "./components/MatchingQuestion";
+import SpeakingQuestion from "./components/SpeakingQuestion";
 import type { Question, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 import QuizQuestion from "./components/QuizQuestion";
 import SpeakingAssignment from "./components/SpeakingAssignment";
@@ -99,7 +100,7 @@ export default function StudentAssignmentTaking() {
   const [questionAudioPlaying, setQuestionAudioPlaying] = useState<Record<string, boolean>>({});
   const [showReadingPassage, setShowReadingPassage] = useState(true); // Default to showing passage
   const [currentPassageIndex, setCurrentPassageIndex] = useState(0); // Track current passage for multi-passage reading
-  const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(false);
+  const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(true); // Default to true for speaking
   const [maxRecordings, setMaxRecordings] = useState(3);
   
   // Store recordings per question
@@ -674,6 +675,7 @@ export default function StudentAssignmentTaking() {
 
         case "short_answer":
         case "essay":
+        case "speaking":
           // These require manual grading, skip auto-grading
           console.log(`Question ${question.id} (${question.type}) requires manual grading, skipping`);
           return;
@@ -1083,6 +1085,16 @@ export default function StudentAssignmentTaking() {
     }
   };
 
+  // Memoized callback for recording updates to prevent infinite loops
+  const handleRecordingUpdateForQuestion = useCallback((questionId: string) => {
+    return (data: any) => {
+      setQuestionRecordings(prev => ({
+        ...prev,
+        [questionId]: data
+      }));
+    };
+  }, []);
+
   const renderQuestion = (question: Question) => {
     const answer = answers[question.id];
     const questionAudioUrl = getQuestionAudioUrl(question);
@@ -1113,8 +1125,20 @@ export default function StudentAssignmentTaking() {
       case "matching":
         questionComponent = <MatchingQuestion {...commonProps} />;
         break;
+      case "speaking":
+        // Speaking questions are self-contained with SpeakingAssignment inside
+        questionComponent = (
+          <SpeakingQuestion 
+            {...commonProps}
+            onRecordingUpdate={handleRecordingUpdateForQuestion(question.id)}
+            initialRecordingData={questionRecordings[question.id]}
+            allowMultipleRecordings={allowMultipleRecordings}
+            maxRecordings={maxRecordings}
+          />
+        );
+        break;
       default:
-        questionComponent = <div>Unknown question type</div>;
+        questionComponent = <div className="text-red-600">Unknown question type: {question.type}</div>;
     }
 
     return (
@@ -1152,14 +1176,6 @@ export default function StudentAssignmentTaking() {
         )}
         {questionComponent}
       </div>
-    );
-    return (
-      <QuizQuestion
-        question={question}
-        answer={answer}
-        onAnswerChange={(answer: any) => handleAnswerChange(question.id, answer)}
-        skillType={assignment?.skillName || ""}
-      />
     );
   };
 
@@ -1783,7 +1799,107 @@ export default function StudentAssignmentTaking() {
                   );
                 }
 
-                // Standard Layout - Single Question View
+                // Standard Layout - Check if speaking assignment
+                const hasSpeakingQuestions = questionsWithoutPassage.some(q => q.type === "speaking");
+                const isSpeakingAssignment = assignment?.skillName?.toLowerCase().includes("speaking");
+                
+                // Use dedicated speaking layout if it's a speaking assignment
+                if (hasSpeakingQuestions || isSpeakingAssignment) {
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                      {/* Left Sidebar - Question Navigation */}
+                      <div className="lg:col-span-1">
+                        <Card className="p-4">
+                          <h3 className="font-semibold text-sm text-neutral-700 mb-3">
+                            Questions ({answeredCount}/{questions.length})
+                          </h3>
+                          <div className="grid grid-cols-5 lg:grid-cols-1 gap-2 max-h-[600px] overflow-y-auto">
+                            {questions.map((q, index) => {
+                              const isAnswered = answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== "";
+                              const isCurrent = index === currentQuestionIndex;
+                              return (
+                                <button
+                                  key={q.id}
+                                  onClick={() => handleQuestionClick(index)}
+                                  className={`p-2 rounded text-sm font-medium transition-colors ${
+                                    isCurrent
+                                      ? "bg-primary-600 text-white"
+                                      : isAnswered
+                                      ? "bg-green-100 text-green-700 border border-green-300"
+                                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                                  }`}
+                                >
+                                  Q{index + 1}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </Card>
+                      </div>
+
+                      {/* Main Question Area */}
+                      <div className="lg:col-span-3">
+                        <Card className="p-6">
+                          <div className="mb-4 flex items-center justify-between">
+                            <div>
+                              <span className="text-sm font-medium text-primary-600">
+                                Question {currentQuestionIndex + 1} of {questions.length}
+                              </span>
+                              <span className="ml-2 text-sm text-neutral-500">
+                                ({currentQuestion?.points || 0} point{(currentQuestion?.points || 0) !== 1 ? 's' : ''})
+                              </span>
+                            </div>
+                            <div className="text-sm text-neutral-600">
+                              {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}% Complete
+                            </div>
+                          </div>
+
+                          <div className="mb-6">
+                            {currentQuestion && renderQuestion(currentQuestion)}
+                          </div>
+
+                          {/* Navigation Buttons */}
+                          <div className="flex justify-between items-center pt-4 border-t">
+                            <Button
+                              variant="secondary"
+                              onClick={handlePrevious}
+                              disabled={currentQuestionIndex === 0}
+                            >
+                              Previous
+                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="secondary"
+                                onClick={saveAnswers}
+                                iconLeft={<Save className="w-4 h-4" />}
+                              >
+                                Save
+                              </Button>
+                              {currentQuestionIndex < questions.length - 1 ? (
+                                <Button
+                                  variant="primary"
+                                  onClick={handleNext}
+                                >
+                                  Next
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="primary"
+                                  onClick={() => handleSubmit(false)}
+                                  iconLeft={<Send className="w-4 h-4" />}
+                                >
+                                  Submit Assignment
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Standard Layout for non-speaking questions
                 return (
                   <div className="space-y-6">
                     {/* Questions without passage (if any) */}

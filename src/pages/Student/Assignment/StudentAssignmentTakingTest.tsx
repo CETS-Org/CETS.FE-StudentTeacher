@@ -33,6 +33,7 @@ import FillInBlankQuestion from "./components/FillInBlankQuestion";
 import ShortAnswerQuestion from "./components/ShortAnswerQuestion";
 import EssayQuestion from "./components/EssayQuestion";
 import MatchingQuestion from "./components/MatchingQuestion";
+import SpeakingQuestion from "./components/SpeakingQuestion";
 import {
   mockAssignmentDetails,
   mockQuestions,
@@ -297,6 +298,8 @@ export default function StudentAssignmentTakingTest() {
         return <EssayQuestion {...commonProps} />;
       case "matching":
         return <MatchingQuestion {...commonProps} />;
+      case "speaking":
+        return <SpeakingQuestion {...commonProps} />;
       default:
         return <div>Unknown question type</div>;
     }
