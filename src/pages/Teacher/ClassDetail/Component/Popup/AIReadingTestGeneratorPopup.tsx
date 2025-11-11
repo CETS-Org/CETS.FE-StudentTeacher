@@ -67,6 +67,7 @@ export default function AIReadingTestGeneratorPopup({
   const [dueDate, setDueDate] = useState("");
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [skills, setSkills] = useState<any[]>([]);
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (open) {
@@ -103,6 +104,7 @@ export default function AIReadingTestGeneratorPopup({
     setTitle("");
     setDescription("");
     setDueDate("");
+    setTimeLimitMinutes(undefined);
     // Keep selectedSkillId as it's auto-selected
   };
 
@@ -272,6 +274,7 @@ export default function AIReadingTestGeneratorPopup({
           allowBackNavigation: true,
           showProgress: true,
           showQuestionNumbers: true,
+          timeLimitMinutes: timeLimitMinutes,
         },
       };
 
@@ -520,6 +523,23 @@ export default function AIReadingTestGeneratorPopup({
                           min={getMinDateTime()}
                           disabled={loading}
                         />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Time Limit (minutes) - Optional
+                          </label>
+                          <input
+                            type="number"
+                            value={timeLimitMinutes || ""}
+                            onChange={(e) => setTimeLimitMinutes(e.target.value ? parseInt(e.target.value) : undefined)}
+                            placeholder="No time limit"
+                            min="1"
+                            disabled={loading}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            Leave empty for no time limit. Students will auto-submit when time expires.
+                          </p>
+                        </div>
                         <Button
                           onClick={handleCreateAssignment}
                           disabled={loading}

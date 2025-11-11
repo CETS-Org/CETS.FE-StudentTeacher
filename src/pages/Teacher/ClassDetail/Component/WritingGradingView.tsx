@@ -6,7 +6,7 @@ import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 
-const CDN_BASE_URL = "https://pub-59cfd11e5f0d4b00af54839edc83842d.r2.dev";
+const CDN_BASE_URL = import.meta.env.VITE_STORAGE_PUBLIC_URL || '';
 
 type Submission = {
   id: string;
