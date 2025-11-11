@@ -1,9 +1,8 @@
 // src/pages/teacher/classes/[classId]/SessionsTab.tsx
-
 import { useState, useMemo, useEffect } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { NotebookPen, Calendar, Globe, MapPin, Video } from "lucide-react";
+import { NotebookPen, Calendar, Globe, MapPin, Video, CheckCircle, Sparkles } from "lucide-react";
 import Pagination from "@/Shared/Pagination";
 import { useNavigate } from "react-router-dom";
 import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
@@ -19,7 +18,7 @@ type Props = {
 const stripTime = (d: Date) =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
-/** ISO week/year (Tuần ISO: tuần bắt đầu vào Thứ Hai) */
+/** ISO week/year (Tuần ISO: tuần bắt đầu Thứ Hai) */
 function getISOWeekYear(dateStr: string) {
   const d = new Date(dateStr);
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -52,15 +51,14 @@ export default function SessionsTab({ classId }: Props) {
 
   // Weekly feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [selectedWeekNumber, setSelectedWeekNumber] = useState<number | null>(
-    null
-  );
-  const [selectedClassMeetingId, setSelectedClassMeetingId] = useState<
-    string | null
-  >(null);
+  const [selectedWeekNumber, setSelectedWeekNumber] = useState<number | null>(null);
+  const [selectedClassMeetingId, setSelectedClassMeetingId] = useState<string | null>(null);
 
   const itemsPerPage = 4;
   const navigate = useNavigate();
+
+  // Map sessionId -> sessionNumber (thứ tự theo ngày)
+  const [sessionNumberMap, setSessionNumberMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -80,6 +78,11 @@ export default function SessionsTab({ classId }: Props) {
         const sorted = [...data].sort(
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
         );
+
+        // tạo map số thứ tự session
+        const map: Record<string, number> = {};
+        sorted.forEach((s, idx) => (map[s.id] = idx + 1));
+        setSessionNumberMap(map);
 
         // Tìm buổi sắp tới (ngày >= hôm nay) và isActive = true
         const today = stripTime(new Date());
@@ -134,6 +137,14 @@ export default function SessionsTab({ classId }: Props) {
 
   const handlePageChange = (page: number) => setCurrentPage(page);
 
+  // Teaching Progress: số buổi complete / tổng (isActive === false)
+  const completedCount = useMemo(
+    () => sessions.filter((s) => !s.isActive).length,
+    [sessions]
+  );
+  const totalCount = sessions.length;
+  const progressPct = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+
   // UI states
   if (loading) {
     return (
@@ -156,11 +167,34 @@ export default function SessionsTab({ classId }: Props) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-primary-800 mb-6">
-        Sessions ({sessions.length})
-      </h2>
+      <div className="mt-3 mb-6">
+        <div className="flex items-center justify-between text-sm font-semibold text-primary-800 mb-1">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-success-600" />
+            Teaching Progress
+          </div>
+          <div className="text-neutral-600">
+            {completedCount} / {totalCount}
+          </div>
+        </div>
 
-      {sessions.length === 0 ? (
+        <div className="h-2 w-full bg-neutral-200 rounded">
+          <div
+            className="h-2 bg-success-500 rounded"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Header + Progress */}
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-primary-800">
+          Sessions ({totalCount})
+        </h2>
+       
+      </div>
+
+      {totalCount === 0 ? (
         <Card className="p-8 text-center border border-accent-100">
           <div className="flex flex-col items-center justify-center">
             <div className="w-16 h-16 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mb-4">
@@ -181,93 +215,107 @@ export default function SessionsTab({ classId }: Props) {
               const isPinned = sess.id === pinnedId;
               const isLastOfWeek = lastOfWeekIdSet.has(sess.id);
               const { week } = getISOWeekYear(sess.date);
+              const sessionNo = sessionNumberMap[sess.id];
+
+              // badges
+              const isCompleted = !sess.isActive;
+              const isComingUp = sess.isActive && stripTime(new Date(sess.date)) >= stripTime(new Date());
 
               return (
                 <Card
                   key={sess.id}
-                  className={`p-6 border border-accent-100 shadow-lg bg-white hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300 hover:shadow-xl ${
-                    isPinned ? "ring-2 ring-accent-400" : ""
-                  }`}
+                  className={[
+                    "p-6 border bg-white transition-all duration-300 hover:shadow-lg",
+                    isPinned ? "relative border-2 border-primary-500 ring-2 ring-primary-300 shadow-xl" : "border-accent-100"
+                  ].join(" ")}
                 >
+                  {/* Ribbon Next */}
+                  {isPinned && (
+                    <div className="absolute -top-2 -left-2">
+                      <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-primary-600 shadow-md">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Next session
+                        <span className="relative ml-1 inline-flex">
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
                         <NotebookPen className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-bold text-primary-800 text-lg">
-                            {isPinned ? "Next session" : "Session"}{" "}
-                            {!isPinned && (
-                              <span className="text-neutral-500 font-normal">
-                                ({formatDateDDMMYYYY(sess.date)})
-                              </span>
-                            )}
-                          </h3>
+                         <h3 className="font-bold text-primary-800 text-lg">
+                          Session {sessionNo}
+                        </h3>
 
-                          {isPinned && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-accent-400 to-accent-500 text-white shadow-sm">
-                              Next session
+                          {isComingUp && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-neutral-200 text-neutral-800">
+                              Coming Up
                             </span>
                           )}
 
-                          {sess.isStudy && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-success-400 to-success-500 text-white">
-                              Study Session
-                            </span>
-                          )}
-                          {!sess.isActive && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-neutral-400 to-neutral-500 text-white">
-                              Inactive
+                          {isCompleted && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-success-600 text-white">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Completed
                             </span>
                           )}
                         </div>
 
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm text-neutral-600">
-                            <Calendar className="w-4 h-4 text-accent-500" />
-                            <span className="font-medium">
-                              {formatDateDDMMYYYY(sess.date)}
-                            </span>
+                          <div className="flex items-center gap-2 text-sm text-neutral-700">
+                            <Calendar className="w-4 h-4 text-primary-600" />
+                            <span className="font-medium">{formatDateDDMMYYYY(sess.date)}</span>
                           </div>
 
-                          {sess.onlineMeetingUrl && (
-                            <div className="flex items-center gap-2 text-sm text-neutral-600">
-                              <Globe className="w-4 h-4 text-accent-500" />
-                              <span className="font-medium">Online Meeting</span>
-                              {sess.passcode && (
-                                <span className="ml-2 px-2 py-1 bg-accent-100 rounded text-xs font-semibold text-accent-700">
-                                  Code: {sess.passcode}
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {sess.roomID && !sess.onlineMeetingUrl && (
-                            <div className="flex items-center gap-2 text-sm text-neutral-600">
-                              <MapPin className="w-4 h-4 text-accent-500" />
-                              <span className="font-medium">In-person</span>
-                            </div>
-                          )}
-
-                          {sess.recordingUrl && (
-                            <div className="flex items-center gap-2 text-sm text-neutral-600">
-                              <Video className="w-4 h-4 text-accent-500" />
-                              <span className="font-medium">Recording Available</span>
-                            </div>
-                          )}
+                                        {sess.onlineMeetingUrl && (
+                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
+                                            <Globe className="w-4 h-4 text-primary-600" />
+                                            <span>Online meeting</span>
+                                            {sess.passcode && (
+                                              <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
+                                                Code: {sess.passcode}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                          
+                                        {sess.roomID && !sess.onlineMeetingUrl && (
+                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
+                                            <MapPin className="w-4 h-4 text-primary-600" />
+                                            <span>Room: {sess.roomID}</span>
+                                          </div>
+                                        )}
+                          
+                                        {!sess.roomID && sess.onlineMeetingUrl && (
+                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
+                                            <MapPin className="w-4 h-4 text-primary-600" />
+                                            <span>Online</span>
+                                          </div>
+                                        )}
+                          
+                                        {sess.recordingUrl && (
+                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
+                                            <Video className="w-4 h-4 text-primary-600" />
+                                            <span>Recording Available</span>
+                                          </div>
+                                        )}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex gap-2 lg:flex-shrink-0">
-                      {sess.onlineMeetingUrl && (
+                      {sess.onlineMeetingUrl && !isCompleted && (
                         <Button
                           variant="secondary"
-                          className="border-accent-300 text-accent-700 hover:bg-accent-50"
-                          onClick={() =>
-                            window.open(sess.onlineMeetingUrl!, "_blank")
-                          }
+                          className="border-primary-300 text-primary-700 hover:bg-primary-50"
+                          onClick={() => window.open(sess.onlineMeetingUrl!, "_blank")}
                           iconLeft={<Globe className="w-4 h-4" />}
                         >
                           Join
@@ -292,9 +340,7 @@ export default function SessionsTab({ classId }: Props) {
                       <Button
                         variant="primary"
                         className="btn-secondary"
-                        onClick={() =>
-                          navigate(`/teacher/class/${classId}/session/${sess.id}`)
-                        }
+                        onClick={() => navigate(`/teacher/class/${classId}/session/${sess.id}`)}
                       >
                         Go to Session
                       </Button>
@@ -317,7 +363,7 @@ export default function SessionsTab({ classId }: Props) {
             </div>
           )}
 
-          {/* >>> NEW: Weekly Feedback Modal (cần classMeetingId để lấy attendance/status) */}
+          {/* Weekly Feedback Modal */}
           {feedbackOpen &&
             selectedWeekNumber !== null &&
             classId &&
