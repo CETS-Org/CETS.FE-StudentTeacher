@@ -28,6 +28,8 @@ export default function QuestionBuilder({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   // Reading: Store passage (shared across multiple questions)
   const [currentPassage, setCurrentPassage] = useState<string>("");
+  // Track if passage should be removed (for editing questions)
+  const [shouldRemovePassage, setShouldRemovePassage] = useState<boolean>(false);
   // Listening: Store audio file (shared across multiple questions)
   const [currentAudioFile, setCurrentAudioFile] = useState<File | null>(null);
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string>("");
@@ -139,6 +141,7 @@ export default function QuestionBuilder({
     });
     setShowAddForm(false);
     setEditingId(null);
+    setShouldRemovePassage(false);
     // Don't clear passage for Reading - allow adding more questions
     // Don't clear audio file for Listening - allow adding more questions
   };
@@ -146,6 +149,7 @@ export default function QuestionBuilder({
   const resetFormAndPassage = () => {
     resetForm();
     setCurrentPassage("");
+    setShouldRemovePassage(false);
   };
 
   const resetFormAndAudio = () => {
@@ -404,13 +408,20 @@ export default function QuestionBuilder({
     // For Reading: attach passage to question
     // Use currentPassage if entered, otherwise check if editing question has passage
     if (skillType.toLowerCase() === "reading") {
-      if (currentPassage.trim()) {
+      if (editingId && shouldRemovePassage) {
+        // User explicitly wants to remove passage - set to undefined so it gets deleted
+        (question as any)._passage = undefined;
+      } else if (currentPassage.trim()) {
+        // User entered a passage - use it
         (question as any)._passage = currentPassage.trim();
       } else if (editingId) {
-        // When editing, preserve existing passage if no new passage entered
+        // When editing: if currentPassage is empty and shouldRemovePassage is false,
+        // check if user cleared the field (meaning they want to remove passage)
         const existingQuestion = questions.find(q => q.id === editingId);
         if (existingQuestion && (existingQuestion as any)._passage) {
-          (question as any)._passage = (existingQuestion as any)._passage;
+          // If existing question has passage but currentPassage is empty,
+          // it means user cleared it, so remove passage
+          (question as any)._passage = undefined;
         }
       } else {
         // For new questions, check if there are existing questions with passage
@@ -514,7 +525,10 @@ export default function QuestionBuilder({
       const passage = (question as any)._passage;
       if (passage) {
         setCurrentPassage(passage);
+      } else {
+        setCurrentPassage("");
       }
+      setShouldRemovePassage(false);
     }
     // Load audio if exists (for Listening)
     if (skillType.toLowerCase() === "listening") {
@@ -571,28 +585,63 @@ export default function QuestionBuilder({
           {/* Reading Passage Section - Show first for Reading */}
           {(skillType === "Reading" || skillType.toLowerCase().includes("reading")) && (
             <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
-              <label className="block text-sm font-medium text-blue-800 mb-2">
-                Reading Passage (Optional)
-                {getExistingPassage && !currentPassage && (
-                  <span className="text-xs text-blue-600 ml-2">(Using passage from imported questions)</span>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-blue-800">
+                  Reading Passage (Optional)
+                  {getExistingPassage && !currentPassage && !editingId && (
+                    <span className="text-xs text-blue-600 ml-2">(Using passage from imported questions)</span>
+                  )}
+                </label>
+                {/* Show remove button when editing a question that has a passage */}
+                {editingId && (currentPassage || getExistingPassage) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPassage("");
+                      setShouldRemovePassage(true);
+                    }}
+                    className="text-xs text-red-600 hover:text-red-800 underline flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Remove Passage
+                  </button>
                 )}
-              </label>
+              </div>
               <p className="text-xs text-blue-700 mb-3">
-                {getExistingPassage && !currentPassage 
+                {editingId && (currentPassage || getExistingPassage)
+                  ? "You can modify the passage below, or click 'Remove Passage' to make this a question without a passage."
+                  : getExistingPassage && !currentPassage && !editingId
                   ? "Passage is already set from imported questions. You can modify it below or add more questions."
                   : "Enter the passage text (optional). You can add multiple questions for this passage, or create questions without a passage."}
               </p>
               <textarea
-                value={currentPassage || getExistingPassage || ""}
-                onChange={(e) => setCurrentPassage(e.target.value)}
-                placeholder={getExistingPassage && !currentPassage
+                value={currentPassage || (editingId ? "" : (getExistingPassage || ""))}
+                onChange={(e) => {
+                  setCurrentPassage(e.target.value);
+                  // If user types something, cancel the removal flag
+                  if (shouldRemovePassage && e.target.value.trim()) {
+                    setShouldRemovePassage(false);
+                  }
+                  // If user clears the field while editing, mark for removal
+                  if (editingId && !e.target.value.trim()) {
+                    setShouldRemovePassage(true);
+                  }
+                }}
+                placeholder={editingId && (currentPassage || getExistingPassage)
+                  ? "Clear this field and save to remove passage from this question..."
+                  : getExistingPassage && !currentPassage && !editingId
                   ? "Passage from imported questions will be used. Modify if needed..."
                   : "Paste or type your reading passage here..."}
                 className="w-full border border-blue-300 rounded-md p-3 text-sm min-h-[200px] focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
               />
-              {(currentPassage || getExistingPassage) && (
+              {shouldRemovePassage && editingId && (
+                <p className="text-xs text-red-600 mt-2 font-medium">
+                  ⚠️ Passage will be removed from this question when you save.
+                </p>
+              )}
+              {(currentPassage || (!editingId && getExistingPassage)) && !shouldRemovePassage && (
                 <p className="text-xs text-blue-600 mt-2">
-                  {(currentPassage || getExistingPassage || "").length} characters. {questions.length} question{questions.length !== 1 ? 's' : ''} already added for this passage.
+                  {(currentPassage || (!editingId && getExistingPassage) || "").length} characters. {questions.length} question{questions.length !== 1 ? 's' : ''} already added for this passage.
                 </p>
               )}
             </div>

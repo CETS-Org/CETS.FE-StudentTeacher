@@ -417,6 +417,17 @@ export default function AdvancedAssignmentPopup({
           merged.reference = "";
         }
         
+        // Clean up passage field: if _passage was in original question but not in updatedQuestion,
+        // it means user wants to remove it
+        if ((q as any)._passage && !('_passage' in updatedQuestion)) {
+          // If original question had _passage but updatedQuestion doesn't have it,
+          // it means user deleted it, so remove it from merged
+          delete (merged as any)._passage;
+        } else if ('_passage' in updatedQuestion && (updatedQuestion as any)._passage === undefined) {
+          // If _passage is explicitly set to undefined in updatedQuestion, remove it
+          delete (merged as any)._passage;
+        }
+        
         return merged;
       }
       return q;
@@ -494,8 +505,8 @@ export default function AdvancedAssignmentPopup({
       const passage = (question as any)._passage;
       const audio = (question as any)._audioUrl || question.reference;
 
-      if (passage) {
-        passageCounts.set(passage, (passageCounts.get(passage) || 0) + 1);
+      if (passage && passage.trim()) {
+        passageCounts.set(passage.trim(), (passageCounts.get(passage.trim()) || 0) + 1);
       }
       if (audio) {
         audioCounts.set(audio, (audioCounts.get(audio) || 0) + 1);
@@ -503,7 +514,11 @@ export default function AdvancedAssignmentPopup({
 
       // Keep _passage and _audioUrl in questions for grouping multiple passages/audios
       // Only clean up _audioFile (temporary file object that can't be serialized)
+      // Also clean up _passage if it's undefined, null, or empty
       const { _audioFile, ...cleanedQ } = question as any;
+      if (!cleanedQ._passage || !cleanedQ._passage.trim()) {
+        delete cleanedQ._passage;
+      }
       return cleanedQ;
     });
 
