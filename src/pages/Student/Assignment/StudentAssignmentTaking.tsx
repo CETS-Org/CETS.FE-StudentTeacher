@@ -352,8 +352,13 @@ export default function StudentAssignmentTaking() {
   };
 
   // Calculate detailed score information for display
+  // Always calculate score if there are auto-gradable questions (multiple choice, true/false, fill in the blank, matching)
   const calculateDetailedScore = (forceCalculate: boolean = false) => {
-    if (!forceCalculate && !assignment?.isAutoGradable) {
+    // Check if there are any auto-gradable questions (questions that don't require manual grading)
+    const hasAutoGradableQuestions = questions.some(q => !q.requiresManualGrading && q.correctAnswer !== undefined && q.correctAnswer !== null);
+    
+    // If no auto-gradable questions and not forcing, return null
+    if (!forceCalculate && !hasAutoGradableQuestions) {
       return null;
     }
 
@@ -898,21 +903,7 @@ export default function StudentAssignmentTaking() {
         console.warn('Audio blob detected. Consider uploading audio separately first.');
       }
 
-      // Submit via API using the correct endpoint (/api/ACAD_Submissions/submit)
-      await api.submitAssignment(submissionData);
-      
-      // Calculate detailed score for popup display
-      const detailedScore = calculateDetailedScore(isReadingOrListening);
-      
-      // Show score popup if score was calculated
-      if (detailedScore) {
-        setSubmissionScore(detailedScore);
-        setShowScoreDialog(true);
-      } else {
-        // If no score, just show success and navigate
-        alert("Assignment submitted successfully!");
-        navigate(-1);
-      }
+      // Handle speaking assignment submission separately
       if (isSpeakingAssignment) {
         // Handle speaking assignment submission using dedicated component
         await submitSpeakingAssignment({
@@ -925,30 +916,73 @@ export default function StudentAssignmentTaking() {
           getAudioBlob,
           forceSubmit: autoSubmit, // Force submit when time is up
           onSuccess: () => {
-            alert("Assignment submitted successfully!");
-            navigate(-1);
+            // Calculate detailed score for popup display (even for speaking if there are auto-gradable questions)
+            const detailedScore = calculateDetailedScore(true); // Force calculate to check for any auto-gradable questions
+            
+            if (detailedScore) {
+              setSubmissionScore(detailedScore);
+              setShowScoreDialog(true);
+            } else {
+              alert("Assignment submitted successfully!");
+              navigate(-1);
+            }
           },
           onError: (errorMessage) => {
             alert(errorMessage);
           }
         });
       } else {
-        // Handle regular quiz assignment (non-speaking)
-        // TODO: Implement quiz submission endpoint if needed
-        // For now, use the existing submitAssignmentAnswers
-        const submissionData: any = {
-          assignmentID: assignmentId,
-          answers: Object.entries(answers).map(([questionId, answer]) => ({
-            questionId,
-            answer,
-            timestamp: new Date().toISOString(),
-          })),
-        };
-
-        await api.submitAssignmentAnswers(submissionData);
+        // Submit via API using the correct endpoint (/api/ACAD_Submissions/submit)
+        const response = await api.submitAssignment(submissionData);
         
-        alert("Assignment submitted successfully!");
-        navigate(-1);
+        // Check if backend returned a score in the response
+        let backendScore: number | null = null;
+        if (response?.data?.score !== undefined && response?.data?.score !== null) {
+          backendScore = typeof response.data.score === 'number' ? response.data.score : parseFloat(response.data.score);
+        }
+        
+        // Calculate detailed score for popup display
+        // Always try to calculate score if there are auto-gradable questions
+        // Check if assignment has any auto-gradable questions (multiple choice, true/false, fill in the blank, matching)
+        const hasAutoGradableQuestions = questions.some(q => 
+          !q.requiresManualGrading && 
+          q.correctAnswer !== undefined && 
+          q.correctAnswer !== null &&
+          (q.type === "multiple_choice" || q.type === "true_false" || q.type === "fill_in_the_blank" || q.type === "matching")
+        );
+        
+        // Calculate detailed score (always try if there are auto-gradable questions)
+        let detailedScore = calculateDetailedScore(hasAutoGradableQuestions || assignment?.isAutoGradable || isReadingOrListening);
+        
+        // If backend returned a score, use it to update the detailed score
+        if (backendScore !== null && detailedScore) {
+          // Update the score with backend value, but keep other details from calculation
+          detailedScore = {
+            ...detailedScore,
+            score: backendScore
+          };
+        } else if (backendScore !== null && !detailedScore) {
+          // If backend returned score but we couldn't calculate detailed score, create a basic score object
+          const totalPoints = questions.reduce((sum, q) => sum + (q.points || 0), 0);
+          detailedScore = {
+            score: backendScore,
+            totalPoints: totalPoints || 10,
+            earnedPoints: (backendScore / 10) * (totalPoints || 10),
+            totalQuestions: questions.length,
+            correctAnswers: Math.round((backendScore / 10) * questions.length),
+            answeredQuestions: Object.keys(answers).length,
+          };
+        }
+        
+        // Show score popup if score was calculated or returned from backend
+        if (detailedScore) {
+          setSubmissionScore(detailedScore);
+          setShowScoreDialog(true);
+        } else {
+          // If no score, just show success and navigate
+          alert("Assignment submitted successfully!");
+          navigate(-1);
+        }
       }
     } catch (err: any) {
       console.error("Failed to submit assignment:", err);

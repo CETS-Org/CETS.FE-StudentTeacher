@@ -391,9 +391,36 @@ export default function AdvancedAssignmentPopup({
   };
 
   const handleUpdateQuestion = (id: string, updatedQuestion: Partial<Question>) => {
-    setQuestions(questions.map(q => 
-      q.id === id ? { ...q, ...updatedQuestion } : q
-    ));
+    setQuestions(questions.map(q => {
+      if (q.id === id) {
+        const merged = { ...q, ...updatedQuestion };
+        
+        // Clean up audio fields: remove them if explicitly set to empty/null
+        // Check if audio fields were explicitly set in updatedQuestion
+        if ('_audioFile' in updatedQuestion) {
+          if ((updatedQuestion as any)._audioFile === null || (updatedQuestion as any)._audioFile === undefined) {
+            delete (merged as any)._audioFile;
+          }
+        }
+        
+        if ('_audioUrl' in updatedQuestion) {
+          const audioUrlValue = (updatedQuestion as any)._audioUrl;
+          // If _audioUrl is explicitly set to empty string or null, remove it
+          if (audioUrlValue === "" || audioUrlValue === null || audioUrlValue === undefined) {
+            delete (merged as any)._audioUrl;
+          }
+        }
+        
+        // If reference is set to empty string and we're removing audio, clear it
+        if ('reference' in updatedQuestion && updatedQuestion.reference === "" && 
+            !(merged as any)._audioFile && !(merged as any)._audioUrl) {
+          merged.reference = "";
+        }
+        
+        return merged;
+      }
+      return q;
+    }));
   };
 
   const handleDeleteQuestion = (id: string) => {

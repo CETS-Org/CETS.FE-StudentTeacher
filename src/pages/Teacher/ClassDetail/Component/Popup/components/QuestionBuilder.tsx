@@ -423,29 +423,45 @@ export default function QuestionBuilder({
     // For Listening: attach audio file or URL to question
     if (skillType.toLowerCase() === "listening") {
       if (currentAudioFile) {
-        // Store file object for later upload
+        // Store file object for later upload - this will replace any existing audio
         (question as any)._audioFile = currentAudioFile;
-        (question as any)._audioUrl = ""; // Will be set after upload
+        // Set URL to empty string to clear it (will be processed in update)
+        (question as any)._audioUrl = "";
+        question.reference = "";
       } else if (currentAudioUrl.trim()) {
-        // Use URL if provided (from import or manual entry)
+        // Use URL if provided (from import or manual entry) - this will replace any existing audio
         (question as any)._audioUrl = currentAudioUrl.trim();
         question.reference = currentAudioUrl.trim(); // Also store in reference for backward compatibility
-      } else if (editingId) {
-        // When editing, preserve existing audio if no new audio entered
-        const existingQuestion = questions.find(q => q.id === editingId);
-        if (existingQuestion) {
-          const existingAudio = (existingQuestion as any)._audioUrl || existingQuestion.reference;
-          if (existingAudio) {
-            (question as any)._audioUrl = existingAudio;
-            question.reference = existingAudio;
+        // Set file to null to clear it
+        (question as any)._audioFile = null;
+      } else {
+        // No audio provided - check context
+        if (editingId) {
+          // When editing: if user cleared the audio URL and didn't upload a file, remove audio
+          // This allows users to delete audio by clearing the URL field
+          // Set audio properties to null/empty to remove them
+          (question as any)._audioFile = null;
+          (question as any)._audioUrl = "";
+          question.reference = "";
+        } else {
+          // For new questions, check if there are existing questions with audio to share
+          if (getExistingAudio) {
+            (question as any)._audioUrl = getExistingAudio;
+            question.reference = getExistingAudio;
           }
         }
-      } else {
-        // For new questions, check if there are existing questions with audio
-        if (getExistingAudio) {
-          (question as any)._audioUrl = getExistingAudio;
-          question.reference = getExistingAudio;
-        }
+      }
+    }
+
+    // When updating, clean up audio fields: remove null/empty values
+    if (editingId && skillType.toLowerCase() === "listening") {
+      // Remove _audioFile if it's null
+      if ((question as any)._audioFile === null) {
+        delete (question as any)._audioFile;
+      }
+      // Remove _audioUrl if it's empty string
+      if ((question as any)._audioUrl === "") {
+        delete (question as any)._audioUrl;
       }
     }
 
@@ -502,16 +518,32 @@ export default function QuestionBuilder({
     }
     // Load audio if exists (for Listening)
     if (skillType.toLowerCase() === "listening") {
+      // Check if question has audio file or URL
+      const hasAudioFile = (question as any)._audioFile;
       const audioUrl = (question as any)._audioUrl || question.reference;
-      if (audioUrl) {
+      
+      if (hasAudioFile) {
+        // Question has an audio file - this means it was uploaded but not yet saved to server
+        // We can't directly load the file, so we'll show that audio exists
+        // User can upload a new file to replace it
+        setCurrentAudioFile(null); // Can't load existing file object
+        setCurrentAudioUrl(""); // Clear URL to allow new upload
+      } else if (audioUrl) {
+        // Question has audio URL - load it so user can see/modify/delete it
         setCurrentAudioUrl(audioUrl);
         setCurrentAudioFile(null); // Clear file when editing (URL takes precedence)
-        setAudioObjectUrl(null); // Clear object URL
-        setAudioPlaying(false);
-        if (audioPlayerRef.current) {
-          audioPlayerRef.current.pause();
-          audioPlayerRef.current = null;
-        }
+      } else {
+        // No audio - clear everything
+        setCurrentAudioUrl("");
+        setCurrentAudioFile(null);
+      }
+      
+      // Clear audio player state
+      setAudioObjectUrl(null);
+      setAudioPlaying(false);
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
       }
     }
     setEditingId(question.id);
@@ -657,13 +689,39 @@ export default function QuestionBuilder({
 
               {/* Audio URL Input (alternative to file upload) */}
               <div className="mt-3">
-                <label className="block text-xs font-medium text-purple-700 mb-1">
-                  Or enter audio URL:
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-purple-700">
+                    Or enter audio URL:
+                  </label>
+                  {/* Show clear button when editing and has audio */}
+                  {editingId && (currentAudioUrl || getExistingAudio) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentAudioUrl("");
+                        setCurrentAudioFile(null);
+                        setAudioPlaying(false);
+                        if (audioPlayerRef.current) {
+                          audioPlayerRef.current.pause();
+                          audioPlayerRef.current = null;
+                        }
+                        if (audioObjectUrl) {
+                          URL.revokeObjectURL(audioObjectUrl);
+                          setAudioObjectUrl(null);
+                        }
+                        const input = document.getElementById("audio-file-input") as HTMLInputElement;
+                        if (input) input.value = "";
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 underline"
+                    >
+                      Clear Audio
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={currentAudioUrl || getExistingAudio || ""}
+                    value={currentAudioUrl || (editingId ? "" : (getExistingAudio || ""))}
                     onChange={(e) => {
                       // Stop and reset audio player when URL changes
                       if (audioPlayerRef.current) {
@@ -672,7 +730,8 @@ export default function QuestionBuilder({
                         audioPlayerRef.current = null;
                       }
                       setAudioPlaying(false);
-                      setCurrentAudioUrl(e.target.value);
+                      const newUrl = e.target.value;
+                      setCurrentAudioUrl(newUrl);
                       setCurrentAudioFile(null); // Clear file when URL is entered
                       // Cleanup object URL
                       if (audioObjectUrl) {
@@ -680,11 +739,12 @@ export default function QuestionBuilder({
                         setAudioObjectUrl(null);
                       }
                     }}
-                    placeholder="https://example.com/audio.mp3"
+                    placeholder={editingId && getExistingAudio ? "Clear to remove audio, or enter new URL" : "https://example.com/audio.mp3"}
                     className="flex-1 border border-purple-300 rounded-md p-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
                   />
-                  {(currentAudioUrl || getExistingAudio) && getAudioSource() && (
+                  {(currentAudioUrl || (!editingId && getExistingAudio)) && getAudioSource() && (
                     <button
+                      type="button"
                       onClick={toggleAudioPlayback}
                       className="flex items-center justify-center w-10 h-10 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors"
                       title={audioPlaying ? "Pause" : "Play"}
@@ -697,13 +757,27 @@ export default function QuestionBuilder({
                     </button>
                   )}
                 </div>
+                {/* Show current audio when editing */}
+                {editingId && getExistingAudio && !currentAudioUrl && !currentAudioFile && (
+                  <div className="mt-2 p-2 bg-purple-100 border border-purple-300 rounded text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-purple-800">
+                        <strong>Current audio:</strong> {getExistingAudio}
+                      </span>
+                    </div>
+                    <p className="text-purple-600 mt-1">
+                      Clear the URL field above and save to remove audio, or upload a new file/URL to replace it.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Audio Preview for URL (when no file is uploaded) */}
-              {(currentAudioUrl || getExistingAudio) && !currentAudioFile && getAudioSource() && (
+              {(currentAudioUrl || (!editingId && getExistingAudio)) && !currentAudioFile && getAudioSource() && (
                 <div className="mt-3 p-3 bg-purple-50 rounded border border-purple-200">
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={toggleAudioPlayback}
                       className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors"
                       title={audioPlaying ? "Pause" : "Play"}
