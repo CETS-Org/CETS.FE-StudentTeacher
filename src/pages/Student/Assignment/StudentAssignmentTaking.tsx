@@ -1457,7 +1457,7 @@ export default function StudentAssignmentTaking() {
                     <Card className="p-6">
                       <div className="flex lg:flex-row flex-col gap-6">
                         {/* Left: Reading Passage */}
-                        <div className="lg:w-[40%]">
+                        <div className="lg:w-[50%]">
                           <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-semibold text-primary-800">
                               Passage {currentPassageIndex + 1} of {passages.length}
@@ -1475,48 +1475,141 @@ export default function StudentAssignmentTaking() {
                         </div>
 
                         {/* Right: Questions for this Passage */}
-                        <div className="lg:w-[60%] space-y-4">
-                          {currentPassage.questions.map((question, qIndex) => {
-                            const globalIndex = questions.findIndex(q => q.id === question.id);
-                            const isCurrent = currentQuestion && question.id === currentQuestion.id;
-                            const isAnswered = answers[question.id] !== undefined && answers[question.id] !== null && answers[question.id] !== "";
+                        <div className="lg:w-[50%] space-y-4">
+                          {(() => {
+                            // Find current question index within this passage
+                            const currentQuestionInPassageIndex = currentPassage.questions.findIndex(
+                              q => currentQuestion && q.id === currentQuestion.id
+                            );
+                            
+                            // Default to first question if current question is not in this passage
+                            const displayQuestionIndex = currentQuestionInPassageIndex >= 0 
+                              ? currentQuestionInPassageIndex 
+                              : 0;
+                            
+                            const displayQuestion = currentPassage.questions[displayQuestionIndex];
+                            if (!displayQuestion) return null;
+                            
+                            const globalIndex = questions.findIndex(q => q.id === displayQuestion.id);
+                            const isAnswered = answers[displayQuestion.id] !== undefined && 
+                                             answers[displayQuestion.id] !== null && 
+                                             answers[displayQuestion.id] !== "";
+                            
+                            // Handlers for navigating within passage questions
+                            const handleNextQuestionInPassage = () => {
+                              if (displayQuestionIndex < currentPassage.questions.length - 1) {
+                                const nextQuestion = currentPassage.questions[displayQuestionIndex + 1];
+                                const nextGlobalIndex = questions.findIndex(q => q.id === nextQuestion.id);
+                                if (nextGlobalIndex !== -1) {
+                                  setCurrentQuestionIndex(nextGlobalIndex);
+                                }
+                              }
+                            };
+                            
+                            const handlePreviousQuestionInPassage = () => {
+                              if (displayQuestionIndex > 0) {
+                                const prevQuestion = currentPassage.questions[displayQuestionIndex - 1];
+                                const prevGlobalIndex = questions.findIndex(q => q.id === prevQuestion.id);
+                                if (prevGlobalIndex !== -1) {
+                                  setCurrentQuestionIndex(prevGlobalIndex);
+                                }
+                              }
+                            };
+                            
+                            const handleQuestionSelect = (qIndex: number) => {
+                              const selectedQuestion = currentPassage.questions[qIndex];
+                              const selectedGlobalIndex = questions.findIndex(q => q.id === selectedQuestion.id);
+                              if (selectedGlobalIndex !== -1) {
+                                setCurrentQuestionIndex(selectedGlobalIndex);
+                              }
+                            };
                             
                             return (
-                              <div
-                                key={question.id}
-                                className={`p-4 rounded-lg border-2 transition-all ${
-                                  isCurrent
-                                    ? "border-primary-500 bg-white"
-                                    : "border-neutral-200 bg-white"
-                                }`}
-                              >
-                                <div className="mb-4 flex items-center justify-between">
-                                  <div>
-                                    <span className="text-sm font-medium text-primary-600">
-                                      Question {globalIndex + 1} of {questions.length}
-                                      {currentPassage.questions.length > 1 && (
-                                        <span className="text-neutral-500 ml-2">
-                                          (Question {qIndex + 1}/{currentPassage.questions.length})
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="ml-2 text-sm text-neutral-500">
-                                      ({question.points} point{question.points !== 1 ? 's' : ''})
-                                    </span>
+                              <div className="space-y-4">
+                                {/* Current Question Display */}
+                                <div className="p-4 rounded-lg border-2 border-primary-500 bg-white">
+                                  <div className="mb-4 flex items-center justify-between">
+                                    <div>
+                                      <span className="text-sm font-medium text-primary-600">
+                                        Question {globalIndex + 1} of {questions.length}
+                                        {currentPassage.questions.length > 1 && (
+                                          <span className="text-neutral-500 ml-2">
+                                            (Question {displayQuestionIndex + 1}/{currentPassage.questions.length} in this passage)
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="ml-2 text-sm text-neutral-500">
+                                        ({displayQuestion.points} point{displayQuestion.points !== 1 ? 's' : ''})
+                                      </span>
+                                    </div>
+                                    {isAnswered && (
+                                      <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                        Answered
+                                      </span>
+                                    )}
                                   </div>
-                                  {isAnswered && (
-                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
-                                      Answered
-                                    </span>
-                                  )}
-                                </div>
 
-                                <div className="mb-4">
-                                  {renderQuestion(question)}
+                                  <div className="mb-4">
+                                    {renderQuestion(displayQuestion)}
+                                  </div>
                                 </div>
+                                
+                                {/* Navigation Buttons */}
+                                {currentPassage.questions.length > 1 && (
+                                  <div className="flex justify-between items-center pt-4 border-t border-neutral-200">
+                                    <Button
+                                      variant="secondary"
+                                      onClick={handlePreviousQuestionInPassage}
+                                      disabled={displayQuestionIndex === 0}
+                                    >
+                                      Previous
+                                    </Button>
+                                    <Button
+                                      variant="primary"
+                                      onClick={handleNextQuestionInPassage}
+                                      disabled={displayQuestionIndex === currentPassage.questions.length - 1}
+                                    >
+                                      Next
+                                    </Button>
+                                  </div>
+                                )}
+                                
+                                {/* Question Number List */}
+                                {currentPassage.questions.length > 1 && (
+                                  <div className="pt-4 border-t border-neutral-200">
+                                    <p className="text-sm font-medium text-neutral-700 mb-3">
+                                      Questions in this passage:
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {currentPassage.questions.map((q, qIndex) => {
+                                        const qGlobalIndex = questions.findIndex(qu => qu.id === q.id);
+                                        const qIsAnswered = answers[q.id] !== undefined && 
+                                                          answers[q.id] !== null && 
+                                                          answers[q.id] !== "";
+                                        const qIsCurrent = qIndex === displayQuestionIndex;
+                                        
+                                        return (
+                                          <button
+                                            key={q.id}
+                                            onClick={() => handleQuestionSelect(qIndex)}
+                                            className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                                              qIsCurrent
+                                                ? "bg-primary-600 text-white"
+                                                : qIsAnswered
+                                                ? "bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
+                                                : "bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200"
+                                            }`}
+                                          >
+                                            {qGlobalIndex + 1}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
-                          })}
+                          })()}
                         </div>
                       </div>
                     </Card>
