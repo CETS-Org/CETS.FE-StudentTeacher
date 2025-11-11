@@ -1330,7 +1330,23 @@ export default function SessionDetail() {
                               </div>
 
                     {openAssignmentId === assignment.id && (
-                      <div className="mt-4">
+                      <div className="mt-4 space-y-4">
+                        {/* Assignment Information */}
+                        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg">
+                          <h5 className="text-sm font-semibold text-neutral-800 mb-2">Assignment Information</h5>
+                          <div className="space-y-2 text-sm text-neutral-600">
+                            {assignment.description && (
+                              <p className="whitespace-pre-wrap">{assignment.description}</p>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-neutral-500" />
+                              <span>
+                                Due: {formatDateTime(assignment.dueDate)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Score Display */}
                         {submission?.score != null && (
                           <div className="mb-4 space-y-2">

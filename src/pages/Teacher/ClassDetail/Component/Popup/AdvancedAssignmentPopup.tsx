@@ -526,6 +526,7 @@ export default function AdvancedAssignmentPopup({
         allowBackNavigation,
         showProgress,
         showQuestionNumbers,
+        ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
       },
       ...(readingPassage && { readingPassage }),
       ...(audioUrl && {
@@ -1001,6 +1002,7 @@ export default function AdvancedAssignmentPopup({
             showProgress,
             showQuestionNumbers,
             autoSubmit,
+            ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
             maxRetries: timeLimitMinutes ? Math.floor(timeLimitMinutes * 60 / questions.length) : undefined,
           },
           media: {
@@ -1061,7 +1063,7 @@ export default function AdvancedAssignmentPopup({
                   allowBackNavigation,
                   showProgress,
                   showQuestionNumbers,
-                  timeLimitMinutes,
+                  ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
                 },
                 media: questionData.media,
               },
@@ -1179,7 +1181,7 @@ export default function AdvancedAssignmentPopup({
             autoSubmit,
             allowMultipleRecordings,
             maxRecordings,
-            timeLimitMinutes,
+            ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
             maxRetries: timeLimitMinutes ? Math.floor(timeLimitMinutes * 60 / questions.length) : undefined,
           },
           media: {

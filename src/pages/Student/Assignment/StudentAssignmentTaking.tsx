@@ -22,8 +22,8 @@ import {
   Mic,
   FileText,
   Eye,
-  EyeOff
-  
+  EyeOff,
+  X
 } from "lucide-react";
 import { api, apiClient } from "@/api";
 import { getQuestionDataUrl } from "@/api/assignments.api";
@@ -78,6 +78,8 @@ export default function StudentAssignmentTaking() {
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [initialTimeLimit, setInitialTimeLimit] = useState<number | null>(null); // Store initial time limit
+  const [showTimeWarning, setShowTimeWarning] = useState(false); // Show warning when time is running out
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showScoreDialog, setShowScoreDialog] = useState(false);
@@ -226,6 +228,7 @@ export default function StudentAssignmentTaking() {
         if (timeLimitToUse) {
           const timeInSeconds = timeLimitToUse * 60;
           setTimeRemaining(timeInSeconds);
+          setInitialTimeLimit(timeInSeconds); // Store initial time limit for progress calculation
           setIsTimerRunning(true);
         }
 
@@ -262,6 +265,17 @@ export default function StudentAssignmentTaking() {
             handleTimeUp();
             return 0;
           }
+          
+          // Show warning when less than 5 minutes (300 seconds) remaining
+          if (prev <= 300 && prev > 299) {
+            setShowTimeWarning(true);
+          }
+          
+          // Show critical warning when less than 1 minute (60 seconds) remaining
+          if (prev <= 60 && prev > 59) {
+            // Could show a more urgent warning here if needed
+          }
+          
           return prev - 1;
         });
       }, 1000);
@@ -278,6 +292,16 @@ export default function StudentAssignmentTaking() {
       }
     };
   }, [isTimerRunning, timeRemaining]);
+  
+  // Auto-hide warning after 10 seconds
+  useEffect(() => {
+    if (showTimeWarning) {
+      const timer = setTimeout(() => {
+        setShowTimeWarning(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [showTimeWarning]);
 
   // Auto-save answers
   useEffect(() => {
@@ -1299,12 +1323,43 @@ export default function StudentAssignmentTaking() {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                {timeRemaining !== null && (
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    timeRemaining < 300 ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
-                  }`}>
-                    <Clock className="w-5 h-5" />
-                    <span className="font-mono font-semibold">{formatTime(timeRemaining)}</span>
+                {timeRemaining !== null && initialTimeLimit !== null && (
+                  <div className="flex items-center gap-3">
+                    {/* Timer Display */}
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                      timeRemaining < 60 
+                        ? "bg-red-500 text-white border-red-600 animate-pulse" 
+                        : timeRemaining < 300 
+                        ? "bg-red-100 text-red-700 border-red-300" 
+                        : "bg-blue-100 text-blue-700 border-blue-300"
+                    }`}>
+                      <Clock className={`w-5 h-5 ${timeRemaining < 60 ? "animate-spin" : ""}`} />
+                      <div className="flex flex-col">
+                        <span className="font-mono font-bold text-lg leading-tight">{formatTime(timeRemaining)}</span>
+                        <span className="text-xs font-medium opacity-75">Time Remaining</span>
+                      </div>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    {initialTimeLimit > 0 && (
+                      <div className="hidden md:flex flex-col items-end gap-1 w-32">
+                        <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className={`h-2 rounded-full transition-all ${
+                              timeRemaining < 60 
+                                ? "bg-red-500" 
+                                : timeRemaining < 300 
+                                ? "bg-red-400" 
+                                : "bg-blue-500"
+                            }`}
+                            style={{ width: `${(timeRemaining / initialTimeLimit) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-neutral-600">
+                          {Math.round((timeRemaining / initialTimeLimit) * 100)}% left
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {lastSaved && (
@@ -1324,6 +1379,38 @@ export default function StudentAssignmentTaking() {
             </div>
           </div>
         </div>
+
+        {/* Time Warning Banner */}
+        {showTimeWarning && timeRemaining !== null && timeRemaining < 300 && (
+          <div className={`mx-6 mt-4 p-4 rounded-lg border-2 ${
+            timeRemaining < 60 
+              ? "bg-red-500 text-white border-red-600 animate-pulse" 
+              : "bg-yellow-100 text-yellow-800 border-yellow-300"
+          }`}>
+            <div className="flex items-center gap-3">
+              <AlertCircle className={`w-5 h-5 flex-shrink-0 ${timeRemaining < 60 ? "animate-bounce" : ""}`} />
+              <div className="flex-1">
+                <p className="font-semibold">
+                  {timeRemaining < 60 
+                    ? "⚠️ CRITICAL: Less than 1 minute remaining!" 
+                    : "⚠️ Warning: Less than 5 minutes remaining!"}
+                </p>
+                <p className="text-sm mt-1 opacity-90">
+                  {timeRemaining < 60 
+                    ? "Your assignment will be automatically submitted when time expires. Please save your work!" 
+                    : "Please make sure to save your answers. Your assignment will be automatically submitted when time expires."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTimeWarning(false)}
+                className="text-current opacity-75 hover:opacity-100 flex-shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="max-w-full xl:max-w-screen-2xl mx-auto">
