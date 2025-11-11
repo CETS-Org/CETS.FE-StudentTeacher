@@ -110,13 +110,12 @@ export interface AssignmentQuestionData {
   version: string;
   questions: Question[];
   settings?: {
-    shuffleQuestions: boolean;
-    allowBackNavigation: boolean;
-    showProgress: boolean;
-    showQuestionNumbers: boolean;
+    timeLimitMinutes?: number;
+    isAutoGradable?: boolean;
+    showAnswersAfterSubmission?: boolean;
+    showAnswersAfterDueDate?: boolean;
     allowMultipleRecordings?: boolean;
     maxRecordings?: number;
-    timeLimitMinutes?: number;
   };
   media?: {
     audioUrl?: string;
@@ -537,11 +536,10 @@ export default function AdvancedAssignmentPopup({
       version: "1.0",
       questions: processedQuestions,
       settings: {
-        shuffleQuestions: false,
-        allowBackNavigation,
-        showProgress,
-        showQuestionNumbers,
         ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
+        isAutoGradable,
+        showAnswersAfterSubmission: answerVisibility === "immediately",
+        showAnswersAfterDueDate: answerVisibility === "after_due_date",
       },
       ...(readingPassage && { readingPassage }),
       ...(audioUrl && {
@@ -1013,12 +1011,10 @@ export default function AdvancedAssignmentPopup({
             instructions: q.instructions,
           })),
           settings: {
-            allowBackNavigation,
-            showProgress,
-            showQuestionNumbers,
-            autoSubmit,
             ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
             maxRetries: timeLimitMinutes ? Math.floor(timeLimitMinutes * 60 / questions.length) : undefined,
+            allowMultipleRecordings,
+            maxRecordings,
           },
           media: {
             images: [],
@@ -1074,11 +1070,9 @@ export default function AdvancedAssignmentPopup({
                   instructions: q.instructions,
                 })),
                 settings: {
-                  shuffleQuestions: false,
-                  allowBackNavigation,
-                  showProgress,
-                  showQuestionNumbers,
                   ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
+                  allowMultipleRecordings,
+                  maxRecordings,
                 },
                 media: questionData.media,
               },
@@ -1190,18 +1184,11 @@ export default function AdvancedAssignmentPopup({
             instructions: q.instructions,
           })),
           settings: {
-            allowBackNavigation,
-            showProgress,
-            showQuestionNumbers,
-            autoSubmit,
             allowMultipleRecordings,
             maxRecordings,
             ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
-            maxRetries: timeLimitMinutes ? Math.floor(timeLimitMinutes * 60 / questions.length) : undefined,
           },
           media: {
-            audioUrl: undefined,
-            videoUrl: undefined,
             images: [],
           },
         };

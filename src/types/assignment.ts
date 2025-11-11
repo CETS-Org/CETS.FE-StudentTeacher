@@ -52,11 +52,10 @@ export interface SpeakingQuestion {
 
 // Speaking Assignment Settings
 export interface SpeakingAssignmentSettings {
-  allowBackNavigation: boolean;
-  showProgress: boolean;
-  showQuestionNumbers: boolean;
-  autoSubmit: boolean;
+  timeLimitMinutes?: number;
   maxRetries?: number;
+  allowMultipleRecordings?: boolean;
+  maxRecordings?: number;
 }
 
 // Speaking Assignment Image
@@ -224,11 +223,10 @@ export interface QuizAssignmentQuestionData {
     requiresManualGrading?: boolean;
   }>;
   settings: {
-    shuffleQuestions: boolean;
-    allowBackNavigation: boolean;
-    showProgress: boolean;
-    showQuestionNumbers: boolean;
     timeLimitMinutes?: number;
+    isAutoGradable?: boolean;
+    showAnswersAfterSubmission?: boolean;
+    showAnswersAfterDueDate?: boolean;
     allowMultipleRecordings?: boolean;
     maxRecordings?: number;
   };

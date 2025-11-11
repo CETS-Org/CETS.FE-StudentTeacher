@@ -80,8 +80,12 @@ export default function StudentAssignmentPreview() {
         const assignmentResponse = await api.getAssignmentById(assignmentId);
         const assignmentData = assignmentResponse.data;
         
-        // Load question data if QuestionUrl exists (quiz assignment) to get timeLimitMinutes from settings
+        // Load question data if QuestionUrl exists (quiz assignment) to get settings
         let questionDataTimeLimit: number | undefined = undefined;
+        let questionDataShowAnswersAfterSubmission: boolean | undefined = undefined;
+        let questionDataShowAnswersAfterDueDate: boolean | undefined = undefined;
+        let questionDataIsAutoGradable: boolean | undefined = undefined;
+        
         if (assignmentData.questionUrl) {
           try {
             // Get presigned URL for question data
@@ -92,18 +96,32 @@ export default function StudentAssignmentPreview() {
             const questionResponse = await fetch(presignedUrl);
             const questionData: AssignmentQuestionData = await questionResponse.json();
             
-            // Get timeLimitMinutes from question data settings if available
-            if (questionData.settings?.timeLimitMinutes !== undefined) {
-              questionDataTimeLimit = questionData.settings.timeLimitMinutes;
+            // Get settings from question data if available
+            if (questionData.settings) {
+              if (questionData.settings.timeLimitMinutes !== undefined) {
+                questionDataTimeLimit = questionData.settings.timeLimitMinutes;
+              }
+              if (questionData.settings.showAnswersAfterSubmission !== undefined) {
+                questionDataShowAnswersAfterSubmission = questionData.settings.showAnswersAfterSubmission;
+              }
+              if (questionData.settings.showAnswersAfterDueDate !== undefined) {
+                questionDataShowAnswersAfterDueDate = questionData.settings.showAnswersAfterDueDate;
+              }
+              if (questionData.settings.isAutoGradable !== undefined) {
+                questionDataIsAutoGradable = questionData.settings.isAutoGradable;
+              }
             }
           } catch (err) {
             console.error("Failed to load question data:", err);
-            // Continue with assignment-level timeLimitMinutes if question data fails to load
+            // Continue with assignment-level settings if question data fails to load
           }
         }
 
-        // Priority: question data settings > assignment-level timeLimitMinutes
+        // Priority: question data settings > assignment-level settings
         const timeLimitToUse = questionDataTimeLimit ?? assignmentData.timeLimitMinutes;
+        const showAnswersAfterSubmissionToUse = questionDataShowAnswersAfterSubmission ?? assignmentData.showAnswersAfterSubmission ?? false;
+        const showAnswersAfterDueDateToUse = questionDataShowAnswersAfterDueDate ?? assignmentData.showAnswersAfterDueDate ?? false;
+        const isAutoGradableToUse = questionDataIsAutoGradable ?? assignmentData.isAutoGradable ?? false;
         
         setAssignment({
           id: assignmentData.id,
@@ -115,9 +133,9 @@ export default function StudentAssignmentPreview() {
           totalPoints: assignmentData.totalPoints || 0,
           timeLimitMinutes: timeLimitToUse,
           maxAttempts: assignmentData.maxAttempts || 1,
-          isAutoGradable: assignmentData.isAutoGradable || false,
-          showAnswersAfterSubmission: assignmentData.showAnswersAfterSubmission || false,
-          showAnswersAfterDueDate: assignmentData.showAnswersAfterDueDate || false,
+          isAutoGradable: isAutoGradableToUse,
+          showAnswersAfterSubmission: showAnswersAfterSubmissionToUse,
+          showAnswersAfterDueDate: showAnswersAfterDueDateToUse,
           assignmentType: assignmentData.assignmentType || "homework"
         });
 
@@ -353,41 +371,38 @@ export default function StudentAssignmentPreview() {
                     </div>
                   </div>
 
-                  {/* Show Answers After Submission */}
-                  <div className="flex items-start gap-3">
-                    {assignment.showAnswersAfterSubmission ? (
+                  {/* Answer Visibility - Show only the enabled option or "Never" if both are false */}
+                  {assignment.showAnswersAfterSubmission ? (
+                    <div className="flex items-start gap-3">
                       <Eye className="w-5 h-5 text-blue-500 mt-0.5" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-neutral-400 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <p className="font-medium text-neutral-900">View Answers After Submission</p>
-                      <p className="text-sm text-neutral-600">
-                        {assignment.showAnswersAfterSubmission
-                          ? "You can view the correct answers after submitting"
-                          : "Answers will not be shown after submission"
-                        }
-                      </p>
+                      <div className="flex-1">
+                        <p className="font-medium text-neutral-900">Answer Visibility</p>
+                        <p className="text-sm text-neutral-600">
+                          You can view the correct answers immediately after submitting
+                        </p>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Show Answers After Due Date */}
-                  <div className="flex items-start gap-3">
-                    {assignment.showAnswersAfterDueDate ? (
+                  ) : assignment.showAnswersAfterDueDate ? (
+                    <div className="flex items-start gap-3">
                       <Calendar className="w-5 h-5 text-purple-500 mt-0.5" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-neutral-400 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <p className="font-medium text-neutral-900">View Answers After Due Date</p>
-                      <p className="text-sm text-neutral-600">
-                        {assignment.showAnswersAfterDueDate
-                          ? "You can view the correct answers after the due date"
-                          : "Answers will not be shown after the due date"
-                        }
-                      </p>
+                      <div className="flex-1">
+                        <p className="font-medium text-neutral-900">Answer Visibility</p>
+                        <p className="text-sm text-neutral-600">
+                          You can view the correct answers after the due date
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <XCircle className="w-5 h-5 text-neutral-400 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-neutral-900">Answer Visibility</p>
+                        <p className="text-sm text-neutral-600">
+                          Correct answers will never be shown
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

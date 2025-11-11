@@ -37,6 +37,7 @@ import type { ClassDetail } from "@/types/class";
 import type { LearningMaterial } from "@/types/learningMaterial";
 import { config } from "@/lib/config";
 import WritingAssignmentEditor from "@/pages/Student/Assignment/components/WritingAssignmentEditor";
+import QuizReviewDialog from "@/pages/Student/Assignment/components/QuizReviewDialog";
 
 const tabs = [
   { id: "context", label: "Session Context" },
@@ -102,6 +103,15 @@ export default function SessionDetail() {
     feedback: string;
     submissionId: string;
     isAiScore?: boolean; // lowercase to match API
+  } | null>(null);
+
+  // Quiz Review Dialog state
+  const [quizReviewOpen, setQuizReviewOpen] = useState<boolean>(false);
+  const [selectedQuizReview, setSelectedQuizReview] = useState<{
+    assignmentId: string;
+    assignmentTitle: string;
+    dueDate: string;
+    submission: any;
   } | null>(null);
 
   // Cleanup preview URL
@@ -336,61 +346,7 @@ export default function SessionDetail() {
     }
   };
 
-  // // Download submission file using API
-  // const handleDownloadSubmission = async (submissionId: string, fileName?: string) => {
-  //   try {
-  //     console.log('Downloading submission:', submissionId);
-  //     console.log('Submission ID type:', typeof submissionId);
-  //     console.log('Submission ID length:', submissionId?.length);
-      
-  //     if (!submissionId || submissionId === 'undefined' || submissionId === 'null') {
-  //       throw new Error('Invalid submission ID');
-  //     }
-      
-  //     const response = await api.downloadSubmission(submissionId);
-  //     console.log('Download response:', response);
-  //     console.log('Response headers:', response.headers);
-  //     console.log('Response data type:', typeof response.data);
-  //     console.log('Response data size:', response.data?.size || response.data?.length);
-      
-  //     // Check if response.data is already a Blob
-  //     let blob;
-  //     if (response.data instanceof Blob) {
-  //       blob = response.data;
-  //       console.log('Response data is already a Blob');
-  //     } else {
-  //       // Create blob from response data
-  //       blob = new Blob([response.data], { 
-  //         type: response.headers['content-type'] || 'application/octet-stream' 
-  //       });
-  //       console.log('Created blob from response data');
-  //     }
-      
-  //     console.log('Blob type:', blob.type);
-  //     console.log('Blob size:', blob.size);
-      
-  //     // Create download link
-  //     const blobUrl = window.URL.createObjectURL(blob);
-  //     const link = document.createElement('a');
-  //     link.href = blobUrl;
-  //     link.download = fileName || `submission-${submissionId}`;
-  //     document.body.appendChild(link);
-  //     link.click();
-      
-  //     document.body.removeChild(link);
-  //     window.URL.revokeObjectURL(blobUrl);
-      
-  //     console.log('Download completed successfully');
-  //   } catch (error: any) {
-  //     console.error('Download submission error:', error);
-  //     console.error('Error response:', error.response);
-  //     console.error('Error status:', error.response?.status);
-  //     console.error('Error data:', error.response?.data);
-      
-  //     const errorMessage = error.response?.data?.message || error.message;
-  //     alert(`Failed to download submission: ${errorMessage}`);
-  //   }
-  // };
+  // Download submission file using API
   const handleDownloadSubmission = async (submissionId: string) => {
     try {
       const res = await downloadSubmission(submissionId);
@@ -555,7 +511,7 @@ export default function SessionDetail() {
         data: response.data
       });
 
-      // Handle nested response structure: { success: true, data: {...} } or direct data
+      // Handle nested response structure: { success, data: { submissionId, score, feedback, uploadUrl, storeUrl, submittedAt, isAiScore } } or direct data
       let responseData = response.data;
       if (responseData && responseData.data) {
         responseData = responseData.data;
@@ -1411,16 +1367,37 @@ export default function SessionDetail() {
                             </div>
                           </div>
                         ) : submission?.storeUrl && assignment.questionUrl ? (
-                          // For quiz assignments, only show submission timestamp without file details
+                          // For quiz assignments, show submission timestamp and review button
                           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <CheckCircle className="w-5 h-5 text-green-600" />
-                              <div>
-                                <p className="text-sm font-semibold text-green-800">Quiz completed</p>
-                                {submission.createdAt && (
-                                  <p className="text-xs text-green-600">Submitted at: {formatDateTime(submission.createdAt)}</p>
-                                )}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                <div>
+                                  <p className="text-sm font-semibold text-green-800">Quiz completed</p>
+                                  {submission.createdAt && (
+                                    <p className="text-xs text-green-600">Submitted at: {formatDateTime(submission.createdAt)}</p>
+                                  )}
+                                </div>
                               </div>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSelectedQuizReview({
+                                    assignmentId: assignment.id,
+                                    assignmentTitle: assignment.title,
+                                    dueDate: assignment.dueDate,
+                                    submission: submission
+                                  });
+                                  setQuizReviewOpen(true);
+                                }}
+                                iconLeft={<BookOpen className="w-4 h-4" />}
+                                className="bg-primary-600 hover:bg-primary-700 text-white"
+                              >
+                                View Quiz Details
+                              </Button>
                             </div>
                           </div>
                         ) : (
@@ -1699,6 +1676,21 @@ export default function SessionDetail() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Quiz Review Dialog */}
+        {quizReviewOpen && selectedQuizReview && (
+          <QuizReviewDialog
+            isOpen={quizReviewOpen}
+            onClose={() => {
+              setQuizReviewOpen(false);
+              setSelectedQuizReview(null);
+            }}
+            assignmentId={selectedQuizReview.assignmentId}
+            assignmentTitle={selectedQuizReview.assignmentTitle}
+            dueDate={selectedQuizReview.dueDate}
+            submission={selectedQuizReview.submission}
+          />
+        )}
 
         {/* Writing Assignment Editor */}
         {isWritingViewOpen && writingAssignment && (
