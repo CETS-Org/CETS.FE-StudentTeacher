@@ -50,6 +50,7 @@ import ClassReservationDetails from './pages/Student/ChoosePaidItem/ClassReserva
 import UniversalLayout from './Shared/UniversalLayout'
 import StudentDetailPage from './pages/Student/Profile/StudentDetailPage'
 import ScrollToTop from './components/ScrollToTop'
+import WeeklyFeedback from '@/pages/Student/WeeklyFeedback'
 
 
 export default function App() {
@@ -96,6 +97,7 @@ export default function App() {
             <Route path="/student/academic-results" element={<AcademicResults />} />
             <Route path="/student/learning-path" element={<LearningPath />} />
             <Route path="/student/feedback" element={<Feedback />} />
+            <Route path="/student/weekly-feedback" element={<WeeklyFeedback />} />
             <Route path="/student/choose-paid-item" element={<ChoosePaidItem />} /> 
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />

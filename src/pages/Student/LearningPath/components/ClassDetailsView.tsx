@@ -690,10 +690,17 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                   id: "attendance",
                   label: "Attendance Report",
                   icon: <ClipboardCheck className="w-4 h-4" />
+                },
+                {
+                  id: "weekly-feedback",
+                  label: "Weekly feedback",
+                  icon: <ClipboardCheck className="w-4 h-4" />
                 }
               ]}
               activeTab={activeTab}
-              onTabChange={setActiveTab}
+              onTabChange={(tabId) => {
+                setActiveTab(tabId);
+              }}
             />
 
             {/* Learning Timeline Tab */}
@@ -999,159 +1006,6 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
             {/* Assignments Tab */}
             <TabContent activeTab={activeTab} tabId="assignments">
               <div className="p-6 space-y-6">
-                {/* Learning Performance for this class */}
-                <div className="mb-4">
-                  <h3 className="text-md font-semibold text-primary-800">Academic Performance & Progress</h3>
-                  <p className="text-xs text-accent-600 mt-1">Last 4 weeks</p>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Weekly Scores */}
-                  <Card className="p-4 border border-accent-200 bg-gradient-to-br from-white to-primary-50/30">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-sm font-semibold text-primary-800">Weekly Scores</div>
-                      <span className="text-xs text-accent-600">out of 10</span>
-                    </div>
-                    <div className="h-40 flex items-end justify-center gap-4 px-4">
-                      {(() => {
-                        console.log('📊 Rendering chart - courseDetailsData:', courseDetailsData);
-                        console.log('📊 weeklyPerformance:', courseDetailsData?.weeklyPerformance);
-                        console.log('📊 weeklyPerformance is array?', Array.isArray(courseDetailsData?.weeklyPerformance));
-                        console.log('📊 weeklyPerformance length:', courseDetailsData?.weeklyPerformance?.length);
-                        return null;
-                      })()}
-                      {courseDetailsData?.weeklyPerformance && Array.isArray(courseDetailsData.weeklyPerformance) && courseDetailsData.weeklyPerformance.length > 0 ? (() => {
-                        // Sort by weekNumber descending and take last 4 weeks (most recent)
-                        const sortedWeeks = [...courseDetailsData.weeklyPerformance].sort((a, b) => b.weekNumber - a.weekNumber);
-                        const last4Weeks = sortedWeeks.slice(0, 4).reverse(); // Reverse to show oldest to newest (left to right)
-                        
-                        console.log('📊 Last 4 weeks:', last4Weeks);
-                        
-                        return last4Weeks.map((wp: any, idx: number) => {
-                          // averageScore is out of 10, convert to percentage for display
-                          const score = Number(wp.averageScore) || 0;
-                          const scorePercent = (score / 10) * 100; // Convert to percentage (8.67/10 = 86.7%)
-                          const heightPercent = Math.max(15, scorePercent); // Minimum 15% height for visibility
-                          
-                          console.log(`📊 Week ${wp.weekNumber}: score=${score}, scorePercent=${scorePercent}%, heightPercent=${heightPercent}%`);
-                          
-                          // Determine color based on score (out of 10)
-                          let gradientColors = '';
-                          if (score >= 8) {
-                            gradientColors = 'linear-gradient(to top, #10b981, #34d399)'; // Green for excellent
-                          } else if (score >= 6) {
-                            gradientColors = 'linear-gradient(to top, #3b82f6, #60a5fa)'; // Blue for good
-                          } else if (score >= 4) {
-                            gradientColors = 'linear-gradient(to top, #f59e0b, #fbbf24)'; // Yellow for average
-                          } else {
-                            gradientColors = 'linear-gradient(to top, #ef4444, #f87171)'; // Red for poor
-                          }
-                          
-                          // Calculate week label
-                          const weekLabel = `Week ${wp.weekNumber}`;
-                          
-                          return (
-                            <div key={`week-${wp.weekNumber}-${idx}`} className="flex flex-col items-center gap-2" style={{ width: `${100 / last4Weeks.length}%`, maxWidth: '120px' }}>
-                              <div 
-                                className="w-full rounded-t-lg transition-all hover:opacity-90 hover:scale-105 shadow-md border-2 border-white"
-                                style={{ 
-                                  height: `${heightPercent}%`,
-                                  minHeight: '30px',
-                                  background: gradientColors
-                                }} 
-                              />
-                              <div className="text-center w-full">
-                                <div className="text-sm font-bold text-primary-800 mb-0.5">{score.toFixed(1)}</div>
-                                <span className="text-[11px] font-medium text-accent-600">{weekLabel}</span>
-                              </div>
-                            </div>
-                          );
-                        });
-                      })() : weeklyScores.length > 0 ? (
-                        weeklyScores.map((w) => (
-                          <div key={w.label} className="flex-1 flex flex-col items-center gap-1 min-w-[70px]">
-                            <div 
-                              className="w-full rounded-t-lg transition-all hover:opacity-90 shadow-md"
-                              style={{ 
-                                height: `${Math.max(10, w.score)}%`,
-                                minHeight: '30px',
-                                background: `linear-gradient(to top, ${w.score >= 80 ? '#10b981' : w.score >= 60 ? '#3b82f6' : '#f59e0b'}, ${w.score >= 80 ? '#34d399' : w.score >= 60 ? '#60a5fa' : '#fbbf24'})`
-                              }} 
-                            />
-                            <span className="text-[11px] font-medium text-accent-700">{w.label}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="w-full text-center py-6">
-                          <div className="text-sm text-accent-500 mb-1">No weekly score data available</div>
-                          <div className="text-xs text-accent-400">Data will be updated after assignments are graded</div>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* Completion */}
-                  <Card className="p-4 border border-accent-200 bg-gradient-to-br from-white to-success-50/20">
-                    <div className="text-sm font-semibold text-primary-800 mb-3">Assignment Completion Rate</div>
-                    {courseDetailsData?.completionStats ? (
-                      <>
-                        <div className="flex items-center justify-between text-sm mb-2">
-                          <span className="text-accent-700 font-medium">Completed</span>
-                          <span className="font-bold text-success-600 text-lg">{courseDetailsData.completionStats.completionRate}%</span>
-                        </div>
-                        <div className="h-4 w-full bg-accent-100 rounded-full overflow-hidden shadow-inner">
-                          <div 
-                            className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-success-500 to-success-400 shadow-sm" 
-                            style={{ width: `${courseDetailsData.completionStats.completionRate}%` }} 
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-xs mt-4">
-                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-amber-50 to-amber-100/50 shadow-sm">
-                            <div className="text-accent-600 mb-1">Pending Grading </div>
-                            <div className="font-bold text-amber-700 text-base">{courseDetailsData.completionStats.pendingGrading}</div>
-                          </div>
-                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-red-50 to-red-100/50 shadow-sm">
-                            <div className="text-accent-600 mb-1">Late</div>
-                            <div className="font-bold text-red-600 text-base">{courseDetailsData.completionStats.completedLate}</div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-xs mt-2">
-                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-green-50 to-green-100/50 shadow-sm">
-                            <div className="text-accent-600 mb-1">On Time</div>
-                            <div className="font-bold text-green-700 text-base">{courseDetailsData.completionStats.completedOnTime}</div>
-                          </div>
-                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-red-50 to-red-100/50 shadow-sm">
-                            <div className="text-accent-600 mb-1">Not Submitted</div>
-                            <div className="font-bold text-red-600 text-base">{courseDetailsData.completionStats.notSubmitted}</div>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between text-sm mb-2">
-                          <span className="text-accent-700 font-medium">Completed</span>
-                          <span className="font-bold text-success-600 text-lg">{Math.round(completionRate)}%</span>
-                        </div>
-                        <div className="h-4 w-full bg-accent-100 rounded-full overflow-hidden shadow-inner">
-                          <div 
-                            className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-success-500 to-success-400 shadow-sm" 
-                            style={{ width: `${completionRate}%` }} 
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-xs mt-4">
-                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-amber-50 to-amber-100/50 shadow-sm">
-                            <div className="text-accent-600 mb-1">Pending</div>
-                            <div className="font-bold text-amber-700 text-base">{pendingCount}</div>
-                          </div>
-                          <div className="p-3 rounded-lg border border-accent-200 bg-gradient-to-br from-red-50 to-red-100/50 shadow-sm">
-                            <div className="text-accent-600 mb-1">Late</div>
-                            <div className="font-bold text-red-600 text-base">{overdueCount}</div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </Card>
-                </div>
-
                 {/* Sessions with Assignments */}
                 {assignmentsByMeeting.length > 0 ? (
                   <div className="space-y-4">
@@ -1327,7 +1181,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                     </div>
                   </div>
                 ) : (() => {
-                  // Use API data if available, otherwise fallback to mock
+                  // Prefer API data; fallback to mock
                   const summary = courseAttendanceSummary;
                   const mockSummary = mockAttendanceData.classSummaries.find(
                     cs => cs.className === classItem.className || cs.courseCode === classItem.courseCode
@@ -1342,11 +1196,9 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                     );
                   }
 
-                  // Use API data structure
                   if (summary) {
                     return (
                       <div className="space-y-4">
-                        {/* Summary Stats */}
                         <Card className="p-4 border border-accent-200">
                           <div className="grid grid-cols-3 gap-4 mb-3">
                             <div className="text-center p-3 bg-success-50 rounded-lg">
@@ -1370,17 +1222,15 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                           )}
                         </Card>
 
-                        {/* Detailed Attendance Records - Display by Sessions */}
                         {sessions && sessions.length > 0 ? (
                           <div className="space-y-3">
                             <h4 className="text-md font-semibold text-primary-800">Attendance Records</h4>
                             <div className="space-y-2">
                               {sessions.map((session) => {
-                                // Find attendance record for this session
                                 const attendanceRecord = summary.sessionRecords?.find(
                                   record => record.meetingId === session.id
                                 );
-                                
+
                                 const meetingDate = new Date(session.date);
                                 const dateStr = meetingDate.toLocaleDateString('en-US', {
                                   weekday: 'short',
@@ -1388,19 +1238,17 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                   month: 'short',
                                   day: 'numeric'
                                 });
-                                
-                                // Get status from attendance record or default to 'Not Marked'
+
                                 const status = attendanceRecord?.status || 'Not Marked';
                                 const present = status === 'Present';
                                 const absent = status === 'Absent';
-                                const notMarked = status === 'Not Marked';
-                                
+
                                 return (
-                                  <Card 
-                                    key={session.id} 
+                                  <Card
+                                    key={session.id}
                                     className={`p-4 border ${
-                                      present 
-                                        ? 'bg-success-50 border-success-200' 
+                                      present
+                                        ? 'bg-success-50 border-success-200'
                                         : absent
                                         ? 'bg-error-50 border-error-200'
                                         : 'bg-gray-50 border-gray-200'
@@ -1423,9 +1271,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                         )}
                                         <div className="flex-1">
                                           <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-semibold text-primary-800">
-                                              Session {session.sessionNumber}
-                                            </span>
+                                            <span className="font-semibold text-primary-800">Session {session.sessionNumber}</span>
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${
                                               present
                                                 ? 'bg-success-200 text-success-800'
@@ -1477,47 +1323,35 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                     );
                   }
 
-                  // Fallback to mock data structure
-                  if (!mockSummary) {
-                    return (
-                      <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
-                        <ClipboardCheck className="w-12 h-12 text-accent-400 mx-auto mb-2" />
-                        <p className="text-accent-600">No attendance data available</p>
-                      </div>
-                    );
-                  }
-
+                  // Fallback to mock data
                   return (
                     <div className="space-y-4">
-                      {/* Summary Stats */}
                       <Card className="p-4 border border-accent-200">
                         <div className="grid grid-cols-3 gap-4 mb-3">
                           <div className="text-center p-3 bg-success-50 rounded-lg">
                             <p className="text-sm font-medium text-success-700">Present</p>
-                            <p className="text-2xl font-bold text-success-600">{mockSummary.attendedSessions}</p>
+                            <p className="text-2xl font-bold text-success-600">{mockSummary!.attendedSessions}</p>
                           </div>
                           <div className="text-center p-3 bg-error-50 rounded-lg">
                             <p className="text-sm font-medium text-error-700">Absent</p>
-                            <p className="text-2xl font-bold text-error-600">{mockSummary.absentSessions}</p>
+                            <p className="text-2xl font-bold text-error-600">{mockSummary!.absentSessions}</p>
                           </div>
                           <div className="text-center p-3 bg-primary-50 rounded-lg">
                             <p className="text-sm font-medium text-primary-700">Total</p>
-                            <p className="text-2xl font-bold text-primary-600">{mockSummary.totalSessions}</p>
+                            <p className="text-2xl font-bold text-primary-600">{mockSummary!.totalSessions}</p>
                           </div>
                         </div>
                       </Card>
 
-                      {/* Detailed Attendance Records - Display by Sessions */}
                       {sessions && sessions.length > 0 ? (
                         <div className="space-y-3">
                           <h4 className="text-md font-semibold text-primary-800">Attendance Records</h4>
                           <div className="space-y-2">
                             {sessions.map((session) => {
-                              // Find attendance record for this session from mock data
-                              const attendanceRecord = mockSummary.records?.find(
+                              const attendanceRecord = mockSummary!.records?.find(
                                 (record: AttendanceRecord) => record.meeting.id === session.id || record.meetingId === session.id
                               );
-                              
+
                               const meetingDate = new Date(session.date);
                               const dateStr = meetingDate.toLocaleDateString('en-US', {
                                 weekday: 'short',
@@ -1525,19 +1359,17 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                 month: 'short',
                                 day: 'numeric'
                               });
-                              
-                              // Get status from attendance record or default to 'Not Marked'
+
                               const status = attendanceRecord?.attendanceStatus || 'Not Marked';
                               const present = status === 'Present';
                               const absent = status === 'Absent';
-                              const notMarked = status === 'Not Marked';
-                              
+
                               return (
-                                <Card 
-                                  key={session.id} 
+                                <Card
+                                  key={session.id}
                                   className={`p-4 border ${
-                                    present 
-                                      ? 'bg-success-50 border-success-200' 
+                                    present
+                                      ? 'bg-success-50 border-success-200'
                                       : absent
                                       ? 'bg-error-50 border-error-200'
                                       : 'bg-gray-50 border-gray-200'
@@ -1560,9 +1392,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                       )}
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                          <span className="font-semibold text-primary-800">
-                                            Session {session.sessionNumber}
-                                          </span>
+                                          <span className="font-semibold text-primary-800">Session {session.sessionNumber}</span>
                                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                                             present
                                               ? 'bg-success-200 text-success-800'
@@ -1615,6 +1445,14 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                 })()}
               </div>
             </TabContent>
+
+            {/* Weekly Feedback Tab */}
+            <TabContent activeTab={activeTab} tabId="weekly-feedback">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-primary-800 mb-2">Weekly feedback</h3>
+                <p className="text-accent-600">This tab is intentionally left blank. Content will be added later.</p>
+              </div>
+            </TabContent>
           </Card>
         </div>
       )}
@@ -1623,5 +1461,3 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 };
 
 export default ClassDetailsView;
-
-
