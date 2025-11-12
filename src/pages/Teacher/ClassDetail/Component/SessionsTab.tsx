@@ -139,7 +139,7 @@ export default function SessionsTab({ classId }: Props) {
 
   // Teaching Progress: số buổi complete / tổng (isActive === false)
   const completedCount = useMemo(
-    () => sessions.filter((s) => !s.isActive).length,
+    () => sessions.filter((s) => !s.isStudy).length,
     [sessions]
   );
   const totalCount = sessions.length;
@@ -218,8 +218,8 @@ export default function SessionsTab({ classId }: Props) {
               const sessionNo = sessionNumberMap[sess.id];
 
               // badges
-              const isCompleted = !sess.isActive;
-              const isComingUp = sess.isActive && stripTime(new Date(sess.date)) >= stripTime(new Date());
+              const isCompleted = !sess.isStudy;
+              const isComingUp = sess.isStudy && stripTime(new Date(sess.date)) >= stripTime(new Date());
 
               return (
                 <Card
@@ -255,7 +255,7 @@ export default function SessionsTab({ classId }: Props) {
                         </h3>
 
                           {isComingUp && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-neutral-200 text-neutral-800">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-blue-200 text-neutral-800">
                               Coming Up
                             </span>
                           )}

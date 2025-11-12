@@ -224,7 +224,7 @@ export default function ClassSession() {
 
   // Completed = isActive === false
   const completedCount = useMemo(
-    () => (meetings ? meetings.filter((m) => !m.isActive).length : 0),
+    () => (meetings ? meetings.filter((m) => !m.isStudy).length : 0),
     [meetings]
   );
 
@@ -345,7 +345,7 @@ export default function ClassSession() {
                     // số thứ tự LUÔN lấy theo chronological order
                     sessionNumber={numberById[meeting.id]}
                     isNext={meeting.id === nextId}
-                    isCompleted={!meeting.isActive}
+                    isCompleted={!meeting.isStudy}
                     onNavigate={handleSessionClick}
                   />
                 ))}
