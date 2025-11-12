@@ -17,6 +17,7 @@ import FeedbackPopup from "@/pages/Teacher/ClassDetail/Component/Popup/FeedbackP
 import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeScorePopup";
 import BulkGradeImportPopup, { type GradeImportData } from "@/pages/Teacher/ClassDetail/Component/Popup/BulkGradeImportPopup";
 import WritingGradingView from "@/pages/Teacher/ClassDetail/Component/WritingGradingView";
+import SpeakingGradingView from "@/pages/Teacher/ClassDetail/Component/SpeakingGradingView";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { 
   getAssignmentsByClassMeeting, 
@@ -137,6 +138,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [isGradeOpen, setGradeOpen] = useState(false);
   const [isBulkImportOpen, setBulkImportOpen] = useState(false);
   const [isWritingGradingOpen, setWritingGradingOpen] = useState(false);
+  const [isSpeakingGradingOpen, setSpeakingGradingOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null);
   const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -446,9 +448,11 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       };
       setSelectedAssignment(updatedAssignment);
       
-      // Check if this is a Writing assignment - open special grading view
+      // Check if this is a Writing or Speaking assignment - open special grading view
       if (assignment.skillName?.toLowerCase() === 'writing') {
         setWritingGradingOpen(true);
+      } else if (assignment.skillName?.toLowerCase() === 'speaking') {
+        setSpeakingGradingOpen(true);
       } else {
         setViewMode('submissions');
       }
@@ -1230,6 +1234,32 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
            submissions={selectedAssignment.submissions}
            onClose={() => {
              setWritingGradingOpen(false);
+             setViewMode('assignments');
+             setSelectedAssignment(null);
+           }}
+           onGradeSubmit={async (submissionId: string, score: number, feedback: string) => {
+             try {
+               await updateSubmissionScore(submissionId, score);
+               if (feedback) {
+                 await updateSubmissionFeedback(submissionId, feedback);
+               }
+               success("Grade submitted successfully!");
+               if (selectedAssignment) {
+                 await handleViewSubmissions(selectedAssignment);
+               }
+             } catch (err: any) {              
+               showError(err?.message || 'Failed to submit grade');
+             }
+           }}
+         />
+       )}
+
+       {isSpeakingGradingOpen && selectedAssignment && selectedAssignment.skillName === "Speaking" && (
+         <SpeakingGradingView
+           assignmentTitle={selectedAssignment.title}
+           submissions={selectedAssignment.submissions}
+           onClose={() => {
+             setSpeakingGradingOpen(false);
              setViewMode('assignments');
              setSelectedAssignment(null);
            }}

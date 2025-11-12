@@ -1,5 +1,6 @@
 import { getSpeakingSubmissionUploadUrls, submitSpeakingSubmission } from "@/api/assignments.api";
 import { uploadJsonToPresignedUrl } from "@/api/file.api";
+import type { Question } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 
 interface QuestionRecording {
   recordings: Array<{ id: string; blobUrl: string; duration: number; timestamp: Date }>;
@@ -11,7 +12,7 @@ interface QuestionRecording {
 interface SpeakingAssignmentSubmissionProps {
   assignmentId: string;
   studentId: string;
-  questions: Array<{ id: string; type: string }>;
+  questions: Question[];
   answers: Record<string, any>;
   questionRecordings: Record<string, QuestionRecording>;
   allowMultipleRecordings: boolean;
@@ -119,10 +120,22 @@ export const submitSpeakingAssignment = async ({
 
     console.log("Final audioUrls:", audioUrls);
 
+    // Include question details for better teacher grading experience
+    const questionDetails = questions.map(q => ({
+      id: q.id,
+      question: q.question || '',
+      points: q.points || 0,
+      type: q.type,
+      duration: q.maxDuration,
+      instructions: q.instructions || '',
+      order: q.order
+    })).filter(q => q.question); // Only include questions with actual question text
+
     const submissionData = {
       submittedAt: new Date().toISOString(),
       answers: answersData,
-      audioUrls: audioUrls
+      audioUrls: audioUrls,
+      questions: questionDetails.length > 0 ? questionDetails : undefined
     };
 
     // Step 4: Upload answers JSON to presigned URL (if available)
@@ -199,7 +212,7 @@ export const submitSpeakingAssignment = async ({
  * Validates that all required recordings are present before submission
  */
 export const validateSpeakingSubmission = (
-  questions: Array<{ id: string; type: string }>,
+  questions: Question[],
   questionRecordings: Record<string, QuestionRecording>,
   allowMultipleRecordings: boolean
 ): { isValid: boolean; errorMessage?: string } => {
