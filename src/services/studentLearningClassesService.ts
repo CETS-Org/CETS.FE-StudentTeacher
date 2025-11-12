@@ -121,5 +121,27 @@ export const studentLearningClassesService = {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch student learning classes';
       return { data: null, error: errorMessage };
     }
+  },
+
+  // Get student learning classes filtered by courseCode
+  getStudentLearningClassesByCourseCode: async (studentId: string, courseCode: string): Promise<MyClass[]> => {
+    try {
+      const classes = await studentLearningClassesService.getStudentLearningClasses(studentId);
+      return classes.filter(classItem => classItem.courseCode === courseCode);
+    } catch (error) {
+      console.error('Error fetching student learning classes by course code:', error);
+      throw error;
+    }
+  },
+
+  // Get student learning classes by courseCode with error handling
+  getStudentLearningClassesByCourseCodeSafe: async (studentId: string, courseCode: string): Promise<{ data: MyClass[] | null; error: string | null }> => {
+    try {
+      const classes = await studentLearningClassesService.getStudentLearningClassesByCourseCode(studentId, courseCode);
+      return { data: classes, error: null };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch student learning classes by course code';
+      return { data: null, error: errorMessage };
+    }
   }
 };
