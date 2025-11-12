@@ -92,28 +92,41 @@ export interface TeachingClassResponse {
   endDate : string
 }
 
-export interface WeeklyFeedbackPayload {
+//weekly feedback
+export type UpsertWeeklyFeedbackRequest = {
   classId: string;
-  teacherId: string;
+  classMeetingId?: string | null;
   weekNumber: number;
-  studentFeedback: {
+  teacherId: string
+  submit?: boolean;
+  items: {
     studentId: string;
-    insights: string[];      // 3-4 insight cá nhân cho học sinh này
-    customNote?: string;     // tùy chọn
+    participation: string;
+    assignmentQuality: string;
+    skillProgress: string;
+    nextStep?: string | null;
+    customNote?: string | null;
   }[];
-}
+};
 
-//Weekly feedback
-export const submitWeeklyFeedback = async (payload: WeeklyFeedbackPayload) => {
-  try {
-    console.log("Submitting weekly feedback payload:", payload);
-    // const res = await api.post(`${endpoint.weeklyFeedback}/submit`, payload);
-    // return res.data;
-    return { ok: true };
-  } catch (err) {
-    console.error("Error submitting weekly feedback:", err);
-    throw err;
-  }
+export type WeeklyFeedbackView = {
+  id: string;
+  classId: string;
+  classMeetingId?: string | null;
+  teacherId: string;
+  studentId: string;
+  weekNumber: number;
+  participation: string;
+  assignmentQuality: string;
+  skillProgress: string;
+  nextStep?: string | null;
+  customNote?: string | null;
+  status: number;        // 1 draft, 2 submitted
+  updatedAt: string;
+  // optional enrich:
+  studentName?: string;
+  teacherName?: string;
+  className?: string;
 };
 
 
