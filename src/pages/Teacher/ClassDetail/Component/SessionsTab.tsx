@@ -2,7 +2,17 @@
 import { useState, useMemo, useEffect } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { NotebookPen, Calendar, Globe, MapPin, Video, CheckCircle, Sparkles } from "lucide-react";
+import {
+  NotebookPen,
+  Calendar,
+  Globe,
+  MapPin,
+  Building,
+  Video,
+  CheckCircle,
+  Sparkles,
+  Clock,
+} from "lucide-react";
 import Pagination from "@/Shared/Pagination";
 import { useNavigate } from "react-router-dom";
 import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
@@ -18,19 +28,18 @@ type Props = {
 const stripTime = (d: Date) =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
-/** ISO week/year (Tuần ISO: tuần bắt đầu Thứ Hai) */
-function getISOWeekYear(dateStr: string) {
-  const d = new Date(dateStr);
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7; // 1..7 (Mon..Sun)
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((+date - +yearStart) / 86400000 + 1) / 7);
-  const year = date.getUTCFullYear();
-  return { year, week, key: `${year}-W${String(week).padStart(2, "0")}` };
-}
 
-/** dd/mm/yyyy */
+const getMondayOfWeek = (date: Date): number => {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay(); 
+  const diff = day === 0 ? -6 : 1 - day; 
+  d.setDate(d.getDate() + diff);
+  return stripTime(d);
+};
+
+/**
+ * dd/mm/yyyy
+ */
 const formatDateDDMMYYYY = (dateString: string) => {
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return dateString;
@@ -51,14 +60,19 @@ export default function SessionsTab({ classId }: Props) {
 
   // Weekly feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [selectedWeekNumber, setSelectedWeekNumber] = useState<number | null>(null);
-  const [selectedClassMeetingId, setSelectedClassMeetingId] = useState<string | null>(null);
+  const [selectedWeekNumber, setSelectedWeekNumber] = useState<number | null>(
+    null
+  );
+  const [selectedClassMeetingId, setSelectedClassMeetingId] =
+    useState<string | null>(null);
 
   const itemsPerPage = 4;
   const navigate = useNavigate();
 
   // Map sessionId -> sessionNumber (thứ tự theo ngày)
-  const [sessionNumberMap, setSessionNumberMap] = useState<Record<string, number>>({});
+  const [sessionNumberMap, setSessionNumberMap] = useState<
+    Record<string, number>
+  >({});
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -104,19 +118,62 @@ export default function SessionsTab({ classId }: Props) {
     fetchSessions();
   }, [classId]);
 
-  // Xác định "buổi cuối của tuần" (dựa theo danh sách đã sort)
-  const lastOfWeekIdSet = useMemo(() => {
-    const mapLastIndex: Record<string, number> = {};
-    sessions.forEach((s, idx) => {
-      const wk = getISOWeekYear(s.date).key;
-      mapLastIndex[wk] = idx; // overwrite => giữ index cuối cùng của tuần
+  /**
+   * Tính:
+   * - academicWeekMap: session.id -> "tuần học" (tuần 1 = tuần chứa buổi học sớm nhất, tuần tính theo ISO (Mon–Sun))
+   * - lastOfWeekIdSet: tập ID buổi cuối cùng của từng tuần học
+   */
+  const { lastOfWeekIdSet, academicWeekMap } = useMemo(() => {
+    const resultLastIdx: Record<number, number> = {};
+    const weekMap: Record<string, number> = {};
+
+    if (sessions.length === 0) {
+      return { lastOfWeekIdSet: new Set<string>(), academicWeekMap: weekMap };
+    }
+
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+    // 1) Tìm Monday của tuần chứa buổi học SỚM NHẤT -> baseMonday
+    let baseMonday: number | null = null;
+    sessions.forEach((s) => {
+      const d = new Date(s.date);
+      if (isNaN(d.getTime())) return;
+      const monday = getMondayOfWeek(d);
+      if (baseMonday === null || monday < baseMonday) {
+        baseMonday = monday;
+      }
     });
+
+    if (baseMonday === null) {
+      return { lastOfWeekIdSet: new Set<string>(), academicWeekMap: weekMap };
+    }
+
+    // === SỬA LỖI 1: Gán vào const mới ===
+    const finalBaseMonday = baseMonday;
+
+    // 2) Với mỗi session, tính tuần học (weekIndex) từ baseMonday
+    sessions.forEach((s, idx) => {
+      const d = new Date(s.date);
+      if (isNaN(d.getTime())) return;
+
+      const monday = getMondayOfWeek(d);
+      // === SỬA LỖI 1: Dùng const mới ===
+      const diffWeeks = Math.floor((monday - finalBaseMonday) / WEEK_MS);
+      const weekIndex = diffWeeks + 1; // Tuần bắt đầu từ 1
+
+      weekMap[s.id] = weekIndex;
+      // Ghi lại index cuối cùng của tuần đó
+      resultLastIdx[weekIndex] = idx;
+    });
+
+    // 3) Lấy id của buổi cuối cùng trong mỗi tuần
     const idSet = new Set<string>();
-    Object.values(mapLastIndex).forEach((idx) => {
+    Object.values(resultLastIdx).forEach((idx) => {
       const id = sessions[idx]?.id;
       if (id) idSet.add(id);
     });
-    return idSet;
+
+    return { lastOfWeekIdSet: idSet, academicWeekMap: weekMap };
   }, [sessions]);
 
   // Reorder để ghim “next session” lên đầu
@@ -137,13 +194,15 @@ export default function SessionsTab({ classId }: Props) {
 
   const handlePageChange = (page: number) => setCurrentPage(page);
 
-  // Teaching Progress: số buổi complete / tổng (isActive === false)
+  // Teaching Progress: số buổi complete / tổng (isStudy === false)
   const completedCount = useMemo(
     () => sessions.filter((s) => !s.isStudy).length,
     [sessions]
   );
   const totalCount = sessions.length;
-  const progressPct = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+  const progressPct = totalCount
+    ? Math.round((completedCount / totalCount) * 100)
+    : 0;
 
   // UI states
   if (loading) {
@@ -158,7 +217,11 @@ export default function SessionsTab({ classId }: Props) {
     return (
       <div className="bg-warning-50 border border-warning-200 rounded-lg p-6 text-center">
         <p className="text-warning-700 font-medium">{error}</p>
-        <Button variant="primary" onClick={() => window.location.reload()} className="mt-4">
+        <Button
+          variant="primary"
+          onClick={() => window.location.reload()}
+          className="mt-4"
+        >
           Retry
         </Button>
       </div>
@@ -191,7 +254,6 @@ export default function SessionsTab({ classId }: Props) {
         <h2 className="text-xl font-bold text-primary-800">
           Sessions ({totalCount})
         </h2>
-       
       </div>
 
       {totalCount === 0 ? (
@@ -214,19 +276,23 @@ export default function SessionsTab({ classId }: Props) {
             {currentSessions.map((sess) => {
               const isPinned = sess.id === pinnedId;
               const isLastOfWeek = lastOfWeekIdSet.has(sess.id);
-              const { week } = getISOWeekYear(sess.date);
+              const week = academicWeekMap[sess.id] ?? 1; // tuần học (bắt đầu từ 1)
               const sessionNo = sessionNumberMap[sess.id];
 
               // badges
               const isCompleted = !sess.isStudy;
-              const isComingUp = sess.isStudy && stripTime(new Date(sess.date)) >= stripTime(new Date());
+              const isComingUp =
+                sess.isStudy &&
+                stripTime(new Date(sess.date)) >= stripTime(new Date());
 
               return (
                 <Card
                   key={sess.id}
                   className={[
                     "p-6 border bg-white transition-all duration-300 hover:shadow-lg",
-                    isPinned ? "relative border-2 border-primary-500 ring-2 ring-primary-300 shadow-xl" : "border-accent-100"
+                    isPinned
+                      ? "relative border-2 border-primary-500 ring-2 ring-primary-300 shadow-xl"
+                      : "border-accent-100",
                   ].join(" ")}
                 >
                   {/* Ribbon Next */}
@@ -250,9 +316,9 @@ export default function SessionsTab({ classId }: Props) {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                         <h3 className="font-bold text-primary-800 text-lg">
-                          Session {sessionNo}
-                        </h3>
+                          <h3 className="font-bold text-primary-800 text-lg">
+                            Session {sessionNo}
+                          </h3>
 
                           {isComingUp && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-blue-200 text-neutral-800">
@@ -266,46 +332,59 @@ export default function SessionsTab({ classId }: Props) {
                               Completed
                             </span>
                           )}
+
+                        
                         </div>
 
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-sm text-neutral-700">
                             <Calendar className="w-4 h-4 text-primary-600" />
-                            <span className="font-medium">{formatDateDDMMYYYY(sess.date)}</span>
+                            <span className="font-medium">
+                              {formatDateDDMMYYYY(sess.date)}
+                            </span>
+                          </div>
+                           <div className="flex items-center gap-2 text-sm text-neutral-700">
+                            <Clock className="w-4 h-4 text-primary-600" />
+                            <span className="font-medium">
+                              {sess.slot}
+                            </span>
                           </div>
 
-                                        {sess.onlineMeetingUrl && (
-                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
-                                            <Globe className="w-4 h-4 text-primary-600" />
-                                            <span>Online meeting</span>
-                                            {sess.passcode && (
-                                              <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
-                                                Code: {sess.passcode}
-                                              </span>
-                                            )}
-                                          </div>
-                                        )}
-                          
-                                        {sess.roomID && !sess.onlineMeetingUrl && (
-                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
-                                            <MapPin className="w-4 h-4 text-primary-600" />
-                                            <span>Room: {sess.roomID}</span>
-                                          </div>
-                                        )}
-                          
-                                        {!sess.roomID && sess.onlineMeetingUrl && (
-                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
-                                            <MapPin className="w-4 h-4 text-primary-600" />
-                                            <span>Online</span>
-                                          </div>
-                                        )}
-                          
-                                        {sess.recordingUrl && (
-                                          <div className="flex items-center gap-2 text-sm text-neutral-700">
-                                            <Video className="w-4 h-4 text-primary-600" />
-                                            <span>Recording Available</span>
-                                          </div>
-                                        )}
+                          {/* === SỬA LỖI 2: Logic Online/Offline === */}
+                        <div className="flex items-center gap-2 text-sm text-neutral-700">
+                            {sess.roomID ? (
+                              <>
+                                <Building className="w-4 h-4 text-primary-600 font-semibold" />
+                                <span>Offline</span>
+                                <MapPin className="w-4 h-4 text-primary-600 font-semibold" />
+                                <span> Room: {sess.roomID}</span>                               
+                                  {sess.onlineMeetingUrl && sess.passcode && (
+                                  <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
+                                    Meeting Password: {sess.passcode}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Globe className="w-4 h-4 text-primary-600 font-semibold" />
+                                <span>Online</span>
+                                {/* Hiển thị passcode nếu có, vì đây là Online */}
+                               {sess.onlineMeetingUrl && sess.passcode && (
+                                  <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
+                                    Meeting Password: {sess.passcode}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          {/* === KẾT THÚC SỬA LỖI 2 === */}
+
+                          {sess.recordingUrl && (
+                            <div className="flex items-center gap-2 text-sm text-neutral-700">
+                              <Video className="w-4 h-4 text-primary-600" />
+                              <span>Recording Available</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -315,14 +394,16 @@ export default function SessionsTab({ classId }: Props) {
                         <Button
                           variant="secondary"
                           className="border-primary-300 text-primary-700 hover:bg-primary-50"
-                          onClick={() => window.open(sess.onlineMeetingUrl!, "_blank")}
+                          onClick={() =>
+                            window.open(sess.onlineMeetingUrl!, "_blank")
+                          }
                           iconLeft={<Globe className="w-4 h-4" />}
                         >
                           Join
                         </Button>
                       )}
 
-                      {/* Weekly Feedback ở BUỔI CUỐI CỦA TUẦN */}
+                      {/* Weekly Feedback ở BUỔI CUỐI CỦA TUẦN HỌC (weekNumber là tuần học tính từ tuần 1) */}
                       {isLastOfWeek && (
                         <Button
                           variant="secondary"
@@ -340,7 +421,11 @@ export default function SessionsTab({ classId }: Props) {
                       <Button
                         variant="primary"
                         className="btn-secondary"
-                        onClick={() => navigate(`/teacher/class/${classId}/session/${sess.id}`)}
+                        onClick={() =>
+                          navigate(
+                            `/teacher/class/${classId}/session/${sess.id}`
+                          )
+                        }
                       >
                         Go to Session
                       </Button>
