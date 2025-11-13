@@ -19,7 +19,7 @@ import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import jsPDF from "jspdf";
 
-const CDN_BASE_URL = import.meta.env.VITE_STORAGE_PUBLIC_URL || '';
+const CDN_BASE_URL = import.meta.env.VITE_STORAGE_PUBLIC_URL || 'https://pub-59cfd11e5f0d4b00af54839edc83842d.r2.dev';
 
 interface WritingAssignmentEditorProps {
   assignment: {
@@ -556,7 +556,7 @@ export default function WritingAssignmentEditor({
                 const text = e.clipboardData.getData('text/plain');
                 document.execCommand('insertText', false, text);
               }}
-              className="w-full h-full p-4 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-serif text-base leading-relaxed"
+              className="w-full h-full p-4 focus:outline-none font-serif text-base leading-relaxed"
               style={{ minHeight: '100%', whiteSpace: 'pre-wrap' }}
               data-placeholder="Start writing your answer here..."
             />
