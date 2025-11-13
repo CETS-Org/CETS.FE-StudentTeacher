@@ -4,38 +4,77 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { X, Loader2, User, Sparkles, Lightbulb } from "lucide-react";
 import { getStudentsInClass, type StudentInClass } from "@/api/attendance.api";
-import { upsertOneWeeklyFeedback } from "@/api/weeklyFeedback.api";
-import type { UpsertWeeklyFeedbackRequest } from "@/services/teachingClassesService";
+import {
+  upsertOneWeeklyFeedback,
+  getWeeklyFeedbackByClassWeek,
+} from "@/api/weeklyFeedback.api";
+import type { WeeklyFeedbackView } from "@/services/teachingClassesService";
 import { getTeacherId } from "@/lib/utils";
 
 /** Suggestion rút gọn */
 const SUGGESTIONS = {
   Participation: [
-    { label: "Active discussion", full: "Actively engaged in class discussions and asked relevant questions." },
-    { label: "Needs more participation", full: "Needs to participate more frequently and share ideas with peers." },
-    { label: "Good teamwork", full: "Shows strong collaboration skills during group activities." },
+    {
+      label: "Active discussion",
+      full: "Actively engaged in class discussions and asked relevant questions.",
+    },
+    {
+      label: "Needs more participation",
+      full: "Needs to participate more frequently and share ideas with peers.",
+    },
+    {
+      label: "Good teamwork",
+      full: "Shows strong collaboration skills during group activities.",
+    },
   ],
   AssignmentQuality: [
-    { label: "On-time & accurate", full: "Submits assignments on time with good accuracy and attention to detail." },
-    { label: "Late submission", full: "Occasionally submits assignments late; please improve time management." },
-    { label: "Improve structure", full: "Assignment structure needs clearer organization and stronger arguments." },
+    {
+      label: "On-time & accurate",
+      full: "Submits assignments on time with good accuracy and attention to detail.",
+    },
+    {
+      label: "Late submission",
+      full: "Occasionally submits assignments late; please improve time management.",
+    },
+    {
+      label: "Improve structure",
+      full: "Assignment structure needs clearer organization and stronger arguments.",
+    },
   ],
   SkillProgress: [
-    { label: "Speaking ↑", full: "Speaking skill has improved; communicates more confidently in class." },
-    { label: "Listening ↑", full: "Listening comprehension has improved; follows instructions well." },
-    { label: "Grammar/Vocab ↑", full: "Better grammar control and vocabulary usage in recent tasks." },
+    {
+      label: "Speaking ↑",
+      full: "Speaking skill has improved; communicates more confidently in class.",
+    },
+    {
+      label: "Listening ↑",
+      full: "Listening comprehension has improved; follows instructions well.",
+    },
+    {
+      label: "Grammar/Vocab ↑",
+      full: "Better grammar control and vocabulary usage in recent tasks.",
+    },
   ],
   NextStep: [
-    { label: "Practice speaking", full: "Practice speaking daily for 10–15 minutes to boost fluency." },
-    { label: "Revise grammar", full: "Revise basic grammar tenses and complete extra exercises." },
-    { label: "Expand vocabulary", full: "Learn 10–15 new words per week with context sentences." },
+    {
+      label: "Practice speaking",
+      full: "Practice speaking daily for 10–15 minutes to boost fluency.",
+    },
+    {
+      label: "Revise grammar",
+      full: "Revise basic grammar tenses and complete extra exercises.",
+    },
+    {
+      label: "Expand vocabulary",
+      full: "Learn 10–15 new words per week with context sentences.",
+    },
   ],
 } as const;
 
 type Props = {
   classId: string;
   classMeetingId: string; // buổi cuối tuần (nếu có)
-  weekNumber: number;     // dùng weekNumber
+  weekNumber: number; // tuần học (custom)
   isOpen: boolean;
   onClose: () => void;
 };
@@ -53,7 +92,6 @@ type PerStudentForm = {
   skillProgress: string;
   nextStep?: string | null;
   customNote?: string | null;
-  // local state
   status?: "draft" | "submitted" | "idle";
 };
 
@@ -70,39 +108,85 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
   const [mapForm, setMapForm] = useState<Record<string, PerStudentForm>>({});
   const [busy, setBusy] = useState(false);
 
-  const [openSuggestOf, setOpenSuggestOf] = useState<{ sid: string; field: FieldKey } | null>(
-    null
-  );
+  // map học viên đã submit (Status = 2) -> chỉ view
+  const [readOnlyMap, setReadOnlyMap] = useState<Record<string, boolean>>({});
+
+  const [openSuggestOf, setOpenSuggestOf] =
+    useState<{ sid: string; field: FieldKey } | null>(null);
   const portalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
+
     (async () => {
       setLoading(true);
       try {
-        const list = await getStudentsInClass(classId, classMeetingId);
+        // 1) Load danh sách học viên + feedback
+        const [list, fbRes] = await Promise.all([
+          getStudentsInClass(classId, classMeetingId),
+          getWeeklyFeedbackByClassWeek(classId, weekNumber),
+        ]);
+
         setStudents(list);
-        const init: Record<string, PerStudentForm> = {};
+
+        // 🔧 Hỗ trợ cả 2 kiểu: API trả thẳng array hoặc AxiosResponse
+        let feedbackList: WeeklyFeedbackView[] = [];
+        if (Array.isArray(fbRes)) {
+          feedbackList = fbRes;
+        } else if (fbRes && Array.isArray((fbRes as any).data)) {
+          feedbackList = (fbRes as any).data as WeeklyFeedbackView[];
+        }
+
+        console.log("Weekly feedback list:", feedbackList);
+
+        // 2) Init form per student
+        const initForm: Record<string, PerStudentForm> = {};
+        const readOnlyFlags: Record<string, boolean> = {};
+
         list.forEach((s) => {
-          init[s.studentId] = {
-            participation: "",
-            assignmentQuality: "",
-            skillProgress: "",
-            nextStep: "",
-            customNote: "",
-            status: "idle",
-          };
+          // 🔧 API đã filter theo classId + weekNumber rồi, nên chỉ cần match studentId
+          const fb = feedbackList.find((f) => f.studentId === s.studentId);
+
+          if (fb) {
+            const isSubmitted = fb.status === 2;
+            initForm[s.studentId] = {
+              participation: fb.participation ?? "",
+              assignmentQuality: fb.assignmentQuality ?? "",
+              skillProgress: fb.skillProgress ?? "",
+              nextStep: fb.nextStep ?? "",
+              customNote: fb.customNote ?? "",
+              status: isSubmitted ? "submitted" : "draft",
+            };
+
+            if (isSubmitted) {
+              readOnlyFlags[s.studentId] = true;
+            }
+          } else {
+            initForm[s.studentId] = {
+              participation: "",
+              assignmentQuality: "",
+              skillProgress: "",
+              nextStep: "",
+              customNote: "",
+              status: "idle",
+            };
+          }
         });
-        setMapForm(init);
+
+        setMapForm(initForm);
+        setReadOnlyMap(readOnlyFlags);
         setSelectedId(list[0]?.studentId ?? null);
       } finally {
         setLoading(false);
       }
     })();
-  }, [isOpen, classId, classMeetingId]);
+  }, [isOpen, classId, classMeetingId, weekNumber]);
 
   const selected = useMemo(
-    () => (selectedId ? students.find((s) => s.studentId === selectedId) : undefined),
+    () =>
+      selectedId
+        ? students.find((s) => s.studentId === selectedId)
+        : undefined,
     [students, selectedId]
   );
 
@@ -114,6 +198,8 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
   };
 
   const isValid = (sid: string) => {
+    if (readOnlyMap[sid]) return true; // đã khóa thì khỏi check
+
     const f = mapForm[sid];
     if (!f) return false;
     return (
@@ -124,6 +210,8 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
   };
 
   const doSaveOrSubmit = async (sid: string, submit: boolean) => {
+    if (readOnlyMap[sid]) return; // đã khóa thì không gửi
+
     const f = mapForm[sid];
     if (!f) return;
     if (submit && !isValid(sid)) return;
@@ -153,6 +241,13 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
           status: submit ? "submitted" : "draft",
         },
       }));
+
+      if (submit) {
+        setReadOnlyMap((prev) => ({
+          ...prev,
+          [sid]: true,
+        }));
+      }
     } finally {
       setBusy(false);
     }
@@ -193,7 +288,9 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
                 {sug.label}
               </span>
             </div>
-            <div className="text-xs text-neutral-500 line-clamp-2">{sug.full}</div>
+            <div className="text-xs text-neutral-500 line-clamp-2">
+              {sug.full}
+            </div>
           </button>
         ))}
       </div>
@@ -210,10 +307,13 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
           <div>
             <h3 className="text-lg font-semibold">Weekly Feedback</h3>
             <p className="text-sm text-neutral-600">
-              ISO Week: <b>{weekNumber}</b>
+              Week: <b>{weekNumber}</b>
             </p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-neutral-100">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-neutral-100"
+          >
             <X className="w-5 h-5 text-neutral-600" />
           </button>
         </div>
@@ -231,12 +331,16 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
                 const active = selectedId === s.studentId;
                 const ok = isValid(s.studentId);
                 const st = mapForm[s.studentId]?.status ?? "idle";
+                const isReadOnly = !!readOnlyMap[s.studentId];
+
                 return (
                   <button
                     key={s.studentId}
                     onClick={() => setSelectedId(s.studentId)}
                     className={`w-full text-left px-3 py-2 rounded-lg mb-2 border ${
-                      active ? "bg-primary-50 border-primary-300" : "bg-white border-neutral-200"
+                      active
+                        ? "bg-primary-50 border-primary-300"
+                        : "bg-white border-neutral-200"
                     } hover:bg-neutral-50`}
                   >
                     <div className="flex items-center gap-2">
@@ -244,19 +348,31 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
                         <User className="w-4 h-4 text-primary-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{s.studentName}</div>
-                        <div className="text-[11px] text-neutral-500">#{idx + 1}</div>
+                        <div className="text-sm font-medium truncate">
+                          {s.studentName}
+                        </div>
+                        <div className="text-[11px] text-neutral-500">
+                          #{idx + 1}
+                        </div>
                       </div>
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                          st === "submitted"
+                          isReadOnly
+                            ? "bg-green-100 text-green-700"
+                            : st === "submitted"
                             ? "bg-green-100 text-green-700"
                             : ok
                             ? "bg-blue-100 text-blue-700"
                             : "bg-yellow-100 text-yellow-700"
                         }`}
                       >
-                        {st === "submitted" ? "Submitted" : ok ? "Ready" : "Need 3"}
+                        {isReadOnly
+                          ? "Locked"
+                          : st === "submitted"
+                          ? "Submitted"
+                          : ok
+                          ? "Ready"
+                          : "Need 3"}
                       </span>
                     </div>
                   </button>
@@ -275,91 +391,142 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
               <Card className="p-5 border border-accent-100">
                 <div className="mb-4">
                   <div className="text-sm text-neutral-500">Student</div>
-                  <div className="text-lg font-semibold">{selected.studentName}</div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FieldWithSuggest
-                    title="Participation"
-                    sid={selected.studentId}
-                    field="participation"
-                    value={mapForm[selected.studentId]?.participation ?? ""}
-                    placeholder="Write a concrete note about participation…"
-                    onChange={(v) => setValue(selected.studentId!, "participation", v)}
-                    openSuggestOf={openSuggestOf}
-                    setOpenSuggestOf={setOpenSuggestOf}
-                    SuggestionDropdown={SuggestionDropdown}
-                  />
-
-                  <FieldWithSuggest
-                    title="Assignment / Homework Quality"
-                    sid={selected.studentId}
-                    field="assignmentQuality"
-                    value={mapForm[selected.studentId]?.assignmentQuality ?? ""}
-                    placeholder="Clarity, accuracy, timeliness…"
-                    onChange={(v) => setValue(selected.studentId!, "assignmentQuality", v)}
-                    openSuggestOf={openSuggestOf}
-                    setOpenSuggestOf={setOpenSuggestOf}
-                    SuggestionDropdown={SuggestionDropdown}
-                  />
-
-                  <FieldWithSuggest
-                    title="Skill Focus Progress"
-                    sid={selected.studentId}
-                    field="skillProgress"
-                    value={mapForm[selected.studentId]?.skillProgress ?? ""}
-                    placeholder="Listening/Speaking/Grammar/Vocabulary…"
-                    onChange={(v) => setValue(selected.studentId!, "skillProgress", v)}
-                    openSuggestOf={openSuggestOf}
-                    setOpenSuggestOf={setOpenSuggestOf}
-                    SuggestionDropdown={SuggestionDropdown}
-                  />
-
-                  <FieldWithSuggest
-                    title="Actionable Next Step (optional)"
-                    sid={selected.studentId}
-                    field="nextStep"
-                    value={mapForm[selected.studentId]?.nextStep ?? ""}
-                    placeholder="Recommendation for the next week…"
-                    onChange={(v) => setValue(selected.studentId!, "nextStep", v)}
-                    openSuggestOf={openSuggestOf}
-                    setOpenSuggestOf={setOpenSuggestOf}
-                    SuggestionDropdown={SuggestionDropdown}
-                  />
-
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-primary-800 block mb-1">
-                      Custom note (optional)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={mapForm[selected.studentId]?.customNote ?? ""}
-                      onChange={(e) =>
-                        setValue(selected.studentId!, "customNote", e.target.value)
-                      }
-                      className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300"
-                      placeholder="Private note only visible to teachers…"
-                    />
+                  <div className="text-lg font-semibold">
+                    {selected.studentName}
                   </div>
+                  {readOnlyMap[selected.studentId] && (
+                    <p className="mt-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-3 py-1.5 inline-block">
+                      Feedback already submitted for this student. You can only
+                      view it.
+                    </p>
+                  )}
                 </div>
 
-                {/* Actions for this student */}
-                <div className="mt-4 flex gap-2 justify-end">
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() => doSaveOrSubmit(selected.studentId, false)}
-                  >
-                    {busy ? "Saving…" : "Save draft"}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    disabled={!isValid(selected.studentId) || busy}
-                    onClick={() => doSaveOrSubmit(selected.studentId, true)}
-                  >
-                    {busy ? "Submitting…" : "Submit"}
-                  </Button>
-                </div>
+                {(() => {
+                  const isReadOnly = !!readOnlyMap[selected.studentId];
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FieldWithSuggest
+                          title="Participation"
+                          sid={selected.studentId}
+                          field="participation"
+                          value={
+                            mapForm[selected.studentId]?.participation ?? ""
+                          }
+                          placeholder="Write a concrete note about participation…"
+                          onChange={(v) =>
+                            setValue(selected.studentId!, "participation", v)
+                          }
+                          openSuggestOf={openSuggestOf}
+                          setOpenSuggestOf={setOpenSuggestOf}
+                          SuggestionDropdown={SuggestionDropdown}
+                          readOnly={isReadOnly}
+                        />
+
+                        <FieldWithSuggest
+                          title="Assignment / Homework Quality"
+                          sid={selected.studentId}
+                          field="assignmentQuality"
+                          value={
+                            mapForm[selected.studentId]?.assignmentQuality ??
+                            ""
+                          }
+                          placeholder="Clarity, accuracy, timeliness…"
+                          onChange={(v) =>
+                            setValue(
+                              selected.studentId!,
+                              "assignmentQuality",
+                              v
+                            )
+                          }
+                          openSuggestOf={openSuggestOf}
+                          setOpenSuggestOf={setOpenSuggestOf}
+                          SuggestionDropdown={SuggestionDropdown}
+                          readOnly={isReadOnly}
+                        />
+
+                        <FieldWithSuggest
+                          title="Skill Focus Progress"
+                          sid={selected.studentId}
+                          field="skillProgress"
+                          value={
+                            mapForm[selected.studentId]?.skillProgress ?? ""
+                          }
+                          placeholder="Listening/Speaking/Grammar/Vocabulary…"
+                          onChange={(v) =>
+                            setValue(selected.studentId!, "skillProgress", v)
+                          }
+                          openSuggestOf={openSuggestOf}
+                          setOpenSuggestOf={setOpenSuggestOf}
+                          SuggestionDropdown={SuggestionDropdown}
+                          readOnly={isReadOnly}
+                        />
+
+                        <FieldWithSuggest
+                          title="Actionable Next Step (optional)"
+                          sid={selected.studentId}
+                          field="nextStep"
+                          value={mapForm[selected.studentId]?.nextStep ?? ""}
+                          placeholder="Recommendation for the next week…"
+                          onChange={(v) =>
+                            setValue(selected.studentId!, "nextStep", v)
+                          }
+                          openSuggestOf={openSuggestOf}
+                          setOpenSuggestOf={setOpenSuggestOf}
+                          SuggestionDropdown={SuggestionDropdown}
+                          readOnly={isReadOnly}
+                        />
+
+                        <div className="md:col-span-2">
+                          <label className="text-sm font-medium text-primary-800 block mb-1">
+                            Custom note (optional)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={
+                              mapForm[selected.studentId]?.customNote ?? ""
+                            }
+                            onChange={(e) =>
+                              setValue(
+                                selected.studentId!,
+                                "customNote",
+                                e.target.value
+                              )
+                            }
+                            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 disabled:bg-neutral-50 disabled:text-neutral-500"
+                            placeholder="Private note only visible to teachers…"
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                      </div>
+
+                      {!isReadOnly && (
+                        <div className="mt-4 flex gap-2 justify-end">
+                          <Button
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() =>
+                              doSaveOrSubmit(selected.studentId, false)
+                            }
+                          >
+                            {busy ? "Saving…" : "Save draft"}
+                          </Button>
+                          <Button
+                            variant="primary"
+                            disabled={!isValid(selected.studentId) || busy}
+                            onClick={() =>
+                              doSaveOrSubmit(selected.studentId, true)
+                            }
+                          >
+                            {busy ? "Submitting…" : "Submit"}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </Card>
             )}
           </div>
@@ -368,7 +535,8 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
         {/* Footer */}
         <div className="px-6 py-4 border-t flex justify-between items-center">
           <span className="text-xs text-neutral-500">
-            * Required: Participation, Assignment Quality, Skill Progress. “Next Step” is optional.
+            * Required: Participation, Assignment Quality, Skill Progress. “Next
+            Step” is optional.
           </span>
           <div className="flex gap-3">
             <Button variant="secondary" onClick={onClose}>
@@ -396,7 +564,12 @@ type FieldWithSuggestProps = {
   onChange: (v: string) => void;
   openSuggestOf: { sid: string; field: FieldKey } | null;
   setOpenSuggestOf: (s: { sid: string; field: FieldKey } | null) => void;
-  SuggestionDropdown: React.FC<{ sid: string; field: FieldKey; onClose: () => void }>;
+  SuggestionDropdown: React.FC<{
+    sid: string;
+    field: FieldKey;
+    onClose: () => void;
+  }>;
+  readOnly?: boolean;
 };
 
 const FieldWithSuggest: React.FC<FieldWithSuggestProps> = ({
@@ -409,17 +582,25 @@ const FieldWithSuggest: React.FC<FieldWithSuggestProps> = ({
   openSuggestOf,
   setOpenSuggestOf,
   SuggestionDropdown,
+  readOnly,
 }) => {
   const isOpen = openSuggestOf?.sid === sid && openSuggestOf?.field === field;
 
   return (
     <div className="relative">
       <div className="flex items-center justify-between mb-1">
-        <label className="text-sm font-medium text-primary-800">{title}</label>
+        <label className="text-sm font-medium text-primary-800">
+          {title}
+        </label>
         <button
           type="button"
-          className="inline-flex items-center gap-1 text-xs px-2 py-1 border rounded-md hover:bg-neutral-50"
-          onClick={() => setOpenSuggestOf(isOpen ? null : { sid, field })}
+          className={`inline-flex items-center gap-1 text-xs px-2 py-1 border rounded-md hover:bg-neutral-50 ${
+            readOnly ? "opacity-50 cursor-default pointer-events-none" : ""
+          }`}
+          onClick={() =>
+            !readOnly && setOpenSuggestOf(isOpen ? null : { sid, field })
+          }
+          disabled={readOnly}
         >
           <Sparkles className="w-3.5 h-3.5 text-accent-600" />
           Suggestions
@@ -430,11 +611,16 @@ const FieldWithSuggest: React.FC<FieldWithSuggestProps> = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300"
+        className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary-300 disabled:bg-neutral-50 disabled:text-neutral-500"
+        disabled={readOnly}
       />
-      {isOpen && (
+      {isOpen && !readOnly && (
         <div className="absolute left-0 top-full z-[10001]">
-          <SuggestionDropdown sid={sid} field={field} onClose={() => setOpenSuggestOf(null)} />
+          <SuggestionDropdown
+            sid={sid}
+            field={field}
+            onClose={() => setOpenSuggestOf(null)}
+          />
         </div>
       )}
     </div>
