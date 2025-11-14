@@ -798,11 +798,11 @@ export default function StudentAssignmentTaking() {
         studentID: studentId,
       };
 
-      // For reading/listening assignments, fileName and content can be null
+      // For reading/listening assignments, include answers as JSON file
       if (isReadingOrListening) {
-        submissionData.fileName = null;
-        submissionData.contentType = null;
-        submissionData.content = null;
+        submissionData.fileName = 'answers.json';
+        submissionData.contentType = 'application/json';
+        submissionData.content = JSON.stringify(answersArray);
       } else {
         // For other assignments (writing, etc.), include fileName and content
         submissionData.fileName = 'answers.json';
@@ -864,6 +864,24 @@ export default function StudentAssignmentTaking() {
       } else {
         // Submit via API using the correct endpoint (/api/ACAD_Submissions/submit)
         const response = await api.submitAssignment(submissionData);
+        
+        // If we have an uploadUrl, upload the content to Cloudflare
+        if (response?.data?.uploadUrl && submissionData.content) {
+          const uploadResponse = await fetch(response.data.uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': submissionData.contentType || 'application/json',
+            },
+            body: submissionData.content,
+          });
+
+          if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text().catch(() => '');
+            throw new Error(`Failed to upload file to Cloudflare: ${uploadResponse.status} ${uploadResponse.statusText} ${errorText}`);
+          }
+          
+          console.log('✅ Successfully uploaded answers file to Cloudflare R2');
+        }
         
         // Check if backend returned a score in the response
         let backendScore: number | null = null;

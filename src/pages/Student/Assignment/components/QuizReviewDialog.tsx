@@ -43,6 +43,7 @@ interface QuizReviewDialogProps {
     createdAt: string;
     isAiScore?: boolean;
     content?: string; // JSON string of answers
+    storeUrl?: string | null; // URL where the submission file is stored
   };
 }
 
@@ -85,15 +86,78 @@ export default function QuizReviewDialog({
       const data: AssignmentQuestionData = await questionResponse.json();
       setQuestionData(data);
 
-      // Parse student answers from submission content
+      // Parse student answers from submission
+      let answersData: any[] = [];
+      let fullSubmissionContent: any = null;
+      
+      // Try to get answers from submission content first
       if (submission.content) {
         try {
-          const answers = JSON.parse(submission.content);
-          setStudentAnswers(answers);
+          fullSubmissionContent = JSON.parse(submission.content);
+          
+          // Handle different possible formats
+          if (Array.isArray(fullSubmissionContent)) {
+            answersData = fullSubmissionContent;
+          } else if (fullSubmissionContent.answers && Array.isArray(fullSubmissionContent.answers)) {
+            answersData = fullSubmissionContent.answers;
+          } else {
+            answersData = [fullSubmissionContent];
+          }
         } catch (e) {
-          console.error("Failed to parse student answers:", e);
+          console.error("Failed to parse submission content:", e);
         }
       }
+      
+      // If no content was parsed and there's a storeUrl, try to fetch from the file
+      if (!fullSubmissionContent && submission.storeUrl) {
+        try {
+          const { downloadSubmission } = await import("@/api/assignments.api");
+          const submissionResponse = await downloadSubmission(submission.id);
+          
+          // The response contains a downloadUrl, we need to fetch the actual file content
+          if (submissionResponse.data && submissionResponse.data.downloadUrl) {
+            const fileResponse = await fetch(submissionResponse.data.downloadUrl);
+            
+            if (fileResponse.ok) {
+              const fileContent = await fileResponse.text();
+              
+              // Parse the JSON content
+              fullSubmissionContent = JSON.parse(fileContent);
+              
+              if (Array.isArray(fullSubmissionContent)) {
+                answersData = fullSubmissionContent;
+              } else if (fullSubmissionContent.answers && Array.isArray(fullSubmissionContent.answers)) {
+                answersData = fullSubmissionContent.answers;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch answers from storeUrl:", e);
+        }
+      }
+      
+      // Convert answers array to object format expected by the component
+      const answersObject: Record<string, any> = {};
+      
+      answersData.forEach((answerItem: any) => {
+        if (answerItem.questionId && answerItem.answer !== undefined) {
+          answersObject[answerItem.questionId] = answerItem.answer;
+        }
+      });
+      
+      // For speaking assignments, also check if there are audioUrls in the parsed content
+      // Use the already fetched fullSubmissionContent to avoid duplicate API calls
+      if (fullSubmissionContent && fullSubmissionContent.audioUrls) {
+        Object.keys(fullSubmissionContent.audioUrls).forEach((questionId) => {
+          if (fullSubmissionContent.audioUrls[questionId]) {
+            // Mark this question as having an audio answer
+            answersObject[questionId] = fullSubmissionContent.audioUrls[questionId];
+          }
+        });
+      }
+      
+      setStudentAnswers(answersObject);
+      
     } catch (err: any) {
       console.error("Failed to load quiz data:", err);
       setError(err.message || "Failed to load quiz data");
@@ -148,6 +212,7 @@ export default function QuizReviewDialog({
       
       case "short_answer":
       case "essay":
+      case "speaking":
         // These are manually graded, so we can't determine correctness automatically
         return false;
       
@@ -187,6 +252,19 @@ export default function QuizReviewDialog({
       case "short_answer":
       case "essay":
         return <p className="whitespace-pre-wrap font-medium">{answer}</p>;
+      
+      case "speaking":
+        // For speaking questions, show that audio was recorded
+        if (answer) {
+          return (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="font-medium text-green-700">Audio recorded</span>
+            </div>
+          );
+        } else {
+          return <span className="text-neutral-500 italic">No audio recorded</span>;
+        }
       
       default:
         return <span className="text-neutral-500">Unknown answer type</span>;
@@ -229,6 +307,9 @@ export default function QuizReviewDialog({
       case "short_answer":
       case "essay":
         return <span className="text-neutral-600 italic">Manually graded by instructor</span>;
+      
+      case "speaking":
+        return <span className="text-neutral-600 italic">Speaking responses are manually graded by instructor</span>;
       
       default:
         return null;
@@ -459,7 +540,7 @@ export default function QuizReviewDialog({
                       <h5 className="text-sm font-semibold text-warning-900 mb-1">Answers Not Available</h5>
                       <p className="text-sm text-warning-800">
                         {(questionData.settings as ExtendedSettings)?.showAnswersAfterDueDate
-                          ? `Correct answers will be available after the due date: ${new Date((questionData.settings as ExtendedSettings).dueDate || "").toLocaleString()}`
+                          ? `Correct answers will be available after the due date`
                           : "The instructor has not enabled answer viewing for this quiz."}
                       </p>
                     </div>
