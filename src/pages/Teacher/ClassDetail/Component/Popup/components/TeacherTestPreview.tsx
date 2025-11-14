@@ -154,8 +154,41 @@ export default function TeacherTestPreview({
         return <EssayQuestion {...commonProps} />;
       case "matching":
         return <MatchingQuestion {...commonProps} />;
+      case "speaking":
+        return (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-blue-600">🎤</span>
+                <span className="text-sm font-medium text-blue-700">Speaking Question</span>
+              </div>
+              <p className="text-sm text-blue-600">
+                Students will record their spoken response to this prompt.
+              </p>
+            </div>
+            <div className="prose max-w-none">
+              <div dangerouslySetInnerHTML={{ __html: question.question }} />
+            </div>
+            {question.instructions && (
+              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3">
+                <h4 className="text-sm font-medium text-neutral-700 mb-1">Instructions:</h4>
+                <p className="text-sm text-neutral-600">{question.instructions}</p>
+              </div>
+            )}
+            {question.maxDuration && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-yellow-600">⏱️</span>
+                  <span className="text-sm font-medium text-yellow-700">
+                    Maximum recording time: {question.maxDuration} seconds
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
       default:
-        return <div>Unknown question type</div>;
+        return <div>Unknown question type: {question.type}</div>;
     }
   };
 
@@ -196,6 +229,9 @@ export default function TeacherTestPreview({
     if (question.type === "short_answer" || question.type === "essay") {
       return "Manual grading required";
     }
+    if (question.type === "speaking") {
+      return "Audio recording - Manual grading required";
+    }
     if (question.type === "matching") {
       return "See matching pairs";
     }
@@ -209,6 +245,7 @@ export default function TeacherTestPreview({
       question.type === "true_false" ||
       question.type === "fill_in_the_blank"
     );
+    // Note: speaking, short_answer, essay, and matching questions don't show correct answers
   };
 
   const isAnswerCorrect = (question: Question) => {
@@ -240,7 +277,7 @@ export default function TeacherTestPreview({
   if (loading || questions.length === 0) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent size="xl" className="max-w-[98vw] max-h-[95vh] w-[98vw] h-[95vh]">
+      <DialogContent size="xl" className="!max-w-[80vw] max-h-[95vh] !w-[80vw] h-[95vh]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -267,7 +304,7 @@ export default function TeacherTestPreview({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent size="xl" className="max-w-[98vw] max-h-[95vh] w-[98vw] h-[95vh] flex flex-col overflow-hidden">
+      <DialogContent size="xl" className="!max-w-[80vw] max-h-[95vh] !w-[80vw] h-[95vh]">
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
@@ -279,17 +316,7 @@ export default function TeacherTestPreview({
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowAnswers(!showAnswers)}
-                iconLeft={showAnswers ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              >
-                {showAnswers ? "Hide Answers" : "Show Answers"}
-              </Button>
-             
-            </div>
+           
           </div>
         </DialogHeader>
 
@@ -341,6 +368,16 @@ export default function TeacherTestPreview({
                     </span>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowAnswers(!showAnswers)}
+                    iconLeft={showAnswers ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  >
+                    {showAnswers ? "Hide Answers" : "Show Answers"}
+                  </Button>
+                 </div>
               </div>
             </div>
 

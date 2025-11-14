@@ -381,7 +381,7 @@ export default function WritingGradingView({
                 key={submission.id}
                 onClick={() => handleSubmissionSelect(index)}
                 className={`w-full text-left p-4 hover:bg-accent-25 transition-colors ${
-                  index === selectedSubmissionIndex ? "bg-primary-50 border-l-4 border-primary-600" : ""
+                  index === selectedSubmissionIndex ? "bg-secondary-100 border-l-4 border-primary-600" : ""
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">

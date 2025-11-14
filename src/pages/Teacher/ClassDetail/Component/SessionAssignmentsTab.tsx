@@ -18,6 +18,8 @@ import GradeScorePopup from "@/pages/Teacher/ClassDetail/Component/Popup/GradeSc
 import BulkGradeImportPopup, { type GradeImportData } from "@/pages/Teacher/ClassDetail/Component/Popup/BulkGradeImportPopup";
 import WritingGradingView from "@/pages/Teacher/ClassDetail/Component/WritingGradingView";
 import SpeakingGradingView from "@/pages/Teacher/ClassDetail/Component/SpeakingGradingView";
+import ListeningGradingView from "@/pages/Teacher/ClassDetail/Component/ListeningGradingView";
+import ReadingGradingView from "@/pages/Teacher/ClassDetail/Component/ReadingGradingView";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import { 
   getAssignmentsByClassMeeting, 
@@ -139,6 +141,8 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const [isBulkImportOpen, setBulkImportOpen] = useState(false);
   const [isWritingGradingOpen, setWritingGradingOpen] = useState(false);
   const [isSpeakingGradingOpen, setSpeakingGradingOpen] = useState(false);
+  const [isListeningGradingOpen, setListeningGradingOpen] = useState(false);
+  const [isReadingGradingOpen, setReadingGradingOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null);
   const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -277,7 +281,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
   const handleAdvancedCreateAssignment = async (assignmentData: {
     title: string;
     description: string;
-    dueDate: string;
+    dueAt: string;
     skillID: string | null;
     assignmentType: string;
     totalPoints: number;
@@ -448,11 +452,15 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
       };
       setSelectedAssignment(updatedAssignment);
       
-      // Check if this is a Writing or Speaking assignment - open special grading view
+      // Check assignment skill type and open appropriate grading view
       if (assignment.skillName?.toLowerCase() === 'writing') {
         setWritingGradingOpen(true);
       } else if (assignment.skillName?.toLowerCase() === 'speaking') {
         setSpeakingGradingOpen(true);
+      } else if (assignment.skillName?.toLowerCase() === 'listening') {
+        setListeningGradingOpen(true);
+      } else if (assignment.skillName?.toLowerCase() === 'reading') {
+        setReadingGradingOpen(true);
       } else {
         setViewMode('submissions');
       }
@@ -1276,6 +1284,34 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
              } catch (err: any) {              
                showError(err?.message || 'Failed to submit grade');
              }
+           }}
+         />
+       )}
+
+       {isListeningGradingOpen && selectedAssignment && selectedAssignment.skillName === "Listening" && (
+         <ListeningGradingView
+           assignmentTitle={selectedAssignment.title}
+           submissions={selectedAssignment.submissions}
+           onClose={() => {
+             setListeningGradingOpen(false);
+             setViewMode('assignments');
+             setSelectedAssignment(null);
+           }}
+         />
+       )}
+
+       {isReadingGradingOpen && selectedAssignment && selectedAssignment.skillName === "Reading" && (
+         <ReadingGradingView
+           assignmentTitle={selectedAssignment.title}
+           submissions={selectedAssignment.submissions}
+           assignment={{
+             assignmentId: selectedAssignment.assignmentId,
+             questionUrl: selectedAssignment.questionUrl || undefined
+           }}
+           onClose={() => {
+             setReadingGradingOpen(false);
+             setViewMode('assignments');
+             setSelectedAssignment(null);
            }}
          />
        )}
