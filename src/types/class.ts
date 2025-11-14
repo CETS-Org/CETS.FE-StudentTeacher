@@ -79,7 +79,7 @@ export interface StudentLearningClassResponse {
   teacherName: string;
   startDate: string;
   endDate: string;
-  timeSlot: string;
+  timeSlot: string | null;
   roomCode: string;
   isActive: boolean;
 }

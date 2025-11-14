@@ -124,12 +124,6 @@ export default function PreviewStep({
       const { _passage, _audioUrl, ...cleanedQ } = q as any;
       return cleanedQ;
     }),
-    settings: {
-      shuffleQuestions: false,
-      allowBackNavigation: true,
-      showProgress: true,
-      showQuestionNumbers: true,
-    },
     ...(readingPassage && { readingPassage }),
     ...(audioUrl && {
       media: {
@@ -161,7 +155,7 @@ export default function PreviewStep({
               variant="secondary"
               onClick={() => setShowFullPreview(true)}
               iconLeft={<Eye className="w-5 h-5" />}
-              className="min-w-[200px] bg-white text-primary-600 hover:bg-primary-50 border-0"
+              className="min-w-[200px] border-0"
             >
               Open Full Preview
             </Button>
@@ -517,14 +511,6 @@ export default function PreviewStep({
                 ({questions.length} question{questions.length !== 1 ? 's' : ''})
               </span>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowFullPreview(true)}
-              iconLeft={<Eye className="w-4 h-4" />}
-            >
-              Full Preview
-            </Button>
           </div>
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
             {questions.sort((a, b) => a.order - b.order).map((q) => (

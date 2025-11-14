@@ -2,15 +2,21 @@ import { api } from '@/api';
 import type { StudentLearningClassResponse, MyClass } from '@/types/class';
 
 // Time slot calculation function - automatically adds 90 minutes to start time
-export const calculateTimeSlot = (slot: string): { startTime: string; endTime: string } => {
+export const calculateTimeSlot = (slot: string | null | undefined): { startTime: string; endTime: string } => {
   try {
+    // Handle null, undefined, or empty slot values
+    if (!slot || typeof slot !== 'string') {
+      console.warn(`Invalid time slot value: ${slot}`);
+      return { startTime: '00:00', endTime: '01:30' }; // Default 90-minute slot
+    }
+
     const [hoursStr, minutesStr] = slot.split(':');
     let hours = parseInt(hoursStr, 10);
     let minutes = parseInt(minutesStr, 10);
 
     if (isNaN(hours) || isNaN(minutes)) {
       console.warn(`Invalid time slot format: ${slot}`);
-      return { startTime: slot, endTime: slot };
+      return { startTime: '00:00', endTime: '01:30' }; // Default 90-minute slot
     }
 
     const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
@@ -32,7 +38,7 @@ export const calculateTimeSlot = (slot: string): { startTime: string; endTime: s
     return { startTime, endTime };
   } catch (error) {
     console.error(`Error calculating time slot for ${slot}:`, error);
-    return { startTime: slot, endTime: slot };
+    return { startTime: '00:00', endTime: '01:30' }; // Default 90-minute slot
   }
 };
 

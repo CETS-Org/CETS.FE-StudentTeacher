@@ -192,26 +192,7 @@ export default function StudentAssignmentTaking() {
               return q;
             });
             
-            console.log("QuestionData:", {
-              hasReadingPassage: !!questionData.readingPassage,
-              readingPassage: questionData.readingPassage?.substring(0, 50) + "...",
-              questionsCount: processedQuestions.length
-            });
-            console.log("Processed questions with passages:", processedQuestions.map((q: any) => ({
-              id: q.id,
-              hasPassage: !!(q._passage || q.readingPassage),
-              passage: (q._passage || q.readingPassage || "none")?.substring(0, 50) + "..."
-            })));
-            
-            // Log correctAnswer from JSON for verification
-            console.log("Questions with correctAnswer from JSON:", processedQuestions.map((q: any) => ({
-              id: q.id,
-              type: q.type,
-              hasCorrectAnswer: q.correctAnswer !== undefined && q.correctAnswer !== null,
-              correctAnswer: q.correctAnswer,
-              points: q.points
-            })));
-            
+          
             setQuestions(processedQuestions);
             
             // Load settings
@@ -365,12 +346,6 @@ export default function StudentAssignmentTaking() {
     // Only count questions that don't require manual grading
     const totalQuestions = questions.filter(q => !q.requiresManualGrading).length;
 
-    console.log('📋 Starting score calculation based on JSON format:', {
-      totalQuestionsInAssignment: questions.length,
-      autoGradableQuestions: totalQuestions,
-      questionsWithAnswers: Object.keys(answers).length
-    });
-
     questions.forEach((question) => {
       const questionPoints = question.points || 0;
       // Add to total points only if question doesn't require manual grading
@@ -382,16 +357,8 @@ export default function StudentAssignmentTaking() {
       // Get correctAnswer directly from question object (loaded from JSON)
       const correctAnswer = question.correctAnswer;
 
-      // Log for debugging
-      console.log(`Grading question ${question.id}:`, {
-        type: question.type,
-        studentAnswer,
-        correctAnswer,
-        hasCorrectAnswer: correctAnswer !== undefined && correctAnswer !== null
-      });
-
+  
       if (question.requiresManualGrading) {
-        console.log(`Question ${question.id} requires manual grading, skipping`);
         return;
       }
 
@@ -413,22 +380,12 @@ export default function StudentAssignmentTaking() {
         case "multiple_choice":
           // For multiple choice, correctAnswer should be the option ID
           isCorrect = studentAnswer === correctAnswer;
-          console.log(`Question ${question.id} (multiple_choice): ${isCorrect ? '✓ CORRECT' : '✗ INCORRECT'}`, {
-            student: studentAnswer,
-            correct: correctAnswer
-          });
           break;
         case "true_false":
           // For true/false, correctAnswer can be boolean or string
           const studentBool = studentAnswer === true || studentAnswer === "true" || studentAnswer === "True" || studentAnswer === "TRUE";
           const correctBool = correctAnswer === true || correctAnswer === "true" || correctAnswer === "True" || correctAnswer === "TRUE";
           isCorrect = studentBool === correctBool;
-          console.log(`Question ${question.id} (true_false): ${isCorrect ? '✓ CORRECT' : '✗ INCORRECT'}`, {
-            student: studentAnswer,
-            correct: correctAnswer,
-            studentBool,
-            correctBool
-          });
           break;
         case "fill_in_the_blank":
           // For fill in the blank, check blanks array first, then fallback to correctAnswer
@@ -451,11 +408,6 @@ export default function StudentAssignmentTaking() {
             const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
             isCorrect = normalizedStudent === normalizedCorrect;
           }
-          console.log(`Question ${question.id} (fill_in_the_blank): ${isCorrect ? '✓ CORRECT' : '✗ INCORRECT'}`, {
-            student: studentAnswer,
-            correct: correctAnswer,
-            hasBlanks: !!(question.blanks && question.blanks.length > 0)
-          });
           break;
         case "matching":
           // For matching, use correctMatches from question.matching
@@ -471,7 +423,6 @@ export default function StudentAssignmentTaking() {
               isCorrect = allCorrect && studentMatchCount === correctMatchCount;
             }
           }
-          console.log(`Question ${question.id} (matching): ${isCorrect ? '✓ CORRECT' : '✗ INCORRECT'}`);
           break;
         default:
           console.log(`Question ${question.id} has unsupported type: ${question.type}, skipping`);
@@ -481,9 +432,7 @@ export default function StudentAssignmentTaking() {
       if (isCorrect) {
         totalScore += questionPoints;
         correctCount++;
-        console.log(`✓ Question ${question.id} is CORRECT! Earned ${questionPoints} points`);
       } else {
-        console.log(`✗ Question ${question.id} is INCORRECT. No points earned.`);
       }
     });
 
@@ -491,16 +440,6 @@ export default function StudentAssignmentTaking() {
       // Calculate score on 0-10 scale: (earned points / total points) * 10
       const percentageScore = (totalScore / totalPoints) * 10;
       const finalScore = Math.round(percentageScore * 100) / 100;
-      
-      console.log('📊 Detailed Score Calculation Summary:', {
-        totalQuestions,
-        answeredQuestions: answeredCount,
-        correctAnswers: correctCount,
-        earnedPoints: totalScore,
-        totalPoints,
-        percentage: `${((totalScore / totalPoints) * 100).toFixed(2)}%`,
-        finalScore: `${finalScore}/10`
-      });
       
       return {
         score: finalScore,
@@ -530,11 +469,6 @@ export default function StudentAssignmentTaking() {
     let answeredCount = 0;
     let correctCount = 0;
 
-    console.log('Starting score calculation...', {
-      totalQuestions: questions.length,
-      answeredQuestions: Object.keys(answers).length
-    });
-
     questions.forEach((question) => {
       const questionPoints = question.points || 0;
       // Add to total points only if question doesn't require manual grading
@@ -549,19 +483,16 @@ export default function StudentAssignmentTaking() {
 
       // Skip if question requires manual grading
       if (question.requiresManualGrading) {
-        console.log(`Question ${question.id} requires manual grading, skipping`);
         return;
       }
 
       // Check if correctAnswer exists in JSON
       if (correctAnswer === undefined || correctAnswer === null) {
-        console.warn(`Question ${question.id} does not have correctAnswer in JSON, skipping auto-grading`);
         return;
       }
 
       // Skip if no answer provided
       if (studentAnswer === undefined || studentAnswer === null || studentAnswer === "") {
-        console.log(`Question ${question.id} has no answer, skipping`);
         return;
       }
 
@@ -572,10 +503,7 @@ export default function StudentAssignmentTaking() {
         case "multiple_choice":
           // Compare option ID
           isCorrect = studentAnswer === correctAnswer;
-          console.log(`Question ${question.id} (multiple_choice): ${isCorrect ? 'CORRECT' : 'INCORRECT'}`, {
-            student: studentAnswer,
-            correct: correctAnswer
-          });
+     
           break;
 
         case "true_false":
@@ -583,10 +511,7 @@ export default function StudentAssignmentTaking() {
           const studentBool = studentAnswer === true || studentAnswer === "true" || studentAnswer === "True";
           const correctBool = correctAnswer === true || correctAnswer === "true" || correctAnswer === "True";
           isCorrect = studentBool === correctBool;
-          console.log(`Question ${question.id} (true_false): ${isCorrect ? 'CORRECT' : 'INCORRECT'}`, {
-            student: studentAnswer,
-            correct: correctAnswer
-          });
+       
           break;
 
         case "fill_in_the_blank":
@@ -612,10 +537,7 @@ export default function StudentAssignmentTaking() {
             const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
             isCorrect = normalizedStudent === normalizedCorrect;
           }
-          console.log(`Question ${question.id} (fill_in_the_blank): ${isCorrect ? 'CORRECT' : 'INCORRECT'}`, {
-            student: studentAnswer,
-            correct: correctAnswer
-          });
+      
           break;
 
         case "matching":
@@ -637,19 +559,16 @@ export default function StudentAssignmentTaking() {
               isCorrect = allCorrect && studentMatchCount === correctMatchCount;
             }
           }
-          console.log(`Question ${question.id} (matching): ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
           break;
 
         case "short_answer":
         case "essay":
         case "speaking":
           // These require manual grading, skip auto-grading
-          console.log(`Question ${question.id} (${question.type}) requires manual grading, skipping`);
           return;
 
         default:
           // Unknown question type, skip
-          console.log(`Question ${question.id} has unknown type: ${question.type}, skipping`);
           return;
       }
 
@@ -665,13 +584,6 @@ export default function StudentAssignmentTaking() {
       const percentageScore = (totalScore / totalPoints) * 10;
       finalScore = Math.round(percentageScore * 100) / 100; // Round to 2 decimal places
       
-      console.log('Score calculation completed:', {
-        totalPoints,
-        totalScore,
-        answeredCount,
-        correctCount,
-        finalScore: `${finalScore}/10`
-      });
     } else {
       console.log('No points available, returning 0');
       finalScore = 0;
@@ -785,18 +697,12 @@ export default function StudentAssignmentTaking() {
       const isListening = skillName.includes('listening');
       const isReadingOrListening = isReading || isListening;
       
-      console.log('Submitting assignment:', {
-        skillName: assignment?.skillName,
-        isReading,
-        isListening,
-        calculatedScore
-      });
-
       // Prepare submission data according to SubmitAssignmentRequest from backend controller
       const submissionData: any = {
         assignmentID: assignmentId,
         studentID: studentId,
       };
+      
 
       // For reading/listening assignments, include answers as JSON file
       if (isReadingOrListening) {
@@ -804,13 +710,7 @@ export default function StudentAssignmentTaking() {
         submissionData.contentType = 'application/json';
         
         // Include question data for grading purposes (especially for reading assignments)
-        const submissionContent = {
-          submittedAt: new Date().toISOString(),
-          answers: answersArray,
-          questions: questions, // Include question data for grading view
-        };
-        
-        submissionData.content = JSON.stringify(submissionContent);
+    
       } else {
         // For other assignments (writing, etc.), include fileName and content
         submissionData.fileName = 'answers.json';
@@ -822,24 +722,19 @@ export default function StudentAssignmentTaking() {
       // Backend expects decimal? (nullable decimal), so we send as number
       if (calculatedScore !== null && calculatedScore !== undefined) {
         submissionData.score = calculatedScore;
-        console.log(`✅ Including calculated score in submission: ${calculatedScore}/10`);
       } else {
-        console.log('⚠️ No score calculated (assignment may not be auto-gradable or no questions answered)');
         // For reading/listening, we should still try to calculate score even if isAutoGradable is false
         if (isReadingOrListening && questions.length > 0) {
-          console.log('⚠️ Attempting to calculate score for reading/listening assignment...');
           // Force calculate score for reading/listening even if isAutoGradable is false
           const forceCalculatedScore = calculateScore(true);
           if (forceCalculatedScore !== null && forceCalculatedScore !== undefined) {
             submissionData.score = forceCalculatedScore;
-            console.log(`✅ Force calculated score: ${forceCalculatedScore}/10`);
           }
         }
       }
 
       // Log final payload before sending
       console.log('📤 Final submission payload:', JSON.stringify(submissionData, null, 2));
-      console.log('📤 Payload includes score:', 'score' in submissionData ? `Yes (${submissionData.score})` : 'No');
 
       // Handle speaking assignment submission separately
       if (isSpeakingAssignment) {
@@ -872,7 +767,13 @@ export default function StudentAssignmentTaking() {
       } else {
         // Submit via API using the correct endpoint (/api/ACAD_Submissions/submit)
         const response = await api.submitAssignment(submissionData);
+        const submissionContent = {
+          submittedAt: new Date().toISOString(),
+          answers: answersArray,
+          questions: questions, // Include question data for grading view
+        };
         
+        submissionData.content = JSON.stringify(submissionContent);
         // If we have an uploadUrl, upload the content to Cloudflare
         if (response?.data?.uploadUrl && submissionData.content) {
           const uploadResponse = await fetch(response.data.uploadUrl, {
@@ -888,7 +789,6 @@ export default function StudentAssignmentTaking() {
             throw new Error(`Failed to upload file to Cloudflare: ${uploadResponse.status} ${uploadResponse.statusText} ${errorText}`);
           }
           
-          console.log('✅ Successfully uploaded answers file to Cloudflare R2');
         }
         
         // Check if backend returned a score in the response
@@ -1125,19 +1025,6 @@ export default function StudentAssignmentTaking() {
   const { passages, questionsWithoutPassage } = groupQuestionsByPassage();
   const hasMultiplePassages = passages.length > 1 || (passages.length > 0 && questionsWithoutPassage.length > 0);
   const currentContext = getCurrentQuestionContext();
-
-  // Debug logs
-  console.log("Assignment info:", {
-    isReading,
-    skillName: assignment.skillName,
-    passagesCount: passages.length,
-    questionsWithoutPassageCount: questionsWithoutPassage.length,
-    totalQuestions: questions.length
-  });
-  console.log("Passages:", passages.map(p => ({
-    passage: p.passage?.substring(0, 50) + "...",
-    questionsCount: p.questions.length
-  })));
 
   return (
       <div className="min-h-screen bg-neutral-50">
