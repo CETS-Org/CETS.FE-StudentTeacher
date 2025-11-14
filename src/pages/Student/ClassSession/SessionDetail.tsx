@@ -112,7 +112,7 @@ export default function SessionDetail() {
   const [selectedQuizReview, setSelectedQuizReview] = useState<{
     assignmentId: string;
     assignmentTitle: string;
-    dueDate: string;
+    dueAt: string;
     submission: any;
   } | null>(null);
 
@@ -417,10 +417,10 @@ export default function SessionDetail() {
   };
 
   // Check if assignment is past due date
-  const isPastDue = (dueDate: string) => {
+  const isPastDue = (dueAt: string) => {
     try {
       const now = new Date();
-      const due = new Date(dueDate);
+      const due = new Date(dueAt);
       return now > due;
     } catch {
       return false;
@@ -1181,7 +1181,7 @@ export default function SessionDetail() {
                         {filteredAssignments.map((assignment) => {
                           const submission = assignment.submissions?.[0];
                           const hasSubmittedFile = !!(submission && submission.storeUrl);
-                          const pastDue = isPastDue(assignment.dueDate);
+                          const pastDue = isPastDue(assignment.dueAt);
                           const status = submission?.score != null ? "graded" : hasSubmittedFile ? "submitted" : pastDue ? "not_submitted" : "pending";
                         const canSubmit = status === "pending" || (status === "submitted" && !pastDue);
                         return (
@@ -1229,7 +1229,7 @@ export default function SessionDetail() {
                                       ? 'text-red-600' 
                                      : 'text-green-600'
                                   }`}>
-                                    Due: {formatDateTime(assignment.dueDate)}
+                                    Due: {formatDateTime(assignment.dueAt)}
                                   </span>
                                 </div>
                               </div>
@@ -1314,7 +1314,7 @@ export default function SessionDetail() {
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-neutral-500" />
                               <span>
-                                Due: {formatDateTime(assignment.dueDate)}
+                                Due: {formatDateTime(assignment.dueAt)}
                               </span>
                             </div>
                           </div>
@@ -1405,7 +1405,7 @@ export default function SessionDetail() {
                                   setSelectedQuizReview({
                                     assignmentId: assignment.id,
                                     assignmentTitle: assignment.title,
-                                    dueDate: assignment.dueDate,
+                                    dueAt: assignment.dueAt,
                                     submission: submission
                                   });
                                   setQuizReviewOpen(true);
@@ -1704,7 +1704,7 @@ export default function SessionDetail() {
             }}
             assignmentId={selectedQuizReview.assignmentId}
             assignmentTitle={selectedQuizReview.assignmentTitle}
-            dueDate={selectedQuizReview.dueDate}
+            dueAt={selectedQuizReview.dueAt}
             submission={selectedQuizReview.submission}
           />
         )}
@@ -1716,7 +1716,7 @@ export default function SessionDetail() {
               id: writingAssignment.id,
               title: writingAssignment.title,
               description: writingAssignment.description || "",
-              dueDate: writingAssignment.dueDate,
+              dueAt: writingAssignment.dueAt,
               attachmentUrl: writingAssignment.fileUrl || undefined,
             }}
             existingContent=""

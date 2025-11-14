@@ -47,7 +47,7 @@ interface AssignmentDetails {
   id: string;
   title: string;
   description: string;
-  dueDate: string;
+  dueAt: string;
   skillID: string | null;
   skillName: string | null;
   totalPoints: number;

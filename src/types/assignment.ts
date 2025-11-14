@@ -86,7 +86,7 @@ export interface CreateSpeakingAssignmentRequest {
   teacherId: string;
   title: string;
   description?: string;
-  dueDate: string;
+  dueAt: string;
   questionJson: string; // JSON string from frontend
   skillID?: string;
   audioUrl?: string;
@@ -104,7 +104,7 @@ export interface SpeakingAssignmentFromAPI {
   teacherId: string;
   title: string;
   description?: string;
-  dueDate: string;
+  dueAt: string;
   createdAt: string;
   skillID?: string;
   skillName?: string;
@@ -123,7 +123,7 @@ export interface CreateAssignmentRequest {
   teacherId: string;
   title: string;
   description: string;
-  dueDate: string;
+  dueAt: string;
   skillID?: string | null;
   contentType: string;
   fileName: string;
@@ -134,7 +134,7 @@ export interface UpdateAssignmentRequest {
   id: string;
   title: string;
   description: string;
-  dueDate: string;
+  dueAt: string;
   skillID?: string | null;
   storeUrl?: string;
   contentType?: string;
@@ -238,7 +238,7 @@ export interface CreateQuizAssignmentRequest {
   teacherId: string;
   title: string;
   description?: string;
-  dueDate: string;
+  dueAt: string;
   questionJson: string; // JSON string from frontend
   skillID?: string;
   audioUrl?: string;
@@ -252,7 +252,7 @@ export interface QuizAssignmentFromAPI {
   teacherId: string;
   title: string;
   description?: string;
-  dueDate: string;
+  dueAt: string;
   createdAt: string;
   skillID?: string;
   skillName?: string;

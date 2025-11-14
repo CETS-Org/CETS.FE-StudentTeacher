@@ -57,7 +57,7 @@ export interface MeetingAssignment {
   description: string | null;
   fileUrl?: string | null;
   questionUrl?: string | null;
-  dueDate: string;
+  dueAt: string;
   createdAt: string;
   submissions: AssignmentSubmission[];
   skillID?: string | null;

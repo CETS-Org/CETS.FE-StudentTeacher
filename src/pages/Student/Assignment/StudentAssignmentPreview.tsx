@@ -30,7 +30,7 @@ interface AssignmentDetails {
   id: string;
   title: string;
   description: string;
-  dueDate: string;
+  dueAt: string;
   skillID: string | null;
   skillName: string | null;
   totalPoints: number;
@@ -127,7 +127,7 @@ export default function StudentAssignmentPreview() {
           id: assignmentData.id,
           title: assignmentData.title,
           description: assignmentData.description || "",
-          dueDate: assignmentData.dueDate,
+          dueAt: assignmentData.dueAt,
           skillID: assignmentData.skillID,
           skillName: assignmentData.skillName,
           totalPoints: assignmentData.totalPoints || 0,
@@ -243,7 +243,7 @@ export default function StudentAssignmentPreview() {
     );
   }
 
-  const isDueDatePassed = new Date(assignment.dueDate) < new Date();
+  const isDueDatePassed = new Date(assignment.dueAt) < new Date();
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
@@ -284,7 +284,7 @@ export default function StudentAssignmentPreview() {
               <AlertCircle className="w-5 h-5 text-red-600" />
               <div>
                 <p className="font-semibold text-red-900">Assignment Overdue</p>
-                <p className="text-sm text-red-700">This assignment was due on {formatDate(assignment.dueDate)}</p>
+                <p className="text-sm text-red-700">This assignment was due on {formatDate(assignment.dueAt)}</p>
               </div>
             </div>
           </Card>
@@ -453,7 +453,7 @@ export default function StudentAssignmentPreview() {
                   <div>
                     <p className="text-sm text-neutral-600 mb-1">Due Date</p>
                     <p className={`text-sm font-medium ${isDueDatePassed ? 'text-red-600' : 'text-neutral-900'}`}>
-                      {formatDate(assignment.dueDate)}
+                      {formatDate(assignment.dueAt)}
                     </p>
                   </div>
 

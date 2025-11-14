@@ -26,7 +26,7 @@ interface WritingAssignmentEditorProps {
     id: string;
     title: string;
     description: string;
-    dueDate: string;
+    dueAt: string;
     attachmentUrl?: string;
   };
   existingContent?: string;
@@ -183,7 +183,7 @@ export default function WritingAssignmentEditor({
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text(`Due Date: ${new Date(assignment.dueDate).toLocaleDateString()}`, margin, yPosition);
+    doc.text(`Due Date: ${new Date(assignment.dueAt).toLocaleDateString()}`, margin, yPosition);
     yPosition += lineHeight;
     doc.text(`Word Count: ${wordCount}`, margin, yPosition);
     yPosition += lineHeight * 2;
@@ -398,7 +398,7 @@ export default function WritingAssignmentEditor({
             <div>
               <h1 className="text-xl font-bold">{assignment.title}</h1>
               <p className="text-sm text-primary-100">
-                Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                Due: {new Date(assignment.dueAt).toLocaleDateString()}
               </p>
             </div>
           </div>

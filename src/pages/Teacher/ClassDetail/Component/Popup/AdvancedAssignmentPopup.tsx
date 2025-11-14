@@ -110,10 +110,16 @@ export interface AssignmentQuestionData {
   version: string;
   questions: Question[];
   settings?: {
+    // Timing & grading
     timeLimitMinutes?: number;
     isAutoGradable?: boolean;
+    totalPoints?: number;
+
+    // Answer visibility
     showAnswersAfterSubmission?: boolean;
     showAnswersAfterDueDate?: boolean;
+
+    // Speaking-specific
     allowMultipleRecordings?: boolean;
     maxRecordings?: number;
   };
@@ -138,7 +144,7 @@ type Props = {
   onSubmit: (assignmentData: {
     title: string;
     description: string;
-    dueDate: string;
+    dueAt: string;
     skillID: string | null;
     assignmentType: string;
     totalPoints: number;
@@ -162,6 +168,14 @@ type Props = {
 };
 
 type Step = "basic" | "questions" | "settings" | "preview";
+
+interface BuildQuestionDataArgs {
+  questions: Question[];
+  audioFileUrls?: Map<File, string>;
+  timeLimitMinutes?: number;
+  isAutoGradable: boolean;
+  answerVisibility: "immediately" | "after_due_date" | "never";
+}
 
 export default function AdvancedAssignmentPopup({
   open,
@@ -210,6 +224,8 @@ export default function AdvancedAssignmentPopup({
   // Files
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [originalQuestionJson, setOriginalQuestionJson] = useState<string | null>(null);
+  const [initialQuestionUrl, setInitialQuestionUrl] = useState<string | null>(null);
   
   // Find the selected skill object
   const selectedSkill = skills.find(s => s.lookUpId === selectedSkillId);
@@ -238,6 +254,7 @@ export default function AdvancedAssignmentPopup({
       // Determine assignment type
       const type = editAssignment.assignmentType || (editAssignment.questionUrl ? "Quiz" : "Homework");
       setAssignmentType(type);
+      setInitialQuestionUrl(editAssignment.questionUrl || null);
       
       // Load question data if it's a Quiz or Speaking assignment
       if ((type === "Quiz" || type === "Speaking") && editAssignment.questionUrl) {
@@ -256,10 +273,12 @@ export default function AdvancedAssignmentPopup({
           const questionData = await questionResponse.json();
           console.log("Loaded question data:", questionData);
           
+          let formattedQuestions: Question[] = [];
+          
           // Set questions - ensure they're properly formatted
           if (questionData.questions && Array.isArray(questionData.questions)) {
             // Ensure all questions have required fields
-            const formattedQuestions = questionData.questions.map((q: any) => ({
+            formattedQuestions = questionData.questions.map((q: any) => ({
               ...q,
               id: q.id || `q-${Date.now()}-${q.order}`,
               type: q.type || "multiple_choice",
@@ -271,6 +290,7 @@ export default function AdvancedAssignmentPopup({
             setQuestions(formattedQuestions);
           } else {
             console.warn("No questions found in question data:", questionData);
+            setQuestions([]);
           }
           
           // Set settings
@@ -281,15 +301,11 @@ export default function AdvancedAssignmentPopup({
             if (questionData.settings.timeLimitMinutes !== undefined) {
               setTimeLimitMinutes(questionData.settings.timeLimitMinutes);
             }
-            if (questionData.settings.maxAttempts !== undefined) {
-              setMaxAttempts(questionData.settings.maxAttempts);
-            }
             if (questionData.settings.isAutoGradable !== undefined) {
               setIsAutoGradable(questionData.settings.isAutoGradable);
             }
-            if (questionData.settings.answerVisibility) {
-              setAnswerVisibility(questionData.settings.answerVisibility);
-            }
+            const derivedVisibility = deriveAnswerVisibility(questionData.settings);
+            setAnswerVisibility(derivedVisibility);
             if (questionData.settings.allowBackNavigation !== undefined) {
               setAllowBackNavigation(questionData.settings.allowBackNavigation);
             }
@@ -299,15 +315,28 @@ export default function AdvancedAssignmentPopup({
             if (questionData.settings.showQuestionNumbers !== undefined) {
               setShowQuestionNumbers(questionData.settings.showQuestionNumbers);
             }
-            if (questionData.settings.autoSubmit !== undefined) {
-              setAutoSubmit(questionData.settings.autoSubmit);
-            }
             if (questionData.settings.allowMultipleRecordings !== undefined) {
               setAllowMultipleRecordings(questionData.settings.allowMultipleRecordings);
             }
             if (questionData.settings.maxRecordings !== undefined) {
               setMaxRecordings(questionData.settings.maxRecordings);
             }
+
+            const existingPayload = buildQuestionDataPayload({
+              questions: formattedQuestions,
+              audioFileUrls: undefined,
+              timeLimitMinutes: questionData.settings.timeLimitMinutes,
+              isAutoGradable: questionData.settings.isAutoGradable ?? true,
+              answerVisibility: derivedVisibility,
+            });
+
+            if (existingPayload) {
+              setOriginalQuestionJson(serializeQuestionData(existingPayload));
+            } else {
+              setOriginalQuestionJson(null);
+            }
+          } else {
+            setOriginalQuestionJson(null);
           }
         } catch (err) {
           console.error("Error loading question data:", err);
@@ -378,6 +407,8 @@ export default function AdvancedAssignmentPopup({
     setFiles([]);
     setError(null);
     setCurrentStep("basic");
+    setOriginalQuestionJson(null);
+    setInitialQuestionUrl(null);
   };
 
   const handleAddQuestion = (question: Question) => {
@@ -467,10 +498,25 @@ export default function AdvancedAssignmentPopup({
     return `${config.storagePublicUrl}${url.startsWith('/') ? url : '/' + url}`;
   };
 
-  const generateQuestionData = (audioFileUrls?: Map<File, string>): AssignmentQuestionData | null => {
-    if (questions.length === 0) return null;
+  const deriveAnswerVisibility = (
+    settings?: AssignmentQuestionData["settings"]
+  ): "immediately" | "after_due_date" | "never" => {
+    if (!settings) return "after_due_date";
+    if (settings.showAnswersAfterSubmission) return "immediately";
+    if (settings.showAnswersAfterDueDate) return "after_due_date";
+    return "never";
+  };
 
-    const sortedQuestions = questions.sort((a, b) => a.order - b.order);
+  const buildQuestionDataPayload = ({
+    questions: sourceQuestions,
+    audioFileUrls,
+    timeLimitMinutes: timeLimit,
+    isAutoGradable: autoGradable,
+    answerVisibility,
+  }: BuildQuestionDataArgs): AssignmentQuestionData | null => {
+    if (sourceQuestions.length === 0) return null;
+
+    const sortedQuestions = [...sourceQuestions].sort((a, b) => a.order - b.order);
 
     let readingPassage: string | undefined;
     let audioUrl: string | undefined;
@@ -478,11 +524,9 @@ export default function AdvancedAssignmentPopup({
     const passageCounts = new Map<string, number>();
     const audioCounts = new Map<string, number>();
 
-    // Process questions and replace audio files with URLs
-    const processedQuestions = sortedQuestions.map(q => {
+    const processedQuestions = sortedQuestions.map((q) => {
       const question = { ...q };
-      
-      // Handle audio files - replace with uploaded URLs
+
       if ((question as any)._audioFile && audioFileUrls) {
         const uploadedUrl = audioFileUrls.get((question as any)._audioFile);
         if (uploadedUrl) {
@@ -490,7 +534,6 @@ export default function AdvancedAssignmentPopup({
           question.reference = uploadedUrl;
         }
       } else {
-        // Normalize existing audio URLs (convert filePath to full URL if needed)
         const existingAudio = (question as any)._audioUrl || question.reference;
         if (existingAudio) {
           const normalizedAudio = normalizeAudioUrl(existingAudio);
@@ -511,9 +554,6 @@ export default function AdvancedAssignmentPopup({
         audioCounts.set(audio, (audioCounts.get(audio) || 0) + 1);
       }
 
-      // Keep _passage and _audioUrl in questions for grouping multiple passages/audios
-      // Only clean up _audioFile (temporary file object that can't be serialized)
-      // Also clean up _passage if it's undefined, null, or empty
       const { _audioFile, ...cleanedQ } = question as any;
       if (!cleanedQ._passage || !cleanedQ._passage.trim()) {
         delete cleanedQ._passage;
@@ -522,13 +562,10 @@ export default function AdvancedAssignmentPopup({
     });
 
     if (passageCounts.size > 0) {
-      readingPassage = Array.from(passageCounts.entries())
-        .sort((a, b) => b[1] - a[1])[0][0];
+      readingPassage = Array.from(passageCounts.entries()).sort((a, b) => b[1] - a[1])[0][0];
     }
     if (audioCounts.size > 0) {
-      const mostCommonAudio = Array.from(audioCounts.entries())
-        .sort((a, b) => b[1] - a[1])[0][0];
-      // Normalize audio URL (ensure it's a full URL)
+      const mostCommonAudio = Array.from(audioCounts.entries()).sort((a, b) => b[1] - a[1])[0][0];
       audioUrl = normalizeAudioUrl(mostCommonAudio);
     }
 
@@ -536,8 +573,8 @@ export default function AdvancedAssignmentPopup({
       version: "1.0",
       questions: processedQuestions,
       settings: {
-        ...(timeLimitMinutes !== undefined && { timeLimitMinutes }),
-        isAutoGradable,
+        ...(timeLimit !== undefined && { timeLimitMinutes: timeLimit }),
+        isAutoGradable: autoGradable,
         showAnswersAfterSubmission: answerVisibility === "immediately",
         showAnswersAfterDueDate: answerVisibility === "after_due_date",
       },
@@ -548,6 +585,50 @@ export default function AdvancedAssignmentPopup({
         },
       }),
     };
+  };
+
+  const generateQuestionData = (audioFileUrls?: Map<File, string>): AssignmentQuestionData | null =>
+    buildQuestionDataPayload({
+      questions,
+      audioFileUrls,
+      timeLimitMinutes,
+      isAutoGradable,
+      answerVisibility,
+    });
+
+  const serializeQuestionData = (data: AssignmentQuestionData): string => {
+    const normalizedQuestions = data.questions.map((question) => {
+      const normalized = { ...question };
+      if (normalized.reference) {
+        normalized.reference = normalizeAudioUrl(normalized.reference) || normalized.reference;
+      }
+      return normalized;
+    });
+
+    const normalizedMedia = data.media
+      ? {
+          ...data.media,
+          ...(data.media.audioUrl && {
+            audioUrl: normalizeAudioUrl(data.media.audioUrl) || data.media.audioUrl,
+          }),
+        }
+      : undefined;
+
+    const payload: Record<string, unknown> = {
+      version: data.version,
+      questions: normalizedQuestions,
+      settings: data.settings,
+    };
+
+    if (data.readingPassage) {
+      payload.readingPassage = data.readingPassage;
+    }
+
+    if (normalizedMedia) {
+      payload.media = normalizedMedia;
+    }
+
+    return JSON.stringify(payload);
   };
 
   const validateStep = (step: Step): boolean => {
@@ -673,7 +754,7 @@ export default function AdvancedAssignmentPopup({
             id: editAssignment.assignmentId,
             title,
             description: description || "",
-            dueDate: new Date(dueDate).toISOString(),
+            dueAt: new Date(dueDate).toISOString(),
             skillID: selectedSkillId || null,
             assignmentType: assignmentType,
           };
@@ -712,7 +793,7 @@ export default function AdvancedAssignmentPopup({
             onSubmit({
               title,
               description: description || "",
-              dueDate: new Date(dueDate).toISOString(),
+              dueAt: new Date(dueDate).toISOString(),
               skillID: selectedSkillId,
               assignmentType,
               totalPoints,
@@ -740,7 +821,7 @@ export default function AdvancedAssignmentPopup({
           teacherId,
           title,
           description: description || "",
-          dueDate: new Date(dueDate).toISOString(),
+          dueAt: new Date(dueDate).toISOString(),
           skillID: selectedSkillId || null,
           contentType: file.type,
           fileName: file.name.replace(/\.[^/.]+$/, ""),
@@ -770,7 +851,7 @@ export default function AdvancedAssignmentPopup({
             onSubmit({
               title,
               description: description || "",
-              dueDate: new Date(dueDate).toISOString(),
+              dueAt: new Date(dueDate).toISOString(),
               skillID: selectedSkillId,
               assignmentType,
               totalPoints,
@@ -846,13 +927,7 @@ export default function AdvancedAssignmentPopup({
         }
 
         // Serialize question data to JSON string
-        const questionJson = JSON.stringify({
-          version: questionData.version,
-          questions: questionData.questions,
-          settings: questionData.settings,
-          ...(questionData.readingPassage && { readingPassage: questionData.readingPassage }),
-          ...(questionData.media && { media: questionData.media }),
-        });
+        const questionJson = serializeQuestionData(questionData);
 
         if (isEditMode) {
           // Update existing quiz assignment
@@ -862,44 +937,33 @@ export default function AdvancedAssignmentPopup({
           }
           
           // Generate updated question JSON with normalized URLs
-          const updatedQuestionJson = JSON.stringify({
-            version: questionData.version,
-            questions: questionData.questions.map(q => {
-              // Ensure audio URLs are normalized
-              if (q.reference) {
-                q.reference = normalizeAudioUrl(q.reference) || q.reference;
-              }
-              return q;
-            }),
-            settings: questionData.settings,
-            ...(questionData.readingPassage && { readingPassage: questionData.readingPassage }),
-            ...(questionData.media && {
-              media: {
-                ...questionData.media,
-                audioUrl: questionData.media.audioUrl ? normalizeAudioUrl(questionData.media.audioUrl) : undefined,
-              },
-            }),
-          });
-          
-          // Get presigned URL for uploading updated JSON (without creating an assignment)
-          const jsonFileName = `quiz-assignment-${editAssignment.assignmentId}.json`;
-          const uploadUrlResponse = await getQuestionJsonUploadUrl(jsonFileName);
-          const uploadUrlData = uploadUrlResponse.data;
-          
+          const updatedQuestionJson = questionJson;
+
+          const questionJsonChanged = !originalQuestionJson || updatedQuestionJson !== originalQuestionJson;
+
           let newQuestionFilePath: string | null = null;
-          
-          if (uploadUrlData && typeof uploadUrlData === 'object' && 'uploadUrl' in uploadUrlData && 'filePath' in uploadUrlData) {
-            const { uploadUrl, filePath } = uploadUrlData as { uploadUrl: string; filePath: string };
-            
-            // Upload updated JSON to presigned URL
-            const jsonUploadResponse = await uploadJsonToPresignedUrl(uploadUrl, updatedQuestionJson);
-            
-            if (!jsonUploadResponse.ok) {
-              throw new Error(`JSON upload failed with status: ${jsonUploadResponse.status}`);
+
+          if (questionJsonChanged) {
+            const jsonFileName = `quiz-assignment-${editAssignment.assignmentId}.json`;
+            const uploadUrlResponse = await getQuestionJsonUploadUrl(jsonFileName);
+            const uploadUrlData = uploadUrlResponse.data;
+
+            if (
+              uploadUrlData &&
+              typeof uploadUrlData === "object" &&
+              "uploadUrl" in uploadUrlData &&
+              "filePath" in uploadUrlData
+            ) {
+              const { uploadUrl, filePath } = uploadUrlData as { uploadUrl: string; filePath: string };
+
+              const jsonUploadResponse = await uploadJsonToPresignedUrl(uploadUrl, updatedQuestionJson);
+
+              if (!jsonUploadResponse.ok) {
+                throw new Error(`JSON upload failed with status: ${jsonUploadResponse.status}`);
+              }
+
+              newQuestionFilePath = filePath;
             }
-            
-            // Get the file path from the response
-            newQuestionFilePath = filePath;
           }
           
           // Update basic assignment info with new question file path
@@ -907,14 +971,15 @@ export default function AdvancedAssignmentPopup({
             id: editAssignment.assignmentId,
             title,
             description: description || "",
-            dueDate: new Date(dueDate).toISOString(),
+            dueAt: new Date(dueDate).toISOString(),
             skillID: selectedSkillId || null,
             assignmentType: assignmentType,
           };
           
-          // Include question file path if we have it
-          if (newQuestionFilePath) {
-            updateData.questionUrl = newQuestionFilePath;
+          // Include question file path: prefer newly uploaded path, otherwise keep original.
+          const questionUrlToPersist = newQuestionFilePath || initialQuestionUrl;
+          if (questionUrlToPersist) {
+            updateData.questionUrl = questionUrlToPersist;
           }
           
           await updateAssignment(editAssignment.assignmentId, updateData);
@@ -925,7 +990,7 @@ export default function AdvancedAssignmentPopup({
             onSubmit({
               title,
               description: description || "",
-              dueDate: new Date(dueDate).toISOString(),
+              dueAt: new Date(dueDate).toISOString(),
               skillID: selectedSkillId,
               assignmentType,
               totalPoints,
@@ -946,7 +1011,7 @@ export default function AdvancedAssignmentPopup({
           teacherId,
           title,
           description: description || undefined,
-          dueDate: new Date(dueDate).toISOString(),
+          dueAt: new Date(dueDate).toISOString(),
           questionJson,
           skillID: selectedSkillId || undefined,
         };
@@ -975,7 +1040,7 @@ export default function AdvancedAssignmentPopup({
             onSubmit({
               title,
               description: description || "",
-              dueDate: new Date(dueDate).toISOString(),
+              dueAt: new Date(dueDate).toISOString(),
               skillID: selectedSkillId,
               assignmentType,
               totalPoints,
@@ -1033,7 +1098,7 @@ export default function AdvancedAssignmentPopup({
             id: editAssignment.assignmentId,
             title,
             description: description || "",
-            dueDate: new Date(dueDate).toISOString(),
+            dueAt: new Date(dueDate).toISOString(),
             skillID: selectedSkillId || null,
             assignmentType: assignmentType,
           };
@@ -1049,7 +1114,7 @@ export default function AdvancedAssignmentPopup({
             onSubmit({
               title,
               description: description || "",
-              dueDate: new Date(dueDate).toISOString(),
+              dueAt: new Date(dueDate).toISOString(),
               skillID: selectedSkillId,
               assignmentType,
               totalPoints,
@@ -1088,7 +1153,7 @@ export default function AdvancedAssignmentPopup({
           teacherId,
           title,
           description,
-          dueDate: new Date(dueDate).toISOString(),
+          dueAt: new Date(dueDate).toISOString(),
           questionJson: JSON.stringify(questionData), // Serialize to JSON string
           skillID: selectedSkillId || undefined,
         };
@@ -1128,7 +1193,7 @@ export default function AdvancedAssignmentPopup({
               onSubmit({
                 title,
                 description: description || "",
-                dueDate: new Date(dueDate).toISOString(),
+                dueAt: new Date(dueDate).toISOString(),
                 skillID: selectedSkillId,
                 assignmentType,
                 totalPoints,
@@ -1198,7 +1263,7 @@ export default function AdvancedAssignmentPopup({
           teacherId,
           title,
           description,
-          dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
+          dueAt: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
           questionJson: JSON.stringify(questionData), // Serialize to JSON string
           skillID: selectedSkillId || undefined,
         };
@@ -1248,7 +1313,7 @@ export default function AdvancedAssignmentPopup({
       onSubmit({
         title,
         description,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
+        dueAt: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
         skillID: selectedSkillId,
         assignmentType,
         totalPoints,

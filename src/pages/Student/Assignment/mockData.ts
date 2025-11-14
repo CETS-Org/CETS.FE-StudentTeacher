@@ -22,7 +22,7 @@ export const mockAssignmentDetails = {
   id: "assignment-123",
   title: "English Language Skills Assessment",
   description: "This assignment tests your understanding of various English language skills including reading comprehension, vocabulary, and grammar.",
-  dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+  dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
   skillID: "skill-123",
   skillName: "Reading Comprehension",
   totalPoints: 100,
@@ -152,10 +152,7 @@ export const mockAssignmentQuestionData: AssignmentQuestionData = {
   version: "1.0",
   questions: mockQuestions,
   settings: {
-    shuffleQuestions: false,
-    allowBackNavigation: true,
-    showProgress: true,
-    showQuestionNumbers: true,
+    timeLimitMinutes: mockAssignmentDetails.timeLimitMinutes,
   },
   media: {
     audioUrl: "https://example.com/audio.mp3",

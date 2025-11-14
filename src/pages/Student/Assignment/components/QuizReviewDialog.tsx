@@ -27,7 +27,7 @@ interface ExtendedSettings {
   timeLimitMinutes?: number;
   showAnswersAfterSubmission?: boolean;
   showAnswersAfterDueDate?: boolean;
-  dueDate?: string;
+  dueAt?: string;
 }
 
 interface QuizReviewDialogProps {
@@ -35,7 +35,7 @@ interface QuizReviewDialogProps {
   onClose: () => void;
   assignmentId: string;
   assignmentTitle: string;
-  dueDate?: string;
+  dueAt?: string;
   submission: {
     id: string;
     score: number | null;
@@ -56,7 +56,7 @@ export default function QuizReviewDialog({
   onClose,
   assignmentId,
   assignmentTitle,
-  dueDate,
+  dueAt,
   submission,
 }: QuizReviewDialogProps) {
   const [loading, setLoading] = useState(true);
@@ -176,9 +176,9 @@ export default function QuizReviewDialog({
     if (showAnswersAfterSubmission) return true;
     
     // Check if answers can be shown after due date
-    if (showAnswersAfterDueDate && dueDate) {
+    if (showAnswersAfterDueDate && dueAt) {
       const now = new Date();
-      const dueDateObj = new Date(dueDate);
+      const dueDateObj = new Date(dueAt);
       return now > dueDateObj;
     }
     

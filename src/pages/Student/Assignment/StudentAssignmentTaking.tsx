@@ -47,7 +47,7 @@ interface AssignmentDetails {
   id: string;
   title: string;
   description: string;
-  dueDate: string;
+  dueAt: string;
   skillID: string | null;
   skillName: string | null;
   assignmentType?: string | null;
@@ -147,7 +147,7 @@ export default function StudentAssignmentTaking() {
           id: assignmentData.id,
           title: assignmentData.title,
           description: assignmentData.description || "",
-          dueDate: assignmentData.dueDate,
+          dueAt: assignmentData.dueAt,
           skillID: assignmentData.skillID,
           skillName: assignmentData.skillName,
           assignmentType: assignmentData.assignmentType || null,
@@ -802,7 +802,15 @@ export default function StudentAssignmentTaking() {
       if (isReadingOrListening) {
         submissionData.fileName = 'answers.json';
         submissionData.contentType = 'application/json';
-        submissionData.content = JSON.stringify(answersArray);
+        
+        // Include question data for grading purposes (especially for reading assignments)
+        const submissionContent = {
+          submittedAt: new Date().toISOString(),
+          answers: answersArray,
+          questions: questions, // Include question data for grading view
+        };
+        
+        submissionData.content = JSON.stringify(submissionContent);
       } else {
         // For other assignments (writing, etc.), include fileName and content
         submissionData.fileName = 'answers.json';
