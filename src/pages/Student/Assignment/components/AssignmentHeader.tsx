@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Save, Send, Headphones, BookOpen, PenTool, MessageSquare, FileText, Mic, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, Send, Headphones, BookOpen, PenTool, MessageSquare, FileText, Mic, AlertTriangle, Clock } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 
@@ -12,6 +12,9 @@ interface AssignmentHeaderProps {
   onSave?: () => void;
   onSubmit: () => void;
   canSubmit: boolean;
+  timeRemaining?: number | null;
+  timeLimitSeconds?: number | null;
+  formatTime?: (seconds: number | null) => string;
 }
 
 /**
@@ -27,6 +30,9 @@ export default function AssignmentHeader({
   onSave,
   onSubmit,
   canSubmit,
+  timeRemaining,
+  timeLimitSeconds,
+  formatTime,
 }: AssignmentHeaderProps) {
   const [showExitDialog, setShowExitDialog] = useState(false);
 
@@ -74,12 +80,20 @@ export default function AssignmentHeader({
             </div>
           </div>
 
-          {/* Right: Save status and submit button */}
+          {/* Right: Timer, Save status and submit button */}
           <div className="flex items-center gap-4">
             {lastSaved && (
-              <span className="text-sm text-neutral-500">
+              <span className="text-sm text-neutral-400">
                 Last saved: {lastSaved.toLocaleTimeString()}
               </span>
+            )}
+            {timeRemaining != null && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-red-100">
+                <Clock className="w-4 h-4 text-red-600" />
+                <span className="text-sm font-semibold text-red-600 tracking-wide">
+                  {formatTime ? formatTime(timeRemaining) : `${Math.max(0, Math.ceil(timeRemaining / 60))} min`}
+                </span>
+              </div>
             )}
             {onSave && (
               <Button

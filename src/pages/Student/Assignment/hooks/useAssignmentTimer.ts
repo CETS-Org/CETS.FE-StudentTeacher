@@ -25,10 +25,14 @@ export function useAssignmentTimer({
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize timer
+  // Initialize timer whenever time limit changes
   useEffect(() => {
     if (timeLimitMinutes && timeLimitMinutes > 0) {
       setTimeRemaining(timeLimitMinutes * 60);
+      setIsTimerRunning(true);
+    } else {
+      setTimeRemaining(null);
+      setIsTimerRunning(false);
     }
   }, [timeLimitMinutes]);
 

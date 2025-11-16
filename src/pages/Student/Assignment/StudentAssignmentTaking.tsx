@@ -80,6 +80,7 @@ export default function StudentAssignmentTaking() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialTimeLimit, setInitialTimeLimit] = useState<number | null>(null); // Store initial time limit
+  const [effectiveTimeLimitMinutes, setEffectiveTimeLimitMinutes] = useState<number | null>(null);
   const [showTimeWarning, setShowTimeWarning] = useState(false); // Show warning when time is running out
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -108,12 +109,19 @@ export default function StudentAssignmentTaking() {
 
   // Use refactored hooks
   const { timeRemaining, isTimerRunning, startTimer, stopTimer, formatTime } = useAssignmentTimer({
-    timeLimitMinutes: assignment?.timeLimitMinutes,
+    timeLimitMinutes: effectiveTimeLimitMinutes ?? undefined,
     onTimeUp: () => {
       setShowTimeWarning(true);
       handleSubmit(true); // Force submit when time is up
     }
   });
+
+  const formatTimeSafe = useCallback((seconds: number | null) => {
+    if (seconds === null) {
+      return "--:--";
+    }
+    return formatTime(seconds);
+  }, [formatTime]);
 
   const { questionAudioPlaying, questionAudioRefs, toggleQuestionAudio, normalizeAudioUrl } = useQuestionAudio();
 
@@ -220,7 +228,10 @@ export default function StudentAssignmentTaking() {
         if (timeLimitToUse) {
           const timeInSeconds = timeLimitToUse * 60;
           setInitialTimeLimit(timeInSeconds); // Store initial time limit for progress calculation
-          startTimer(); // Start the timer using the hook
+          setEffectiveTimeLimitMinutes(timeLimitToUse);
+        } else {
+          setInitialTimeLimit(null);
+          setEffectiveTimeLimitMinutes(null);
         }
 
       } catch (err: any) {
@@ -1038,6 +1049,9 @@ export default function StudentAssignmentTaking() {
           onSave={saveAnswers}
           onSubmit={() => handleSubmit(false)}
           canSubmit={!submitting}
+          timeRemaining={timeRemaining}
+          timeLimitSeconds={initialTimeLimit}
+          formatTime={formatTimeSafe}
         />
 
         {/* Time Warning Banner */}
