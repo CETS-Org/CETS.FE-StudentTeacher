@@ -2,17 +2,19 @@ import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { 
   Clock,
-  Package
+  ArrowLeft
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Button from "@/components/ui/Button";
 
-import ClassReservationsList from "./components/ClassReservationsList";
+import PaymentHistoryList from "./components/PaymentHistoryList";
 
-export default function ChoosePaidItem() {
+export default function PaymentHistory() {
   const navigate = useNavigate();
 
   const breadcrumbItems = [
-    { label: "Class Reservations" }
+    { label: "Class Reservations", href: "/student/choose-paid-item" },
+    { label: "Payment History" }
   ];
 
   return (
@@ -20,24 +22,24 @@ export default function ChoosePaidItem() {
       <Breadcrumbs items={breadcrumbItems} />
       
       <PageHeader
-        title="Class Reservations"
-        description="View and manage your reserved course packages"
-        icon={<Package className="w-5 h-5 text-white" />}
+        title="Payment History"
+        description="View all your payment transactions and invoices"
+        icon={<Clock className="w-5 h-5 text-white" />}
         controls={[
           {
             type: 'button',
-            label: 'Payment History',
+            label: 'Back to Reservations',
             variant: 'secondary',
-            icon: <Clock className="w-4 h-4" />,
+            icon: <ArrowLeft className="w-4 h-4" />,
             onClick: () => {
-              navigate("/student/payment-history");
+              navigate("/student/choose-paid-item");
             }
           }
         ]}
       />
 
       {/* Main Content */}
-      <ClassReservationsList />
+      <PaymentHistoryList />
     </div>
   );
 }

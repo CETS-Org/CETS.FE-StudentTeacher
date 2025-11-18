@@ -305,7 +305,9 @@ export interface FeedbackCourse {
   id: string;
   title: string;
   instructor: string;
+  teacherId: string;
   status: "active" | "completed";
+  hasSubmittedFeedback?: boolean;
 }
 
 export interface FacetItem {

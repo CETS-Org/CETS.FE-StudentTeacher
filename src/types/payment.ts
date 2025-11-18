@@ -253,3 +253,20 @@ export interface ReservationItem {
   planType: string;
   classReservationId: string;
 }
+
+// Payment History Record (from backend API)
+export interface PaymentHistoryRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  invoiceId: string;
+  invoiceStatus: string;
+  name: string;
+  paymentMethod: string;
+  amount: number;
+  createdAt: string;
+  installmentInfo?: {
+    currentInstallment: number;
+    nextDueDate?: string;
+  };
+}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -6,39 +6,28 @@ import FeedbackDialog from "./components/FeedbackDialog";
 import { 
   ChevronRight,
   MessageSquare,
-  BookOpen
+  BookOpen,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
-
+import { getStudentFeedbackClasses } from "@/api/classes.api";
+import { getUserInfo } from "@/lib/utils";
 import type { FeedbackCourse as Course } from "@/types/course";
 
-// Mock courses data
-const mockCourses: Course[] = [
-  {
-    id: "1",
-    title: "English for beginner",
-    instructor: "Dr. Smith",
-    status: "completed"
-  },
-  {
-    id: "2", 
-    title: "English for Interviews & CV Writing",
-    instructor: "Prof. Johnson",
-    status: "active"
-  },
-  {
-    id: "3",
-    title: "Business English Communication",
-    instructor: "Ms. Wilson",
-    status: "completed"
-  }
-];
-
+interface ClassResponse {
+  courseId: string;
+  courseName: string;
+  teacherId?: string;
+  teacherName?: string;
+  hasSubmittedFeedback: boolean;
+}
 
 // Course List Item
 const CourseListItem: React.FC<{
   course: Course;
   onClick: () => void;
-}> = ({ course, onClick }) => {
+  hasSubmittedFeedback: boolean;
+}> = ({ course, onClick, hasSubmittedFeedback }) => {
   const getStatusConfig = (status: string) => {
     if (status === "completed") {
       return {
@@ -75,14 +64,23 @@ const CourseListItem: React.FC<{
         <div>
           <h4 className="font-semibold text-primary-800">{course.title}</h4>
           <p className="text-sm text-neutral-600 mb-1">Instructor: {course.instructor}</p>
-          <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${statusConfig.badge}`}>
-            {course.status === "completed" ? "Completed" : "Active"}
-          </span>
+          <div className="flex gap-2">
+            <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${statusConfig.badge}`}>
+              {course.status === "completed" ? "Completed" : "Active"}
+            </span>
+            {hasSubmittedFeedback && (
+              <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm">
+                ✓ Feedback Submitted
+              </span>
+            )}
+          </div>
         </div>
       </div>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${statusConfig.icon} bg-accent-50`}>
-        <ChevronRight className="w-4 h-4" />
-      </div>
+      {!hasSubmittedFeedback && (
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${statusConfig.icon} bg-accent-50`}>
+          <ChevronRight className="w-4 h-4" />
+        </div>
+      )}
     </div>
   );
 };
@@ -90,8 +88,52 @@ const CourseListItem: React.FC<{
 export default function Feedback() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [openFeedbackDialog, setOpenFeedbackDialog] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchStudentClasses();
+  }, []);
+
+  const fetchStudentClasses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const response = await getStudentFeedbackClasses(userInfo.id);
+      const classes: ClassResponse[] = response.data;
+
+      // Transform to Course format with feedback status
+      const transformedCourses: Course[] = classes.map(cls => ({
+        id: cls.courseId,
+        title: cls.courseName || "Unknown Course",
+        instructor: cls.teacherName || "Unknown",
+        teacherId: cls.teacherId || "",
+        status: "active", // All feedback classes are active
+        hasSubmittedFeedback: cls.hasSubmittedFeedback
+      }));
+
+      setCourses(transformedCourses);
+    } catch (err) {
+      console.error("Failed to fetch classes:", err);
+      setError("Failed to load your classes. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCourseSelect = (course: Course) => {
+    // Don't open dialog if feedback already submitted
+    if (course.hasSubmittedFeedback) {
+      return;
+    }
     setSelectedCourse(course);
     setOpenFeedbackDialog(true);
   };
@@ -99,6 +141,8 @@ export default function Feedback() {
   const handleFeedbackComplete = () => {
     alert("Feedback submitted successfully!");
     setSelectedCourse(null);
+    // Refresh the course list to update feedback status
+    fetchStudentClasses();
   };
 
   return (
@@ -124,23 +168,52 @@ export default function Feedback() {
             </div>
           </div>
           <div className="bg-info-50 border border-info-200 rounded-lg p-3 mb-6">
-            <p className="text-sm text-info-700 flex items-center gap-2">
+            <div className="text-sm text-info-700 flex items-center gap-2">
               <div className="w-4 h-4 bg-info-500 rounded-full flex items-center justify-center">
                 <span className="text-xs text-white">!</span>
               </div>
-              Select a course below to provide detailed feedback and help us improve
-            </p>
+              <span>Select a course below to provide detailed feedback and help us improve</span>
+            </div>
           </div>
           
-          <div className="space-y-4">
-            {mockCourses.map((course) => (
-              <CourseListItem
-                key={course.id}
-                course={course}
-                onClick={() => handleCourseSelect(course)}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary-500 animate-spin mb-3" />
+              <p className="text-sm text-neutral-600">Loading your classes...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <p className="text-sm text-red-700 mb-3">{error}</p>
+              <Button
+                variant="secondary"
+                onClick={fetchStudentClasses}
+                className="text-sm"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : courses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-3">
+                <BookOpen className="w-6 h-6 text-neutral-400" />
+              </div>
+              <p className="text-sm text-neutral-600">You don't have any classes yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {courses.map((course) => (
+                <CourseListItem
+                  key={course.id}
+                  course={course}
+                  onClick={() => handleCourseSelect(course)}
+                  hasSubmittedFeedback={course.hasSubmittedFeedback || false}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </Card>
 

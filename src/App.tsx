@@ -47,6 +47,7 @@ import PaymentSuccess from './pages/Student/ChoosePaidItem/PaymentSuccess'
 import PaymentCancel from './pages/Student/ChoosePaidItem/PaymentCancel'
 import PaymentCallback from './pages/Common/PaymentCallback'
 import ClassReservationDetails from './pages/Student/ChoosePaidItem/ClassReservationDetails/ClassReservationDetails'
+import PaymentHistory from './pages/Student/ChoosePaidItem/PaymentHistory/PaymentHistory'
 import UniversalLayout from './Shared/UniversalLayout'
 import StudentDetailPage from './pages/Student/Profile/StudentDetailPage'
 import ScrollToTop from './components/ScrollToTop'
@@ -99,6 +100,7 @@ export default function App() {
             <Route path="/student/feedback" element={<Feedback />} />
             <Route path="/student/weekly-feedback" element={<WeeklyFeedback />} />
             <Route path="/student/choose-paid-item" element={<ChoosePaidItem />} /> 
+            <Route path="/student/payment-history" element={<PaymentHistory />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/payment/callback" element={<PaymentCallback />} />
