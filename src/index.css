@@ -91,3 +91,51 @@ html, body, #root {
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out;
 }
+
+/* Notification dialog animations */
+@keyframes notification-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes notification-popup-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+    visibility: hidden;
+  }
+}
+
+/* Notification dialog base styles */
+.notification-dialog-content {
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Disable default Tailwind animation classes only when they conflict */
+.notification-dialog-content[data-state="open"].animate-in,
+.notification-dialog-content[data-state="closed"].animate-out {
+  animation: none !important;
+}
+
+/* Apply custom animation based on Radix UI state for notification dialog */
+.notification-dialog-content[data-state="open"] {
+  animation: notification-popup-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  visibility: visible !important;
+}
+
+.notification-dialog-content[data-state="closed"] {
+  animation: notification-popup-out 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  pointer-events: none !important;
+}
