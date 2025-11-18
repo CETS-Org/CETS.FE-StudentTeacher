@@ -8,7 +8,7 @@ import {
   Settings, 
   HelpCircle
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import {
@@ -20,9 +20,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/Dropdown-menu";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
-import NotificationDialog, { type Notification } from "@/components/ui/NotificationDialog";
-import { mockNotifications } from "@/data/mockNotifications";
+import NotificationDialog from "@/components/ui/NotificationDialog";
 import type { GenericNavbarProps } from "@/types/navbar";
+import type { UserNotification } from "@/types/notification";
+import { getUserInfo } from "@/lib/utils";
+import { getNotificationsByUser, markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notification.api";
+import { useNotificationSocket } from "@/hooks/useNotificationSocket";
 
 // Re-export types for backward compatibility
 export type { NavbarConfig } from "@/types/navbar";
@@ -34,12 +37,35 @@ export default function GenericNavbar({
     config 
 }: GenericNavbarProps) {
     const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+    const [notifications, setNotifications] = useState<UserNotification[]>([]);
+    const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
 
     // Calculate unread count
     const unreadCount = notifications.filter(n => !n.isRead).length;
+
+    useEffect(() => {
+        const userInfo = getUserInfo();
+        if (!userInfo) {
+            setNotifications([]);
+            return;
+        }
+
+        const loadNotifications = async () => {
+            try {
+                setIsLoadingNotifications(true);
+                const response = await getNotificationsByUser(userInfo.id);
+                setNotifications(response.data || []);
+            } catch (error) {
+                console.error("Failed to load notifications", error);
+            } finally {
+                setIsLoadingNotifications(false);
+            }
+        };
+
+        loadNotifications();
+    }, []);
     
     const handleLogoutClick = () => {
         setIsLogoutDialogOpen(true);
@@ -63,7 +89,7 @@ export default function GenericNavbar({
         navigate('/change-password');
     };
 
-    const handleMarkAsRead = (notificationId: string) => {
+    const handleMarkAsRead = async (notificationId: string) => {
         setNotifications(prev => 
             prev.map(notification => 
                 notification.id === notificationId 
@@ -71,13 +97,40 @@ export default function GenericNavbar({
                     : notification
             )
         );
+
+        try {
+            await markNotificationAsRead(notificationId);
+        } catch (error) {
+            console.error("Failed to mark notification as read", error);
+        }
     };
 
-    const handleMarkAllAsRead = () => {
+    const handleMarkAllAsRead = async () => {
+        const userInfo = getUserInfo();
+        if (!userInfo) return;
+
         setNotifications(prev => 
             prev.map(notification => ({ ...notification, isRead: true }))
         );
+
+        try {
+            await markAllNotificationsAsRead(userInfo.id);
+        } catch (error) {
+            console.error("Failed to mark all notifications as read", error);
+        }
     };
+
+    const handleSocketNotification = useCallback((notification: UserNotification) => {
+        setNotifications(prev => {
+            const existing = prev.find(n => n.id === notification.id);
+            if (existing) {
+                return prev.map(n => n.id === notification.id ? notification : n);
+            }
+            return [notification, ...prev];
+        });
+    }, []);
+
+    useNotificationSocket(handleSocketNotification);
 
     return (
         <>
