@@ -10,6 +10,8 @@ import Pagination from "@/components/ui/Pagination";
 import { api } from "@/api"
 import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
 import { useWishlist } from "@/hooks/useWishlist";
+import { getStudentById } from "@/api/student.api";
+import { isTokenValid, getUserRole, getUserInfo } from "@/lib/utils";
 
 import type { Course, CourseSearchResult } from "@/types/course";
 
@@ -80,6 +82,7 @@ export default function CoursesSection() {
 
   const [loading, setLoading] = useState(true); // Start with loading true
   const [err, setErr] = useState<string | null>(null);
+  const [placementTestGrade, setPlacementTestGrade] = useState<number | null>(null);
 
   // Get student ID from localStorage
   const userInfoStr = localStorage.getItem('userInfo');
@@ -92,6 +95,40 @@ export default function CoursesSection() {
     toggleCourse,
     checkCourseInWishlist 
   } = useWishlist({ studentId, autoFetch: true });
+
+  // Fetch placement test grade for student
+  useEffect(() => {
+    const loadPlacementTestGrade = async () => {
+      // Only load if user is logged in and is a student
+      if (!isTokenValid()) {
+        setPlacementTestGrade(null);
+        return;
+      }
+
+      const userRole = getUserRole();
+      if (userRole?.toLowerCase() !== 'student') {
+        setPlacementTestGrade(null);
+        return;
+      }
+
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        setPlacementTestGrade(null);
+        return;
+      }
+
+      try {
+        const student = await getStudentById(userInfo.id);
+        const grade = student.studentInfo?.placementTestGrade ?? null;
+        setPlacementTestGrade(grade);
+      } catch (err) {
+        console.error('Error loading placement test grade:', err);
+        setPlacementTestGrade(null);
+      }
+    };
+
+    loadPlacementTestGrade();
+  }, []);
 
   // Build querystring - always include all params to prevent re-fetches
   const buildSearchParams = () => {
@@ -214,6 +251,38 @@ export default function CoursesSection() {
   const isInWishlist = (courseId: string) => {
     return checkCourseInWishlist(courseId);
   };
+
+  // Filter and sort courses based on placement test grade
+  const { recommendedCourses, otherCourses } = useMemo(() => {
+    if (!placementTestGrade || placementTestGrade === null) {
+      return { recommendedCourses: [], otherCourses: items };
+    }
+
+    const recommended: Course[] = [];
+    const others: Course[] = [];
+
+    items.forEach(course => {
+      // Course is recommended if student's placement test grade meets the requirement
+      const isRecommended = course.standardScore === undefined || 
+                           course.standardScore === null || 
+                           placementTestGrade >= course.standardScore;
+      
+      if (isRecommended) {
+        recommended.push(course);
+      } else {
+        others.push(course);
+      }
+    });
+
+    // Sort recommended courses by standardScore (lower score first - easier courses)
+    recommended.sort((a, b) => {
+      const scoreA = a.standardScore ?? 0;
+      const scoreB = b.standardScore ?? 0;
+      return scoreA - scoreB;
+    });
+
+    return { recommendedCourses: recommended, otherCourses: others };
+  }, [items, placementTestGrade]);
 
   return (
     <div id="courses" className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">
@@ -443,23 +512,68 @@ export default function CoursesSection() {
 
             {!loading && !err && items.length > 0 ? (
               <>
-                {/* Course Display */}
-                <div className="space-y-4">
-                  {items.map((course, index) => (
-                    <div
-                      key={course.id}
-                      className="animate-in fade-in-0 slide-in-from-left-4"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <CourseListItem 
-                        course={course} 
-                        onEnroll={handleEnroll} 
-                        onToggleWishlist={toggleWishlist}
-                        isInWishlist={isInWishlist(course.id)}
-                      />
+                {/* Recommended Courses Section */}
+                {recommendedCourses.length > 0 && placementTestGrade !== null && (
+                  <div className="mb-12">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-full shadow-lg">
+                        <BookOpen className="w-5 h-5" />
+                        <span className="font-semibold">Khóa học phù hợp với bạn</span>
+                      </div>
+                      <div className="flex-1 h-px bg-gradient-to-r from-primary-200 to-transparent"></div>
+                      <span className="text-sm text-gray-600 font-medium">
+                        Điểm Placement Test: <span className="font-bold text-primary-600">{placementTestGrade.toFixed(2)} / 10</span>
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <div className="space-y-4">
+                      {recommendedCourses.map((course, index) => (
+                        <div
+                          key={course.id}
+                          className="animate-in fade-in-0 slide-in-from-left-4"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <CourseListItem 
+                            course={course} 
+                            onEnroll={handleEnroll} 
+                            onToggleWishlist={toggleWishlist}
+                            isInWishlist={isInWishlist(course.id)}
+                            isRecommended={true}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Courses Section */}
+                {(otherCourses.length > 0 || recommendedCourses.length === 0) && (
+                  <div>
+                    {recommendedCourses.length > 0 && placementTestGrade !== null && (
+                      <div className="flex items-center gap-3 mb-6 mt-8">
+                        <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
+                        <span className="text-sm text-gray-600 font-medium px-4">Tất cả khóa học</span>
+                        <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      {(recommendedCourses.length > 0 ? otherCourses : items).map((course, index) => (
+                        <div
+                          key={course.id}
+                          className="animate-in fade-in-0 slide-in-from-left-4"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <CourseListItem 
+                            course={course} 
+                            onEnroll={handleEnroll} 
+                            onToggleWishlist={toggleWishlist}
+                            isInWishlist={isInWishlist(course.id)}
+                            isRecommended={false}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <Pagination
                   page={page}

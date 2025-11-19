@@ -3,13 +3,17 @@ import Button from "../../../components/ui/Button";
 import CourseSchedule from "@/components/ui/CourseSchedule";
 import type { CourseCardProps } from "@/types/course";
 
-export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false }: CourseCardProps) {
+export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false, isRecommended = false }: CourseCardProps) {
   // Use schedules from course prop (already loaded from search API)
   const schedules = course.schedules || [];
   const schedulesLoading = false;
   
   return (
-    <div className="group bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all duration-300 p-3 md:p-4">
+    <div className={`group bg-white rounded-lg hover:shadow-md transition-all duration-300 p-3 md:p-4 ${
+      isRecommended 
+        ? 'border-2 border-primary-400 shadow-lg hover:border-primary-500' 
+        : 'border border-gray-200 hover:border-primary-300'
+    }`}>
       <div className="flex flex-col md:flex-row gap-3 md:gap-4 md:h-[240px]">
         {/* Course Image */}
         <div className="relative w-full md:w-40 lg:w-48 xl:w-56 h-48 md:h-full flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
@@ -20,7 +24,8 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
             />
             
             {/* Badges */}
-            <div className="absolute top-2 left-2 flex gap-1">
+            <div className="absolute top-2 left-2 flex flex-col gap-1">
+              <div className="flex gap-1">
                 {course.isPopular && (
                 <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded text-xs font-bold">
                     🔥 Popular
@@ -31,6 +36,12 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
                     ✨ New
                 </span>
                 )}
+              </div>
+              {isRecommended && (
+                <span className="bg-gradient-to-r from-primary-500 to-accent-500 text-white px-2 py-0.5 rounded text-xs font-bold shadow-md animate-pulse">
+                    ⭐ Recommended for you
+                </span>
+              )}
             </div>
 
             {/* Wishlist Heart Icon */}

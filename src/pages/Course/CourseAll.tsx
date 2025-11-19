@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { Search } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Search, FileCheck } from "lucide-react";
 import CoursesSection from "./components/CoursesSection";
 import PackagesSection from "./components/PackagesSection";
 import Button from "@/components/ui/Button";
@@ -9,6 +9,7 @@ import courseBgImage from "@/assets/course-bg.png";
 
 export default function CourseAll() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Handle hash navigation
@@ -93,6 +94,22 @@ export default function CourseAll() {
 
       {/* Packages Section */}
       <PackagesSection />
+
+      {/* Floating Action Button - Placement Test */}
+      <button
+        onClick={() => navigate('/student/placement-test')}
+        className="fixed bottom-8 right-8 z-50 w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-full shadow-2xl hover:shadow-primary-500/50 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group"
+        title="Làm bài Placement Test để tìm khóa học phù hợp"
+      >
+        <FileCheck className="w-7 h-7 md:w-8 md:h-8 group-hover:scale-110 transition-transform" />
+        {/* Pulse animation */}
+        <span className="absolute inset-0 rounded-full bg-primary-500 animate-ping opacity-20"></span>
+        {/* Tooltip on hover */}
+        <div className="absolute right-full mr-4 hidden md:group-hover:block whitespace-nowrap bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg pointer-events-none">
+          <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+          Làm bài Placement Test để tìm khóa học phù hợp
+        </div>
+      </button>
     </div>
   );
 }
