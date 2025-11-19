@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 
 // AI Reading Test API endpoint
-const AI_READING_TEST_API_URL = 'http://localhost:5002';
+const AI_READING_TEST_API_URL = import.meta.env.VITE_API_URL_AI_READING_TEST || 'http://localhost:5002';
 
 export interface GenerateReadingTestRequest {
   topic: string;

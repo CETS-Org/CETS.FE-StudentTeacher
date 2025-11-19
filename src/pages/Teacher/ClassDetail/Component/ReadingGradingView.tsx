@@ -31,11 +31,21 @@ type ReadingSubmissionData = {
   questions?: Array<{
     id: string;
     question: string;
-    type: 'multiple-choice' | 'fill-blank' | 'true-false' | 'short-answer';
-    options?: string[];
-    correctAnswer: string | string[];
+    type: 'multiple-choice' | 'fill-blank' | 'true-false' | 'short-answer' | 'multiple_choice' | 'fill_in_the_blank' | 'short_answer' | 'true_false';
+    options?: Array<{
+      id: string;
+      label: string;
+      text: string;
+    }>;
+    correctAnswer: string | string[] | boolean; // boolean for true_false
     points?: number;
     passage?: string; // Reading passage for this question
+    blanks?: Array<{
+      id: string;
+      position: number;
+      correctAnswers: string[];
+      caseSensitive: boolean;
+    }>;
   }>;
   passage?: string; // Main reading passage for the entire assignment
 };
@@ -66,6 +76,46 @@ export default function ReadingGradingView({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   const selectedSubmission = submissions[selectedSubmissionIndex];
+  
+  // Calculate actual score based on correct answers
+  const calculateActualScore = (): number => {
+    if (!readingData?.questions || !readingData?.answers) return 0;
+    
+    let totalScore = 0;
+    readingData.questions.forEach(question => {
+      const studentAnswer = readingData.answers.find(a => a.questionId === question.id);
+      if (studentAnswer && isAnswerCorrect(question.id, studentAnswer.answer, question.correctAnswer)) {
+        totalScore += question.points || 0;
+      }
+    });
+    
+    return Math.round(totalScore * 10) / 10; // Round to 1 decimal
+  };
+  
+  // Auto-update score to backend when readingData changes
+  useEffect(() => {
+    const updateScoreToBackend = async () => {
+      if (!readingData || !selectedSubmission) return;
+      
+      const calculatedScore = calculateActualScore();
+      
+      // Only update if score is different from backend score
+      if (selectedSubmission.score !== calculatedScore) {
+        try {
+          const { updateSubmissionScore } = await import('@/api/assignments.api');
+          await updateSubmissionScore(selectedSubmission.id, calculatedScore);
+          console.log(`✅ Updated score for submission ${selectedSubmission.id}: ${calculatedScore}`);
+          
+          // Update local submission object
+          selectedSubmission.score = calculatedScore;
+        } catch (error) {
+          console.error('Failed to update score:', error);
+        }
+      }
+    };
+    
+    updateScoreToBackend();
+  }, [readingData, selectedSubmission]);
 
   // Load submission data when submission changes
   useEffect(() => {
@@ -315,6 +365,39 @@ export default function ReadingGradingView({
   };
 
   const renderAnswerDisplay = (value: AnswerValue, question?: any) => {
+    // For fill in the blank with blanks array (new format)
+    if (question && (question.type === 'fill-blank' || question.type === 'fill_in_the_blank') && question.blanks) {
+      // If value is the question's correctAnswer (which doesn't exist for fill in blank), show blanks
+      if (value === question.correctAnswer || !value) {
+        return (
+          <ul className="list-disc list-inside space-y-1">
+            {question.blanks.map((blank: any, index: number) => (
+              <li key={index} className="text-neutral-800">
+                {blank.correctAnswers.join(' / ')}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+    }
+    
+    // For fill in the blank with correctAnswer (old format)
+    if (question && (question.type === 'fill-blank' || question.type === 'fill_in_the_blank') && !question.blanks && value === question.correctAnswer) {
+      // Display correctAnswer for old format
+      if (Array.isArray(question.correctAnswer)) {
+        return (
+          <ul className="list-disc list-inside space-y-1">
+            {question.correctAnswer.map((ans: string, index: number) => (
+              <li key={index} className="text-neutral-800">
+                {ans}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+      return <p className="text-neutral-800">{String(question.correctAnswer)}</p>;
+    }
+    
     const valueToRender = question && question.type === 'multiple_choice'
       ? mapMultipleChoiceAnswer(question, value)
       : value;
@@ -339,6 +422,109 @@ export default function ReadingGradingView({
   };
 
   const isAnswerCorrect = (questionId: string, studentAnswer: AnswerValue, correctAnswer: AnswerValue): boolean => {
+    // Find the question to check its type
+    const question = readingData?.questions?.find(q => q.id === questionId);
+    
+    // For true/false with boolean correctAnswer (new format)
+    if (question && (question.type === 'true-false' || question.type === 'true_false') && typeof correctAnswer === 'boolean') {
+      // Student answer could be boolean, string "true"/"false", or "True"/"False"
+      let studentBool: boolean;
+      if (typeof studentAnswer === 'boolean') {
+        studentBool = studentAnswer;
+      } else if (typeof studentAnswer === 'string') {
+        const normalized = studentAnswer.toLowerCase().trim();
+        studentBool = normalized === 'true' || normalized === 't' || normalized === 'yes';
+      } else {
+        return false;
+      }
+      return studentBool === correctAnswer;
+    }
+    
+    // For multiple choice, handle ID matching
+    if (question && (question.type === 'multiple-choice' || question.type === 'multiple_choice') && question.options) {
+      // Student answer could be ID or text
+      const studentAnswerStr = String(studentAnswer || '').trim();
+      const correctAnswerStr = String(correctAnswer || '').trim();
+      
+      // Direct match (ID to ID or text to text)
+      if (studentAnswerStr === correctAnswerStr) {
+        return true;
+      }
+      
+      // Find the option that matches student answer (by ID or text)
+      const studentOption = question.options.find(opt => {
+        const optId = typeof opt === 'string' ? opt : opt.id;
+        const optText = typeof opt === 'string' ? opt : opt.text;
+        return optId === studentAnswerStr || optText === studentAnswerStr;
+      });
+      
+      // Find the option that matches correct answer (by ID or text)
+      const correctOption = question.options.find(opt => {
+        const optId = typeof opt === 'string' ? opt : opt.id;
+        const optText = typeof opt === 'string' ? opt : opt.text;
+        return optId === correctAnswerStr || optText === correctAnswerStr;
+      });
+      
+      // If both found, check if they're the same option
+      if (studentOption && correctOption) {
+        const studentOptId = typeof studentOption === 'string' ? studentOption : studentOption.id;
+        const correctOptId = typeof correctOption === 'string' ? correctOption : correctOption.id;
+        return studentOptId === correctOptId;
+      }
+      
+      return false;
+    }
+    
+    // For fill in the blank, check against blanks array (new format) or correctAnswer (old format)
+    if (question && (question.type === 'fill-blank' || question.type === 'fill_in_the_blank')) {
+      // New format: has blanks array
+      if (question.blanks && question.blanks.length > 0) {
+        const studentAnswers = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
+        
+        // Check each blank
+        return question.blanks.every((blank, index) => {
+          const studentAns = String(studentAnswers[index] || '').trim().toLowerCase();
+          // Check if student answer matches any of the correct answers for this blank
+          return blank.correctAnswers.some(correctAns => {
+            const normalized = correctAns.trim().toLowerCase();
+            return blank.caseSensitive ? studentAns === correctAns.trim() : studentAns === normalized;
+          });
+        });
+      }
+      
+      // Old format: has correctAnswer (string or array)
+      if (correctAnswer) {
+        const studentStr = String(studentAnswer || '').trim().toLowerCase();
+        
+        // If correctAnswer is array
+        if (Array.isArray(correctAnswer)) {
+          return correctAnswer.some(ans => 
+            String(ans).trim().toLowerCase() === studentStr
+          );
+        }
+        
+        // If correctAnswer is string
+        const correctStr = String(correctAnswer).trim().toLowerCase();
+        return studentStr === correctStr || 
+               studentStr.includes(correctStr) || 
+               correctStr.includes(studentStr);
+      }
+      
+      return false;
+    }
+    
+    // For short answer, use case-insensitive comparison with trimming
+    if (question && (question.type === 'short-answer' || question.type === 'short_answer')) {
+      const studentStr = String(studentAnswer || '').trim().toLowerCase();
+      const correctStr = String(correctAnswer || '').trim().toLowerCase();
+      
+      // Check if student answer contains the correct answer or vice versa
+      return studentStr === correctStr || 
+             studentStr.includes(correctStr) || 
+             correctStr.includes(studentStr);
+    }
+    
+    // For other types, use normalized comparison
     const normalizedStudent = toArray(studentAnswer);
     const normalizedCorrect = toArray(correctAnswer);
 
@@ -478,21 +664,27 @@ export default function ReadingGradingView({
             </p>
           </div>
 
-          {/* Options (for multiple choice) */}
-          {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
+          {/* Options (for multiple choice only, not true/false with boolean) */}
+          {(currentQuestion.type === 'multiple-choice' || currentQuestion.type === 'multiple_choice') && currentQuestion.options && (
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-neutral-700 mb-3">Options:</h4>
               <div className="space-y-2">
                 {currentQuestion.options.map((option, index) => {
-                  const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
-                  const isStudentChoice = studentAnswer?.answer === option || 
-                    (Array.isArray(studentAnswer?.answer) && studentAnswer.answer.includes(option));
-                  const isCorrectOption = currentQuestion.correctAnswer === option || 
-                    (Array.isArray(currentQuestion.correctAnswer) && currentQuestion.correctAnswer.includes(option));
+                  // Handle both old format (string) and new format (object with id)
+                  const optionId = typeof option === 'string' ? option : option.id;
+                  const optionText = typeof option === 'string' ? option : option.text;
+                  const optionLabel = typeof option === 'string' ? String.fromCharCode(65 + index) : option.label;
+                  
+                  const isStudentChoice = studentAnswer?.answer === optionId || 
+                    studentAnswer?.answer === optionText ||
+                    (Array.isArray(studentAnswer?.answer) && (studentAnswer.answer.includes(optionId) || studentAnswer.answer.includes(optionText)));
+                  const isCorrectOption = currentQuestion.correctAnswer === optionId || 
+                    currentQuestion.correctAnswer === optionText ||
+                    (Array.isArray(currentQuestion.correctAnswer) && (currentQuestion.correctAnswer.includes(optionId) || currentQuestion.correctAnswer.includes(optionText)));
                   
                   return (
                     <div 
-                      key={index}
+                      key={optionId || index}
                       className={`p-3 rounded-lg border-2 ${
                         isCorrectOption 
                           ? 'border-green-300 bg-green-50' 
@@ -503,9 +695,9 @@ export default function ReadingGradingView({
                     >
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-neutral-600 min-w-[24px]">
-                          {optionLetter}.
+                          {optionLabel}.
                         </span>
-                        <span className="flex-1">{option}</span>
+                        <span className="flex-1">{optionText}</span>
                         {isCorrectOption && (
                           <CheckCircle className="w-5 h-5 text-green-600" />
                         )}
@@ -691,7 +883,7 @@ export default function ReadingGradingView({
             {/* Final Score */}
             <div className="text-center">
               <div className="text-3xl font-bold text-primary-800 mb-2">
-                {selectedSubmission?.score !== null ? selectedSubmission.score : 'N/A'}
+                {readingData ? calculateActualScore() : (selectedSubmission?.score !== null ? selectedSubmission.score : 'N/A')}
                 <span className="text-lg text-neutral-500">/10</span>
               </div>
               <p className="text-sm text-neutral-600">Automatically Graded</p>
@@ -720,7 +912,9 @@ export default function ReadingGradingView({
                           <span className="text-sm font-medium">Q{index + 1}</span>
                           <div className="flex items-center gap-2">
                             {question.points && (
-                              <span className="text-xs text-neutral-500">{question.points}pts</span>
+                              <span className={`text-xs font-semibold ${isCorrect ? 'text-green-600' : 'text-neutral-500'}`}>
+                                {isCorrect ? `+${question.points}` : '0'}/{question.points}pts
+                              </span>
                             )}
                             {isCorrect ? (
                               <CheckCircle className="w-4 h-4 text-green-600" />
