@@ -20,7 +20,7 @@ interface QuestionRendererProps {
   questionAudioUrl?: string;
   questionAudioPlaying?: Record<string, boolean>;
   toggleQuestionAudio?: (question: Question & { audioUrl?: string }) => void;
-  normalizeAudioUrl?: (url: string) => string;
+  normalizeAudioUrl?: (url: string | undefined) => string;
 }
 
 /**
@@ -78,10 +78,14 @@ export default function QuestionRenderer({
     }
   };
 
+  // Chỉ hiển thị audio player cho listening questions
+  const isListening = skillType?.toLowerCase().includes("listening") || false;
+  const shouldShowAudioPlayer = isListening && questionAudioUrl && toggleQuestionAudio && questionAudioPlaying && normalizeAudioUrl;
+
   return (
     <div className="space-y-4">
-      {/* Audio Player for Question */}
-      {questionAudioUrl && toggleQuestionAudio && questionAudioPlaying && normalizeAudioUrl && (
+      {/* Audio Player for Question - chỉ hiển thị cho listening */}
+      {shouldShowAudioPlayer && (
         <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
           <div className="flex items-center gap-3">
             <button
