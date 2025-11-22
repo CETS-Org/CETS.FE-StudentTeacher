@@ -8,9 +8,9 @@ import Button from "@/components/ui/Button";
 import TechnicalIssueReportPopup from "@/pages/Common/components/TechnicalIssueReportPopup";
 import AcademicChangeRequestPopup from "@/pages/Common/components/AcademicChangeRequestPopup";
 import AcademicRequestDetailPopup from "@/pages/Common/components/AcademicRequestDetailPopup";
-import { getMyAcademicRequests } from "@/api/report.api";
+import { getMyAcademicRequests } from "@/api/academicRequest.api";
 import { getStudentId } from "@/lib/utils";
-import type { AcademicReportResponse } from "@/types/report";
+import type { AcademicRequestResponse } from "@/types/report";
 
 const ReportIssue: React.FC = () => {
   usePageTitle("Report Issues");
@@ -23,7 +23,7 @@ const ReportIssue: React.FC = () => {
   const [showAcademicPopup, setShowAcademicPopup] = useState(false);
   const [showDetailPopup, setShowDetailPopup] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [academicReports, setAcademicReports] = useState<AcademicReportResponse[]>([]);
+  const [academicReports, setAcademicReports] = useState<AcademicRequestResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Determine current report type from URL
@@ -168,17 +168,22 @@ const ReportIssue: React.FC = () => {
                   <Calendar className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-primary-800 mb-1">{report.title}</h4>
-                  <p className="text-sm text-neutral-600 mb-2 line-clamp-1">{report.description}</p>
+                  <h4 className="font-semibold text-primary-800 mb-1">{report.requestTypeName || 'Academic Request'}</h4>
+                  <p className="text-sm text-neutral-600 mb-2 line-clamp-1">{report.reason}</p>
                   <div className="flex items-center gap-3 flex-wrap">
-                    {report.courseName && (
+                    {report.fromClassName && (
                       <span className="text-xs text-neutral-600">
-                        {report.courseCode}: {report.courseName}
+                        From: {report.fromClassName}
                       </span>
                     )}
-                    {report.className && (
+                    {report.toClassName && (
+                      <span className="text-xs text-neutral-600">
+                        To: {report.toClassName}
+                      </span>
+                    )}
+                    {report.effectiveDate && (
                       <span className="text-xs text-neutral-500">
-                        • {report.className}
+                        • Effective: {report.effectiveDate}
                       </span>
                     )}
                     <span className="text-xs text-neutral-500">

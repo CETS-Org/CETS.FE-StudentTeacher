@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { X, File, Download, Calendar, User, AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import { getAcademicRequestDetails, getReportDownloadUrl } from "@/api/report.api";
-import type { AcademicReportResponse } from "@/types/report";
+import { getAcademicRequestDetails } from "@/api/academicRequest.api";
+import type { AcademicRequestResponse } from "@/types/report";
 import { toast } from "@/components/ui/Toast";
 
 interface AcademicRequestDetailPopupProps {
@@ -17,7 +17,7 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
   onClose,
   requestId,
 }) => {
-  const [request, setRequest] = useState<AcademicReportResponse | null>(null);
+  const [request, setRequest] = useState<AcademicRequestResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -77,24 +77,16 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
     );
   };
 
-  const handleDownloadAttachment = async () => {
-    if (!request?.id || !request?.attachmentUrl) {
+  const handleDownloadAttachment = () => {
+    if (!request?.attachmentUrl) {
       toast.error('No attachment available to download');
       return;
     }
 
     try {
-      const response = await getReportDownloadUrl(request.id);
-
-      // Backend returns JSON with downloadUrl
-      const presignedUrl = response.data?.downloadUrl;
-      if (!presignedUrl) {
-        throw new Error("No presigned URL returned from server");
-      }
-
-      // Open the file in a new tab (Cloudflare R2 presigned URL)
+      // Open the attachment URL directly
       const link = document.createElement("a");
-      link.href = presignedUrl;
+      link.href = request.attachmentUrl;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);
@@ -104,7 +96,7 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
       console.error("Download attachment error:", error);
       toast.error(
         `Failed to download attachment: ${
-          error.response?.data?.error || error.message || "Unknown error"
+          error.message || "Unknown error"
         }`
       );
     }
@@ -161,29 +153,57 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                   Request Type
                 </label>
                 <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  {request.reportTypeName || 'N/A'}
+                  {request.requestTypeName || 'N/A'}
                 </div>
               </div>
 
-              {/* Title */}
+              {/* Reason */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title
-                </label>
-                <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  {request.title}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Detailed Description
+                  Reason for Request
                 </label>
                 <div className="text-sm text-gray-900 bg-gray-50 px-3 py-4 rounded-md leading-relaxed whitespace-pre-wrap">
-                  {request.description}
+                  {request.reason}
                 </div>
               </div>
+
+              {/* From/To Class */}
+              {(request.fromClassName || request.toClassName) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {request.fromClassName && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        From Class
+                      </label>
+                      <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
+                        {request.fromClassName}
+                      </div>
+                    </div>
+                  )}
+                  {request.toClassName && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        To Class
+                      </label>
+                      <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
+                        {request.toClassName}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Effective Date */}
+              {request.effectiveDate && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Effective Date
+                  </label>
+                  <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
+                    {request.effectiveDate}
+                  </div>
+                </div>
+              )}
 
               {/* Attachment */}
               {request.attachmentUrl && (
@@ -213,49 +233,43 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                 </div>
               )}
 
-              {/* Submitter Information */}
+              {/* Student Information */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <div className="flex items-center gap-2 mb-3">
                   <User className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">Submitted By</span>
+                  <span className="font-medium text-blue-900">Student Information</span>
                 </div>
                 <div className="space-y-2">
                   <div>
                     <span className="text-sm font-medium text-gray-700">Name: </span>
-                    <span className="text-sm text-gray-900">{request.submitterName || 'N/A'}</span>
+                    <span className="text-sm text-gray-900">{request.studentName || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="text-sm font-medium text-gray-700">Email: </span>
-                    <span className="text-sm text-blue-600">{request.submitterEmail || 'N/A'}</span>
+                    <span className="text-sm text-blue-600">{request.studentEmail || 'N/A'}</span>
                   </div>
-                  {request.submitterRole && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">Role: </span>
-                      <span className="text-sm text-gray-900">{request.submitterRole}</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Resolution Information */}
-              {(request.resolvedAt || request.resolvedByName) && (
+              {/* Processing Information */}
+              {(request.processedAt || request.processedByName) && (
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle className="w-5 h-5 text-green-600" />
-                    <span className="font-medium text-green-900">Resolution Details</span>
+                    <span className="font-medium text-green-900">Processing Details</span>
                   </div>
                   <div className="space-y-2">
-                    {request.resolvedByName && (
+                    {request.processedByName && (
                       <div>
-                        <span className="text-sm font-medium text-gray-700">Resolved by: </span>
-                        <span className="text-sm text-gray-900">{request.resolvedByName}</span>
+                        <span className="text-sm font-medium text-gray-700">Processed by: </span>
+                        <span className="text-sm text-gray-900">{request.processedByName}</span>
                       </div>
                     )}
-                    {request.resolvedAt && (
+                    {request.processedAt && (
                       <div>
-                        <span className="text-sm font-medium text-gray-700">Resolved on: </span>
+                        <span className="text-sm font-medium text-gray-700">Processed on: </span>
                         <span className="text-sm text-gray-900">
-                          {new Date(request.resolvedAt).toLocaleDateString('en-US', {
+                          {new Date(request.processedAt).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',

@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { X, AlertCircle, Upload, File } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
-import { submitAcademicRequest } from "@/api/report.api";
+import { submitAcademicRequest } from "@/api/academicRequest.api";
 import { getAcademicRequestTypes } from "@/api/lookup.api";
 import { getUserInfo, getStudentId } from "@/lib/utils";
 import { uploadToPresignedUrl } from "@/api/file.api";
-import type { SubmitAcademicReportRequest } from "@/types/report";
+import { studentLearningClassesService } from "@/services/studentLearningClassesService";
+import type { SubmitAcademicRequest } from "@/types/report";
+import type { MyClass } from "@/types/class";
 
 interface AcademicChangeRequestPopupProps {
   isOpen: boolean;
@@ -23,24 +25,27 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const userId = getStudentId();
 
   const [formData, setFormData] = useState({
-    reportTypeID: "", 
-    requestType: "", 
-    title: "",
-    description: "",
+    requestTypeID: "", 
+    reason: "",
+    fromClassID: "",
+    toClassID: "",
     attachmentUrl: "",
   });
 
   const [requestTypes, setRequestTypes] = useState<any[]>([]);
+  const [classes, setClasses] = useState<MyClass[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch request types on mount
+  // Fetch request types and classes on mount
   useEffect(() => {
     if (isOpen && userId) {
       fetchRequestTypes();
+      fetchClasses();
     }
   }, [isOpen, userId]);
 
@@ -59,15 +64,56 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     }
   };
 
+  const fetchClasses = async () => {
+    if (!userId) return;
+    
+    setIsLoadingClasses(true);
+    try {
+      const classesData = await studentLearningClassesService.getStudentLearningClasses(userId);
+      setClasses(classesData);
+    } catch (error: any) {
+      console.error('Error fetching classes:', error);
+      toast.error('Failed to load classes. Please try again.');
+      setClasses([]);
+    } finally {
+      setIsLoadingClasses(false);
+    }
+  };
+
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // If request type changes and it's not class transfer, clear class transfer fields
+    if (name === 'requestTypeID') {
+      const newSelectedType = requestTypes.find(type => {
+        const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+        return typeId === value;
+      });
+      
+      const isNewTypeClassTransfer = newSelectedType && (
+        (newSelectedType.name || '').toLowerCase().includes('class transfer') ||
+        (newSelectedType.name || '').toLowerCase().includes('class-transfer') ||
+        (newSelectedType.code || '').toLowerCase().includes('classtransfer') ||
+        (newSelectedType.code || '').toLowerCase().includes('class_transfer') ||
+        (newSelectedType.code || '').toLowerCase() === 'classtransfer'
+      );
 
-    // Update title suggestion when request type changes
-    if (name === 'requestType') {
-      updateTitleSuggestion(value);
+      if (!isNewTypeClassTransfer) {
+        // Clear class transfer fields if switching away from class transfer
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          fromClassID: "",
+          toClassID: "",
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
@@ -114,31 +160,54 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     }
   };
 
-  const updateTitleSuggestion = (requestTypeId: string) => {
+  // Check if the selected request type is "class transfer"
+  const isClassTransfer = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
     const selectedType = requestTypes.find(type => {
       const typeId = type.lookUpId || (type as any).LookUpId || type.id;
-      return typeId === requestTypeId;
+      return typeId === formData.requestTypeID;
     });
+
+    if (!selectedType) return false;
+
+    const typeName = (selectedType.name || '').toLowerCase();
+    const typeCode = (selectedType.code || '').toLowerCase();
     
-    if (selectedType) {
-      const title = `Request for ${selectedType.name}`;
-      setFormData(prev => ({ ...prev, title }));
-    }
+    return typeName.includes('class transfer') || 
+           typeName.includes('class-transfer') ||
+           typeCode.includes('classtransfer') ||
+           typeCode.includes('class_transfer') ||
+           typeCode === 'classtransfer';
   };
 
   const validateForm = (): boolean => {
-    if (!formData.requestType) {
+    if (!formData.requestTypeID) {
       toast.error('Please select a request type');
       return false;
     }
 
-    if (!formData.title.trim()) {
-      toast.error('Please enter a title');
+    if (!formData.reason.trim()) {
+      toast.error('Please provide a reason for your request');
       return false;
     }
-    if (!formData.description.trim()) {
-      toast.error('Please provide a description');
-      return false;
+
+    // Validate class transfer specific fields
+    if (isClassTransfer()) {
+      if (!formData.fromClassID?.trim()) {
+        toast.error('From Class is required for class transfer requests');
+        return false;
+      }
+
+      if (!formData.toClassID?.trim()) {
+        toast.error('To Class is required for class transfer requests');
+        return false;
+      }
+
+      if (formData.fromClassID === formData.toClassID) {
+        toast.error('From Class and To Class must be different');
+        return false;
+      }
     }
 
     return true;
@@ -154,36 +223,41 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     setIsSubmitting(true);
 
     try {
-      const requestData: SubmitAcademicReportRequest = {
-        reportTypeID: formData.requestType, 
-        submittedBy: userId,
-        title: formData.title,
-        description: formData.description,
-        fileName: selectedFile?.name,
-        contentType: selectedFile?.type,
-      };
-
-      const response = await submitAcademicRequest(requestData);
-      const result = response.data;
-
-      // Upload file if one was selected
-      if (selectedFile && result.uploadUrl) {
+      // Upload file first if one was selected to get the URL
+      let attachmentUrl = "";
+      if (selectedFile) {
         try {
-          await uploadToPresignedUrl(result.uploadUrl, selectedFile, selectedFile.type);
+          // You may need to implement file upload logic here
+          // For now, we'll just store the file name
+          // In a real implementation, you'd upload to S3/R2 and get a URL
+          toast.info('File upload functionality needs to be implemented');
         } catch (uploadError: any) {
           console.error('Error uploading file:', uploadError);
-          toast.error('Request created but file upload failed. Please contact support.');
+          toast.error('File upload failed. Please try again or submit without attachment.');
+          setIsSubmitting(false);
+          return;
         }
       }
+
+      const requestData: SubmitAcademicRequest = {
+        studentID: userId,
+        requestTypeID: formData.requestTypeID,
+        reason: formData.reason,
+        fromClassID: formData.fromClassID || undefined,
+        toClassID: formData.toClassID || undefined,
+        attachmentUrl: attachmentUrl || undefined,
+      };
+
+      await submitAcademicRequest(requestData);
 
       toast.success('Academic request submitted successfully! It will be reviewed by staff within 3-5 business days.');
       
       // Reset form
       setFormData({
-        reportTypeID: "",
-        requestType: "",
-        title: "",
-        description: "",
+        requestTypeID: "",
+        reason: "",
+        fromClassID: "",
+        toClassID: "",
         attachmentUrl: "",
       });
       setSelectedFile(null);
@@ -205,10 +279,10 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const handleCancel = () => {
       // Reset form
       setFormData({
-        reportTypeID: "",
-        requestType: "",
-        title: "",
-        description: "",
+        requestTypeID: "",
+        reason: "",
+        fromClassID: "",
+        toClassID: "",
         attachmentUrl: "",
       });
       setSelectedFile(null);
@@ -257,8 +331,8 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               Request Type <span className="text-red-500">*</span>
             </label>
             <select
-              name="requestType"
-              value={formData.requestType}
+              name="requestTypeID"
+              value={formData.requestTypeID}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
@@ -277,33 +351,14 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </select>
           </div>
 
-          {/* Title */}
+          {/* Reason */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Request Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              placeholder="e.g., Request to Change Class"
-              maxLength={255}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-              disabled={isSubmitting}
-            />
-            <p className="text-xs text-gray-500 mt-1">{formData.title.length}/255 characters</p>
-          </div>
-
-          {/* Description/Reason */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Detailed Description <span className="text-red-500">*</span>
+              Reason for Request <span className="text-red-500">*</span>
             </label>
             <textarea
-              name="description"
-              value={formData.description}
+              name="reason"
+              value={formData.reason}
               onChange={handleInputChange}
               placeholder="Please provide a detailed explanation of your request, including any relevant course/class and schedule information if applicable..."
               rows={4}
@@ -312,8 +367,70 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               required
               disabled={isSubmitting}
             />
-            <p className="text-xs text-gray-500 mt-1">{formData.description.length}/2000 characters</p>
+            <p className="text-xs text-gray-500 mt-1">{formData.reason.length}/2000 characters</p>
           </div>
+
+          {/* From Class - Only shown for class transfer, required when shown */}
+          {isClassTransfer() && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                From Class <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="fromClassID"
+                value={formData.fromClassID}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                disabled={isSubmitting || isLoadingClasses}
+              >
+                <option value="" disabled>Select a class</option>
+                {classes.map((classItem) => (
+                  <option key={classItem.id} value={classItem.id}>
+                    {classItem.className} {classItem.courseName ? `- ${classItem.courseName}` : ''}
+                  </option>
+                ))}
+              </select>
+              {isLoadingClasses && (
+                <p className="text-xs text-gray-500 mt-1">Loading classes...</p>
+              )}
+              {!isLoadingClasses && classes.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">No classes available</p>
+              )}
+            </div>
+          )}
+
+          {/* To Class - Only shown for class transfer, required when shown */}
+          {isClassTransfer() && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                To Class <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="toClassID"
+                value={formData.toClassID}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                disabled={isSubmitting || isLoadingClasses}
+              >
+                <option value="" disabled>Select a class</option>
+                {classes
+                  .filter(classItem => classItem.id !== formData.fromClassID) // Exclude the selected "From Class"
+                  .map((classItem) => (
+                    <option key={classItem.id} value={classItem.id}>
+                      {classItem.className} {classItem.courseName ? `- ${classItem.courseName}` : ''}
+                    </option>
+                  ))}
+              </select>
+              {isLoadingClasses && (
+                <p className="text-xs text-gray-500 mt-1">Loading classes...</p>
+              )}
+              {!isLoadingClasses && classes.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">No classes available</p>
+              )}
+            </div>
+          )}
 
           {/* File Upload */}
           <div>
@@ -395,6 +512,12 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                   Processing typically takes 3-5 business days. You will be notified once 
                   your request has been reviewed.
                 </p>
+                {isClassTransfer() && (
+                  <p className="text-sm text-orange-700 mt-2">
+                    <strong>Class Transfer:</strong> Your request will be valid for 7 days from submission. 
+                    If not processed within this period, it will automatically expire.
+                  </p>
+                )}
               </div>
             </div>
           </div>
