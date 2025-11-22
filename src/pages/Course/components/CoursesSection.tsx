@@ -518,11 +518,11 @@ export default function CoursesSection() {
                     <div className="flex items-center gap-3 mb-6">
                       <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-full shadow-lg">
                         <BookOpen className="w-5 h-5" />
-                        <span className="font-semibold">Khóa học phù hợp với bạn</span>
+                        <span className="font-semibold">The right course for you</span>
                       </div>
                       <div className="flex-1 h-px bg-gradient-to-r from-primary-200 to-transparent"></div>
                       <span className="text-sm text-gray-600 font-medium">
-                        Điểm Placement Test: <span className="font-bold text-primary-600">{placementTestGrade.toFixed(2)} / 10</span>
+                        Placement Test Grade: <span className="font-bold text-primary-600">{placementTestGrade.toFixed(2)} / 10</span>
                       </span>
                     </div>
                     <div className="space-y-4">
@@ -551,7 +551,7 @@ export default function CoursesSection() {
                     {recommendedCourses.length > 0 && placementTestGrade !== null && (
                       <div className="flex items-center gap-3 mb-6 mt-8">
                         <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
-                        <span className="text-sm text-gray-600 font-medium px-4">Tất cả khóa học</span>
+                        <span className="text-sm text-gray-600 font-medium px-4">All course</span>
                         <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
                       </div>
                     )}
