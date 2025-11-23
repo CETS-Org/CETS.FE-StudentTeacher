@@ -8,6 +8,11 @@ export interface SubmitAcademicRequest {
   toClassID?: string;
   effectiveDate?: string;
   attachmentUrl?: string;
+  // For meeting reschedule
+  classMeetingID?: string;
+  newMeetingDate?: string;
+  newSlotID?: string;
+  newRoomID?: string;
 }
 
 export interface AcademicRequestResponse {
@@ -30,7 +35,14 @@ export interface AcademicRequestResponse {
   processedBy?: string;
   processedByName?: string;
   processedAt?: string;
+  staffResponse?: string;
+  // For meeting reschedule
+  classMeetingID?: string;
+  meetingInfo?: string;
+  newMeetingDate?: string;
+  newSlotID?: string;
+  newSlotName?: string;
+  newRoomID?: string;
+  newRoomName?: string;
 }
-
-
 

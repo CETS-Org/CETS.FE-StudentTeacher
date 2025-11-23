@@ -10,7 +10,7 @@ import AcademicChangeRequestPopup from "@/pages/Common/components/AcademicChange
 import AcademicRequestDetailPopup from "@/pages/Common/components/AcademicRequestDetailPopup";
 import { getMyAcademicRequests } from "@/api/academicRequest.api";
 import { getStudentId } from "@/lib/utils";
-import type { AcademicRequestResponse } from "@/types/report";
+import type { AcademicRequestResponse } from "@/types/academicRequest";
 
 const ReportIssue: React.FC = () => {
   usePageTitle("Report Issues");

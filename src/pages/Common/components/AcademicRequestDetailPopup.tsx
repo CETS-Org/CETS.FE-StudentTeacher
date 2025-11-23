@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { X, File, Download, Calendar, User, AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
+import { X, File, Download, Calendar, User, AlertCircle, CheckCircle, Clock, XCircle, MapPin } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import { getAcademicRequestDetails } from "@/api/academicRequest.api";
-import type { AcademicRequestResponse } from "@/types/report";
+import { getAcademicRequestDetails, getAttachmentDownloadUrl } from "@/api/academicRequest.api";
+import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
+import { getAllClasses } from "@/api/classes.api";
+import { getTimeSlots } from "@/api/lookup.api";
+import type { AcademicRequestResponse } from "@/types/academicRequest";
 import { toast } from "@/components/ui/Toast";
 
 interface AcademicRequestDetailPopupProps {
@@ -19,14 +22,114 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
 }) => {
   const [request, setRequest] = useState<AcademicRequestResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [allClasses, setAllClasses] = useState<any[]>([]);
+  const [timeSlots, setTimeSlots] = useState<Map<string, string>>(new Map());
+  const [classMeeting, setClassMeeting] = useState<any>(null);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [isLoadingMeeting, setIsLoadingMeeting] = useState(false);
 
   useEffect(() => {
     if (isOpen && requestId) {
       fetchRequestDetails();
+      fetchClassesAndTimeSlots();
     } else {
       setRequest(null);
+      setClassMeeting(null);
     }
   }, [isOpen, requestId]);
+
+  useEffect(() => {
+    // Fetch class meeting details if this is a meeting reschedule request
+    if (request?.classMeetingID) {
+      fetchClassMeetingDetails(request.classMeetingID);
+    } else {
+      setClassMeeting(null);
+    }
+  }, [request?.classMeetingID]);
+
+  const fetchClassesAndTimeSlots = async () => {
+    setIsLoadingClasses(true);
+    try {
+      // Fetch classes and time slots in parallel
+      const [classesResponse, timeSlotsResponse] = await Promise.all([
+        getAllClasses(),
+        getTimeSlots()
+      ]);
+
+      // Set classes
+      setAllClasses(classesResponse.data || []);
+
+      // Map time slots
+      const slots = timeSlotsResponse.data || [];
+      const slotMap = new Map<string, string>();
+      slots.forEach((slot: any) => {
+        const code = slot.code || slot.Code || '';
+        const name = slot.name || slot.Name || '';
+        if (code) {
+          const timeMatch = name.match(/(\d{2}:\d{2})/);
+          if (timeMatch) {
+            const times = name.match(/(\d{2}:\d{2})/g);
+            if (times && times.length > 1) {
+              slotMap.set(code, `${times[0]} - ${times[1]}`);
+            } else {
+              slotMap.set(code, timeMatch[1]);
+            }
+          } else {
+            slotMap.set(code, name || code);
+          }
+        }
+      });
+      setTimeSlots(slotMap);
+    } catch (error: any) {
+      console.error('Error fetching classes/time slots:', error);
+      // Don't show error toast as this is not critical
+    } finally {
+      setIsLoadingClasses(false);
+    }
+  };
+
+  // Helper function to get time from slot code
+  const getTimeFromSlot = (slotCode: string): string => {
+    if (!slotCode) return slotCode;
+    const time = timeSlots.get(slotCode);
+    return time || slotCode;
+  };
+
+  // Get class details by ID
+  const getClassById = (classId: string) => {
+    return allClasses.find((cls: any) => (cls.id || cls.Id) === classId);
+  };
+
+  const fetchClassMeetingDetails = async (meetingId: string) => {
+    if (!request?.classMeetingID) return;
+    
+    setIsLoadingMeeting(true);
+    try {
+      // Try to find the class that contains this meeting
+      // We'll need to search through classes to find which one has this meeting
+      for (const cls of allClasses) {
+        try {
+          const meetings = await getClassMeetingsByClassId(cls.id || cls.Id);
+          const meeting = meetings.find((m: any) => 
+            (m.id === meetingId) || (m.Id === meetingId) || (m.id?.toString() === meetingId) || (m.Id?.toString() === meetingId)
+          );
+          if (meeting) {
+            setClassMeeting(meeting);
+            return;
+          }
+        } catch (err) {
+          // Continue to next class if this one fails
+          continue;
+        }
+      }
+      setClassMeeting(null);
+    } catch (error: any) {
+      console.error('Error fetching class meeting details:', error);
+      setClassMeeting(null);
+    } finally {
+      setIsLoadingMeeting(false);
+    }
+  };
 
   const fetchRequestDetails = async () => {
     if (!requestId) return;
@@ -77,26 +180,34 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
     );
   };
 
-  const handleDownloadAttachment = () => {
+  const handleDownloadAttachment = async () => {
     if (!request?.attachmentUrl) {
       toast.error('No attachment available to download');
       return;
     }
 
     try {
-      // Open the attachment URL directly
+      toast.info('Preparing download...');
+      
+      // Get the presigned download URL from the backend
+      const response = await getAttachmentDownloadUrl(request.attachmentUrl);
+      const downloadUrl = response.data.downloadUrl;
+
+      // Open the presigned URL in a new tab
       const link = document.createElement("a");
-      link.href = request.attachmentUrl;
+      link.href = downloadUrl;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      toast.success('Download started!');
     } catch (error: any) {
       console.error("Download attachment error:", error);
       toast.error(
         `Failed to download attachment: ${
-          error.message || "Unknown error"
+          error.response?.data?.error || error.message || "Unknown error"
         }`
       );
     }
@@ -167,29 +278,245 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                 </div>
               </div>
 
-              {/* From/To Class */}
+              {/* From/To Class with Schedule Details */}
               {(request.fromClassName || request.toClassName) && (
-                <div className="grid grid-cols-2 gap-4">
-                  {request.fromClassName && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="space-y-4">
+                  {request.fromClassID && (
+                    <div className="border-l-4 border-blue-500 bg-blue-50/50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Calendar className="w-4 h-4 text-blue-600" />
+                        </div>
                         From Class
                       </label>
-                      <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                        {request.fromClassName}
-                      </div>
+                      {(() => {
+                        const fromClass = getClassById(request.fromClassID);
+                        return (
+                          <div className="space-y-3">
+                            <div className="text-sm font-medium text-gray-900 bg-white px-3 py-2 rounded-md">
+                              {request.fromClassName || 'N/A'}
+                            </div>
+                            {fromClass && (
+                              <>
+                                {fromClass.teacher && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                                    <User className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Teacher:</span>
+                                    <span>{fromClass.teacher}</span>
+                                  </div>
+                                )}
+                                {fromClass.room && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                                    <MapPin className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Room:</span>
+                                    <span>{fromClass.room}</span>
+                                  </div>
+                                )}
+                                {(fromClass.startDate || fromClass.endDate) && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                                    <Calendar className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Duration:</span>
+                                    <span>
+                                      {fromClass.startDate && new Date(fromClass.startDate).toLocaleDateString()} - {fromClass.endDate && new Date(fromClass.endDate).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {fromClass.schedule && fromClass.schedule.length > 0 && (
+                                  <div className="mt-3">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                      <Clock className="w-4 h-4 text-gray-500" />
+                                      Schedule:
+                                    </div>
+                                    <div className="bg-white rounded-md p-3 space-y-1.5 max-h-40 overflow-y-auto">
+                                      {fromClass.schedule.map((item: any, idx: number) => (
+                                        <div key={idx} className="text-xs text-gray-600 flex items-center gap-2">
+                                          <span className="font-medium">
+                                            {item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+                                          </span>
+                                          <span className="text-gray-400">•</span>
+                                          <span>{getTimeFromSlot(item.slotCode || item.slot || '')}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
-                  {request.toClassName && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                  {request.toClassID && (
+                    <div className="border-l-4 border-green-500 bg-green-50/50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                          <Calendar className="w-4 h-4 text-green-600" />
+                        </div>
                         To Class
                       </label>
-                      <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                        {request.toClassName}
-                      </div>
+                      {(() => {
+                        const toClass = getClassById(request.toClassID);
+                        return (
+                          <div className="space-y-3">
+                            <div className="text-sm font-medium text-gray-900 bg-white px-3 py-2 rounded-md">
+                              {request.toClassName || 'N/A'}
+                            </div>
+                            {toClass && (
+                              <>
+                                {toClass.teacher && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                                    <User className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Teacher:</span>
+                                    <span>{toClass.teacher}</span>
+                                  </div>
+                                )}
+                                {toClass.room && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                                    <MapPin className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Room:</span>
+                                    <span>{toClass.room}</span>
+                                  </div>
+                                )}
+                                {(toClass.startDate || toClass.endDate) && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                                    <Calendar className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Duration:</span>
+                                    <span>
+                                      {toClass.startDate && new Date(toClass.startDate).toLocaleDateString()} - {toClass.endDate && new Date(toClass.endDate).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {toClass.schedule && toClass.schedule.length > 0 && (
+                                  <div className="mt-3">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                      <Clock className="w-4 h-4 text-gray-500" />
+                                      Schedule:
+                                    </div>
+                                    <div className="bg-white rounded-md p-3 space-y-1.5 max-h-40 overflow-y-auto">
+                                      {toClass.schedule.map((item: any, idx: number) => (
+                                        <div key={idx} className="text-xs text-gray-600 flex items-center gap-2">
+                                          <span className="font-medium">
+                                            {item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+                                          </span>
+                                          <span className="text-gray-400">•</span>
+                                          <span>{getTimeFromSlot(item.slotCode || item.slot || '')}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Meeting Reschedule Details */}
+              {request.classMeetingID && (
+                <div className="space-y-4">
+                  <div className="border-l-4 border-purple-500 bg-purple-50/50 rounded-lg p-4">
+                    <label className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-4 h-4 text-purple-600" />
+                      </div>
+                      Meeting Reschedule Details
+                    </label>
+                    <div className="space-y-4">
+                      {/* Original Meeting */}
+                      <div className="bg-white rounded-md p-3 border border-purple-200">
+                        <div className="text-xs font-semibold text-purple-700 mb-2">Original Meeting</div>
+                        {isLoadingMeeting ? (
+                          <p className="text-xs text-gray-500">Loading meeting details...</p>
+                        ) : classMeeting ? (
+                          <div className="space-y-1.5 text-xs">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-3 h-3 text-gray-500" />
+                              <span className="font-medium text-gray-700">Date:</span>
+                              <span className="text-gray-900">
+                                {new Date(classMeeting.date).toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3 h-3 text-gray-500" />
+                              <span className="font-medium text-gray-700">Time:</span>
+                              <span className="text-gray-900">
+                                {getTimeFromSlot(classMeeting.slot || '')}
+                              </span>
+                            </div>
+                            {classMeeting.roomID && (
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-3 h-3 text-gray-500" />
+                                <span className="font-medium text-gray-700">Room:</span>
+                                <span className="text-gray-900">Room ID: {classMeeting.roomID}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : request.meetingInfo ? (
+                          <div className="text-xs text-gray-600">{request.meetingInfo}</div>
+                        ) : (
+                          <div className="text-xs text-gray-500">Meeting information not available</div>
+                        )}
+                      </div>
+
+                      {/* Arrow indicating change */}
+                      <div className="flex justify-center py-1">
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* New Meeting Details */}
+                      <div className="bg-white rounded-md p-3 border border-green-200">
+                        <div className="text-xs font-semibold text-green-700 mb-2">New Meeting Details</div>
+                        <div className="space-y-1.5 text-xs">
+                          {request.newMeetingDate && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-3 h-3 text-gray-500" />
+                              <span className="font-medium text-gray-700">New Date:</span>
+                              <span className="text-gray-900">
+                                {new Date(request.newMeetingDate).toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                          )}
+                          {request.newSlotName && (
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3 h-3 text-gray-500" />
+                              <span className="font-medium text-gray-700">New Time:</span>
+                              <span className="text-gray-900">{request.newSlotName}</span>
+                            </div>
+                          )}
+                          {request.newRoomName && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-3 h-3 text-gray-500" />
+                              <span className="font-medium text-gray-700">New Room:</span>
+                              <span className="text-gray-900">{request.newRoomName}</span>
+                            </div>
+                          )}
+                          {!request.newMeetingDate && !request.newSlotName && !request.newRoomName && (
+                            <div className="text-xs text-gray-500">New meeting details not specified</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -201,6 +528,48 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                   </label>
                   <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
                     {request.effectiveDate}
+                  </div>
+                </div>
+              )}
+
+              {/* Staff Response */}
+              {request.staffResponse && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Staff Response
+                  </label>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-900 mb-2 leading-relaxed whitespace-pre-wrap">
+                          {request.staffResponse}
+                        </p>
+                        <div className="text-xs text-gray-600">
+                          {request.processedByName && (
+                            <>
+                              <span className="font-medium">{request.processedByName}</span>
+                              {request.processedAt && (
+                                <>
+                                  {" • "}
+                                  <span>{new Date(request.processedAt).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    year: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit'
+                                  })}</span>
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

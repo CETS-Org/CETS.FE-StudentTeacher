@@ -7,4 +7,7 @@ export const getStudentLearningClasses = (studentId: string, config?: AxiosReque
 export const getClassDetailsById = (classId: string, config?: AxiosRequestConfig) =>
   api.get(`${endpoint.classes}/${classId}/detail`, config);
 
+// Get all classes (for class transfer dropdown)
+export const getAllClasses = (config?: AxiosRequestConfig) =>
+  api.get(`${endpoint.classes}/staff-classes`, config);
 

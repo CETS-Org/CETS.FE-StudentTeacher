@@ -3,7 +3,7 @@ import { api } from './api';
 import type {
   SubmitAcademicRequest,
   AcademicRequestResponse,
-} from '@/types/report';
+} from '@/types/academicRequest';
 
 const ACADEMIC_REQUEST_ENDPOINT = '/api/ACAD_AcademicRequest';
 
@@ -36,5 +36,34 @@ export const getAcademicRequestDetails = (
   api.get<AcademicRequestResponse>(
     `${ACADEMIC_REQUEST_ENDPOINT}/${requestId}`,
     config
+  );
+
+// Get presigned upload URL for attachment
+export interface GetUploadUrlRequest {
+  fileName: string;
+  contentType: string;
+}
+
+export interface GetUploadUrlResponse {
+  uploadUrl: string;
+  filePath: string;
+}
+
+export const getAttachmentUploadUrl = (
+  data: GetUploadUrlRequest,
+  config?: AxiosRequestConfig
+) => api.post<GetUploadUrlResponse>(`${ACADEMIC_REQUEST_ENDPOINT}/upload-url`, data, config);
+
+// Get presigned download URL for attachment
+export const getAttachmentDownloadUrl = (
+  filePath: string,
+  config?: AxiosRequestConfig
+) =>
+  api.get<{ downloadUrl: string }>(
+    `${ACADEMIC_REQUEST_ENDPOINT}/download-url`,
+    {
+      params: { filePath },
+      ...config,
+    }
   );
 
