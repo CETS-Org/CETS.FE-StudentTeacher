@@ -14,7 +14,8 @@ export interface ClassMeeting {
   progressNote: string | null;
   isActive: boolean;
   isDeleted: boolean;
-  slot : string
+  slot: string;
+  slotID: string; // Added the slotID property
 }
 
 export const getClassMeetingsByClassId = async (

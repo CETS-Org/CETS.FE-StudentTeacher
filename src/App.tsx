@@ -51,12 +51,14 @@ import UniversalLayout from './Shared/UniversalLayout'
 import StudentDetailPage from './pages/Student/Profile/StudentDetailPage'
 import ScrollToTop from './components/ScrollToTop'
 import WeeklyFeedback from '@/pages/Student/WeeklyFeedback'
+import ToastContainer from './components/ui/ToastContainer'
 
 
 export default function App() {
   return (
     <>
       <ScrollToTop />
+      <ToastContainer />
       <Routes>
       {/* Public routes - no layout */}
       <Route path="/login" element={<LoginPage />} />

@@ -3,7 +3,6 @@ import { X, File, Download, Calendar, User, AlertCircle, CheckCircle, Clock, XCi
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 import { getAcademicRequestDetails, getAttachmentDownloadUrl } from "@/api/academicRequest.api";
-import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
 import { getAllClasses } from "@/api/classes.api";
 import { getTimeSlots } from "@/api/lookup.api";
 import type { AcademicRequestResponse } from "@/types/academicRequest";
@@ -24,9 +23,7 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [allClasses, setAllClasses] = useState<any[]>([]);
   const [timeSlots, setTimeSlots] = useState<Map<string, string>>(new Map());
-  const [classMeeting, setClassMeeting] = useState<any>(null);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
-  const [isLoadingMeeting, setIsLoadingMeeting] = useState(false);
 
   useEffect(() => {
     if (isOpen && requestId) {
@@ -34,18 +31,8 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
       fetchClassesAndTimeSlots();
     } else {
       setRequest(null);
-      setClassMeeting(null);
     }
   }, [isOpen, requestId]);
-
-  useEffect(() => {
-    // Fetch class meeting details if this is a meeting reschedule request
-    if (request?.classMeetingID) {
-      fetchClassMeetingDetails(request.classMeetingID);
-    } else {
-      setClassMeeting(null);
-    }
-  }, [request?.classMeetingID]);
 
   const fetchClassesAndTimeSlots = async () => {
     setIsLoadingClasses(true);
@@ -98,37 +85,6 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
   // Get class details by ID
   const getClassById = (classId: string) => {
     return allClasses.find((cls: any) => (cls.id || cls.Id) === classId);
-  };
-
-  const fetchClassMeetingDetails = async (meetingId: string) => {
-    if (!request?.classMeetingID) return;
-    
-    setIsLoadingMeeting(true);
-    try {
-      // Try to find the class that contains this meeting
-      // We'll need to search through classes to find which one has this meeting
-      for (const cls of allClasses) {
-        try {
-          const meetings = await getClassMeetingsByClassId(cls.id || cls.Id);
-          const meeting = meetings.find((m: any) => 
-            (m.id === meetingId) || (m.Id === meetingId) || (m.id?.toString() === meetingId) || (m.Id?.toString() === meetingId)
-          );
-          if (meeting) {
-            setClassMeeting(meeting);
-            return;
-          }
-        } catch (err) {
-          // Continue to next class if this one fails
-          continue;
-        }
-      }
-      setClassMeeting(null);
-    } catch (error: any) {
-      console.error('Error fetching class meeting details:', error);
-      setClassMeeting(null);
-    } finally {
-      setIsLoadingMeeting(false);
-    }
   };
 
   const fetchRequestDetails = async () => {
@@ -337,9 +293,9 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                                           <span>{getTimeFromSlot(item.slotCode || item.slot || '')}</span>
                                         </div>
                                       ))}
-                                    </div>
-                                  </div>
-                                )}
+                      </div>
+                    </div>
+                  )}
                               </>
                             )}
                           </div>
@@ -404,9 +360,9 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                                           <span>{getTimeFromSlot(item.slotCode || item.slot || '')}</span>
                                         </div>
                                       ))}
-                                    </div>
-                                  </div>
-                                )}
+                      </div>
+                    </div>
+                  )}
                               </>
                             )}
                           </div>
@@ -431,15 +387,13 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                       {/* Original Meeting */}
                       <div className="bg-white rounded-md p-3 border border-purple-200">
                         <div className="text-xs font-semibold text-purple-700 mb-2">Original Meeting</div>
-                        {isLoadingMeeting ? (
-                          <p className="text-xs text-gray-500">Loading meeting details...</p>
-                        ) : classMeeting ? (
-                          <div className="space-y-1.5 text-xs">
+                        <div className="space-y-1.5 text-xs">
+                          {request.fromMeetingDate && (
                             <div className="flex items-center gap-2">
                               <Calendar className="w-3 h-3 text-gray-500" />
                               <span className="font-medium text-gray-700">Date:</span>
                               <span className="text-gray-900">
-                                {new Date(classMeeting.date).toLocaleDateString('en-US', {
+                                {new Date(request.fromMeetingDate).toLocaleDateString('en-US', {
                                   weekday: 'long',
                                   year: 'numeric',
                                   month: 'long',
@@ -447,26 +401,18 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                                 })}
                               </span>
                             </div>
+                          )}
+                          {request.fromSlotName && (
                             <div className="flex items-center gap-2">
                               <Clock className="w-3 h-3 text-gray-500" />
                               <span className="font-medium text-gray-700">Time:</span>
-                              <span className="text-gray-900">
-                                {getTimeFromSlot(classMeeting.slot || '')}
-                              </span>
+                              <span className="text-gray-900">{request.fromSlotName}</span>
                             </div>
-                            {classMeeting.roomID && (
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-3 h-3 text-gray-500" />
-                                <span className="font-medium text-gray-700">Room:</span>
-                                <span className="text-gray-900">Room ID: {classMeeting.roomID}</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : request.meetingInfo ? (
-                          <div className="text-xs text-gray-600">{request.meetingInfo}</div>
-                        ) : (
-                          <div className="text-xs text-gray-500">Meeting information not available</div>
-                        )}
+                          )}
+                          {!request.fromMeetingDate && !request.fromSlotName && (
+                            <div className="text-xs text-gray-500">Original meeting details not available</div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Arrow indicating change */}
@@ -482,12 +428,12 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                       <div className="bg-white rounded-md p-3 border border-green-200">
                         <div className="text-xs font-semibold text-green-700 mb-2">New Meeting Details</div>
                         <div className="space-y-1.5 text-xs">
-                          {request.newMeetingDate && (
+                          {request.toMeetingDate && (
                             <div className="flex items-center gap-2">
                               <Calendar className="w-3 h-3 text-gray-500" />
                               <span className="font-medium text-gray-700">New Date:</span>
                               <span className="text-gray-900">
-                                {new Date(request.newMeetingDate).toLocaleDateString('en-US', {
+                                {new Date(request.toMeetingDate).toLocaleDateString('en-US', {
                                   weekday: 'long',
                                   year: 'numeric',
                                   month: 'long',
@@ -496,11 +442,11 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                               </span>
                             </div>
                           )}
-                          {request.newSlotName && (
+                          {request.toSlotName && (
                             <div className="flex items-center gap-2">
                               <Clock className="w-3 h-3 text-gray-500" />
                               <span className="font-medium text-gray-700">New Time:</span>
-                              <span className="text-gray-900">{request.newSlotName}</span>
+                              <span className="text-gray-900">{request.toSlotName}</span>
                             </div>
                           )}
                           {request.newRoomName && (
@@ -510,7 +456,7 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                               <span className="text-gray-900">{request.newRoomName}</span>
                             </div>
                           )}
-                          {!request.newMeetingDate && !request.newSlotName && !request.newRoomName && (
+                          {!request.toMeetingDate && !request.toSlotName && !request.newRoomName && (
                             <div className="text-xs text-gray-500">New meeting details not specified</div>
                           )}
                         </div>

@@ -18,7 +18,7 @@ const ReportIssue: React.FC = () => {
   const navigate = useNavigate();
   const userId = getStudentId();
   
-  const [activeTab, setActiveTab] = useState<"pending" | "resolved">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "resolved" | "rejected">("pending");
   const [showTechnicalPopup, setShowTechnicalPopup] = useState(false);
   const [showAcademicPopup, setShowAcademicPopup] = useState(false);
   const [showDetailPopup, setShowDetailPopup] = useState(false);
@@ -123,7 +123,7 @@ const ReportIssue: React.FC = () => {
     );
   };
 
-  const renderAcademicReports = (isPending: boolean) => {
+  const renderAcademicReports = (tab: "pending" | "resolved" | "rejected") => {
     if (isLoading) {
       return (
         <div className="text-center py-12 text-neutral-500">
@@ -136,18 +136,27 @@ const ReportIssue: React.FC = () => {
     // Filter based on status
     const filtered = academicReports.filter(report => {
       const statusLower = report.statusName?.toLowerCase() || '';
-      if (isPending) {
+      if (tab === "pending") {
         return statusLower === 'pending' || statusLower === 'submitted';
+      } else if (tab === "rejected") {
+        return statusLower === 'rejected' || statusLower === 'denied' || statusLower === 'declined';
       } else {
-        return statusLower === 'approved' || statusLower === 'rejected' || statusLower === 'resolved';
+        // resolved tab - show approved and resolved (but not rejected)
+        return (statusLower === 'approved' || statusLower === 'resolved') && 
+               statusLower !== 'rejected' && statusLower !== 'denied' && statusLower !== 'declined';
       }
     });
 
     if (filtered.length === 0) {
+      const emptyMessages = {
+        pending: 'No pending academic requests found',
+        resolved: 'No resolved academic requests found',
+        rejected: 'No rejected academic requests found'
+      };
       return (
         <div className="text-center py-12 text-neutral-500">
           <FileText className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
-          <p>No {isPending ? 'pending' : 'resolved'} academic requests found</p>
+          <p>{emptyMessages[tab]}</p>
         </div>
       );
     }
@@ -294,13 +303,25 @@ const ReportIssue: React.FC = () => {
               >
                 Resolved {currentReportType === "Academic" ? "Requests" : "Reports"}
               </button>
+              {currentReportType === "Academic" && (
+                <button
+                  onClick={() => setActiveTab("rejected")}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "rejected"
+                      ? "border-red-600 text-red-700"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
+                  }`}
+                >
+                  Rejected Requests
+                </button>
+              )}
             </nav>
           </div>
 
           {/* Content */}
           <div>
             {currentReportType === "Academic" 
-              ? renderAcademicReports(activeTab === "pending")
+              ? renderAcademicReports(activeTab)
               : renderTechnicalReports()
             }
           </div>

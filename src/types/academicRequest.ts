@@ -3,15 +3,19 @@
 export interface SubmitAcademicRequest {
   studentID: string;
   requestTypeID: string;
+  priorityID?: string; // Optional, will default to "Medium" if not provided
   reason: string;
   fromClassID?: string;
   toClassID?: string;
   effectiveDate?: string;
+  // For class transfer - specific meeting details
+  fromMeetingDate?: string;
+  fromSlotID?: string;
+  toMeetingDate?: string;
+  toSlotID?: string;
   attachmentUrl?: string;
   // For meeting reschedule
   classMeetingID?: string;
-  newMeetingDate?: string;
-  newSlotID?: string;
   newRoomID?: string;
 }
 
@@ -24,6 +28,8 @@ export interface AcademicRequestResponse {
   requestTypeName?: string;
   academicRequestStatusID: string;
   statusName?: string;
+  priorityID?: string;
+  priorityName?: string;
   reason: string;
   createdAt: string;
   fromClassID?: string;
@@ -31,6 +37,13 @@ export interface AcademicRequestResponse {
   toClassID?: string;
   toClassName?: string;
   effectiveDate?: string;
+  // For class transfer - specific meeting details
+  fromMeetingDate?: string;
+  fromSlotID?: string;
+  fromSlotName?: string;
+  toMeetingDate?: string;
+  toSlotID?: string;
+  toSlotName?: string;
   attachmentUrl?: string;
   processedBy?: string;
   processedByName?: string;
@@ -39,9 +52,7 @@ export interface AcademicRequestResponse {
   // For meeting reschedule
   classMeetingID?: string;
   meetingInfo?: string;
-  newMeetingDate?: string;
-  newSlotID?: string;
-  newSlotName?: string;
+  // New meeting details (for meeting reschedule, uses toMeetingDate and toSlotID)
   newRoomID?: string;
   newRoomName?: string;
 }

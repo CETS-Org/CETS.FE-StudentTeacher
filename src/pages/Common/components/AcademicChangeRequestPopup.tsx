@@ -33,12 +33,15 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     courseID: "",
     fromClassID: "",
     toClassID: "",
+    // For class transfer - specific meeting details
+    fromMeetingDate: "",
+    fromSlotID: "",
+    toMeetingDate: "",
+    toSlotID: "",
     attachmentUrl: "",
-    // For meeting reschedule
+    // For meeting reschedule (uses toMeetingDate and toSlotID)
     classID: "",
     classMeetingID: "",
-    newMeetingDate: "",
-    newSlotID: "",
     newRoomID: "",
   });
 
@@ -48,11 +51,15 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const [timeSlots, setTimeSlots] = useState<Map<string, string>>(new Map());
   const [timeSlotLookups, setTimeSlotLookups] = useState<any[]>([]);
   const [classMeetings, setClassMeetings] = useState<any[]>([]);
+  const [fromClassMeetings, setFromClassMeetings] = useState<any[]>([]);
+  const [toClassMeetings, setToClassMeetings] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const [isLoadingMeetings, setIsLoadingMeetings] = useState(false);
+  const [isLoadingFromMeetings, setIsLoadingFromMeetings] = useState(false);
+  const [isLoadingToMeetings, setIsLoadingToMeetings] = useState(false);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -201,6 +208,42 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     }
   };
 
+  const fetchClassMeetingsForClass = async (classId: string, type: 'from' | 'to') => {
+    if (type === 'from') {
+      setIsLoadingFromMeetings(true);
+    } else {
+      setIsLoadingToMeetings(true);
+    }
+    try {
+      const meetings = await getClassMeetingsByClassId(classId);
+      // Filter out deleted meetings and only show future meetings
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const futureMeetings = meetings
+        .filter(m => !m.isDeleted && new Date(m.date) >= today)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      if (type === 'from') {
+        setFromClassMeetings(futureMeetings);
+      } else {
+        setToClassMeetings(futureMeetings);
+      }
+    } catch (error: any) {
+      console.error(`Error fetching ${type} class meetings:`, error);
+      if (type === 'from') {
+        setFromClassMeetings([]);
+      } else {
+        setToClassMeetings([]);
+      }
+    } finally {
+      if (type === 'from') {
+        setIsLoadingFromMeetings(false);
+      } else {
+        setIsLoadingToMeetings(false);
+      }
+    }
+  };
+
   const fetchRooms = async () => {
     setIsLoadingRooms(true);
     try {
@@ -283,12 +326,16 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           courseID: "",
           fromClassID: "",
           toClassID: "",
+          fromMeetingDate: "",
+          fromSlotID: "",
+          toMeetingDate: "",
+          toSlotID: "",
           classID: "",
           classMeetingID: "",
-          newMeetingDate: "",
-          newSlotID: "",
           newRoomID: "",
         }));
+        setFromClassMeetings([]);
+        setToClassMeetings([]);
       } else if (isNewTypeClassTransfer) {
         // Clear meeting reschedule fields
         setFormData(prev => ({
@@ -296,8 +343,6 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           [name]: value,
           classID: "",
           classMeetingID: "",
-          newMeetingDate: "",
-          newSlotID: "",
           newRoomID: "",
         }));
       } else if (isNewTypeMeetingReschedule) {
@@ -308,17 +353,35 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           courseID: "",
           fromClassID: "",
           toClassID: "",
+          fromMeetingDate: "",
+          fromSlotID: "",
+          toMeetingDate: "",
+          toSlotID: "",
         }));
+        setFromClassMeetings([]);
+        setToClassMeetings([]);
       } else {
         setFormData(prev => ({ ...prev, [name]: value }));
       }
     } else if (name === 'courseID') {
       // When course changes, clear class selections
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          fromClassID: "",
+          toClassID: "",
+        }));
+    } else if (name === 'fromClassID') {
+      // When from class changes, clear related fields
       setFormData(prev => ({
         ...prev,
         [name]: value,
-        fromClassID: "",
-        toClassID: "",
+      }));
+    } else if (name === 'toClassID') {
+      // When to class changes, clear related fields
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
       }));
     } else if (name === 'classID' && isMeetingReschedule()) {
       // When class changes for meeting reschedule, fetch meetings and clear meeting selection
@@ -326,14 +389,62 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         ...prev,
         [name]: value,
         classMeetingID: "",
-        newMeetingDate: "",
-        newSlotID: "",
         newRoomID: "",
+        fromMeetingDate: "",
+        fromSlotID: "",
       }));
       if (value) {
         fetchClassMeetings(value);
       } else {
         setClassMeetings([]);
+      }
+    } else if (name === 'classMeetingID' && isMeetingReschedule()) {
+      // When a meeting is selected for reschedule, populate the original meeting details
+      const selectedMeeting = classMeetings.find(meeting => meeting.id === value);
+      if (selectedMeeting) {
+        // Try to get slot ID directly from meeting first, then from lookup
+        let slotId = selectedMeeting.slotID || selectedMeeting.SlotID;
+        
+        if (!slotId) {
+          // Fallback: Get slot ID from meeting slot code and lookup
+          const slotCode = selectedMeeting.slot;
+          // Try multiple lookup strategies
+          let slotLookup = timeSlotLookups.find(s => (s.code || s.Code) === slotCode);
+          
+          if (!slotLookup) {
+            // Try finding by name containing the time
+            slotLookup = timeSlotLookups.find(s => {
+              const name = s.name || s.Name || '';
+              return name.includes(slotCode);
+            });
+          }
+          
+          if (!slotLookup) {
+            // Try reverse lookup using the timeSlots map
+            for (const [code, timeStr] of timeSlots.entries()) {
+              if (timeStr === slotCode || timeStr.includes(slotCode)) {
+                slotLookup = timeSlotLookups.find(s => (s.code || s.Code) === code);
+                break;
+              }
+            }
+          }
+          
+          slotId = slotLookup?.lookUpId || slotLookup?.LookUpId || slotLookup?.id;
+        }
+      
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          fromMeetingDate: selectedMeeting.date,
+          fromSlotID: slotId || "",
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          fromMeetingDate: "",
+          fromSlotID: "",
+        }));
       }
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -444,13 +555,18 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         return false;
       }
 
-      if (!formData.newMeetingDate?.trim()) {
+      if (!formData.toMeetingDate?.trim()) {
         toast.error('New Meeting Date is required for meeting reschedule requests');
         return false;
       }
 
+      if (!formData.toSlotID?.trim()) {
+        toast.error('New Time Slot is required for meeting reschedule requests');
+        return false;
+      }
+
       // Validate that new date is not in the past
-      const newDate = new Date(formData.newMeetingDate);
+      const newDate = new Date(formData.toMeetingDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (newDate < today) {
@@ -526,14 +642,22 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         studentID: userId,
         requestTypeID: formData.requestTypeID,
         reason: formData.reason,
+        attachmentUrl: attachmentUrl || undefined,
+        // Class transfer fields - only include if it's a class transfer request
+        ...(isClassTransfer() && {
         fromClassID: formData.fromClassID || undefined,
         toClassID: formData.toClassID || undefined,
-        attachmentUrl: attachmentUrl || undefined,
-        // Meeting reschedule fields
-        classMeetingID: formData.classMeetingID || undefined,
-        newMeetingDate: formData.newMeetingDate || undefined,
-        newSlotID: formData.newSlotID || undefined,
-        newRoomID: formData.newRoomID || undefined,
+        }),
+        // Meeting reschedule fields - only include if it's a meeting reschedule request
+        // Uses fromMeetingDate/fromSlotID for original and toMeetingDate/toSlotID for new meeting details
+        ...(isMeetingReschedule() && {
+          classMeetingID: formData.classMeetingID || undefined,
+          fromMeetingDate: formData.fromMeetingDate || undefined,
+          fromSlotID: formData.fromSlotID || undefined,
+          toMeetingDate: formData.toMeetingDate || undefined,
+          toSlotID: formData.toSlotID || undefined,
+          newRoomID: formData.newRoomID || undefined,
+        }),
       };
 
       await submitAcademicRequest(requestData);
@@ -547,15 +671,19 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         courseID: "",
         fromClassID: "",
         toClassID: "",
+        fromMeetingDate: "",
+        fromSlotID: "",
+        toMeetingDate: "",
+        toSlotID: "",
         attachmentUrl: "",
         classID: "",
         classMeetingID: "",
-        newMeetingDate: "",
-        newSlotID: "",
         newRoomID: "",
       });
       setSelectedFile(null);
       setClassMeetings([]);
+      setFromClassMeetings([]);
+      setToClassMeetings([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -579,15 +707,19 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         courseID: "",
         fromClassID: "",
         toClassID: "",
+        fromMeetingDate: "",
+        fromSlotID: "",
+        toMeetingDate: "",
+        toSlotID: "",
         attachmentUrl: "",
         classID: "",
         classMeetingID: "",
-        newMeetingDate: "",
-        newSlotID: "",
         newRoomID: "",
       });
       setSelectedFile(null);
       setClassMeetings([]);
+      setFromClassMeetings([]);
+      setToClassMeetings([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -607,19 +739,19 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
         <DialogBody className="flex-1 overflow-y-auto max-h-none">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* User Info Display (Read-only) */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm font-medium text-blue-900">Submitting as:</span>
-              </div>
-              <p className="text-sm text-blue-800 font-medium">
-                {userInfo?.fullName || userInfo?.email}
-              </p>
-              {userInfo?.email && userInfo?.fullName && (
-                <p className="text-xs text-blue-600 mt-1">{userInfo.email}</p>
-              )}
+          {/* User Info Display (Read-only) */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-sm font-medium text-blue-900">Submitting as:</span>
             </div>
+            <p className="text-sm text-blue-800 font-medium">
+              {userInfo?.fullName || userInfo?.email}
+            </p>
+            {userInfo?.email && userInfo?.fullName && (
+              <p className="text-xs text-blue-600 mt-1">{userInfo.email}</p>
+            )}
+          </div>
 
           {/* Request Type Selection */}
           <div>
@@ -668,10 +800,10 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
           {/* Course - Only shown for class transfer, required when shown */}
           {isClassTransfer() && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
                 Course <span className="text-red-500">*</span>
-              </label>
+            </label>
               <select
                 name="courseID"
                 value={formData.courseID}
@@ -708,10 +840,10 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                 From Class <span className="text-red-500">*</span>
               </label>
               <select
-                name="fromClassID"
-                value={formData.fromClassID}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              name="fromClassID"
+              value={formData.fromClassID}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
                 disabled={isSubmitting || isLoadingClasses || !formData.courseID}
               >
@@ -731,7 +863,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               {!isLoadingClasses && formData.courseID && filteredClasses.length === 0 && (
                 <p className="text-xs text-red-500 mt-1">No classes available for this course</p>
               )}
-            </div>
+          </div>
           )}
 
           {/* From Class Schedule Display */}
@@ -797,15 +929,15 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
           {/* To Class - Only shown for class transfer, required when shown */}
           {isClassTransfer() && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
                 To Class <span className="text-red-500">*</span>
-              </label>
+            </label>
               <select
-                name="toClassID"
-                value={formData.toClassID}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              name="toClassID"
+              value={formData.toClassID}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
                 disabled={isSubmitting || isLoadingClasses || !formData.courseID}
               >
@@ -827,7 +959,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               {!isLoadingClasses && formData.courseID && filteredClasses.length === 0 && (
                 <p className="text-xs text-gray-500 mt-1">No classes available for this course</p>
               )}
-            </div>
+          </div>
           )}
 
           {/* To Class Schedule Display */}
@@ -891,12 +1023,13 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </div>
           )}
 
+
           {/* Meeting Reschedule Fields */}
           {isMeetingReschedule() && (
             <>
               {/* Class Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
                   Class <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -964,33 +1097,33 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       New Meeting Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="newMeetingDate"
-                      value={formData.newMeetingDate}
-                      onChange={handleInputChange}
+            </label>
+            <input
+              type="date"
+                      name="toMeetingDate"
+                      value={formData.toMeetingDate}
+              onChange={handleInputChange}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
-                      disabled={isSubmitting}
-                    />
+              disabled={isSubmitting}
+            />
                     <p className="text-xs text-gray-500 mt-1">Select the new date for this meeting</p>
-                  </div>
+          </div>
 
                   {/* New Time Slot */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      New Time Slot (Optional)
+                      New Time Slot <span className="text-red-500">*</span>
                     </label>
                     <select
-                      name="newSlotID"
-                      value={formData.newSlotID}
+                      name="toSlotID"
+                      value={formData.toSlotID}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={isSubmitting || isLoadingTimeSlots}
                     >
-                      <option value="">Keep current time slot</option>
+                      <option value="" disabled>Select new time slot</option>
                       {timeSlotLookups.map((slot: any) => {
                         const slotId = slot.lookUpId || slot.LookUpId || slot.id;
                         const slotCode = slot.code || slot.Code || '';
@@ -1124,25 +1257,25 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </div>
           </div>
 
-            {/* Form Actions */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <Button
-                type="submit"
-                className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isSubmitting || isLoading}
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
-              </Button>
-            </div>
-          </form>
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <Button
+              type="submit"
+              className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting || isLoading}
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Request'}
+            </Button>
+          </div>
+        </form>
         </DialogBody>
       </DialogContent>
     </Dialog>
