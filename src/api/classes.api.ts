@@ -15,3 +15,8 @@ export const getStudentFeedbackClasses = async (studentId: string) => {
 
 export const getClassDetailsById = (classId: string, config?: AxiosRequestConfig) =>
   api.get(`${endpoint.classes}/${classId}/detail`, config);
+
+// Get all classes (for class transfer dropdown)
+export const getAllClasses = (config?: AxiosRequestConfig) =>
+  api.get(`${endpoint.classes}/staff-classes`, config);
+

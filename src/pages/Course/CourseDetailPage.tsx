@@ -6,7 +6,55 @@ import Loader from "@/components/ui/Loader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import CourseDetail from "./CourseDetail";
 import { api } from "@/api";
-import type { Course } from "@/types/course";
+import type { Course, CourseSyllabus, SyllabusItem } from "@/types/course";
+
+type RawSyllabusItem = Record<string, any>;
+type RawSyllabus = Record<string, any>;
+
+const mapSyllabusItem = (
+  item: RawSyllabusItem,
+  index: number,
+  parentId?: string
+): SyllabusItem => {
+  const fallbackPrefix = parentId ? `${parentId}-item` : "syllabus-item";
+  const resolvedId = item.id || item.syllabusItemID || `${fallbackPrefix}-${index}`;
+  const parsedSession = Number(item.sessionNumber);
+  const sessionNumber = Number.isFinite(parsedSession) ? parsedSession : index + 1;
+
+  return {
+    id: String(resolvedId),
+    sessionNumber,
+    topicTitle: (item.topicTitle || item.title || `Session ${sessionNumber}`) as string,
+    totalSlots: typeof item.totalSlots === "number" ? item.totalSlots : undefined,
+    required: item.required !== undefined ? Boolean(item.required) : true,
+    objectives: typeof item.objectives === "string" ? item.objectives : undefined,
+    contentSummary: typeof item.contentSummary === "string" ? item.contentSummary : undefined,
+    preReadingUrl: ((item.preReadingUrl ?? item.preReadingURL) as string | null | undefined) ?? null,
+  };
+};
+
+const mapStructuredSyllabi = (data: Record<string, any>): CourseSyllabus[] => {
+  if (!Array.isArray(data?.syllabi)) {
+    return [];
+  }
+
+  return (data.syllabi as RawSyllabus[]).map((syllabus, sectionIndex) => {
+    const sectionId = String(syllabus.syllabusID || syllabus.id || `syllabus-${sectionIndex}`);
+
+    return {
+      id: sectionId,
+      syllabusID: syllabus.syllabusID ?? undefined,
+      courseID: syllabus.courseID ?? undefined,
+      title: (syllabus.title || `Section ${sectionIndex + 1}`) as string,
+      description: (syllabus.description ?? null) as string | null,
+      items: Array.isArray(syllabus.items)
+        ? (syllabus.items as RawSyllabusItem[]).map((item, itemIndex) =>
+            mapSyllabusItem(item, itemIndex, sectionId)
+          )
+        : [],
+    };
+  });
+};
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -29,6 +77,7 @@ export default function CourseDetailPage() {
         
         const response = await api.getCourseDetail(courseId);
         const data = response.data;
+        const structuredSyllabi = mapStructuredSyllabi(data);
         
         // Map the API response to our Course interface
         const mappedCourse: Course = {
@@ -37,17 +86,8 @@ export default function CourseDetailPage() {
           courseLevel: data.courseLevel || "Beginner",
           startDate: data.startDate,
           enrolledCount: data.enrolledCount,
-          syllabusItems: data.syllabusItems ? 
-            data.syllabusItems.map((item: Record<string, unknown>) => ({
-              id: (item.id ) as string,
-              sessionNumber: (item.sessionNumber || 1) as number,
-              topicTitle: (item.topicTitle || "Untitled Topic") as string,
-              totalSlots: item.totalSlots as number | undefined,
-              required: item.required !== undefined ? item.required as boolean : true,
-              objectives: item.objectives as string | undefined,
-              contentSummary: item.contentSummary as string | undefined,
-              preReadingUrl: item.preReadingUrl as string | null | undefined
-            })) : [],
+          syllabusItems: Array.isArray(data.syllabusItems) ? data.syllabusItems : undefined,
+          syllabi: structuredSyllabi,
           benefits: data.benefits || [],
           requirements: data.requirements || [],
           teacherDetails: data.teacherDetails || [],

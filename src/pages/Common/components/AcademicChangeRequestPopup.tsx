@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, AlertCircle, Upload, File } from "lucide-react";
+import { X, AlertCircle, Upload, File, Calendar, Clock, MapPin, User } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { toast } from "@/components/ui/Toast";
-import { submitAcademicRequest } from "@/api/report.api";
-import { getAcademicRequestTypes } from "@/api/lookup.api";
-import { getUserInfo, getStudentId } from "@/lib/utils";
+import { submitAcademicRequest, getAttachmentUploadUrl } from "@/api/academicRequest.api";
+import { getAcademicRequestTypes, getTimeSlots } from "@/api/lookup.api";
+import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
+import { getAllClasses } from "@/api/classes.api";
+import { getCourses } from "@/api/course.api";
+import { getUserInfo, getStudentId, getUserRole } from "@/lib/utils";
 import { uploadToPresignedUrl } from "@/api/file.api";
-import type { SubmitAcademicReportRequest } from "@/types/report";
+import type { SubmitAcademicRequest } from "@/types/academicRequest";
+import type { MyClass } from "@/types/class";
 
 interface AcademicChangeRequestPopupProps {
   isOpen: boolean;
@@ -23,26 +28,83 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const userId = getStudentId();
 
   const [formData, setFormData] = useState({
-    reportTypeID: "", 
-    requestType: "", 
-    title: "",
-    description: "",
+    requestTypeID: "", 
+    reason: "",
+    courseID: "",
+    fromClassID: "",
+    toClassID: "",
+    // For class transfer - specific meeting details
+    fromMeetingDate: "",
+    fromSlotID: "",
+    toMeetingDate: "",
+    toSlotID: "",
     attachmentUrl: "",
+    // For meeting reschedule (uses toMeetingDate and toSlotID)
+    classID: "",
+    classMeetingID: "",
+    newRoomID: "",
   });
 
   const [requestTypes, setRequestTypes] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [allClasses, setAllClasses] = useState<MyClass[]>([]);
+  const [timeSlots, setTimeSlots] = useState<Map<string, string>>(new Map());
+  const [timeSlotLookups, setTimeSlotLookups] = useState<any[]>([]);
+  const [classMeetings, setClassMeetings] = useState<any[]>([]);
+  const [fromClassMeetings, setFromClassMeetings] = useState<any[]>([]);
+  const [toClassMeetings, setToClassMeetings] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
+  const [isLoadingMeetings, setIsLoadingMeetings] = useState(false);
+  const [isLoadingFromMeetings, setIsLoadingFromMeetings] = useState(false);
+  const [isLoadingToMeetings, setIsLoadingToMeetings] = useState(false);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch request types on mount
-  useEffect(() => {
-    if (isOpen && userId) {
-      fetchRequestTypes();
+  // Get filtered classes based on selected course
+  const filteredClasses = formData.courseID 
+    ? allClasses.filter((classItem: any) => {
+        const courseId = (classItem as any).courseId;
+        return courseId === formData.courseID;
+      })
+    : [];
+
+  // Get selected class details for schedule display
+  const getSelectedClass = (classId: string) => {
+    return allClasses.find(cls => cls.id === classId);
+  };
+
+  // Helper function to get time from slot code
+  const getTimeFromSlot = (slotCode: string): string => {
+    if (!slotCode) return slotCode;
+    const time = timeSlots.get(slotCode);
+    if (time) {
+      // If time contains a time format (HH:MM), use it
+      // Otherwise, return the slot code as fallback
+      return time;
     }
-  }, [isOpen, userId]);
+    // Fallback to slot code if no mapping found
+    return slotCode;
+  };
+
+  const fromClass = formData.fromClassID ? getSelectedClass(formData.fromClassID) : null;
+  const toClass = formData.toClassID ? getSelectedClass(formData.toClassID) : null;
+
+  // Fetch request types, courses, classes, and time slots on mount
+  useEffect(() => {
+    if (isOpen) {
+      fetchRequestTypes();
+      fetchCourses();
+      fetchClasses();
+      fetchTimeSlots();
+    }
+  }, [isOpen]);
 
   const fetchRequestTypes = async () => {
     setIsLoading(true);
@@ -50,7 +112,20 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       // Fetch academic request types
       const requestTypesResponse = await getAcademicRequestTypes();
       const requestTypesList = requestTypesResponse.data as any[];
-      setRequestTypes(requestTypesList);
+      
+      // Filter out "Meeting Reschedule" for students (only show for teachers)
+      const userRole = getUserRole();
+      const isTeacher = userRole?.toLowerCase() === 'teacher' || userRole?.toLowerCase() === 'staff';
+      
+      const filteredTypes = isTeacher 
+        ? requestTypesList 
+        : requestTypesList.filter(type => {
+            const typeName = (type.name || '').toLowerCase();
+            const typeCode = (type.code || '').toLowerCase();
+            return !typeName.includes('meeting reschedule');
+          });
+      
+      setRequestTypes(filteredTypes);
     } catch (error: any) {
       console.error('Error fetching request types:', error);
       toast.error(error.response?.data?.error || 'Failed to load request types');
@@ -59,15 +134,320 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     }
   };
 
+  const fetchCourses = async () => {
+    setIsLoadingCourses(true);
+    try {
+      const response = await getCourses();
+      setCourses(response.data || []);
+    } catch (error: any) {
+      console.error('Error fetching courses:', error);
+      toast.error('Failed to load courses. Please try again.');
+      setCourses([]);
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  const fetchTimeSlots = async () => {
+    setIsLoadingTimeSlots(true);
+    try {
+      const response = await getTimeSlots();
+      const slots = response.data || [];
+      // Store the full lookup objects for ID access
+      setTimeSlotLookups(slots);
+      // Create a map from slot code to time (extract time from name field)
+      const slotMap = new Map<string, string>();
+      slots.forEach((slot: any) => {
+        const code = slot.code || slot.Code || '';
+        const name = slot.name || slot.Name || '';
+        if (code) {
+          // Extract time from name (format: "09:00" or "09:00 - 10:30")
+          const timeMatch = name.match(/(\d{2}:\d{2})/);
+          if (timeMatch) {
+            // If there's a second time, show range; otherwise just the start time
+            const times = name.match(/(\d{2}:\d{2})/g);
+            if (times && times.length > 1) {
+              slotMap.set(code, `${times[0]} - ${times[1]}`);
+            } else {
+              slotMap.set(code, timeMatch[1]);
+            }
+          } else {
+            // Fallback to name if no time pattern found
+            slotMap.set(code, name || code);
+          }
+        }
+      });
+      setTimeSlots(slotMap);
+    } catch (error: any) {
+      console.error('Error fetching time slots:', error);
+      // Don't show error toast as this is not critical
+      setTimeSlots(new Map());
+      setTimeSlotLookups([]);
+    } finally {
+      setIsLoadingTimeSlots(false);
+    }
+  };
+
+  const fetchClassMeetings = async (classId: string) => {
+    setIsLoadingMeetings(true);
+    try {
+      const meetings = await getClassMeetingsByClassId(classId);
+      // Filter out deleted meetings and only show future meetings
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const futureMeetings = meetings
+        .filter(m => !m.isDeleted && new Date(m.date) >= today)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setClassMeetings(futureMeetings);
+    } catch (error: any) {
+      console.error('Error fetching class meetings:', error);
+      toast.error('Failed to load class meetings');
+      setClassMeetings([]);
+    } finally {
+      setIsLoadingMeetings(false);
+    }
+  };
+
+  const fetchClassMeetingsForClass = async (classId: string, type: 'from' | 'to') => {
+    if (type === 'from') {
+      setIsLoadingFromMeetings(true);
+    } else {
+      setIsLoadingToMeetings(true);
+    }
+    try {
+      const meetings = await getClassMeetingsByClassId(classId);
+      // Filter out deleted meetings and only show future meetings
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const futureMeetings = meetings
+        .filter(m => !m.isDeleted && new Date(m.date) >= today)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      if (type === 'from') {
+        setFromClassMeetings(futureMeetings);
+      } else {
+        setToClassMeetings(futureMeetings);
+      }
+    } catch (error: any) {
+      console.error(`Error fetching ${type} class meetings:`, error);
+      if (type === 'from') {
+        setFromClassMeetings([]);
+      } else {
+        setToClassMeetings([]);
+      }
+    } finally {
+      if (type === 'from') {
+        setIsLoadingFromMeetings(false);
+      } else {
+        setIsLoadingToMeetings(false);
+      }
+    }
+  };
+
+  const fetchRooms = async () => {
+    setIsLoadingRooms(true);
+    try {
+      // TODO: Add API endpoint for fetching rooms
+      // For now, we'll use a placeholder
+      // const response = await getRooms();
+      // setRooms(response.data || []);
+      setRooms([]);
+    } catch (error: any) {
+      console.error('Error fetching rooms:', error);
+      setRooms([]);
+    } finally {
+      setIsLoadingRooms(false);
+    }
+  };
+
+  const fetchClasses = async () => {
+    setIsLoadingClasses(true);
+    try {
+      const response = await getAllClasses();
+      // Map the response to match MyClass interface
+      const classesData = response.data.map((classItem: any) => ({
+        id: classItem.id || classItem.Id,
+        classId: classItem.id || classItem.Id, // Keep for backward compatibility
+        className: classItem.name || classItem.Name,
+        classCode: classItem.classCode || classItem.ClassCode || classItem.code,
+        courseName: classItem.courseName || classItem.CourseName,
+        courseId: classItem.courseId || classItem.CourseId,
+        schedule: classItem.schedule || classItem.Schedule || [],
+        startDate: classItem.startDate || classItem.StartDate || '',
+        endDate: classItem.endDate || classItem.EndDate || '',
+        teacher: classItem.teacher || classItem.Teacher || '',
+        room: classItem.room || classItem.Room || '',
+        // Add required fields with defaults to match MyClass interface
+        classNum: 0,
+        classStatus: classItem.status || 'active',
+        capacity: classItem.maxStudents || 0,
+        enrolledCount: classItem.currentStudents || 0,
+        isActive: true,
+        status: 'active' as const,
+      }));
+      setAllClasses(classesData);
+    } catch (error: any) {
+      console.error('Error fetching classes:', error);
+      toast.error('Failed to load classes. Please try again.');
+      setAllClasses([]);
+    } finally {
+      setIsLoadingClasses(false);
+    }
+  };
+
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // If request type changes, clear type-specific fields
+    if (name === 'requestTypeID') {
+      const newSelectedType = requestTypes.find(type => {
+        const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+        return typeId === value;
+      });
+      
+      const isNewTypeClassTransfer = newSelectedType && (
+        (newSelectedType.name || '').toLowerCase().includes('class transfer') ||
+        (newSelectedType.code || '').toLowerCase().includes('classtransfer') 
+      );
 
-    // Update title suggestion when request type changes
-    if (name === 'requestType') {
-      updateTitleSuggestion(value);
+      const isNewTypeMeetingReschedule = newSelectedType && (
+        (newSelectedType.name || '').toLowerCase().includes('meeting reschedule') ||
+        (newSelectedType.code || '').toLowerCase().includes('meetingreschedule') 
+      );
+
+      if (!isNewTypeClassTransfer && !isNewTypeMeetingReschedule) {
+        // Clear all type-specific fields if switching to a different type
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          courseID: "",
+          fromClassID: "",
+          toClassID: "",
+          fromMeetingDate: "",
+          fromSlotID: "",
+          toMeetingDate: "",
+          toSlotID: "",
+          classID: "",
+          classMeetingID: "",
+          newRoomID: "",
+        }));
+        setFromClassMeetings([]);
+        setToClassMeetings([]);
+      } else if (isNewTypeClassTransfer) {
+        // Clear meeting reschedule fields
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          classID: "",
+          classMeetingID: "",
+          newRoomID: "",
+        }));
+      } else if (isNewTypeMeetingReschedule) {
+        // Clear class transfer fields
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          courseID: "",
+          fromClassID: "",
+          toClassID: "",
+          fromMeetingDate: "",
+          fromSlotID: "",
+          toMeetingDate: "",
+          toSlotID: "",
+        }));
+        setFromClassMeetings([]);
+        setToClassMeetings([]);
+      } else {
+    setFormData(prev => ({ ...prev, [name]: value }));
+      }
+    } else if (name === 'courseID') {
+      // When course changes, clear class selections
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          fromClassID: "",
+          toClassID: "",
+        }));
+    } else if (name === 'fromClassID') {
+      // When from class changes, clear related fields
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    } else if (name === 'toClassID') {
+      // When to class changes, clear related fields
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    } else if (name === 'classID' && isMeetingReschedule()) {
+      // When class changes for meeting reschedule, fetch meetings and clear meeting selection
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        classMeetingID: "",
+        newRoomID: "",
+        fromMeetingDate: "",
+        fromSlotID: "",
+      }));
+      if (value) {
+        fetchClassMeetings(value);
+      } else {
+        setClassMeetings([]);
+      }
+    } else if (name === 'classMeetingID' && isMeetingReschedule()) {
+      // When a meeting is selected for reschedule, populate the original meeting details
+      const selectedMeeting = classMeetings.find(meeting => meeting.id === value);
+      if (selectedMeeting) {
+        // Try to get slot ID directly from meeting first, then from lookup
+        let slotId = selectedMeeting.slotID || selectedMeeting.SlotID;
+        
+        if (!slotId) {
+          // Fallback: Get slot ID from meeting slot code and lookup
+          const slotCode = selectedMeeting.slot;
+          // Try multiple lookup strategies
+          let slotLookup = timeSlotLookups.find(s => (s.code || s.Code) === slotCode);
+          
+          if (!slotLookup) {
+            // Try finding by name containing the time
+            slotLookup = timeSlotLookups.find(s => {
+              const name = s.name || s.Name || '';
+              return name.includes(slotCode);
+            });
+          }
+          
+          if (!slotLookup) {
+            // Try reverse lookup using the timeSlots map
+            for (const [code, timeStr] of timeSlots.entries()) {
+              if (timeStr === slotCode || timeStr.includes(slotCode)) {
+                slotLookup = timeSlotLookups.find(s => (s.code || s.Code) === code);
+                break;
+              }
+            }
+          }
+          
+          slotId = slotLookup?.lookUpId || slotLookup?.LookUpId || slotLookup?.id;
+        }
+      
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          fromMeetingDate: selectedMeeting.date,
+          fromSlotID: slotId || "",
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          fromMeetingDate: "",
+          fromSlotID: "",
+        }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
@@ -114,31 +494,108 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     }
   };
 
-  const updateTitleSuggestion = (requestTypeId: string) => {
+  // Check if the selected request type is "meeting reschedule"
+  const isMeetingReschedule = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
     const selectedType = requestTypes.find(type => {
       const typeId = type.lookUpId || (type as any).LookUpId || type.id;
-      return typeId === requestTypeId;
+      return typeId === formData.requestTypeID;
     });
+
+    if (!selectedType) return false;
+
+    const typeName = (selectedType.name || '').toLowerCase();
+    const typeCode = (selectedType.code || '').toLowerCase();
     
-    if (selectedType) {
-      const title = `Request for ${selectedType.name}`;
-      setFormData(prev => ({ ...prev, title }));
-    }
+    return typeName.includes('meeting reschedule') || typeCode.includes('meetingreschedule');
+  };
+
+  // Check if the selected request type is "class transfer"
+  const isClassTransfer = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
+    const selectedType = requestTypes.find(type => {
+      const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+      return typeId === formData.requestTypeID;
+    });
+
+    if (!selectedType) return false;
+
+    const typeName = (selectedType.name || '').toLowerCase();
+    const typeCode = (selectedType.code || '').toLowerCase();
+    
+    return typeName.includes('class transfer') || 
+           typeName.includes('class-transfer') ||
+           typeCode.includes('classtransfer') ||
+           typeCode.includes('class_transfer') ||
+           typeCode === 'classtransfer';
   };
 
   const validateForm = (): boolean => {
-    if (!formData.requestType) {
+    if (!formData.requestTypeID) {
       toast.error('Please select a request type');
       return false;
     }
 
-    if (!formData.title.trim()) {
-      toast.error('Please enter a title');
+    if (!formData.reason.trim()) {
+      toast.error('Please provide a reason for your request');
       return false;
     }
-    if (!formData.description.trim()) {
-      toast.error('Please provide a description');
-      return false;
+
+    // Validate meeting reschedule specific fields
+    if (isMeetingReschedule()) {
+      if (!formData.classID?.trim()) {
+        toast.error('Class is required for meeting reschedule requests');
+        return false;
+      }
+
+      if (!formData.classMeetingID?.trim()) {
+        toast.error('Class Meeting is required for meeting reschedule requests');
+        return false;
+      }
+
+      if (!formData.toMeetingDate?.trim()) {
+        toast.error('New Meeting Date is required for meeting reschedule requests');
+        return false;
+      }
+
+      if (!formData.toSlotID?.trim()) {
+        toast.error('New Time Slot is required for meeting reschedule requests');
+        return false;
+      }
+
+      // Validate that new date is not in the past
+      const newDate = new Date(formData.toMeetingDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (newDate < today) {
+        toast.error('New meeting date cannot be in the past');
+        return false;
+      }
+    }
+
+    // Validate class transfer specific fields
+    if (isClassTransfer()) {
+      if (!formData.courseID?.trim()) {
+        toast.error('Course is required for class transfer requests');
+        return false;
+      }
+
+      if (!formData.fromClassID?.trim()) {
+        toast.error('From Class is required for class transfer requests');
+        return false;
+      }
+
+      if (!formData.toClassID?.trim()) {
+        toast.error('To Class is required for class transfer requests');
+        return false;
+      }
+
+      if (formData.fromClassID === formData.toClassID) {
+        toast.error('From Class and To Class must be different');
+        return false;
+      }
     }
 
     return true;
@@ -154,39 +611,79 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     setIsSubmitting(true);
 
     try {
-      const requestData: SubmitAcademicReportRequest = {
-        reportTypeID: formData.requestType, 
-        submittedBy: userId,
-        title: formData.title,
-        description: formData.description,
-        fileName: selectedFile?.name,
-        contentType: selectedFile?.type,
-      };
-
-      const response = await submitAcademicRequest(requestData);
-      const result = response.data;
-
-      // Upload file if one was selected
-      if (selectedFile && result.uploadUrl) {
+      // Upload file first if one was selected to get the URL
+      let attachmentUrl = "";
+      if (selectedFile) {
         try {
-          await uploadToPresignedUrl(result.uploadUrl, selectedFile, selectedFile.type);
+          toast.info('Uploading file...');
+          
+          // Get presigned upload URL from backend
+          const uploadUrlResponse = await getAttachmentUploadUrl({
+            fileName: selectedFile.name,
+            contentType: selectedFile.type
+          });
+          
+          // Upload file to presigned URL
+          await uploadToPresignedUrl(uploadUrlResponse.data.uploadUrl, selectedFile, selectedFile.type);
+          
+          // Use the filePath returned from backend as the attachmentUrl
+          attachmentUrl = uploadUrlResponse.data.filePath;
+          
+          toast.success('File uploaded successfully');
         } catch (uploadError: any) {
           console.error('Error uploading file:', uploadError);
-          toast.error('Request created but file upload failed. Please contact support.');
+          toast.error('File upload failed. Please try again or submit without attachment.');
+          setIsSubmitting(false);
+          return;
         }
       }
+
+      const requestData: SubmitAcademicRequest = {
+        studentID: userId,
+        requestTypeID: formData.requestTypeID,
+        reason: formData.reason,
+        attachmentUrl: attachmentUrl || undefined,
+        // Class transfer fields - only include if it's a class transfer request
+        ...(isClassTransfer() && {
+        fromClassID: formData.fromClassID || undefined,
+        toClassID: formData.toClassID || undefined,
+        }),
+        // Meeting reschedule fields - only include if it's a meeting reschedule request
+        // Uses fromMeetingDate/fromSlotID for original and toMeetingDate/toSlotID for new meeting details
+        ...(isMeetingReschedule() && {
+          classMeetingID: formData.classMeetingID || undefined,
+          fromMeetingDate: formData.fromMeetingDate || undefined,
+          fromSlotID: formData.fromSlotID || undefined,
+          toMeetingDate: formData.toMeetingDate || undefined,
+          toSlotID: formData.toSlotID || undefined,
+          newRoomID: formData.newRoomID || undefined,
+        }),
+      };
+
+      await submitAcademicRequest(requestData);
 
       toast.success('Academic request submitted successfully! It will be reviewed by staff within 3-5 business days.');
       
       // Reset form
       setFormData({
-        reportTypeID: "",
-        requestType: "",
-        title: "",
-        description: "",
+        requestTypeID: "",
+        reason: "",
+        courseID: "",
+        fromClassID: "",
+        toClassID: "",
+        fromMeetingDate: "",
+        fromSlotID: "",
+        toMeetingDate: "",
+        toSlotID: "",
         attachmentUrl: "",
+        classID: "",
+        classMeetingID: "",
+        newRoomID: "",
       });
       setSelectedFile(null);
+      setClassMeetings([]);
+      setFromClassMeetings([]);
+      setToClassMeetings([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -205,13 +702,24 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const handleCancel = () => {
       // Reset form
       setFormData({
-        reportTypeID: "",
-        requestType: "",
-        title: "",
-        description: "",
+        requestTypeID: "",
+        reason: "",
+        courseID: "",
+        fromClassID: "",
+        toClassID: "",
+        fromMeetingDate: "",
+        fromSlotID: "",
+        toMeetingDate: "",
+        toSlotID: "",
         attachmentUrl: "",
+        classID: "",
+        classMeetingID: "",
+        newRoomID: "",
       });
       setSelectedFile(null);
+      setClassMeetings([]);
+      setFromClassMeetings([]);
+      setToClassMeetings([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -221,22 +729,16 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-black/20 backdrop-blur-sm transition-opacity px-4 sm:px-6 md:px-8 scrollbar-hide">
-      <div className="bg-white rounded-lg shadow-xl w-[60%] mx-40 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Submit Academic Request</h2>
-          <button
-            onClick={handleCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            disabled={isSubmitting}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && handleCancel()}>
+      <DialogContent size="xl" className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold text-gray-900">
+            Submit Academic Request
+          </DialogTitle>
+        </DialogHeader>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <DialogBody className="flex-1 overflow-y-auto max-h-none">
+          <form onSubmit={handleSubmit} className="space-y-4">
           {/* User Info Display (Read-only) */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
@@ -257,8 +759,8 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               Request Type <span className="text-red-500">*</span>
             </label>
             <select
-              name="requestType"
-              value={formData.requestType}
+              name="requestTypeID"
+              value={formData.requestTypeID}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
@@ -277,33 +779,14 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </select>
           </div>
 
-          {/* Title */}
+          {/* Reason */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Request Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              placeholder="e.g., Request to Change Class"
-              maxLength={255}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-              disabled={isSubmitting}
-            />
-            <p className="text-xs text-gray-500 mt-1">{formData.title.length}/255 characters</p>
-          </div>
-
-          {/* Description/Reason */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Detailed Description <span className="text-red-500">*</span>
+              Reason for Request <span className="text-red-500">*</span>
             </label>
             <textarea
-              name="description"
-              value={formData.description}
+              name="reason"
+              value={formData.reason}
               onChange={handleInputChange}
               placeholder="Please provide a detailed explanation of your request, including any relevant course/class and schedule information if applicable..."
               rows={4}
@@ -312,8 +795,377 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               required
               disabled={isSubmitting}
             />
-            <p className="text-xs text-gray-500 mt-1">{formData.description.length}/2000 characters</p>
+            <p className="text-xs text-gray-500 mt-1">{formData.reason.length}/2000 characters</p>
           </div>
+
+          {/* Course - Only shown for class transfer, required when shown */}
+          {isClassTransfer() && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+                Course <span className="text-red-500">*</span>
+            </label>
+              <select
+                name="courseID"
+                value={formData.courseID}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                disabled={isSubmitting || isLoadingCourses}
+              >
+                <option value="" disabled>Select a course</option>
+                {courses.map((course) => {
+                  const courseId = course.id || course.Id;
+                  const courseCode = course.courseCode || course.CourseCode || '';
+                  const courseName = course.courseName || course.CourseName;
+                  return (
+                    <option key={courseId} value={courseId}>
+                      {courseCode ? `${courseCode} - ${courseName}` : courseName}
+                    </option>
+                  );
+                })}
+              </select>
+              {isLoadingCourses && (
+                <p className="text-xs text-gray-500 mt-1">Loading courses...</p>
+              )}
+              {!isLoadingCourses && courses.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">No courses available</p>
+              )}
+            </div>
+          )}
+
+          {/* From Class - Only shown for class transfer, required when shown */}
+          {isClassTransfer() && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                From Class <span className="text-red-500">*</span>
+              </label>
+              <select
+              name="fromClassID"
+              value={formData.fromClassID}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                disabled={isSubmitting || isLoadingClasses || !formData.courseID}
+              >
+                <option value="" disabled>Select a class</option>
+                {filteredClasses.map((classItem) => (
+                  <option key={classItem.id} value={classItem.id}>
+                    {classItem.className}
+                  </option>
+                ))}
+              </select>
+              {isLoadingClasses && (
+                <p className="text-xs text-gray-500 mt-1">Loading classes...</p>
+              )}
+              {!isLoadingClasses && !formData.courseID && (
+                <p className="text-xs text-red-500 mt-1">Please select a course first</p>
+              )}
+              {!isLoadingClasses && formData.courseID && filteredClasses.length === 0 && (
+                <p className="text-xs text-red-500 mt-1">No classes available for this course</p>
+              )}
+          </div>
+          )}
+
+          {/* From Class Schedule Display */}
+          {isClassTransfer() && fromClass && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <h4 className="text-sm font-semibold text-blue-900">From Class Schedule</h4>
+              </div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-gray-700">Class:</span>
+                    <span className="text-gray-900">{fromClass.className}</span>
+                  </div>
+                  {(fromClass as any).teacher && (
+                    <div className="flex items-center gap-1">
+                      <User className="w-3 h-3 text-gray-500" />
+                      <span className="font-medium text-gray-700">Teacher:</span>
+                      <span className="text-gray-900">{(fromClass as any).teacher}</span>
+                    </div>
+                  )}
+                  {(fromClass as any).room && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-gray-500" />
+                      <span className="font-medium text-gray-700">Room:</span>
+                      <span className="text-gray-900">{(fromClass as any).room}</span>
+                    </div>
+                  )}
+                  {fromClass.startDate && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-500" />
+                      <span className="font-medium text-gray-700">Duration:</span>
+                      <span className="text-gray-900">
+                        {fromClass.startDate} {fromClass.endDate && `- ${fromClass.endDate}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {(fromClass as any).schedule && Array.isArray((fromClass as any).schedule) && (fromClass as any).schedule.length > 0 && (
+                  <div className="mt-3">
+                    <span className="text-xs font-medium text-gray-700 block mb-2">Schedule:</span>
+                    <div className="space-y-1">
+                      {(fromClass as any).schedule.map((scheduleItem: any, index: number) => {
+                        const slotCode = scheduleItem.slot || scheduleItem.Slot || '';
+                        const timeDisplay = getTimeFromSlot(slotCode);
+                        return (
+                          <div key={index} className="text-xs bg-white px-2 py-1 rounded border border-blue-100">
+                            <span className="font-medium text-gray-700">{scheduleItem.date || scheduleItem.Date}:</span>
+                            <span className="ml-2 text-gray-900">{timeDisplay}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {(!(fromClass as any).schedule || !Array.isArray((fromClass as any).schedule) || (fromClass as any).schedule.length === 0) && (
+                  <p className="text-xs text-gray-500 italic">No schedule information available</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* To Class - Only shown for class transfer, required when shown */}
+          {isClassTransfer() && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+                To Class <span className="text-red-500">*</span>
+            </label>
+              <select
+              name="toClassID"
+              value={formData.toClassID}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                disabled={isSubmitting || isLoadingClasses || !formData.courseID}
+              >
+                <option value="" disabled>Select a class</option>
+                {filteredClasses
+                  .filter(classItem => classItem.id !== formData.fromClassID) // Exclude the selected "From Class"
+                  .map((classItem) => (
+                    <option key={classItem.id} value={classItem.id}>
+                      {classItem.className}
+                    </option>
+                  ))}
+              </select>
+              {isLoadingClasses && (
+                <p className="text-xs text-gray-500 mt-1">Loading classes...</p>
+              )}
+              {!isLoadingClasses && !formData.courseID && (
+                <p className="text-xs text-gray-500 mt-1">Please select a course first</p>
+              )}
+              {!isLoadingClasses && formData.courseID && filteredClasses.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">No classes available for this course</p>
+              )}
+          </div>
+          )}
+
+          {/* To Class Schedule Display */}
+          {isClassTransfer() && toClass && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="w-4 h-4 text-green-600" />
+                <h4 className="text-sm font-semibold text-green-900">To Class Schedule</h4>
+              </div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-gray-700">Class:</span>
+                    <span className="text-gray-900">{toClass.className}</span>
+                  </div>
+                  {(toClass as any).teacher && (
+                    <div className="flex items-center gap-1">
+                      <User className="w-3 h-3 text-gray-500" />
+                      <span className="font-medium text-gray-700">Teacher:</span>
+                      <span className="text-gray-900">{(toClass as any).teacher}</span>
+                    </div>
+                  )}
+                  {(toClass as any).room && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-gray-500" />
+                      <span className="font-medium text-gray-700">Room:</span>
+                      <span className="text-gray-900">{(toClass as any).room}</span>
+                    </div>
+                  )}
+                  {toClass.startDate && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-500" />
+                      <span className="font-medium text-gray-700">Duration:</span>
+                      <span className="text-gray-900">
+                        {toClass.startDate} {toClass.endDate && `- ${toClass.endDate}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {(toClass as any).schedule && Array.isArray((toClass as any).schedule) && (toClass as any).schedule.length > 0 && (
+                  <div className="mt-3">
+                    <span className="text-xs font-medium text-gray-700 block mb-2">Schedule:</span>
+                    <div className="space-y-1">
+                      {(toClass as any).schedule.map((scheduleItem: any, index: number) => {
+                        const slotCode = scheduleItem.slot || scheduleItem.Slot || '';
+                        const timeDisplay = getTimeFromSlot(slotCode);
+                        return (
+                          <div key={index} className="text-xs bg-white px-2 py-1 rounded border border-green-100">
+                            <span className="font-medium text-gray-700">{scheduleItem.date || scheduleItem.Date}:</span>
+                            <span className="ml-2 text-gray-900">{timeDisplay}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {(!(toClass as any).schedule || !Array.isArray((toClass as any).schedule) || (toClass as any).schedule.length === 0) && (
+                  <p className="text-xs text-gray-500 italic">No schedule information available</p>
+                )}
+              </div>
+            </div>
+          )}
+
+
+          {/* Meeting Reschedule Fields */}
+          {isMeetingReschedule() && (
+            <>
+              {/* Class Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Class <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="classID"
+                  value={formData.classID}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  disabled={isSubmitting || isLoadingClasses}
+                >
+                  <option value="" disabled>Select a class</option>
+                  {allClasses.map((classItem) => (
+                    <option key={classItem.id} value={classItem.id}>
+                      {classItem.className}
+                    </option>
+                  ))}
+                </select>
+                {isLoadingClasses && (
+                  <p className="text-xs text-gray-500 mt-1">Loading classes...</p>
+                )}
+              </div>
+
+              {/* Class Meeting Selection */}
+              {formData.classID && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Meeting to Reschedule <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="classMeetingID"
+                    value={formData.classMeetingID}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                    disabled={isSubmitting || isLoadingMeetings || !formData.classID}
+                  >
+                    <option value="" disabled>Select a meeting</option>
+                    {classMeetings.map((meeting) => {
+                      const meetingDate = new Date(meeting.date);
+                      const slotTime = getTimeFromSlot(meeting.slot || '');
+                      return (
+                        <option key={meeting.id} value={meeting.id}>
+                          {meetingDate.toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })} - {slotTime}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {isLoadingMeetings && (
+                    <p className="text-xs text-gray-500 mt-1">Loading meetings...</p>
+                  )}
+                  {!isLoadingMeetings && formData.classID && classMeetings.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">No upcoming meetings available for this class</p>
+                  )}
+                </div>
+              )}
+
+              {/* New Meeting Date */}
+              {formData.classMeetingID && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      New Meeting Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+                      name="toMeetingDate"
+                      value={formData.toMeetingDate}
+              onChange={handleInputChange}
+                      min={new Date().toISOString().split('T')[0]}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+              disabled={isSubmitting}
+            />
+                    <p className="text-xs text-gray-500 mt-1">Select the new date for this meeting</p>
+          </div>
+
+                  {/* New Time Slot */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      New Time Slot <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="toSlotID"
+                      value={formData.toSlotID}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={isSubmitting || isLoadingTimeSlots}
+                    >
+                      <option value="" disabled>Select new time slot</option>
+                      {timeSlotLookups.map((slot: any) => {
+                        const slotId = slot.lookUpId || slot.LookUpId || slot.id;
+                        const slotCode = slot.code || slot.Code || '';
+                        const timeDisplay = timeSlots.get(slotCode) || slotCode;
+                        return (
+                          <option key={slotId} value={slotId}>
+                            {timeDisplay} ({slotCode})
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {isLoadingTimeSlots && (
+                      <p className="text-xs text-gray-500 mt-1">Loading time slots...</p>
+                    )}
+                  </div>
+
+                  {/* New Room (Optional - placeholder for now) */}
+                  {rooms.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        New Room (Optional)
+                      </label>
+                      <select
+                        name="newRoomID"
+                        value={formData.newRoomID}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={isSubmitting || isLoadingRooms}
+                      >
+                        <option value="">Keep current room</option>
+                        {rooms.map((room) => (
+                          <option key={room.id} value={room.id}>
+                            {room.roomCode || room.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
 
           {/* File Upload */}
           <div>
@@ -395,6 +1247,12 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                   Processing typically takes 3-5 business days. You will be notified once 
                   your request has been reviewed.
                 </p>
+                {isClassTransfer() && (
+                  <p className="text-sm text-orange-700 mt-2">
+                    <strong>Class Transfer:</strong> Your request will be valid for 7 days from submission. 
+                    If not processed within this period, it will automatically expire.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -418,8 +1276,9 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 };
 

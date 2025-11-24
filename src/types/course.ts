@@ -12,6 +12,15 @@ export interface SyllabusItem {
   preReadingUrl?: string | null;
 }
 
+export interface CourseSyllabus {
+  id: string;
+  syllabusID?: string;
+  courseID?: string;
+  title: string;
+  description?: string | null;
+  items?: SyllabusItem[];
+}
+
 export interface Benefit {
   id: string;
   courseID: string;
@@ -91,6 +100,7 @@ export interface Course {
   // Additional features
   benefits?: Benefit[];
   syllabusItems?: SyllabusItem[];
+  syllabi?: CourseSyllabus[];
   requirements?: Requirement[];
   courseSkills?: CourseSkill[];
   feedbacks?: CourseFeedback[];

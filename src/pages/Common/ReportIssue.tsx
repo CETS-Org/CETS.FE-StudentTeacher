@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { AlertTriangle, Calendar, FileText, ChevronRight } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, ChevronRight, CalendarClock, ArrowRightLeft, GraduationCap, Clock, DollarSign, UserMinus, PauseCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "@/components/ui/PageHeader";
@@ -8,9 +9,9 @@ import Button from "@/components/ui/Button";
 import TechnicalIssueReportPopup from "@/pages/Common/components/TechnicalIssueReportPopup";
 import AcademicChangeRequestPopup from "@/pages/Common/components/AcademicChangeRequestPopup";
 import AcademicRequestDetailPopup from "@/pages/Common/components/AcademicRequestDetailPopup";
-import { getMyAcademicRequests } from "@/api/report.api";
+import { getMyAcademicRequests } from "@/api/academicRequest.api";
 import { getStudentId } from "@/lib/utils";
-import type { AcademicReportResponse } from "@/types/report";
+import type { AcademicRequestResponse } from "@/types/academicRequest";
 
 const ReportIssue: React.FC = () => {
   usePageTitle("Report Issues");
@@ -18,12 +19,12 @@ const ReportIssue: React.FC = () => {
   const navigate = useNavigate();
   const userId = getStudentId();
   
-  const [activeTab, setActiveTab] = useState<"pending" | "resolved">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "resolved" | "rejected">("pending");
   const [showTechnicalPopup, setShowTechnicalPopup] = useState(false);
   const [showAcademicPopup, setShowAcademicPopup] = useState(false);
   const [showDetailPopup, setShowDetailPopup] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [academicReports, setAcademicReports] = useState<AcademicReportResponse[]>([]);
+  const [academicReports, setAcademicReports] = useState<AcademicRequestResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Determine current report type from URL
@@ -112,6 +113,39 @@ const ReportIssue: React.FC = () => {
     };
   };
 
+  const getTypeIcon = (requestTypeName: string): { Icon: LucideIcon; gradient: string } => {
+    const typeLower = requestTypeName?.toLowerCase() || '';
+    
+    if (typeLower.includes("meeting reschedule") || typeLower.includes("reschedule")) {
+      return { Icon: CalendarClock, gradient: "from-purple-500 to-purple-600" };
+    }
+    
+    if (typeLower.includes("class transfer") || typeLower.includes("transfer")) {
+      return { Icon: ArrowRightLeft, gradient: "from-blue-500 to-blue-600" };
+    }
+
+    
+    if (typeLower.includes("schedule change") || typeLower.includes("schedule")) {
+      return { Icon: Clock, gradient: "from-cyan-500 to-cyan-600" };
+    }
+    
+    if (typeLower.includes("enrollment cancellation") || typeLower.includes("cancellation")) {
+      return { Icon: UserMinus, gradient: "from-red-500 to-red-600" };
+    }
+    
+    if (typeLower.includes("suspension") || typeLower.includes("suspend")) {
+      return { Icon: PauseCircle, gradient: "from-orange-500 to-orange-600" };
+    }
+
+      
+    if (typeLower.includes("other") || typeLower.includes("general")) {
+      return { Icon: FileText, gradient: "from-gray-500 to-gray-600" };
+    }
+    
+    // Default fallback
+    return { Icon: Calendar, gradient: "from-blue-500 to-blue-600" };
+  };
+
   const renderTechnicalReports = () => {
     // For now, show empty state until Technical Reports API is implemented
     return (
@@ -123,7 +157,7 @@ const ReportIssue: React.FC = () => {
     );
   };
 
-  const renderAcademicReports = (isPending: boolean) => {
+  const renderAcademicReports = (tab: "pending" | "resolved" | "rejected") => {
     if (isLoading) {
       return (
         <div className="text-center py-12 text-neutral-500">
@@ -136,18 +170,26 @@ const ReportIssue: React.FC = () => {
     // Filter based on status
     const filtered = academicReports.filter(report => {
       const statusLower = report.statusName?.toLowerCase() || '';
-      if (isPending) {
-        return statusLower === 'pending' || statusLower === 'submitted';
+      if (tab === "pending") {
+        return statusLower === 'pending';
+      } else if (tab === "rejected") {
+        return statusLower === 'rejected';
       } else {
-        return statusLower === 'approved' || statusLower === 'rejected' || statusLower === 'resolved';
+        // resolved tab - show approved and resolved (but not rejected)
+        return (statusLower === 'approved') ;
       }
     });
 
     if (filtered.length === 0) {
+      const emptyMessages = {
+        pending: 'No pending academic requests found',
+        resolved: 'No resolved academic requests found',
+        rejected: 'No rejected academic requests found'
+      };
       return (
         <div className="text-center py-12 text-neutral-500">
           <FileText className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
-          <p>No {isPending ? 'pending' : 'resolved'} academic requests found</p>
+          <p>{emptyMessages[tab]}</p>
         </div>
       );
     }
@@ -156,6 +198,7 @@ const ReportIssue: React.FC = () => {
       <div className="space-y-3">
         {filtered.map((report) => {
           const statusConfig = getStatusConfig(report.statusName || 'Pending');
+          const typeIcon = getTypeIcon(report.requestTypeName || '');
           return (
             <div
               key={report.id}
@@ -164,21 +207,26 @@ const ReportIssue: React.FC = () => {
                 ${statusConfig.border} ${statusConfig.hover} hover:shadow-md`}
             >
               <div className="flex items-center gap-4 flex-1">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
-                  <Calendar className="w-5 h-5 text-white" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br ${typeIcon.gradient} shadow-md`}>
+                  <typeIcon.Icon className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-primary-800 mb-1">{report.title}</h4>
-                  <p className="text-sm text-neutral-600 mb-2 line-clamp-1">{report.description}</p>
+                  <h4 className="font-semibold text-primary-800 mb-1">{report.requestTypeName || 'Academic Request'}</h4>
+                  <p className="text-sm text-neutral-600 mb-2 line-clamp-1">{report.reason}</p>
                   <div className="flex items-center gap-3 flex-wrap">
-                    {report.courseName && (
+                    {report.fromClassName && (
                       <span className="text-xs text-neutral-600">
-                        {report.courseCode}: {report.courseName}
+                        From: {report.fromClassName}
                       </span>
                     )}
-                    {report.className && (
+                    {report.toClassName && (
+                      <span className="text-xs text-neutral-600">
+                        To: {report.toClassName}
+                      </span>
+                    )}
+                    {report.effectiveDate && (
                       <span className="text-xs text-neutral-500">
-                        • {report.className}
+                        • Effective: {report.effectiveDate}
                       </span>
                     )}
                     <span className="text-xs text-neutral-500">
@@ -289,13 +337,25 @@ const ReportIssue: React.FC = () => {
               >
                 Resolved {currentReportType === "Academic" ? "Requests" : "Reports"}
               </button>
+              {currentReportType === "Academic" && (
+                <button
+                  onClick={() => setActiveTab("rejected")}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "rejected"
+                      ? "border-red-600 text-red-700"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
+                  }`}
+                >
+                  Rejected Requests
+                </button>
+              )}
             </nav>
           </div>
 
           {/* Content */}
           <div>
             {currentReportType === "Academic" 
-              ? renderAcademicReports(activeTab === "pending")
+              ? renderAcademicReports(activeTab)
               : renderTechnicalReports()
             }
           </div>

@@ -213,6 +213,14 @@ export default function CourseDetail({ course }: CourseDetailProps) {
     return <CheckCircle className="w-4 h-4 text-success-600" />;
   };
 
+  const structuredSyllabi = course.syllabi || [];
+  const hasStructuredSyllabus = structuredSyllabi.length > 0;
+  const fallbackSyllabusItems = hasStructuredSyllabus ? [] : (course.syllabusItems || []);
+  const flattenedSyllabusItems = hasStructuredSyllabus
+    ? structuredSyllabi.flatMap(section => section.items || [])
+    : fallbackSyllabusItems;
+  const totalSyllabusSlots = flattenedSyllabusItems.reduce((total, item) => total + (item.totalSlots || 0), 0);
+
   // Helper functions for syllabus expansion
   const toggleSyllabusItem = (itemId: string) => {
     const newExpanded = new Set(expandedSyllabus);
@@ -229,7 +237,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
       setExpandedSyllabus(new Set());
       setAllSyllabusExpanded(false);
     } else {
-      const allIds = new Set(course.syllabusItems?.map(item => item.id) || []);
+      const allIds = new Set(flattenedSyllabusItems.map(item => item.id));
       setExpandedSyllabus(allIds);
       setAllSyllabusExpanded(true);
     }
@@ -416,13 +424,16 @@ export default function CourseDetail({ course }: CourseDetailProps) {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Course Syllabus</h3>
-                  {course.syllabusItems && course.syllabusItems.length > 0 && (
+                  {flattenedSyllabusItems.length > 0 && (
                     <p className="text-gray-600 text-sm">
-                      {course.syllabusItems.length} sections • {course.syllabusItems.reduce((total, item) => total + (item.totalSlots || 0), 0)} slots total
+                      {hasStructuredSyllabus
+                        ? `${structuredSyllabi.length} sections`
+                        : `${fallbackSyllabusItems.length} sessions`
+                      } • {totalSyllabusSlots} slots total
                     </p>
                   )}
                 </div>
-                {course.syllabusItems && course.syllabusItems.length > 0 && (
+                {flattenedSyllabusItems.length > 0 && (
                   <Button
                     variant="secondary"
                     onClick={toggleAllSyllabus}
@@ -434,14 +445,125 @@ export default function CourseDetail({ course }: CourseDetailProps) {
               </div>
 
               <div className="space-y-2">
-                {course.syllabusItems && course.syllabusItems.length > 0 ? (
-                  course.syllabusItems.map((item) => {
+                {hasStructuredSyllabus ? (
+                  structuredSyllabi.map((section) => (
+                    <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h4 className="text-lg font-semibold text-gray-900">{section.title}</h4>
+                        {section.description && (
+                          <p className="text-sm text-gray-600 mt-1">{section.description}</p>
+                        )}
+                      </div>
+                      <div className="divide-y divide-gray-200">
+                        {section.items && section.items.length > 0 ? (
+                          section.items.map((item) => {
+                            const isExpanded = expandedSyllabus.has(item.id);
+                            const hasContent = item.objectives || item.contentSummary || item.preReadingUrl;
+
+                            return (
+                              <div key={item.id} className="bg-white">
+                                <div
+                                  className={`flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                                    isExpanded ? 'bg-gray-50' : 'bg-white'
+                                  }`}
+                                  onClick={() => toggleSyllabusItem(item.id)}
+                                >
+                                  <div className="flex items-center gap-3 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      {hasContent && (
+                                        <button className="text-gray-400 hover:text-gray-600">
+                                          {isExpanded ? (
+                                            <ChevronUp className="w-4 h-4" />
+                                          ) : (
+                                            <ChevronDown className="w-4 h-4" />
+                                          )}
+                                        </button>
+                                      )}
+                                      <span className="text-sm font-medium text-gray-900">
+                                        Session {item.sessionNumber}: {item.topicTitle}
+                                      </span>
+                                      {item.required && (
+                                        <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
+                                          Required
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="w-4 h-4" />
+                                      <span>{item.totalSlots ? `${item.totalSlots} slot${item.totalSlots > 1 ? 's' : ''}` : 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {isExpanded && hasContent && (
+                                  <div className="px-4 pb-4 bg-gray-50">
+                                    <div className="space-y-3 pt-3">
+                                      {item.objectives && (
+                                        <div className="flex gap-3">
+                                          <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+                                            <BookOpen className="w-4 h-4 text-gray-400" />
+                                          </div>
+                                          <div>
+                                            <p className="text-sm font-medium text-gray-700 mb-1">Learning Objectives</p>
+                                            <p className="text-sm text-gray-600">{item.objectives}</p>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {item.contentSummary && (
+                                        <div className="flex gap-3">
+                                          <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+                                            <FileText className="w-4 h-4 text-gray-400" />
+                                          </div>
+                                          <div>
+                                            <p className="text-sm font-medium text-gray-700 mb-1">Content Summary</p>
+                                            <p className="text-sm text-gray-600">{item.contentSummary}</p>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {item.preReadingUrl && (
+                                        <div className="flex gap-3">
+                                          <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+                                            <Download className="w-4 h-4 text-gray-400" />
+                                          </div>
+                                          <div>
+                                            <p className="text-sm font-medium text-gray-700 mb-1">Pre-reading Material</p>
+                                            <a 
+                                              href={item.preReadingUrl} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                                            >
+                                              Download Resource
+                                            </a>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-center py-6 text-gray-500">
+                            <p>No sessions added for this section yet.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : fallbackSyllabusItems.length > 0 ? (
+                  fallbackSyllabusItems.map((item) => {
                     const isExpanded = expandedSyllabus.has(item.id);
                     const hasContent = item.objectives || item.contentSummary || item.preReadingUrl;
                     
                     return (
                       <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                        {/* Section Header */}
                         <div
                           className={`flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
                             isExpanded ? 'bg-gray-50' : 'bg-white'
@@ -478,7 +600,6 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                           </div>
                         </div>
 
-                        {/* Expandable Content */}
                         {isExpanded && hasContent && (
                           <div className="px-4 pb-4 bg-gray-50 border-t border-gray-200">
                             <div className="space-y-3 pt-3">
