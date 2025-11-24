@@ -361,7 +361,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         setFromClassMeetings([]);
         setToClassMeetings([]);
       } else {
-        setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
       }
     } else if (name === 'courseID') {
       // When course changes, clear class selections

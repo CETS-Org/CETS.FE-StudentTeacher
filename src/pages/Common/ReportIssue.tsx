@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { AlertTriangle, Calendar, FileText, ChevronRight } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, ChevronRight, CalendarClock, ArrowRightLeft, GraduationCap, Clock, DollarSign, UserMinus, PauseCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "@/components/ui/PageHeader";
@@ -112,6 +113,39 @@ const ReportIssue: React.FC = () => {
     };
   };
 
+  const getTypeIcon = (requestTypeName: string): { Icon: LucideIcon; gradient: string } => {
+    const typeLower = requestTypeName?.toLowerCase() || '';
+    
+    if (typeLower.includes("meeting reschedule") || typeLower.includes("reschedule")) {
+      return { Icon: CalendarClock, gradient: "from-purple-500 to-purple-600" };
+    }
+    
+    if (typeLower.includes("class transfer") || typeLower.includes("transfer")) {
+      return { Icon: ArrowRightLeft, gradient: "from-blue-500 to-blue-600" };
+    }
+
+    
+    if (typeLower.includes("schedule change") || typeLower.includes("schedule")) {
+      return { Icon: Clock, gradient: "from-cyan-500 to-cyan-600" };
+    }
+    
+    if (typeLower.includes("enrollment cancellation") || typeLower.includes("cancellation")) {
+      return { Icon: UserMinus, gradient: "from-red-500 to-red-600" };
+    }
+    
+    if (typeLower.includes("suspension") || typeLower.includes("suspend")) {
+      return { Icon: PauseCircle, gradient: "from-orange-500 to-orange-600" };
+    }
+
+      
+    if (typeLower.includes("other") || typeLower.includes("general")) {
+      return { Icon: FileText, gradient: "from-gray-500 to-gray-600" };
+    }
+    
+    // Default fallback
+    return { Icon: Calendar, gradient: "from-blue-500 to-blue-600" };
+  };
+
   const renderTechnicalReports = () => {
     // For now, show empty state until Technical Reports API is implemented
     return (
@@ -137,13 +171,12 @@ const ReportIssue: React.FC = () => {
     const filtered = academicReports.filter(report => {
       const statusLower = report.statusName?.toLowerCase() || '';
       if (tab === "pending") {
-        return statusLower === 'pending' || statusLower === 'submitted';
+        return statusLower === 'pending';
       } else if (tab === "rejected") {
-        return statusLower === 'rejected' || statusLower === 'denied' || statusLower === 'declined';
+        return statusLower === 'rejected';
       } else {
         // resolved tab - show approved and resolved (but not rejected)
-        return (statusLower === 'approved' || statusLower === 'resolved') && 
-               statusLower !== 'rejected' && statusLower !== 'denied' && statusLower !== 'declined';
+        return (statusLower === 'approved') ;
       }
     });
 
@@ -165,6 +198,7 @@ const ReportIssue: React.FC = () => {
       <div className="space-y-3">
         {filtered.map((report) => {
           const statusConfig = getStatusConfig(report.statusName || 'Pending');
+          const typeIcon = getTypeIcon(report.requestTypeName || '');
           return (
             <div
               key={report.id}
@@ -173,8 +207,8 @@ const ReportIssue: React.FC = () => {
                 ${statusConfig.border} ${statusConfig.hover} hover:shadow-md`}
             >
               <div className="flex items-center gap-4 flex-1">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
-                  <Calendar className="w-5 h-5 text-white" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br ${typeIcon.gradient} shadow-md`}>
+                  <typeIcon.Icon className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
                   <h4 className="font-semibold text-primary-800 mb-1">{report.requestTypeName || 'Academic Request'}</h4>
