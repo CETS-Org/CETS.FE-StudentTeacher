@@ -12,6 +12,7 @@ export interface StudentInfo {
     updatedAt: string | null;
     updatedBy: string | null;
     isDeleted: boolean;
+    placementTestGrade: number | null;
   } 
 export interface Student extends Account {
     studentInfo: StudentInfo | null;

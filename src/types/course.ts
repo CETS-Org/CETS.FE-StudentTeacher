@@ -87,6 +87,7 @@ export interface Course {
   // Pricing
   standardPrice: number;
   originalPrice?: number;
+  standardScore?: number;
   
   // Metrics
   rating: number;
@@ -146,6 +147,7 @@ export interface CourseCardProps {
   onEnroll: (course: Course) => void;
   onToggleWishlist?: (courseId: string) => void;
   isInWishlist?: boolean;
+  isRecommended?: boolean;
 }
 
 export interface SimpleCourseCardProps {
@@ -315,7 +317,9 @@ export interface FeedbackCourse {
   id: string;
   title: string;
   instructor: string;
+  teacherId: string;
   status: "active" | "completed";
+  hasSubmittedFeedback?: boolean;
 }
 
 export interface FacetItem {

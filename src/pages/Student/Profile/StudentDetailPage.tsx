@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Table, { type TableColumn } from "@/components/ui/Table";
 import Input from "@/components/ui/Input";
-import { Edit, UserX, User, Eye, Settings, Calendar, BookOpen, Award,Mail,Phone,MapPin,IdCard,Clock,MessageSquare,Plus,GraduationCap,Activity,ExternalLink,Copy, Save, X, Upload, Camera} from "lucide-react";
+import { Edit, UserX, User, Eye, Settings, Calendar, BookOpen, Award,Mail,Phone,MapPin,IdCard,Clock,MessageSquare,Plus,GraduationCap,Activity,ExternalLink,Copy, Save, X, Upload, Camera, FileCheck} from "lucide-react";
 import { formatDate, getStatusColor, getStatusDisplay } from "@/helper/helper.service";
 import Loader from "@/components/ui/Loader";
 import { getStudentById, getTotalAssignmentByStudentId, getTotalAttendceByStudentId, updateStudent, uploadAvatar} from "@/api/student.api";
@@ -834,6 +834,22 @@ export default function StudentDetailPage() {
                   ) : (
                     <p className="text-sm text-gray-900 font-medium font-mono">{student.cid || "N/A"}</p>
                   )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <FileCheck className="w-4 h-4 text-purple-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Placement Test Score
+                  </label>
+                  <p className="text-sm text-gray-900 font-medium">
+                    {student.studentInfo?.placementTestGrade !== null && student.studentInfo?.placementTestGrade !== undefined
+                      ? `${student.studentInfo.placementTestGrade.toFixed(2)} / 10`
+                      : "N/A"}
+                  </p>
                 </div>
               </div>
               

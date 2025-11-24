@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/useToast";
 import { isTokenValid, getUserInfo, getUserRole } from "@/lib/utils";
 import { api } from "@/api";
 import { planTypeService } from "@/services/planTypeService";
+import { getStudentById } from "@/api/student.api";
 import type { CourseDetailProps } from "@/types/course";
 
 export default function CourseDetail({ course }: CourseDetailProps) {
@@ -23,6 +24,8 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [courseStatus, setCourseStatus] = useState({ isEnrolled: false, inReservation: false });
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [placementTestGrade, setPlacementTestGrade] = useState<number | null>(null);
+  const [loadingPlacementScore, setLoadingPlacementScore] = useState(false);
   
   // Use schedules from course if available, otherwise fetch them
   const shouldFetchSchedules = !course.schedules || course.schedules.length === 0;
@@ -70,6 +73,43 @@ export default function CourseDetail({ course }: CourseDetailProps) {
 
     checkStatus();
   }, [course.id]);
+
+  // Fetch placement test grade for student
+  useEffect(() => {
+    const loadPlacementTestGrade = async () => {
+      // Only load if user is logged in and is a student
+      if (!isTokenValid()) {
+        setPlacementTestGrade(null);
+        return;
+      }
+
+      const userRole = getUserRole();
+      if (userRole?.toLowerCase() !== 'student') {
+        setPlacementTestGrade(null);
+        return;
+      }
+
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        setPlacementTestGrade(null);
+        return;
+      }
+
+      try {
+        setLoadingPlacementScore(true);
+        const student = await getStudentById(userInfo.id);
+        const grade = student.studentInfo?.placementTestGrade ?? null;
+        setPlacementTestGrade(grade);
+      } catch (err) {
+        console.error('Error loading placement test grade:', err);
+        setPlacementTestGrade(null);
+      } finally {
+        setLoadingPlacementScore(false);
+      }
+    };
+
+    loadPlacementTestGrade();
+  }, []);
 
   // Function to calculate start date based on course schedule
   const getCalculatedStartDate = (): Date | null => {
@@ -775,42 +815,62 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                 </div>
               </div>
 
-              <Button
-                onClick={handleEnroll}
-                className="w-full font-semibold mb-4"
-                disabled={
-                  checkingStatus || 
-                  courseStatus.isEnrolled || 
-                  courseStatus.inReservation || 
-                  (isTokenValid() && getUserRole()?.toLowerCase() !== 'student')
-                }
-              >
-                {checkingStatus 
-                  ? 'Checking...' 
-                  : courseStatus.isEnrolled 
-                    ? 'Already Enrolled' 
-                    : courseStatus.inReservation
-                      ? 'In Reservation'
-                      : 'Enroll Now'}
-              </Button>
+              {/* Check if student meets course requirement */}
+              {(() => {
+                const isStudent = isTokenValid() && getUserRole()?.toLowerCase() === 'student';
+                const hasInsufficientScore = isStudent && 
+                  course.standardScore !== undefined && 
+                  placementTestGrade !== null && 
+                  course.standardScore > placementTestGrade;
+                
+                return (
+                  <>
+                    <Button
+                      onClick={handleEnroll}
+                      className="w-full font-semibold mb-4"
+                      disabled={
+                        checkingStatus || 
+                        courseStatus.isEnrolled || 
+                        courseStatus.inReservation || 
+                        (isTokenValid() && getUserRole()?.toLowerCase() !== 'student') ||
+                        hasInsufficientScore
+                      }
+                    >
+                      {checkingStatus 
+                        ? 'Checking...' 
+                        : courseStatus.isEnrolled 
+                          ? 'Already Enrolled' 
+                          : courseStatus.inReservation
+                            ? 'In Reservation'
+                            : 'Enroll Now'}
+                    </Button>
 
-              {courseStatus.isEnrolled && (
-                <p className="text-sm text-success-600 text-center mb-4">
-                  ✓ You are already enrolled in this course
-                </p>
-              )}
+                    {courseStatus.isEnrolled && (
+                      <p className="text-sm text-success-600 text-center mb-4">
+                        ✓ You are already enrolled in this course
+                      </p>
+                    )}
 
-              {courseStatus.inReservation && !courseStatus.isEnrolled && (
-                <p className="text-sm text-primary-600 text-center mb-4">
-                  This course is already in your reservation.<br></br> Please complete payment.
-                </p>
-              )}
+                    {courseStatus.inReservation && !courseStatus.isEnrolled && (
+                      <p className="text-sm text-primary-600 text-center mb-4">
+                        This course is already in your reservation.<br></br> Please complete payment.
+                      </p>
+                    )}
 
-              {isTokenValid() && getUserRole()?.toLowerCase() !== 'student' && !courseStatus.isEnrolled && !courseStatus.inReservation && (
-                <p className="text-sm text-warning-600 text-center mb-4">
-                  Only students can enroll in courses
-                </p>
-              )}
+                    {hasInsufficientScore && !courseStatus.isEnrolled && !courseStatus.inReservation && (
+                      <p className="text-sm text-red-600 text-center mb-4">
+                        You are not eligible to take the course
+                      </p>
+                    )}
+
+                    {isTokenValid() && getUserRole()?.toLowerCase() !== 'student' && !courseStatus.isEnrolled && !courseStatus.inReservation && !hasInsufficientScore && (
+                      <p className="text-sm text-warning-600 text-center mb-4">
+                        Only students can enroll in courses
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
 
                {course.benefits && course.benefits.length > 0 && (
                 <div className="space-y-3 text-sm text-gray-600">

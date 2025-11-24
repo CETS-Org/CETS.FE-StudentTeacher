@@ -4,9 +4,12 @@ import {
   Star,
   User,
   BookOpen,
-  X
+  X,
+  Loader2,
+  CheckCircle2
 } from "lucide-react";
-
+import { feedbackApi } from "@/api/feedback.api";
+import { getUserInfo } from "@/lib/utils";
 import type { FeedbackCourse as Course } from "@/types/course";
 
 interface CourseFeedbackData {
@@ -123,6 +126,8 @@ const RadioGroup: React.FC<{
 
 export default function FeedbackDialog({ open, onOpenChange, course, onComplete }: FeedbackDialogProps) {
   const [step, setStep] = useState<"course" | "teacher">("course");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [courseFeedbackData, setCourseFeedbackData] = useState<CourseFeedbackData>({
     overallRating: 0,
     contentClarity: "",
@@ -144,31 +149,78 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
     setStep("teacher");
   };
 
-  const handleTeacherFeedbackSubmit = (e: React.FormEvent) => {
+  const handleTeacherFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Teacher feedback:", teacherFeedbackData);
-    // Reset forms
-    setStep("course");
-    setCourseFeedbackData({
-      overallRating: 0,
-      contentClarity: "",
-      courseRelevance: "",
-      materialsQuality: "",
-      additionalComments: ""
-    });
-    setTeacherFeedbackData({
-      overallRating: 0,
-      teachingEffectiveness: "",
-      communicationSkills: "",
-      teacherSupportiveness: "",
-      additionalComments: ""
-    });
-    onComplete();
-    onOpenChange(false);
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      if (!course?.id) {
+        throw new Error("Course information is missing");
+      }
+
+      // Check if teacher is assigned
+      const hasTeacher = course?.teacherId && course.teacherId.trim() !== "";
+
+      // Submit combined feedback
+      const result = await feedbackApi.createCombined({
+        submitterID: userInfo.id,
+        courseID: course.id,
+        teacherID: hasTeacher ? course.teacherId : "00000000-0000-0000-0000-000000000000", // Use dummy GUID if no teacher
+        courseFeedback: {
+          rating: courseFeedbackData.overallRating || undefined,
+          comment: courseFeedbackData.additionalComments || undefined,
+          contentClarity: courseFeedbackData.contentClarity || undefined,
+          courseRelevance: courseFeedbackData.courseRelevance || undefined,
+          materialsQuality: courseFeedbackData.materialsQuality || undefined,
+        },
+        teacherFeedback: hasTeacher ? {
+          rating: teacherFeedbackData.overallRating || undefined,
+          comment: teacherFeedbackData.additionalComments || undefined,
+          teachingEffectiveness: teacherFeedbackData.teachingEffectiveness || undefined,
+          communicationSkills: teacherFeedbackData.communicationSkills || undefined,
+          teacherSupportiveness: teacherFeedbackData.teacherSupportiveness || undefined,
+        } : undefined, // Skip teacher feedback if no teacher assigned
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || "Failed to submit feedback");
+      }
+
+      // Reset forms
+      setStep("course");
+      setCourseFeedbackData({
+        overallRating: 0,
+        contentClarity: "",
+        courseRelevance: "",
+        materialsQuality: "",
+        additionalComments: ""
+      });
+      setTeacherFeedbackData({
+        overallRating: 0,
+        teachingEffectiveness: "",
+        communicationSkills: "",
+        teacherSupportiveness: "",
+        additionalComments: ""
+      });
+      onComplete();
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error("Failed to submit feedback:", err);
+      setError(err.message || "Failed to submit feedback. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setStep("course");
+    setError(null);
     onOpenChange(false);
   };
 
@@ -456,12 +508,20 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
                   />
                 </div>
 
+                {/* Error Message */}
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                )}
+
                 {/* Footer Buttons */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-accent-200">
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => setStep("course")}
+                    disabled={isSubmitting}
                     className="border-neutral-300 hover:bg-neutral-100"
                   >
                     ← Back
@@ -469,9 +529,20 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
                   <Button
                     type="submit"
                     variant="primary"
-                    className="btn-secondary px-8"
+                    disabled={isSubmitting}
+                    className="btn-secondary px-8 flex items-center gap-2"
                   >
-                    Submit Feedback ✓
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        Submit Feedback
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>

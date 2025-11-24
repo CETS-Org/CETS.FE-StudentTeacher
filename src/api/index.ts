@@ -25,7 +25,7 @@ import {
   getCoursePackageById,
 } from './coursePackage.api';
 import { uploadToPresignedUrl, uploadJsonToPresignedUrl } from './file.api';
-import { createMonthlyPayment, createFullPayment } from './payment.api';
+import { createMonthlyPayment, createFullPayment, getPaymentHistory } from './payment.api';
 import {
   getReservationItems,
   getClassReservations,
@@ -109,6 +109,7 @@ export const api = {
   // Payments
   createMonthlyPayment,
   createFullPayment,
+  getPaymentHistory,
 
   // Reservations
   getReservationItems,
@@ -196,6 +197,7 @@ export {
   uploadJsonToPresignedUrl,
   createMonthlyPayment,
   createFullPayment,
+  getPaymentHistory,
   getReservationItems,
   getClassReservations,
   createCompleteReservation,

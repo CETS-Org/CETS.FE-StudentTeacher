@@ -97,6 +97,33 @@ async function callGroqAPI(prompt: string): Promise<FormattedReadingTest> {
     throw new Error("Invalid format: missing passage or questions");
   }
 
+  // Validate each question has proper correctAnswer
+  formatted.questions = formatted.questions.filter(q => {
+    // Check if question has valid correctAnswer
+    if (!q.correctAnswer || 
+        q.correctAnswer === "Answer not provided" || 
+        q.correctAnswer === "Not Given" ||
+        (Array.isArray(q.correctAnswer) && q.correctAnswer.includes("Answer not provided"))) {
+      console.warn(`Skipping question with invalid answer: ${q.question}`);
+      return false;
+    }
+
+    // For multiple choice, ensure correctAnswer matches one of the options
+    if (q.type === "multiple_choice" && q.options) {
+      const answerIndex = q.options.findIndex(opt => opt === q.correctAnswer);
+      if (answerIndex === -1) {
+        console.warn(`Multiple choice question has invalid correctAnswer: ${q.question}`);
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  if (formatted.questions.length === 0) {
+    throw new Error("No valid questions found after validation");
+  }
+
   console.log("✓ Successfully formatted with Groq");
   return formatted;
 }
@@ -130,8 +157,18 @@ CRITICAL REQUIREMENTS:
    - Fix spacing and capitalization
    - Identify types: multiple_choice, true_false, short_answer, fill_in_the_blank
    - Extract all options for multiple choice
-   - Extract correct answers
+   - Extract correct answers PROPERLY:
+     * For multiple_choice: correctAnswer MUST be the EXACT TEXT of the correct option (e.g., "Option A text")
+     * For true_false: correctAnswer MUST be "True" or "False"
+     * For short_answer: correctAnswer MUST be the actual expected answer text
+     * For fill_in_the_blank: correctAnswer MUST be an array of correct words/phrases
    - Assign points (1-5 based on difficulty)
+   - NEVER use placeholders like "Answer not provided" or "Not Given"
+
+3. VALIDATION:
+   - Every question MUST have a valid correctAnswer
+   - Multiple choice questions MUST have 2-4 options
+   - Fill in the blank MUST have actual answer words, not placeholders
 
 RAW CONTENT:
 ${rawContent}
@@ -142,10 +179,22 @@ Return ONLY this JSON structure (passage MUST have \\n\\n between paragraphs):
   "questions": [
     {
       "type": "multiple_choice",
-      "question": "question text",
-      "options": ["A", "B", "C", "D"],
-      "correctAnswer": "A",
+      "question": "What is the main topic?",
+      "options": ["Technology", "Science", "History", "Art"],
+      "correctAnswer": "Technology",
       "points": 2
+    },
+    {
+      "type": "fill_in_the_blank",
+      "question": "The main factor is _____.",
+      "correctAnswer": ["innovation", "technology"],
+      "points": 2
+    },
+    {
+      "type": "short_answer",
+      "question": "What are the key benefits?",
+      "correctAnswer": "Improved efficiency and better outcomes",
+      "points": 3
     }
   ]
 }`;
@@ -172,29 +221,68 @@ Return ONLY this JSON structure (passage MUST have \\n\\n between paragraphs):
   }
 }
 
-export function convertToQuizQuestions(formattedQuestions: FormattedQuestion[]) {
+export function convertToQuizQuestions(formattedQuestions: FormattedQuestion[], isAutoGradable: boolean = true) {
+  // Calculate points per question to total 10 points
+  const totalQuestions = formattedQuestions.length;
+  const pointsPerQuestion = totalQuestions > 0 ? Math.round((10 / totalQuestions) * 10) / 10 : 1;
+  
   return formattedQuestions.map((q, index) => {
     const baseQuestion = {
       id: `q-${Date.now()}-${index}`,
       type: q.type,
       order: index + 1,
       question: q.question,
-      points: q.points,
+      points: pointsPerQuestion, // Use calculated points instead of q.points
       explanation: q.explanation,
+      requiresManualGrading: !isAutoGradable, // Set based on isAutoGradable parameter
     };
 
     switch (q.type) {
       case "multiple_choice":
-      case "true_false":
+        const correctAnswerIndex = q.options?.findIndex(opt => opt === q.correctAnswer) ?? -1;
+        
+        // Validate that we found a valid answer
+        if (correctAnswerIndex === -1) {
+          console.error(`Invalid multiple choice question - correctAnswer not found in options:`, q);
+        }
+        
+        const mcOptions = q.options?.map((opt, idx) => ({
+          id: `opt-${index}-${String.fromCharCode(97 + idx)}`,
+          label: String.fromCharCode(65 + idx),
+          text: opt,
+        })) || [];
+        
         return {
           ...baseQuestion,
-          options: q.options?.map((opt, idx) => ({
-            id: `opt-${index}-${idx}`,
-            label: String.fromCharCode(65 + idx),
-            text: opt,
-          })),
-          correctAnswer: q.options?.findIndex(opt => opt === q.correctAnswer),
+          options: mcOptions,
+          correctAnswer: correctAnswerIndex !== -1 ? mcOptions[correctAnswerIndex]?.id : undefined,
           shuffleOptions: false,
+        };
+
+      case "true_false":
+        // True/False questions - correctAnswer should be boolean, not ID
+        const tfAnswer = q.correctAnswer;
+        let correctBool = true;
+        
+        if (typeof tfAnswer === 'string') {
+          const normalized = tfAnswer.toLowerCase().trim();
+          correctBool = normalized === 'true' || normalized === 't' || normalized === 'yes';
+        } else if (typeof tfAnswer === 'boolean') {
+          correctBool = tfAnswer;
+        } else if (Array.isArray(tfAnswer) && tfAnswer.length > 0) {
+          // If array, take first element
+          const firstAnswer = String(tfAnswer[0]).toLowerCase().trim();
+          correctBool = firstAnswer === 'true' || firstAnswer === 't' || firstAnswer === 'yes';
+        } else if (q.options && typeof tfAnswer === 'string') {
+          // If correctAnswer is in options, check if it's "True" or "False"
+          const tfCorrectIndex = q.options.findIndex(opt => opt === tfAnswer);
+          correctBool = tfCorrectIndex === 0; // Assume first option is True
+        }
+        
+        return {
+          ...baseQuestion,
+          correctAnswer: correctBool,
+          requiresManualGrading: false,
         };
 
       case "fill_in_the_blank":
@@ -214,12 +302,15 @@ export function convertToQuizQuestions(formattedQuestions: FormattedQuestion[]) 
         return { ...baseQuestion, blanks };
 
       case "short_answer":
+        const answerText = Array.isArray(q.correctAnswer) 
+          ? q.correctAnswer.join(", ") 
+          : q.correctAnswer as string;
+        
         return {
           ...baseQuestion,
-          correctAnswer: q.correctAnswer,
+          correctAnswer: answerText,
           maxLength: 500,
           keywords: Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer as string],
-          requiresManualGrading: true,
         };
 
       default:

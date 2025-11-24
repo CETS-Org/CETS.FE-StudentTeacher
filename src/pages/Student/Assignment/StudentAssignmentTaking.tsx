@@ -354,30 +354,29 @@ export default function StudentAssignmentTaking() {
     let totalPoints = 0; // Total points available
     let answeredCount = 0; // Questions answered by student
     let correctCount = 0; // Questions answered correctly
-    // Only count questions that don't require manual grading
-    const totalQuestions = questions.filter(q => !q.requiresManualGrading).length;
+    // Count all questions that can be auto-graded (have correctAnswer or blanks)
+    const totalQuestions = questions.filter(q => 
+      (q.correctAnswer !== undefined && q.correctAnswer !== null) ||
+      (q.blanks && q.blanks.length > 0)
+    ).length;
 
     questions.forEach((question) => {
       const questionPoints = question.points || 0;
-      // Add to total points only if question doesn't require manual grading
-      if (!question.requiresManualGrading) {
-        totalPoints += questionPoints;
-      }
-      
       const studentAnswer = answers[question.id];
       // Get correctAnswer directly from question object (loaded from JSON)
       const correctAnswer = question.correctAnswer;
 
-  
-      if (question.requiresManualGrading) {
+      // Check if question can be auto-graded (has correctAnswer or blanks)
+      const canAutoGrade = (correctAnswer !== undefined && correctAnswer !== null) || 
+                          (question.blanks && question.blanks.length > 0);
+      
+      if (!canAutoGrade) {
+        console.warn(`Question ${question.id} cannot be auto-graded, skipping`);
         return;
       }
-
-      // Check if correctAnswer exists in JSON
-      if (correctAnswer === undefined || correctAnswer === null) {
-        console.warn(`Question ${question.id} does not have correctAnswer in JSON, skipping auto-grading`);
-        return;
-      }
+      
+      // Add to total points for all questions that can be auto-graded
+      totalPoints += questionPoints;
 
       if (studentAnswer === undefined || studentAnswer === null || studentAnswer === "") {
         console.log(`Question ${question.id} has no answer from student, skipping`);
@@ -399,26 +398,42 @@ export default function StudentAssignmentTaking() {
           isCorrect = studentBool === correctBool;
           break;
         case "fill_in_the_blank":
-          // For fill in the blank, check blanks array first, then fallback to correctAnswer
+          // For fill in the blank, check blanks array first (new format), then fallback to correctAnswer (old format)
           if (question.blanks && question.blanks.length > 0) {
-            if (typeof studentAnswer === "string") {
-              const blank = question.blanks[0];
-              const normalizedStudent = blank.caseSensitive 
-                ? studentAnswer.trim() 
-                : studentAnswer.trim().toLowerCase();
-              isCorrect = blank.correctAnswers.some(correct => {
-                const normalizedCorrect = blank.caseSensitive 
-                  ? correct.trim() 
-                  : correct.trim().toLowerCase();
-                return normalizedStudent === normalizedCorrect;
+            // New format: has blanks array
+            const studentAnswers = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
+            isCorrect = question.blanks.every((blank: any, index: number) => {
+              const studentAns = String(studentAnswers[index] || '').trim().toLowerCase();
+              return blank.correctAnswers.some((correctAns: string) => {
+                const normalized = correctAns.trim().toLowerCase();
+                return blank.caseSensitive ? studentAns === correctAns.trim() : studentAns === normalized;
               });
-            }
+            });
           } else if (correctAnswer !== undefined && correctAnswer !== null) {
-            // Fallback: use correctAnswer from JSON if blanks array is not available
-            const normalizedStudent = String(studentAnswer).trim().toLowerCase();
-            const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
-            isCorrect = normalizedStudent === normalizedCorrect;
+            // Old format: has correctAnswer (string or array)
+            const studentStr = String(studentAnswer || '').trim().toLowerCase();
+            
+            // If correctAnswer is array
+            if (Array.isArray(correctAnswer)) {
+              isCorrect = correctAnswer.some(ans => 
+                String(ans).trim().toLowerCase() === studentStr
+              );
+            } else {
+              // If correctAnswer is string - use flexible matching
+              const correctStr = String(correctAnswer).trim().toLowerCase();
+              isCorrect = studentStr === correctStr || 
+                         studentStr.includes(correctStr) || 
+                         correctStr.includes(studentStr);
+            }
           }
+          break;
+        case "short_answer":
+          // For short answer, use case-insensitive comparison with flexible matching
+          const studentStr = String(studentAnswer || '').trim().toLowerCase();
+          const correctStr = String(correctAnswer || '').trim().toLowerCase();
+          isCorrect = studentStr === correctStr || 
+                     studentStr.includes(correctStr) || 
+                     correctStr.includes(studentStr);
           break;
         case "matching":
           // For matching, use correctMatches from question.matching
@@ -477,115 +492,100 @@ export default function StudentAssignmentTaking() {
 
     let totalScore = 0;
     let totalPoints = 0;
-    let answeredCount = 0;
-    let correctCount = 0;
 
     questions.forEach((question) => {
       const questionPoints = question.points || 0;
-      // Add to total points only if question doesn't require manual grading
-      if (!question.requiresManualGrading) {
-        totalPoints += questionPoints;
-      }
-      
       const studentAnswer = answers[question.id];
-      // Get correctAnswer directly from question object (loaded from JSON file)
-      // Format: For multiple_choice, correctAnswer is the option ID (e.g., "opt-2-b")
       const correctAnswer = question.correctAnswer;
-
-      // Skip if question requires manual grading
-      if (question.requiresManualGrading) {
-        return;
-      }
 
       // Check if correctAnswer exists in JSON
       if (correctAnswer === undefined || correctAnswer === null) {
         return;
       }
+      
+      // Add to total points for all questions with correctAnswer (can be auto-graded)
+      totalPoints += questionPoints;
 
       // Skip if no answer provided
       if (studentAnswer === undefined || studentAnswer === null || studentAnswer === "") {
         return;
       }
 
-      answeredCount++;
       let isCorrect = false;
 
       switch (question.type) {
         case "multiple_choice":
-          // Compare option ID
           isCorrect = studentAnswer === correctAnswer;
-     
           break;
 
         case "true_false":
-          // Compare boolean value (handle both boolean and string)
-          const studentBool = studentAnswer === true || studentAnswer === "true" || studentAnswer === "True";
-          const correctBool = correctAnswer === true || correctAnswer === "true" || correctAnswer === "True";
+          const studentBool = studentAnswer === true || studentAnswer === "true" || studentAnswer === "True" || studentAnswer === "TRUE";
+          const correctBool = correctAnswer === true || correctAnswer === "true" || correctAnswer === "True" || correctAnswer === "TRUE";
           isCorrect = studentBool === correctBool;
-       
           break;
 
         case "fill_in_the_blank":
-          // Check if answer matches any of the correct answers
+          // For fill in the blank, check blanks array first (new format), then fallback to correctAnswer (old format)
           if (question.blanks && question.blanks.length > 0) {
-            // For fill-in-the-blank with multiple blanks, studentAnswer should be an array or object
-            // For single blank, it's a string
-            if (typeof studentAnswer === "string") {
-              const blank = question.blanks[0];
-              const normalizedStudent = blank.caseSensitive 
-                ? studentAnswer.trim() 
-                : studentAnswer.trim().toLowerCase();
-              isCorrect = blank.correctAnswers.some(correct => {
-                const normalizedCorrect = blank.caseSensitive 
-                  ? correct.trim() 
-                  : correct.trim().toLowerCase();
-                return normalizedStudent === normalizedCorrect;
+            // New format: has blanks array
+            const studentAnswers = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
+            isCorrect = question.blanks.every((blank: any, index: number) => {
+              const studentAns = String(studentAnswers[index] || '').trim().toLowerCase();
+              return blank.correctAnswers.some((correctAns: string) => {
+                const normalized = correctAns.trim().toLowerCase();
+                return blank.caseSensitive ? studentAns === correctAns.trim() : studentAns === normalized;
               });
-            }
-          } else if (correctAnswer) {
-            // Fallback: compare with correctAnswer if blanks array is not available
-            const normalizedStudent = String(studentAnswer).trim().toLowerCase();
-            const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
-            isCorrect = normalizedStudent === normalizedCorrect;
-          }
-      
-          break;
-
-        case "matching":
-          // Compare matching pairs
-          if (question.matching && question.matching.correctMatches) {
-            const studentMatches = studentAnswer; // Should be an object like { leftId: rightId }
-            const correctMatches = question.matching.correctMatches;
+            });
+          } else if (correctAnswer !== undefined && correctAnswer !== null) {
+            // Old format: has correctAnswer (string or array)
+            const studentStr = String(studentAnswer || '').trim().toLowerCase();
             
-            if (typeof studentMatches === "object" && studentMatches !== null) {
-              // Check if all correct matches are present in student answer
-              const allCorrect = correctMatches.every((correctMatch: any) => {
-                return studentMatches[correctMatch.left] === correctMatch.right;
-              });
-              
-              // Also check that student didn't add extra incorrect matches
-              const studentMatchCount = Object.keys(studentMatches).length;
-              const correctMatchCount = correctMatches.length;
-              
-              isCorrect = allCorrect && studentMatchCount === correctMatchCount;
+            // If correctAnswer is array
+            if (Array.isArray(correctAnswer)) {
+              isCorrect = correctAnswer.some(ans => 
+                String(ans).trim().toLowerCase() === studentStr
+              );
+            } else {
+              // If correctAnswer is string - use flexible matching
+              const correctStr = String(correctAnswer).trim().toLowerCase();
+              isCorrect = studentStr === correctStr || 
+                         studentStr.includes(correctStr) || 
+                         correctStr.includes(studentStr);
             }
           }
           break;
 
         case "short_answer":
-        case "essay":
-        case "speaking":
-          // These require manual grading, skip auto-grading
-          return;
+          // For short answer, use case-insensitive comparison with flexible matching
+          const studentStr = String(studentAnswer || '').trim().toLowerCase();
+          const correctStr = String(correctAnswer || '').trim().toLowerCase();
+          isCorrect = studentStr === correctStr || 
+                     studentStr.includes(correctStr) || 
+                     correctStr.includes(studentStr);
+          break;
+
+        case "matching":
+          if (question.matching && question.matching.correctMatches) {
+            const studentMatches = studentAnswer;
+            const correctMatches = question.matching.correctMatches;
+            
+            if (typeof studentMatches === "object" && studentMatches !== null) {
+              const allCorrect = correctMatches.every((correctMatch: any) => {
+                return studentMatches[correctMatch.left] === correctMatch.right;
+              });
+              const studentMatchCount = Object.keys(studentMatches).length;
+              const correctMatchCount = correctMatches.length;
+              isCorrect = allCorrect && studentMatchCount === correctMatchCount;
+            }
+          }
+          break;
 
         default:
-          // Unknown question type, skip
           return;
       }
 
       if (isCorrect) {
         totalScore += questionPoints;
-        correctCount++;
       }
     });
 
@@ -594,7 +594,6 @@ export default function StudentAssignmentTaking() {
     if (totalPoints > 0) {
       const percentageScore = (totalScore / totalPoints) * 10;
       finalScore = Math.round(percentageScore * 100) / 100; // Round to 2 decimal places
-      
     } else {
       console.log('No points available, returning 0');
       finalScore = 0;
