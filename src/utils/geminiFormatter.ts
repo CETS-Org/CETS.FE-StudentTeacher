@@ -233,8 +233,7 @@ export function convertToQuizQuestions(formattedQuestions: FormattedQuestion[], 
       order: index + 1,
       question: q.question,
       points: pointsPerQuestion, // Use calculated points instead of q.points
-      explanation: q.explanation,
-      requiresManualGrading: !isAutoGradable, // Set based on isAutoGradable parameter
+      ...(q.explanation && { explanation: q.explanation }), // Only include if exists
     };
 
     switch (q.type) {
@@ -282,24 +281,18 @@ export function convertToQuizQuestions(formattedQuestions: FormattedQuestion[], 
         return {
           ...baseQuestion,
           correctAnswer: correctBool,
-          requiresManualGrading: false,
         };
 
       case "fill_in_the_blank":
-        const blanks = Array.isArray(q.correctAnswer)
-          ? q.correctAnswer.map((ans, idx) => ({
-              id: `blank-${index}-${idx}`,
-              position: idx,
-              correctAnswers: [ans],
-              caseSensitive: false,
-            }))
-          : [{
-              id: `blank-${index}-0`,
-              position: 0,
-              correctAnswers: [q.correctAnswer as string],
-              caseSensitive: false,
-            }];
-        return { ...baseQuestion, blanks };
+        // Use single string correctAnswer (not array)
+        const fillAnswer = Array.isArray(q.correctAnswer) 
+          ? q.correctAnswer[0]  // Take first answer only
+          : q.correctAnswer as string;
+        
+        return { 
+          ...baseQuestion, 
+          correctAnswer: fillAnswer 
+        };
 
       case "short_answer":
         const answerText = Array.isArray(q.correctAnswer) 
@@ -311,6 +304,7 @@ export function convertToQuizQuestions(formattedQuestions: FormattedQuestion[], 
           correctAnswer: answerText,
           maxLength: 500,
           keywords: Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer as string],
+          requiresManualGrading: !isAutoGradable,
         };
 
       default:

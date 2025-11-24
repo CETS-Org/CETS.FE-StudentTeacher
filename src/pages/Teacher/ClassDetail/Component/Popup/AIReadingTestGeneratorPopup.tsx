@@ -554,29 +554,20 @@ export default function AIReadingTestGeneratorPopup({
                         )}
 
                         {/* Fill in the Blank */}
-                        {q.type === 'fill_in_the_blank' && q.blanks && (
-                          <div className="space-y-2">
-                            <label className="block text-xs font-medium text-gray-700">Correct Answers:</label>
-                            {q.blanks.map((blank: any, blankIdx: number) => (
-                              <div key={blank.id || blankIdx}>
-                                <input
-                                  type="text"
-                                  value={blank.correctAnswers?.[0] || ''}
-                                  onChange={(e) => {
-                                    const updated = [...editableQuestions];
-                                    const newBlanks = [...updated[idx].blanks];
-                                    newBlanks[blankIdx] = {
-                                      ...newBlanks[blankIdx],
-                                      correctAnswers: [e.target.value]
-                                    };
-                                    updated[idx] = { ...updated[idx], blanks: newBlanks };
-                                    setEditableQuestions(updated);
-                                  }}
-                                  placeholder="Correct answer"
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                />
-                              </div>
-                            ))}
+                        {q.type === 'fill_in_the_blank' && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Correct Answer:</label>
+                            <input
+                              type="text"
+                              value={q.correctAnswer || ''}
+                              onChange={(e) => {
+                                const updated = [...editableQuestions];
+                                updated[idx] = { ...updated[idx], correctAnswer: e.target.value };
+                                setEditableQuestions(updated);
+                              }}
+                              placeholder="Correct answer"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
                           </div>
                         )}
 
