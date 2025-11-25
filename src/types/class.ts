@@ -6,50 +6,22 @@ export interface MyClass {
   id: string;
   className: string;
   classNum: number;
-  description?: string;
-  instructor?: string;
-  
-  // Class status and format
+  description: string;
+  instructor: string;
+  level: "Beginner" | "Intermediate" | "Advanced";
   classStatus: string;
-  courseFormat?: string;
-  level?: "Beginner" | "Intermediate" | "Advanced";
-  
-  // Date information
-  startDate: string;
-  endDate: string;
-  enrolledDate?: string;
-  
-  // Capacity and enrollment
-  capacity: number;
-  enrolledCount: number;
-  
-  // Status flags
-  isActive: boolean;
-  status: "upcoming" | "active" | "completed" | "cancelled";
-  
-  // Course information (from related entities)
+  courseFormat: "In-person" | "Online" | "Hybrid";
   courseName?: string;
   courseCode?: string;
   category?: string;
-  totalHours?: number;
-  sessionsPerWeek?: number;
-  
-  // Additional properties
-  certificate?: boolean;
-  price?: number;
-  
-  // Next meeting information (based on ACAD_ClassMeeting entity)
-  nextMeeting?: {
-    id: string;
-    startsAt: string; // DateTime from ACAD_ClassMeeting.StartsAt
-    endsAt: string; // DateTime from ACAD_ClassMeeting.EndsAt
-    roomId?: string; // from ACAD_ClassMeeting.RoomID
-    roomName?: string; // from FAC_Room navigation property
-    onlineMeetingUrl?: string; // from ACAD_ClassMeeting.OnlineMeetingUrl
-    passcode?: string; // from ACAD_ClassMeeting.Passcode
-    coveredTopic?: string; // from ACAD_SyllabusItem navigation property
-    progressNote?: string; // from ACAD_ClassMeeting.ProgressNote
-  };
+  startDate: string;
+  endDate: string;
+  status: string;
+  capacity?: number;
+  enrolledCount?: number;
+  isActive: boolean;
+  certificate: boolean;
+  nextMeeting?: ClassMeetingResponse | null;
 }
 
 // Props interfaces for components
@@ -73,15 +45,39 @@ export type ClassLevel = "Beginner" | "Intermediate" | "Advanced";
 export interface StudentLearningClassResponse {
   id: string;
   statusName: string;
-  courseName: string;
-  className: string;
-  courseCode?: string;
-  teacherName: string;
+
+  courseName: string | null;
+  className: string | null;
+  courseCode?: string | null;
+
+  teacherId: string | null;
+  teacherName: string | null;
+
   startDate: string;
   endDate: string;
+
   timeSlot: string | null;
-  roomCode: string;
+  roomCode: string | null;
+
   isActive: boolean;
+
+  nextMeeting: ClassMeetingResponse | null;
+}
+
+
+export interface ClassMeetingResponse {
+  id: string;
+  classID: string;
+  date: string;           // "yyyy-MM-dd"
+  isStudy: boolean;
+  roomID: string | null;
+  roomCode: string | null;
+  onlineMeetingUrl: string | null;
+  passcode: string | null;
+  recordingUrl: string | null;
+  isActive: boolean;
+  slot: string | null; 
+  coveredTopic: string | null;   // tên ca học nếu bạn có
 }
 
 // Teacher Class Detail Interface (simplified view)

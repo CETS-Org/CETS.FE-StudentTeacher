@@ -357,7 +357,7 @@ export default function SessionsTab({ classId }: Props) {
                                 <Building className="w-4 h-4 text-primary-600 font-semibold" />
                                 <span>Offline</span>
                                 <MapPin className="w-4 h-4 text-primary-600 font-semibold" />
-                                <span> Room: {sess.roomID}</span>                               
+                                <span> Room: {sess.roomCode}</span>                               
                                   {sess.onlineMeetingUrl && sess.passcode && (
                                   <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
                                     Meeting Password: {sess.passcode}
