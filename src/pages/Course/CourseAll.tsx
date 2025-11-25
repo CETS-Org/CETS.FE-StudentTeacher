@@ -6,10 +6,13 @@ import PackagesSection from "./components/PackagesSection";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import courseBgImage from "@/assets/course-bg.png";
+import { isTokenValid } from "@/lib/utils";
+import { useToast } from "@/hooks/useToast";
 
 export default function CourseAll() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { error: showError } = useToast();
   const [showPlacementTestMessage, setShowPlacementTestMessage] = useState(true);
 
   useEffect(() => {
@@ -140,6 +143,12 @@ export default function CourseAll() {
         {/* FAB Button with enhanced animations */}
         <button
           onClick={() => {
+            // Check if user is logged in
+            if (!isTokenValid()) {
+              showError("Bạn cần đăng nhập để làm bài Placement Test. Vui lòng đăng nhập trước.");
+              navigate('/login');
+              return;
+            }
             navigate('/student/placement-test');
             handleDismissMessage(); // Auto-dismiss message when clicked
           }}
