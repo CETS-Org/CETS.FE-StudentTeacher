@@ -377,7 +377,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                 title: asm.title,
                 description: asm.description || null,
                 fileUrl: null,
-                dueDate: asm.dueAt,
+                dueAt: asm.dueAt,
                 createdAt: asm.dueAt,
                 submissionStatus: asm.submissionStatus,
                 submittedAt: asm.submittedAt,
@@ -608,7 +608,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
       return !!(sub && (sub.score != null || sub.storeUrl));
     }).length;
     const overdue = allAssignments.filter((a) => {
-      const due = new Date(a.dueDate);
+      const due = new Date(a.dueAt);
       const sub = a.submissions?.[0];
       return due < now && !(sub && sub.storeUrl);
     }).length;
@@ -901,7 +901,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                             Session {session.sessionNumber}
                                           </h5>
                                           {isCurrent && (
-                                            <span className="px-2 py-0.5 bg-blue-500 text-white rounded text-xs font-medium shadow-sm">
+                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent2-500 text-white shadow-sm">
                                               Current
                                             </span>
                                           )}
@@ -1167,9 +1167,16 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                       >
                                         <div className="flex items-start justify-between">
                                           <div className="flex-1">
-                                            <h5 className="font-semibold text-primary-800 text-sm mb-0.5">
-                                              {getMilestoneTitle()}
-                                            </h5>
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                              <h5 className="font-semibold text-primary-800 text-sm">
+                                                {getMilestoneTitle()}
+                                              </h5>
+                                              {isCurrent && (
+                                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent2-500 text-white shadow-sm">
+                                                  Current
+                                                </span>
+                                              )}
+                                            </div>
                                             <p className="text-accent-600 text-xs">
                                               {getMilestoneDescription()}
                                             </p>
@@ -1250,7 +1257,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                         : `Session ${index + 1}`}
                                     </h4>
                                     {isCurrent && (
-                                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500 text-white shadow-sm animate-pulse">
+                                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent2-500 text-white shadow-sm">
                                         Current
                                       </span>
                                     )}

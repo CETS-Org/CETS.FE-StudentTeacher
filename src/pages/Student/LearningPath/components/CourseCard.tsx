@@ -129,6 +129,17 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
     }
   };
 
+  const formatStatus = (status: string) => {
+    if (!status) return '';
+    const lowerStatus = status.toLowerCase();
+    // Change "pending" to "Waiting for class"
+    if (lowerStatus === 'pending') {
+      return 'Waiting for class';
+    }
+    // Uppercase first letter of the status
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
   const handleCourseClick = () => {
     if (classItem) {
       onCourseClick(classItem);
@@ -151,7 +162,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <BookOpen className="w-5 h-5 text-primary-600" />
-              <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded-md font-medium text-sm">
+              <span className="bg-accent2-200 text-primary-700 px-2 py-1 rounded-md font-medium text-sm">
                 {course.courseCode}
               </span>
             </div>
@@ -169,7 +180,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
             </div>
           </div>
           <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(course.status)}`}>
-            {course.status}
+            {formatStatus(course.status)}
           </div>
         </div>
 
