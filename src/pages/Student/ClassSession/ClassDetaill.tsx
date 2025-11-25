@@ -11,7 +11,10 @@ import {
   Sparkles,
   CheckCircle,
 } from "lucide-react";
-import { getClassMeetingsByClassId, type ClassMeeting } from "@/api/classMeetings.api";
+import {
+  getClassMeetingsByClassId,
+  type ClassMeeting,
+} from "@/api/classMeetings.api";
 import type { MyClass } from "@/types/class";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
@@ -38,7 +41,7 @@ const formatDateLong = (dateString: string) => {
 /* ------------ Session Card ------------- */
 const SessionCard: React.FC<{
   session: ClassMeeting;
-  sessionNumber: number;       // -> luôn là số thứ tự theo ngày
+  sessionNumber: number;
   onNavigate: (sessionId: string) => void;
   isNext?: boolean;
   isCompleted?: boolean;
@@ -71,7 +74,9 @@ const SessionCard: React.FC<{
           <div
             className={[
               "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
-              isNext ? "bg-primary-600 shadow-md" : "bg-gradient-to-br from-primary-500 to-primary-600",
+              isNext
+                ? "bg-primary-600 shadow-md"
+                : "bg-gradient-to-br from-primary-500 to-primary-600",
             ].join(" ")}
           >
             <NotebookPen className="w-6 h-6 text-white" />
@@ -102,11 +107,15 @@ const SessionCard: React.FC<{
                 <Calendar className="w-4 h-4 text-primary-600" />
                 <span>{formatDateLong(session.date)}</span>
               </div>
+               <div className="flex items-center gap-2 text-sm text-neutral-700">
+                <Clock className="w-4 h-4 text-primary-600" />
+                <span>{session.slot}</span>
+              </div>
 
               {session.onlineMeetingUrl && (
                 <div className="flex items-center gap-2 text-sm text-neutral-700">
                   <Globe className="w-4 h-4 text-primary-600" />
-                  <span>Online meeting</span>
+                  <span>Meeting</span>
                   {session.passcode && (
                     <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
                       Code: {session.passcode}
@@ -115,10 +124,10 @@ const SessionCard: React.FC<{
                 </div>
               )}
 
-              {session.roomID && !session.onlineMeetingUrl && (
+              {session.roomID && (
                 <div className="flex items-center gap-2 text-sm text-neutral-700">
                   <MapPin className="w-4 h-4 text-primary-600" />
-                  <span>Room: {session.roomID}</span>
+                  <span>Room: {session.roomCode}</span>
                 </div>
               )}
 
@@ -165,15 +174,18 @@ export default function ClassSession() {
   const navigate = useNavigate();
   const { classId } = useParams<{ classId: string }>();
 
-  const [meetings, setMeetings] = useState<ClassMeeting[] | null>(null);
+  const [sessions, setSessions] = useState<ClassMeeting[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [classNameHeader, setClassNameHeader] = useState<string | null>(null);
-  const [courseTitleHeader, setCourseTitleHeader] = useState<string | null>(null);
+  const [courseTitleHeader, setCourseTitleHeader] = useState<string | null>(
+    null
+  );
   const [activeTab, setActiveTab] = useState("sessions");
 
+  // ===== Fetch sessions =====
   useEffect(() => {
-    const fetchMeetings = async () => {
+    const fetchSessions = async () => {
       if (!classId) {
         setError("Missing classId");
         setLoading(false);
@@ -182,12 +194,15 @@ export default function ClassSession() {
       try {
         setLoading(true);
         setError(null);
+
         const data = await getClassMeetingsByClassId(classId);
-        // sort tăng dần theo ngày (thứ tự CHRONOLOGICAL)
+
+        // sort tăng dần theo ngày
         const sorted = [...data].sort(
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
         );
-        setMeetings(sorted);
+
+        setSessions(sorted);
       } catch (e: any) {
         console.error("Error fetching class meetings:", e);
         setError(e?.message || "Failed to load sessions");
@@ -195,40 +210,44 @@ export default function ClassSession() {
         setLoading(false);
       }
     };
-    fetchMeetings();
+
+    fetchSessions();
   }, [classId]);
 
-  // Map: meetingId -> sessionNumber (theo thứ tự ngày)
-  const numberById = useMemo(() => {
+  // Map: sessionId -> sessionNumber (thứ tự theo ngày, luôn cố định)
+  const sessionNumberMap = useMemo(() => {
     const map: Record<string, number> = {};
-    (meetings ?? []).forEach((m, i) => {
-      map[m.id] = i + 1; // Session number theo chronological order
+    sessions.forEach((s, idx) => {
+      map[s.id] = idx + 1;
     });
     return map;
-  }, [meetings]);
+  }, [sessions]);
 
-  // Ghim BUỔI HỌC TIẾP THEO (date >= hôm nay & isActive === true). Nếu không có, không ghim.
-  const ordered = useMemo(() => {
-    if (!meetings || meetings.length === 0) return [];
+  // Tìm buổi học TIẾP THEO: isStudy === true và date >= hôm nay
+  const pinnedId = useMemo(() => {
+    if (!sessions.length) return null;
     const today = stripTime(new Date());
-    const nextIdx = meetings.findIndex(
-      (m) => stripTime(new Date(m.date)) >= today && m.isActive
+    const next = sessions.find(
+      (s) => s.isStudy && stripTime(new Date(s.date)) >= today
     );
-    if (nextIdx < 0) return meetings; // không có next trong tương lai
-    const next = meetings[nextIdx];
-    const rest = meetings.filter((_, i) => i !== nextIdx);
-    return [next, ...rest];
-  }, [meetings]);
+    return next?.id ?? null;
+  }, [sessions]);
 
-  const nextId = useMemo(() => ordered[0]?.id ?? null, [ordered]);
+  // Re-order để ghim next session lên đầu, nhưng không đổi sessionNumber
+  const orderedSessions = useMemo(() => {
+    if (!pinnedId) return sessions;
+    const pinned = sessions.find((s) => s.id === pinnedId);
+    const rest = sessions.filter((s) => s.id !== pinnedId);
+    return pinned ? [pinned, ...rest] : sessions;
+  }, [sessions, pinnedId]);
 
-  // Completed = isActive === false
+  // Completed = !isStudy
   const completedCount = useMemo(
-    () => (meetings ? meetings.filter((m) => !m.isStudy).length : 0),
-    [meetings]
+    () => sessions.filter((s) => !s.isStudy).length,
+    [sessions]
   );
 
-  // Load header from localStorage cache
+  // Load header từ localStorage
   useEffect(() => {
     try {
       const cached = localStorage.getItem("selectedClass");
@@ -266,7 +285,7 @@ export default function ClassSession() {
     {
       id: "sessions",
       label: "Sessions",
-      badge: meetings?.length || 0,
+      badge: sessions.length || 0,
       color: "bg-gradient-to-r from-primary-500 to-primary-600 text-white",
     },
   ];
@@ -287,12 +306,13 @@ export default function ClassSession() {
     );
   }
 
-  const total = meetings?.length ?? 0;
+  const total = sessions.length;
   const percent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8 space-y-8">
       <Breadcrumbs items={crumbs} />
+
       <PageHeader
         title={
           (courseTitleHeader && classNameHeader
@@ -335,16 +355,18 @@ export default function ClassSession() {
           <div className="mt-4 p-4 min-h-[607px]">
             {activeTab === "sessions" && (
               <div className="space-y-4">
-                {ordered.length === 0 && (
-                  <div className="text-sm text-neutral-600">No sessions found.</div>
+                {orderedSessions.length === 0 && (
+                  <div className="text-sm text-neutral-600">
+                    No sessions found.
+                  </div>
                 )}
-                {ordered.map((meeting) => (
+
+                {orderedSessions.map((meeting) => (
                   <SessionCard
                     key={meeting.id}
                     session={meeting}
-                    // số thứ tự LUÔN lấy theo chronological order
-                    sessionNumber={numberById[meeting.id]}
-                    isNext={meeting.id === nextId}
+                    sessionNumber={sessionNumberMap[meeting.id]}
+                    isNext={meeting.id === pinnedId}
                     isCompleted={!meeting.isStudy}
                     onNavigate={handleSessionClick}
                   />

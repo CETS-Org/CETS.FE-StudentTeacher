@@ -16,6 +16,7 @@ export interface ClassMeeting {
   isDeleted: boolean;
   slot: string;
   slotID: string; // Added the slotID property
+  roomCode: string
 }
 
 export const getClassMeetingsByClassId = async (
