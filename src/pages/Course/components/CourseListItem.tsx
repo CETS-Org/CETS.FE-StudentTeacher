@@ -1,4 +1,4 @@
-import { Star, Clock, BookOpen, ArrowRight, Heart } from "lucide-react";
+import { Star, Clock, BookOpen, ArrowRight, Heart, Award } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import CourseSchedule from "@/components/ui/CourseSchedule";
 import type { CourseCardProps } from "@/types/course";
@@ -119,6 +119,14 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
               <BookOpen className="w-3 h-3 text-purple-500 flex-shrink-0" />
               <span className="text-purple-700 font-medium truncate">{course.courseLevel}</span>
             </div>
+            {course.standardScore !== undefined && course.standardScore !== null && (
+              <div className="flex items-center gap-1">
+                <Award className="w-3 h-3 text-orange-500 flex-shrink-0" />
+                <span className="text-orange-700 font-medium truncate">
+                  Required Score: {course.standardScore.toFixed(1)} / 10
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Course Schedule */}
