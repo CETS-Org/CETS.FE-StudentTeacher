@@ -1011,13 +1011,13 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                   );
                                 })()}
 
-                              {/* Milestone Sessions (First Attendance, Exams, Mock Tests) */}
+                              {/* Milestone Sessions (First Session, Exams, Mock Tests) */}
                               {sessions.map((session, index) => {
                                 const sessionIndex = index;
                                 const isCurrent =
                                   sessionIndex === currentSessionIndex;
 
-                                // Check if this is a milestone (First Attendance, Exam, Mock Test)
+                                // Check if this is a milestone (First Session, Exam, Mock Test)
                                 const isFirstAttendance = sessionIndex === 0;
 
                                 // Check milestone based on coveredTopic.topicTitle instead of assignment.title
@@ -1065,7 +1065,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                 // Get session title
                                 const getMilestoneTitle = () => {
                                   if (isFirstAttendance)
-                                    return "First Attendance";
+                                    return "First Session";
                                   // Use coveredTopic instead of assignment title
                                   return (
                                     session.coveredTopic ||
