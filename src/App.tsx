@@ -1,10 +1,9 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Footer from './components/layout/Footer'
 import Requests from './pages/Requests'
 import Reports from './pages/Reports'
 import Dev_Dashboard from './pages/Dev_Dashboard'
 import Gateway from './pages/Common/Gateway'
-import HomePage from './pages/Common/HomePage'
 import LoginPage from './pages/Common/Login'
 import RegisterPage from './pages/Common/Register'
 import ForgotPassword from './pages/Common/ForgotPassword'
@@ -78,7 +77,7 @@ export default function App() {
         <UniversalLayout>
           <div className="flex-1 flex flex-col min-h-[calc(100vh-5rem)]">
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<Navigate to="/courses" replace />} />
             <Route path="/courses" element={<CourseAll />} />
             <Route path="/course/:courseId" element={<CourseDetailPage />} />
             <Route path="/course-package/:id" element={<CoursePackageDetail />} />

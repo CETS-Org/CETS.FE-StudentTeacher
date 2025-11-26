@@ -19,8 +19,7 @@ export const studentNavbarConfig: NavbarConfig = {
   userInfo: { name: "Guest", email: "guest@cets.edu", role: "Student", initials: "GU", avatar: undefined },
   portalName: "Learning Platform",
   navigationItems: [
-    { name: "Home", href: "/", icon: Home, description: "Go to homepage" },
-    { name: "All Courses", href: "/courses", icon: BookOpen, description: "Browse all courses and combos" },
+    { name: "Courses", href: "/courses", icon: BookOpen, description: "Browse all courses and combos" },
     { name: "My Classes", href: "/student/my-classes", icon: GraduationCap, description: "View your enrolled classes" },
     { name: "Schedule", href: "/student/schedule", icon: Calendar, description: "Check your class schedule" },
     { name: "Wishlist", href: "/student/wishlist", icon: Heart, description: "View saved courses" }
@@ -43,7 +42,6 @@ export const teacherNavbarConfig: NavbarConfig = {
   userInfo: { name: "Guest", email: "guest@cets.edu", role: "Teacher", initials: "GU", avatar: undefined },
   portalName: "Teacher Portal",
   navigationItems: [
-    { name: "Home", href: "/", icon: Home, description: "Go to homepage" },
     { name: "My Courses", href: "/teacher/courses", icon: BookOpen, description: "View your courses" },
     { name: "Schedule", href: "/teacher/schedule", icon: Calendar, description: "Check your teaching schedule" },
   ],
@@ -86,8 +84,7 @@ export const guestNavbarConfig: NavbarConfig = {
   userInfo: { name: "Guest", email: "", role: "Guest", initials: "GU", avatar: undefined },
   portalName: "CETS Platform",
   navigationItems: [
-    { name: "Home", href: "/", icon: Home, description: "Go to homepage" },
-    { name: "All Courses", href: "/courses", icon: BookOpen, description: "Browse all courses and packages" }
+    { name: "Courses", href: "/courses", icon: BookOpen, description: "Browse all courses and packages" }
   ],
   userMenuItems: [
     { name: "Login", href: "/login", icon: User, description: "Sign in to your account" },
