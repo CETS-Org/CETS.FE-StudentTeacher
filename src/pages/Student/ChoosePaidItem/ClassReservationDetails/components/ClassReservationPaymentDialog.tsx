@@ -8,7 +8,8 @@ import {
   DollarSign
 } from "lucide-react";
 
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, getStudentId, setUserInfo } from "@/lib/utils";
+import { getStudentById } from "@/api/student.api";
 import { paymentService, redirectToPayOS, handlePaymentFailure } from "@/services/paymentService";
 import type { ClassReservationPaymentDialogProps } from "@/types/payment";
 import type { FullPaymentRequest } from "@/services/paymentService";
@@ -65,20 +66,13 @@ export default function ClassReservationPaymentDialog({
       // Get user info from localStorage (set during login)
       const userInfo = getUserInfo();
       
-      console.log("Raw userInfo from localStorage:", userInfo);
-      
       if (userInfo) {
-        // Use actual user data from authentication
+        // First, set data from localStorage (fast)
         setStudentName(userInfo.fullName || "");
         setStudentEmail(userInfo.email || "");
         setStudentPhone(userInfo.phoneNumber || "");
         
-        console.log("Loaded user profile:", {
-          name: userInfo.fullName,
-          email: userInfo.email,
-          phone: userInfo.phoneNumber,
-          allFields: Object.keys(userInfo)
-        });
+       
       } else {
         // If no user info found, user might not be logged in
         console.warn("No user info found in localStorage. User might not be logged in.");
@@ -87,13 +81,10 @@ export default function ClassReservationPaymentDialog({
         setStudentName("");
         setStudentEmail("");
         setStudentPhone("");
-        
-        // Optional: You could redirect to login here
-        // navigate('/login');
       }
       
       // Small delay to show loading state (optional)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
     } catch (error) {
       console.error("Failed to fetch personal details:", error);

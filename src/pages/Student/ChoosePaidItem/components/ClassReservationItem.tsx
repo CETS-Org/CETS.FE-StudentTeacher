@@ -120,15 +120,15 @@ export default function ClassReservationItem({ reservation, className = "" }: Cl
             </p>
             
             {/* Expiry Info */}
-            <div className="flex items-center gap-4 text-xs text-gray-600">
+            <div className="flex items-center gap-4 text-xs">
               <div className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                <span>Reserved: {formatDate(reservation.createdAt)}</span>
+                <Calendar className="w-3 h-3 text-blue-600" />
+                <span className="text-blue-700 font-medium">Reserved: <span className="text-blue-900">{formatDate(reservation.createdAt)}</span></span>
               </div>
               <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                <span className={isExpired() ? 'text-red-600 font-medium' : isExpiringSoon() ? 'text-orange-600 font-medium' : ''}>
-                  Expires: {formatDate(reservation.expiresAt)}
+                <Clock className={`w-3 h-3 ${isExpired() ? 'text-red-600' : isExpiringSoon() ? 'text-orange-600' : 'text-red-600'}`} />
+                <span className={isExpired() ? 'text-red-600 font-medium' : isExpiringSoon() ? 'text-orange-600 font-medium' : 'text-red-700 font-medium'}>
+                  Expires: <span className={isExpired() ? 'text-red-800' : isExpiringSoon() ? 'text-orange-800' : 'text-red-900'}>{formatDate(reservation.expiresAt)}</span>
                 </span>
               </div>
             </div>
