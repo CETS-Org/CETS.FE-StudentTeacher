@@ -66,21 +66,6 @@ export default function CourseAll() {
               Choose individual courses or save with our course packages.
             </p>
 
-            <div className="max-w-2xl mx-auto relative mb-8">
-              <div className="relative">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 w-6 h-6 " />
-                <Input
-                  type="text"
-                  placeholder="What do you want to learn today?"
-                  className="pl-16 pr-6 py-5 text-lg rounded-2xl border-0 shadow-2xl bg-white/95 focus:ring-1 focus:!ring-accent-300 focus:!bg-white transition-all"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Button className="btn-secondary px-6 py-2 rounded-xl font-semibold">
-                    Search
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
         

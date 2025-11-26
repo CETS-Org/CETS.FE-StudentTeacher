@@ -8,9 +8,10 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/api"
-import { CategoryFilter, LevelFilter, PriceFilter, StandardScoreFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
+import { CategoryFilter, LevelFilter, PriceFilter, StandardScoreFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, EnrollmentStatusFilter, type FacetItem, type EnrollmentStatus } from "./filters";
 import { useWishlist } from "@/hooks/useWishlist";
 import { getStudentById } from "@/api/student.api";
+import { getStudentEnrollments } from "@/api/enrollment.api";
 import { isTokenValid, getUserRole, getUserInfo } from "@/lib/utils";
 
 import type { Course, CourseSearchResult } from "@/types/course";
@@ -70,6 +71,10 @@ export default function CoursesSection() {
   // Schedule filters
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+  
+  // Enrollment status filter
+  const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatus>('all');
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
 
   // Data states
   const [items, setItems] = useState<Course[]>([]);
@@ -132,6 +137,51 @@ export default function CoursesSection() {
     };
 
     loadPlacementTestGrade();
+  }, []);
+
+  // Fetch student enrollments
+  useEffect(() => {
+    const loadEnrollments = async () => {
+      // Only load if user is logged in and is a student
+      if (!isTokenValid()) {
+        setEnrolledCourseIds(new Set());
+        return;
+      }
+
+      const userRole = getUserRole();
+      if (userRole?.toLowerCase() !== 'student') {
+        setEnrolledCourseIds(new Set());
+        return;
+      }
+
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        setEnrolledCourseIds(new Set());
+        return;
+      }
+
+      try {
+        const enrollments = await getStudentEnrollments(userInfo.id);
+        // Only include active enrollments
+        const activeEnrolledIds = new Set(
+          enrollments
+            .filter(enrollment => enrollment.isActive)
+            .map(enrollment => enrollment.courseId || enrollment.id) // Use courseId if available, otherwise use id (which is the course ID)
+            .filter(id => id != null && id !== '') // Filter out null/undefined/empty IDs
+        );
+        setEnrolledCourseIds(activeEnrolledIds);
+      } catch (err: any) {
+        // Handle 404 (no enrollments) as a valid case
+        if (err?.response?.status === 404) {
+          setEnrolledCourseIds(new Set());
+        } else {
+          console.error('Error loading enrollments:', err);
+          setEnrolledCourseIds(new Set());
+        }
+      }
+    };
+
+    loadEnrollments();
   }, []);
 
   // Build querystring - always include all params to prevent re-fetches
@@ -227,8 +277,9 @@ export default function CoursesSection() {
     if (selectedTimeSlots.length) n++;
     if (priceMin > MIN_PRICE || priceMax < MAX_PRICE) n++;
     if (scoreMin > MIN_SCORE || scoreMax < MAX_SCORE) n++;
+    if (enrollmentStatus !== 'all') n++;
     return n;
-  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax, scoreMin, scoreMax]);
+  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax, scoreMin, scoreMax, enrollmentStatus]);
 
   const clearAll = () => {
     setQ("");
@@ -243,6 +294,7 @@ export default function CoursesSection() {
     setPriceMax(MAX_PRICE);
     setScoreMin(MIN_SCORE);
     setScoreMax(MAX_SCORE);
+    setEnrollmentStatus('all');
     setUiSort("popular");
     setPage(1);
   };
@@ -259,22 +311,38 @@ export default function CoursesSection() {
     return checkCourseInWishlist(courseId);
   };
 
-  // Filter courses by standard score range (client-side filtering)
+  // Filter courses by standard score range and enrollment status (client-side filtering)
   const filteredItems = useMemo(() => {
-    if (scoreMin === MIN_SCORE && scoreMax === MAX_SCORE) {
-      return items;
+    let filtered = items;
+
+    // Filter by standard score range
+    if (scoreMin !== MIN_SCORE || scoreMax !== MAX_SCORE) {
+      filtered = filtered.filter(course => {
+        const courseScore = course.standardScore;
+        // If course has no standardScore requirement, always include it
+        if (courseScore === undefined || courseScore === null) {
+          return true;
+        }
+        // Filter by score range
+        return courseScore >= scoreMin && courseScore <= scoreMax;
+      });
     }
 
-    return items.filter(course => {
-      const courseScore = course.standardScore;
-      // If course has no standardScore requirement, always include it
-      if (courseScore === undefined || courseScore === null) {
+    // Filter by enrollment status
+    if (enrollmentStatus !== 'all') {
+      filtered = filtered.filter(course => {
+        const isEnrolled = enrolledCourseIds.has(course.id);
+        if (enrollmentStatus === 'enrolled') {
+          return isEnrolled;
+        } else if (enrollmentStatus === 'not-enrolled') {
+          return !isEnrolled;
+        }
         return true;
-      }
-      // Filter by score range
-      return courseScore >= scoreMin && courseScore <= scoreMax;
-    });
-  }, [items, scoreMin, scoreMax]);
+      });
+    }
+
+    return filtered;
+  }, [items, scoreMin, scoreMax, enrollmentStatus, enrolledCourseIds]);
 
   // Filter and sort courses based on placement test grade
   const { recommendedCourses, otherCourses } = useMemo(() => {
@@ -482,6 +550,15 @@ export default function CoursesSection() {
                  onToggleSkill={(skillId) => toggleFacet(setSkillIds, skillIds, skillId)}
                />
 
+               <EnrollmentStatusFilter
+                 enrollmentStatus={enrollmentStatus}
+                 onEnrollmentStatusChange={(status) => {
+                   setEnrollmentStatus(status);
+                   setPage(1);
+                 }}
+                 isLoggedIn={isTokenValid() && getUserRole()?.toLowerCase() === 'student'}
+               />
+
                <PriceFilter 
                  priceMin={priceMin}
                  priceMax={priceMax}
@@ -589,7 +666,7 @@ export default function CoursesSection() {
                       </div>
                     )}
                     <div className="space-y-4">
-                      {(recommendedCourses.length > 0 ? otherCourses : items).map((course, index) => (
+                      {(recommendedCourses.length > 0 ? otherCourses : filteredItems).map((course, index) => (
                         <div
                           key={course.id}
                           className="animate-in fade-in-0 slide-in-from-left-4"
