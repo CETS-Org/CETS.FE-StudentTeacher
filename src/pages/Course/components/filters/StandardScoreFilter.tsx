@@ -52,7 +52,7 @@ export default function StandardScoreFilter({
 
   return (
     <CollapsibleFilter
-      title="Required Placement Test Score"
+      title="Placement Test Score"
       subtitle={subtitle}
       icon={icon}
     >

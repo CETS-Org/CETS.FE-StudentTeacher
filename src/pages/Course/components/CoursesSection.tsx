@@ -36,6 +36,8 @@ const sortOptions = [
   { value: "rating", label: "Highest Rated" },
   { value: "price-low", label: "Price: Low to High" },
   { value: "price-high", label: "Price: High to Low" },
+  { value: "score-low", label: "Score: Low to High" },
+  { value: "score-high", label: "Score: High to Low" },
 ];
 
 const uiSortToServer: Record<string, string> = {
@@ -44,6 +46,8 @@ const uiSortToServer: Record<string, string> = {
   rating: "Relevance",
   "price-low": "Price.asc",
   "price-high": "Price.desc",
+  "score-low": "StandardScore.asc",
+  "score-high": "StandardScore.desc",
 };
 
 export default function CoursesSection() {
@@ -341,6 +345,9 @@ export default function CoursesSection() {
       });
     }
 
+    // Note: Score sorting is already applied in fetchCourses after fetching from server
+    // We don't need to sort here again since items are already sorted when they arrive
+
     return filtered;
   }, [items, scoreMin, scoreMax, enrollmentStatus, enrolledCourseIds]);
 
@@ -366,15 +373,20 @@ export default function CoursesSection() {
       }
     });
 
-    // Sort recommended courses by standardScore (lower score first - easier courses)
-    recommended.sort((a, b) => {
-      const scoreA = a.standardScore ?? 0;
-      const scoreB = b.standardScore ?? 0;
-      return scoreA - scoreB;
-    });
+    // Only apply default recommended sorting if user hasn't selected a specific sort
+    // This preserves the user's sort choice (e.g., score sorting)
+    if (uiSort === 'popular' || uiSort === 'newest' || uiSort === 'rating') {
+      // Sort recommended courses by standardScore (lower score first - easier courses)
+      recommended.sort((a, b) => {
+        const scoreA = a.standardScore ?? 0;
+        const scoreB = b.standardScore ?? 0;
+        return scoreA - scoreB;
+      });
+    }
+    // For score sorting, price sorting, etc., the order from filteredItems is already correct
 
     return { recommendedCourses: recommended, otherCourses: others };
-  }, [filteredItems, placementTestGrade]);
+  }, [filteredItems, placementTestGrade, uiSort]);
 
   return (
     <div id="courses" className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">
