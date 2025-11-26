@@ -2,6 +2,7 @@
 export { default as CategoryFilter } from './CategoryFilter';
 export { default as LevelFilter } from './LevelFilter';
 export { default as PriceFilter } from './PriceFilter';
+export { default as StandardScoreFilter } from './StandardScoreFilter';
 export { default as SkillsFilter } from './SkillsFilter';
 export { default as RequirementsFilter } from './RequirementsFilter';
 export { default as BenefitsFilter } from './BenefitsFilter';

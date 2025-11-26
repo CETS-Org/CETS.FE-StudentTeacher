@@ -8,7 +8,7 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/api"
-import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
+import { CategoryFilter, LevelFilter, PriceFilter, StandardScoreFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
 import { useWishlist } from "@/hooks/useWishlist";
 import { getStudentById } from "@/api/student.api";
 import { isTokenValid, getUserRole, getUserInfo } from "@/lib/utils";
@@ -26,6 +26,8 @@ function useDebounce<T>(value: T, delay = 450) {
 
 const MIN_PRICE = 0;
 const MAX_PRICE = 20000000; // 20M VND
+const MIN_SCORE = 0;
+const MAX_SCORE = 10;
 
 const sortOptions = [
   { value: "popular", label: "Most Popular" },
@@ -55,6 +57,8 @@ export default function CoursesSection() {
   const [uiSort, setUiSort] = useState("popular");
   const [priceMin, setPriceMin] = useState(MIN_PRICE);
   const [priceMax, setPriceMax] = useState(MAX_PRICE);
+  const [scoreMin, setScoreMin] = useState(MIN_SCORE);
+  const [scoreMax, setScoreMax] = useState(MAX_SCORE);
 
   // Multi-select facets
   const [levelIds, setLevelIds] = useState<string[]>([]);
@@ -222,8 +226,9 @@ export default function CoursesSection() {
     if (selectedDays.length) n++;
     if (selectedTimeSlots.length) n++;
     if (priceMin > MIN_PRICE || priceMax < MAX_PRICE) n++;
+    if (scoreMin > MIN_SCORE || scoreMax < MAX_SCORE) n++;
     return n;
-  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax]);
+  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax, scoreMin, scoreMax]);
 
   const clearAll = () => {
     setQ("");
@@ -236,6 +241,8 @@ export default function CoursesSection() {
     setSelectedTimeSlots([]);
     setPriceMin(MIN_PRICE);
     setPriceMax(MAX_PRICE);
+    setScoreMin(MIN_SCORE);
+    setScoreMax(MAX_SCORE);
     setUiSort("popular");
     setPage(1);
   };
@@ -252,16 +259,33 @@ export default function CoursesSection() {
     return checkCourseInWishlist(courseId);
   };
 
+  // Filter courses by standard score range (client-side filtering)
+  const filteredItems = useMemo(() => {
+    if (scoreMin === MIN_SCORE && scoreMax === MAX_SCORE) {
+      return items;
+    }
+
+    return items.filter(course => {
+      const courseScore = course.standardScore;
+      // If course has no standardScore requirement, always include it
+      if (courseScore === undefined || courseScore === null) {
+        return true;
+      }
+      // Filter by score range
+      return courseScore >= scoreMin && courseScore <= scoreMax;
+    });
+  }, [items, scoreMin, scoreMax]);
+
   // Filter and sort courses based on placement test grade
   const { recommendedCourses, otherCourses } = useMemo(() => {
     if (!placementTestGrade || placementTestGrade === null) {
-      return { recommendedCourses: [], otherCourses: items };
+      return { recommendedCourses: [], otherCourses: filteredItems };
     }
 
     const recommended: Course[] = [];
     const others: Course[] = [];
 
-    items.forEach(course => {
+    filteredItems.forEach(course => {
       // Course is recommended if student's placement test grade meets the requirement
       const isRecommended = course.standardScore === undefined || 
                            course.standardScore === null || 
@@ -282,7 +306,7 @@ export default function CoursesSection() {
     });
 
     return { recommendedCourses: recommended, otherCourses: others };
-  }, [items, placementTestGrade]);
+  }, [filteredItems, placementTestGrade]);
 
   return (
     <div id="courses" className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">
@@ -389,14 +413,9 @@ export default function CoursesSection() {
                     setUiSort(e.target.value);
                     setPage(1);
                   }}
+                  options={sortOptions}
                   className="min-w-[220px] border-neutral-200 rounded-xl shadow-sm focus:!ring-1 focus:!ring-accent-500 focus:!border-transparent hover:shadow-md transition-all"
-                >
-                  {sortOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
 
               {/* Clear Filters Button */}
@@ -414,10 +433,15 @@ export default function CoursesSection() {
             {/* Results Info */}
             <div className="flex items-center gap-4 text-sm">
               <p className="text-sm text-neutral-500">
-                Showing <span className="font-semibold text-primary-600">{items.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
+                Showing <span className="font-semibold text-primary-600">{filteredItems.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
                 {(selectedDays.length > 0 || selectedTimeSlots.length > 0) && (
                   <span className="text-blue-600">
                     (filtered by schedule)
+                  </span>
+                )}
+                {(scoreMin > MIN_SCORE || scoreMax < MAX_SCORE) && (
+                  <span className="text-purple-600">
+                    (filtered by score)
                   </span>
                 )}
               </p>
@@ -465,6 +489,15 @@ export default function CoursesSection() {
                  onPriceMaxChange={setPriceMax}
                  onPageChange={setPage}
                />
+
+               <StandardScoreFilter 
+                 scoreMin={scoreMin}
+                 scoreMax={scoreMax}
+                 onScoreMinChange={setScoreMin}
+                 onScoreMaxChange={setScoreMax}
+                 onPageChange={setPage}
+               />
+
               <ScheduleFilter 
                  selectedDays={selectedDays}
                  selectedTimeSlots={selectedTimeSlots}
