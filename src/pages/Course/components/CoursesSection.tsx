@@ -8,9 +8,10 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/api"
-import { CategoryFilter, LevelFilter, PriceFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, type FacetItem } from "./filters";
+import { CategoryFilter, LevelFilter, PriceFilter, StandardScoreFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, EnrollmentStatusFilter, type FacetItem, type EnrollmentStatus } from "./filters";
 import { useWishlist } from "@/hooks/useWishlist";
 import { getStudentById } from "@/api/student.api";
+import { getStudentEnrollments } from "@/api/enrollment.api";
 import { isTokenValid, getUserRole, getUserInfo } from "@/lib/utils";
 
 import type { Course, CourseSearchResult } from "@/types/course";
@@ -26,6 +27,8 @@ function useDebounce<T>(value: T, delay = 450) {
 
 const MIN_PRICE = 0;
 const MAX_PRICE = 20000000; // 20M VND
+const MIN_SCORE = 0;
+const MAX_SCORE = 10;
 
 const sortOptions = [
   { value: "popular", label: "Most Popular" },
@@ -33,6 +36,8 @@ const sortOptions = [
   { value: "rating", label: "Highest Rated" },
   { value: "price-low", label: "Price: Low to High" },
   { value: "price-high", label: "Price: High to Low" },
+  { value: "score-low", label: "Score: Low to High" },
+  { value: "score-high", label: "Score: High to Low" },
 ];
 
 const uiSortToServer: Record<string, string> = {
@@ -41,6 +46,8 @@ const uiSortToServer: Record<string, string> = {
   rating: "Relevance",
   "price-low": "Price.asc",
   "price-high": "Price.desc",
+  "score-low": "StandardScore.asc",
+  "score-high": "StandardScore.desc",
 };
 
 export default function CoursesSection() {
@@ -55,6 +62,8 @@ export default function CoursesSection() {
   const [uiSort, setUiSort] = useState("popular");
   const [priceMin, setPriceMin] = useState(MIN_PRICE);
   const [priceMax, setPriceMax] = useState(MAX_PRICE);
+  const [scoreMin, setScoreMin] = useState(MIN_SCORE);
+  const [scoreMax, setScoreMax] = useState(MAX_SCORE);
 
   // Multi-select facets
   const [levelIds, setLevelIds] = useState<string[]>([]);
@@ -66,6 +75,10 @@ export default function CoursesSection() {
   // Schedule filters
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+  
+  // Enrollment status filter
+  const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatus>('all');
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
 
   // Data states
   const [items, setItems] = useState<Course[]>([]);
@@ -128,6 +141,51 @@ export default function CoursesSection() {
     };
 
     loadPlacementTestGrade();
+  }, []);
+
+  // Fetch student enrollments
+  useEffect(() => {
+    const loadEnrollments = async () => {
+      // Only load if user is logged in and is a student
+      if (!isTokenValid()) {
+        setEnrolledCourseIds(new Set());
+        return;
+      }
+
+      const userRole = getUserRole();
+      if (userRole?.toLowerCase() !== 'student') {
+        setEnrolledCourseIds(new Set());
+        return;
+      }
+
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        setEnrolledCourseIds(new Set());
+        return;
+      }
+
+      try {
+        const enrollments = await getStudentEnrollments(userInfo.id);
+        // Only include active enrollments
+        const activeEnrolledIds = new Set(
+          enrollments
+            .filter(enrollment => enrollment.isActive)
+            .map(enrollment => enrollment.courseId || enrollment.id) // Use courseId if available, otherwise use id (which is the course ID)
+            .filter(id => id != null && id !== '') // Filter out null/undefined/empty IDs
+        );
+        setEnrolledCourseIds(activeEnrolledIds);
+      } catch (err: any) {
+        // Handle 404 (no enrollments) as a valid case
+        if (err?.response?.status === 404) {
+          setEnrolledCourseIds(new Set());
+        } else {
+          console.error('Error loading enrollments:', err);
+          setEnrolledCourseIds(new Set());
+        }
+      }
+    };
+
+    loadEnrollments();
   }, []);
 
   // Build querystring - always include all params to prevent re-fetches
@@ -222,8 +280,10 @@ export default function CoursesSection() {
     if (selectedDays.length) n++;
     if (selectedTimeSlots.length) n++;
     if (priceMin > MIN_PRICE || priceMax < MAX_PRICE) n++;
+    if (scoreMin > MIN_SCORE || scoreMax < MAX_SCORE) n++;
+    if (enrollmentStatus !== 'all') n++;
     return n;
-  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax]);
+  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax, scoreMin, scoreMax, enrollmentStatus]);
 
   const clearAll = () => {
     setQ("");
@@ -236,6 +296,9 @@ export default function CoursesSection() {
     setSelectedTimeSlots([]);
     setPriceMin(MIN_PRICE);
     setPriceMax(MAX_PRICE);
+    setScoreMin(MIN_SCORE);
+    setScoreMax(MAX_SCORE);
+    setEnrollmentStatus('all');
     setUiSort("popular");
     setPage(1);
   };
@@ -252,16 +315,52 @@ export default function CoursesSection() {
     return checkCourseInWishlist(courseId);
   };
 
+  // Filter courses by standard score range and enrollment status (client-side filtering)
+  const filteredItems = useMemo(() => {
+    let filtered = items;
+
+    // Filter by standard score range
+    if (scoreMin !== MIN_SCORE || scoreMax !== MAX_SCORE) {
+      filtered = filtered.filter(course => {
+        const courseScore = course.standardScore;
+        // If course has no standardScore requirement, always include it
+        if (courseScore === undefined || courseScore === null) {
+          return true;
+        }
+        // Filter by score range
+        return courseScore >= scoreMin && courseScore <= scoreMax;
+      });
+    }
+
+    // Filter by enrollment status
+    if (enrollmentStatus !== 'all') {
+      filtered = filtered.filter(course => {
+        const isEnrolled = enrolledCourseIds.has(course.id);
+        if (enrollmentStatus === 'enrolled') {
+          return isEnrolled;
+        } else if (enrollmentStatus === 'not-enrolled') {
+          return !isEnrolled;
+        }
+        return true;
+      });
+    }
+
+    // Note: Score sorting is already applied in fetchCourses after fetching from server
+    // We don't need to sort here again since items are already sorted when they arrive
+
+    return filtered;
+  }, [items, scoreMin, scoreMax, enrollmentStatus, enrolledCourseIds]);
+
   // Filter and sort courses based on placement test grade
   const { recommendedCourses, otherCourses } = useMemo(() => {
     if (!placementTestGrade || placementTestGrade === null) {
-      return { recommendedCourses: [], otherCourses: items };
+      return { recommendedCourses: [], otherCourses: filteredItems };
     }
 
     const recommended: Course[] = [];
     const others: Course[] = [];
 
-    items.forEach(course => {
+    filteredItems.forEach(course => {
       // Course is recommended if student's placement test grade meets the requirement
       const isRecommended = course.standardScore === undefined || 
                            course.standardScore === null || 
@@ -274,15 +373,20 @@ export default function CoursesSection() {
       }
     });
 
-    // Sort recommended courses by standardScore (lower score first - easier courses)
-    recommended.sort((a, b) => {
-      const scoreA = a.standardScore ?? 0;
-      const scoreB = b.standardScore ?? 0;
-      return scoreA - scoreB;
-    });
+    // Only apply default recommended sorting if user hasn't selected a specific sort
+    // This preserves the user's sort choice (e.g., score sorting)
+    if (uiSort === 'popular' || uiSort === 'newest' || uiSort === 'rating') {
+      // Sort recommended courses by standardScore (lower score first - easier courses)
+      recommended.sort((a, b) => {
+        const scoreA = a.standardScore ?? 0;
+        const scoreB = b.standardScore ?? 0;
+        return scoreA - scoreB;
+      });
+    }
+    // For score sorting, price sorting, etc., the order from filteredItems is already correct
 
     return { recommendedCourses: recommended, otherCourses: others };
-  }, [items, placementTestGrade]);
+  }, [filteredItems, placementTestGrade, uiSort]);
 
   return (
     <div id="courses" className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">
@@ -389,14 +493,9 @@ export default function CoursesSection() {
                     setUiSort(e.target.value);
                     setPage(1);
                   }}
+                  options={sortOptions}
                   className="min-w-[220px] border-neutral-200 rounded-xl shadow-sm focus:!ring-1 focus:!ring-accent-500 focus:!border-transparent hover:shadow-md transition-all"
-                >
-                  {sortOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
 
               {/* Clear Filters Button */}
@@ -414,10 +513,15 @@ export default function CoursesSection() {
             {/* Results Info */}
             <div className="flex items-center gap-4 text-sm">
               <p className="text-sm text-neutral-500">
-                Showing <span className="font-semibold text-primary-600">{items.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
+                Showing <span className="font-semibold text-primary-600">{filteredItems.length}</span> of <span className="font-semibold text-primary-600">{total}</span> available courses
                 {(selectedDays.length > 0 || selectedTimeSlots.length > 0) && (
                   <span className="text-blue-600">
                     (filtered by schedule)
+                  </span>
+                )}
+                {(scoreMin > MIN_SCORE || scoreMax < MAX_SCORE) && (
+                  <span className="text-purple-600">
+                    (filtered by score)
                   </span>
                 )}
               </p>
@@ -458,6 +562,15 @@ export default function CoursesSection() {
                  onToggleSkill={(skillId) => toggleFacet(setSkillIds, skillIds, skillId)}
                />
 
+               <EnrollmentStatusFilter
+                 enrollmentStatus={enrollmentStatus}
+                 onEnrollmentStatusChange={(status) => {
+                   setEnrollmentStatus(status);
+                   setPage(1);
+                 }}
+                 isLoggedIn={isTokenValid() && getUserRole()?.toLowerCase() === 'student'}
+               />
+
                <PriceFilter 
                  priceMin={priceMin}
                  priceMax={priceMax}
@@ -465,6 +578,15 @@ export default function CoursesSection() {
                  onPriceMaxChange={setPriceMax}
                  onPageChange={setPage}
                />
+
+               <StandardScoreFilter 
+                 scoreMin={scoreMin}
+                 scoreMax={scoreMax}
+                 onScoreMinChange={setScoreMin}
+                 onScoreMaxChange={setScoreMax}
+                 onPageChange={setPage}
+               />
+
               <ScheduleFilter 
                  selectedDays={selectedDays}
                  selectedTimeSlots={selectedTimeSlots}
@@ -518,11 +640,11 @@ export default function CoursesSection() {
                     <div className="flex items-center gap-3 mb-6">
                       <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-full shadow-lg">
                         <BookOpen className="w-5 h-5" />
-                        <span className="font-semibold">Khóa học phù hợp với bạn</span>
+                        <span className="font-semibold">The right course for you</span>
                       </div>
                       <div className="flex-1 h-px bg-gradient-to-r from-primary-200 to-transparent"></div>
                       <span className="text-sm text-gray-600 font-medium">
-                        Điểm Placement Test: <span className="font-bold text-primary-600">{placementTestGrade.toFixed(2)} / 10</span>
+                        Placement Test Grade: <span className="font-bold text-primary-600">{placementTestGrade.toFixed(2)} / 10</span>
                       </span>
                     </div>
                     <div className="space-y-4">
@@ -551,12 +673,12 @@ export default function CoursesSection() {
                     {recommendedCourses.length > 0 && placementTestGrade !== null && (
                       <div className="flex items-center gap-3 mb-6 mt-8">
                         <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
-                        <span className="text-sm text-gray-600 font-medium px-4">Tất cả khóa học</span>
+                        <span className="text-sm text-gray-600 font-medium px-4">All course</span>
                         <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
                       </div>
                     )}
                     <div className="space-y-4">
-                      {(recommendedCourses.length > 0 ? otherCourses : items).map((course, index) => (
+                      {(recommendedCourses.length > 0 ? otherCourses : filteredItems).map((course, index) => (
                         <div
                           key={course.id}
                           className="animate-in fade-in-0 slide-in-from-left-4"

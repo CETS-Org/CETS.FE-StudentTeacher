@@ -9,7 +9,8 @@ import {
   AlertCircle
 } from "lucide-react";
 
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, getStudentId, setUserInfo } from "@/lib/utils";
+import { getStudentById } from "@/api/student.api";
 import { paymentService, redirectToPayOS, handlePaymentFailure } from "@/services/paymentService";
 import type { ClassReservationPaymentDialogProps } from "@/types/payment";
 import type { FullPaymentRequest } from "@/services/paymentService";
@@ -75,13 +76,12 @@ export default function ClassReservationPaymentDialog({
       // Get user info from localStorage (set during login)
       const userInfo = getUserInfo();
       
-      console.log("Raw userInfo from localStorage:", userInfo);
-      
       if (userInfo) {
         // Use actual user data from authentication
         // Support both camelCase and PascalCase field names from backend
         const phoneNumber = (userInfo as any).PhoneNumber || userInfo.phoneNumber || "";
         
+        // First, set data from localStorage (fast)
         setStudentName(userInfo.fullName || "");
         setStudentEmail(userInfo.email || "");
         setStudentPhone(phoneNumber);
@@ -94,6 +94,7 @@ export default function ClassReservationPaymentDialog({
           phoneNumberCamel: userInfo.phoneNumber,
           allFields: Object.keys(userInfo)
         });
+       
       } else {
         // If no user info found, user might not be logged in
         console.warn("No user info found in localStorage. User might not be logged in.");
@@ -102,10 +103,10 @@ export default function ClassReservationPaymentDialog({
         setStudentName("");
         setStudentEmail("");
         setStudentPhone("");
-        
-        // Optional: You could redirect to login here
-        // navigate('/login');
       }
+      
+      // Small delay to show loading state (optional)
+      await new Promise(resolve => setTimeout(resolve, 300));
       
     } catch (error) {
       console.error("Failed to fetch personal details:", error);

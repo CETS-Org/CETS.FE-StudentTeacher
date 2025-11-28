@@ -88,7 +88,7 @@ export default function Footer() {
             </h4>
             <nav className="space-y-3">
               {[
-                { name: "All Courses", href: "/courses" },
+                { name: "Courses", href: "/courses" },
                 { name: "Course Categories", href: "/courses?category=all" },
                 { name: "Free Courses", href: "/courses?price=free" },
                 { name: "Premium Courses", href: "/courses?price=premium" },

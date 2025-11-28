@@ -271,20 +271,20 @@ export default function ClassReservationDetails() {
 
             {/* Dates and Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Calendar className="w-4 h-4" />
-                <span>Reserved: {formatDate(reservation.createdAt)}</span>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <span className="text-blue-700 font-medium">Reserved: <span className="text-blue-900">{formatDate(reservation.createdAt)}</span></span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-4 h-4" />
-                <span className={isExpired() ? 'text-red-600 font-medium' : isExpiringSoon() ? 'text-orange-600 font-medium' : 'text-gray-600'}>
-                  Expires: {formatDate(reservation.expiresAt)}
+                <Clock className={`w-4 h-4 ${isExpired() ? 'text-red-600' : isExpiringSoon() ? 'text-orange-600' : 'text-red-600'}`} />
+                <span className={isExpired() ? 'text-red-600 font-medium' : isExpiringSoon() ? 'text-orange-600 font-medium' : 'text-red-700 font-medium'}>
+                  Expires: <span className={isExpired() ? 'text-red-800' : isExpiringSoon() ? 'text-orange-800' : 'text-red -900'}>{formatDate(reservation.expiresAt)}</span>
                 </span>
               </div>
               
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <DollarSign className="w-4 h-4" />
-                <span>Total: {formatPrice(reservation.totalPrice)}</span>
+              <div className="flex items-center gap-2 text-sm">
+                <DollarSign className="w-4 h-4 text-green-600" />
+                <span className="text-green-700 font-medium">Total: <span className="text-green-900 font-semibold">{formatPrice(reservation.totalPrice)}</span></span>
               </div>
             </div>
           </div>

@@ -1,15 +1,16 @@
 import { api, endpoint } from './api';
 
 export interface CourseEnrollment {
-  id: string;
-  courseId: string;
+  id: string; 
+  courseId?: string; 
   courseCode: string;
   courseName: string;
-  teacherName: string;
+  teacherName?: string; 
   enrollmentStatus: string;
-  enrollmentDate: string;
+  enrollmentDate?: string; 
   isActive: boolean;
   createdAt: string;
+  teachers?: string[]; 
 }
 
 export interface ClassReservation {

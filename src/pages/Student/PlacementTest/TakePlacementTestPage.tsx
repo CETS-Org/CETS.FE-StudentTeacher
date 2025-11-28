@@ -89,8 +89,15 @@ export default function TakePlacementTestPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [questionAudioPlaying, setQuestionAudioPlaying] = useState<Record<string, boolean>>({});
+  const [questionAudioPlayCount, setQuestionAudioPlayCount] = useState<Record<string, number>>({});
+  const [questionAudioHasEnded, setQuestionAudioHasEnded] = useState<Record<string, boolean>>({});
+  const [questionAudioProgress, setQuestionAudioProgress] = useState<Record<string, { currentTime: number; duration: number }>>({});
   const questionAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Maximum play count for listening questions (2 times)
+  const MAX_AUDIO_PLAY_COUNT = 2;
 
   // Load placement test data
   useEffect(() => {
@@ -319,6 +326,32 @@ export default function TakePlacementTestPage() {
     }
   }, [answers]);
 
+  // Update audio progress periodically
+  useEffect(() => {
+    const updateProgress = () => {
+      const progress: Record<string, { currentTime: number; duration: number }> = {};
+      Object.entries(questionAudioRefs.current).forEach(([key, audio]) => {
+        if (!audio.paused && !audio.ended) {
+          progress[key] = {
+            currentTime: audio.currentTime,
+            duration: audio.duration || 0,
+          };
+        }
+      });
+      if (Object.keys(progress).length > 0) {
+        setQuestionAudioProgress((prev) => ({ ...prev, ...progress }));
+      }
+    };
+
+    audioProgressIntervalRef.current = setInterval(updateProgress, 100); // Update every 100ms
+
+    return () => {
+      if (audioProgressIntervalRef.current) {
+        clearInterval(audioProgressIntervalRef.current);
+      }
+    };
+  }, [questionAudioPlaying]);
+
   // Cleanup audio refs on unmount
   useEffect(() => {
     return () => {
@@ -327,6 +360,9 @@ export default function TakePlacementTestPage() {
         audio.src = "";
       });
       questionAudioRefs.current = {};
+      if (audioProgressIntervalRef.current) {
+        clearInterval(audioProgressIntervalRef.current);
+      }
     };
   }, []);
 
@@ -565,6 +601,14 @@ export default function TakePlacementTestPage() {
     return `${config.storagePublicUrl}${url.startsWith("/") ? url : "/" + url}`;
   };
 
+  // Format time for audio progress (mm:ss)
+  const formatAudioTime = (seconds: number): string => {
+    if (!isFinite(seconds) || isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const toggleQuestionAudio = (question: Question & { audioUrl?: string }) => {
     if (!question.audioUrl) return;
 
@@ -573,6 +617,7 @@ export default function TakePlacementTestPage() {
 
     const audioKey = normalizedUrl;
     const isPlaying = questionAudioPlaying[audioKey] || false;
+    const playCount = questionAudioPlayCount[audioKey] || 0;
 
     if (isPlaying) {
       // Pause audio
@@ -582,14 +627,64 @@ export default function TakePlacementTestPage() {
       }
       setQuestionAudioPlaying((prev) => ({ ...prev, [audioKey]: false }));
     } else {
-      // Play audio
+      // Get or create audio element
       let audio = questionAudioRefs.current[audioKey];
+      const hasEnded = questionAudioHasEnded[audioKey] || false;
+      
+      // Determine if this is a resume (audio exists, not ended, paused, and currentTime > 0.1)
+      const isResume = audio && !hasEnded && audio.paused && audio.currentTime > 0.1;
+      
+      // If this is a new play from the beginning (not a resume), check limit first
+      if (!isResume) {
+        if (playCount >= MAX_AUDIO_PLAY_COUNT) {
+          showError(`Bạn đã đạt giới hạn phát tối đa (${MAX_AUDIO_PLAY_COUNT} lần) cho audio này.`);
+          return;
+        }
+      }
+
+      // Create audio if it doesn't exist
       if (!audio) {
         audio = new Audio(normalizedUrl);
+        
+        // Listen for loadedmetadata to get duration
+        audio.addEventListener("loadedmetadata", () => {
+          setQuestionAudioProgress((prev) => ({
+            ...prev,
+            [audioKey]: {
+              currentTime: audio.currentTime,
+              duration: audio.duration || 0,
+            },
+          }));
+        });
+        
+        // Listen for timeupdate to update progress
+        audio.addEventListener("timeupdate", () => {
+          setQuestionAudioProgress((prev) => ({
+            ...prev,
+            [audioKey]: {
+              currentTime: audio.currentTime,
+              duration: audio.duration || 0,
+            },
+          }));
+        });
+        
         audio.addEventListener("ended", () => {
           setQuestionAudioPlaying((prev) => ({ ...prev, [audioKey]: false }));
+          setQuestionAudioHasEnded((prev) => ({ ...prev, [audioKey]: true }));
+          setQuestionAudioProgress((prev) => ({
+            ...prev,
+            [audioKey]: {
+              currentTime: 0,
+              duration: prev[audioKey]?.duration || 0,
+            },
+          }));
         });
+        
         questionAudioRefs.current[audioKey] = audio;
+      } else if (hasEnded || audio.ended) {
+        // If audio has ended, reset to beginning
+        audio.currentTime = 0;
+        setQuestionAudioHasEnded((prev) => ({ ...prev, [audioKey]: false }));
       }
 
       // Stop all other audio
@@ -605,14 +700,44 @@ export default function TakePlacementTestPage() {
         }
       });
 
-      audio.play();
-      setQuestionAudioPlaying((prev) => ({ ...prev, [audioKey]: true }));
+      // If resuming from middle, just play without counting
+      if (isResume) {
+        audio.play().catch((err) => {
+          console.error("Error playing audio:", err);
+          setQuestionAudioPlaying((prev) => ({ ...prev, [audioKey]: false }));
+        });
+        setQuestionAudioPlaying((prev) => ({ ...prev, [audioKey]: true }));
+      } else {
+        // Playing from start - reset to beginning and increment count
+        audio.currentTime = 0;
+        
+        // Increment count BEFORE playing
+        setQuestionAudioPlayCount((prev) => ({
+          ...prev,
+          [audioKey]: (prev[audioKey] || 0) + 1,
+        }));
+        
+        audio.play().catch((err) => {
+          console.error("Error playing audio:", err);
+          setQuestionAudioPlaying((prev) => ({ ...prev, [audioKey]: false }));
+          // Decrement count if play failed
+          setQuestionAudioPlayCount((prev) => ({
+            ...prev,
+            [audioKey]: Math.max(0, (prev[audioKey] || 0) - 1),
+          }));
+        });
+        setQuestionAudioPlaying((prev) => ({ ...prev, [audioKey]: true }));
+      }
     }
   };
 
   const renderQuestion = (question: Question) => {
     const answer = answers[question.id];
     const questionAudioUrl = getQuestionAudioUrl(question);
+    const normalizedAudioUrl = questionAudioUrl ? normalizeAudioUrl(questionAudioUrl) : null;
+    const audioPlayCount = normalizedAudioUrl ? (questionAudioPlayCount[normalizedAudioUrl] || 0) : 0;
+    const remainingPlays = normalizedAudioUrl ? Math.max(0, MAX_AUDIO_PLAY_COUNT - audioPlayCount) : 0;
+    const isAudioDisabled = normalizedAudioUrl ? audioPlayCount >= MAX_AUDIO_PLAY_COUNT : false;
 
     // Lấy skillType từ question data result (mỗi question có skillType riêng)
     const questionDataResult = (question as any)._questionDataResult;
@@ -629,6 +754,10 @@ export default function TakePlacementTestPage() {
         questionAudioPlaying={questionAudioPlaying || undefined}
         toggleQuestionAudio={toggleQuestionAudio || undefined}
         normalizeAudioUrl={normalizeAudioUrl}
+        audioPlayCount={audioPlayCount}
+        remainingAudioPlays={remainingPlays}
+        isAudioDisabled={isAudioDisabled}
+        maxAudioPlays={MAX_AUDIO_PLAY_COUNT}
       />
     );
   };
@@ -702,14 +831,52 @@ export default function TakePlacementTestPage() {
     return { passages, questionsWithoutPassage };
   };
 
+  // Group questions by audio (for listening questions with shared audio)
+  const groupQuestionsByAudio = () => {
+    const audioGroups = new Map<string, Question[]>();
+    const questionsWithoutAudio: Question[] = [];
+
+    questions.forEach((q) => {
+      const audioUrl = (q as any)._audioUrl;
+      const questionDataResult = (q as any)._questionDataResult;
+      const questionType = questionDataResult?.question?.questionType?.toLowerCase() || "";
+      const difficulty = questionDataResult?.question?.difficulty || 0;
+      
+      // Only group if this is an audio type question (difficulty 2 or 3 = short/long audio with multiple questions)
+      const isSharedAudio = audioUrl && audioUrl.trim() && questionType === "audio" && (difficulty === 2 || difficulty === 3);
+      
+      if (isSharedAudio) {
+        const audioKey = normalizeAudioUrl(audioUrl) || audioUrl.trim();
+        if (!audioGroups.has(audioKey)) {
+          audioGroups.set(audioKey, []);
+        }
+        audioGroups.get(audioKey)!.push(q);
+      } else {
+        questionsWithoutAudio.push(q);
+      }
+    });
+
+    const audios = Array.from(audioGroups.entries())
+      .map(([audioUrl, qs]) => ({
+        audioUrl: audioUrl.trim(),
+        questions: qs.sort((a, b) => a.order - b.order),
+        firstQuestionOrder: Math.min(...qs.map((q) => q.order)),
+      }))
+      .sort((a, b) => a.firstQuestionOrder - b.firstQuestionOrder);
+
+    return { audios, questionsWithoutAudio };
+  };
+
   const { passages, questionsWithoutPassage } = groupQuestionsByPassage();
+  const { audios } = groupQuestionsByAudio();
   const currentQuestion = questions[currentQuestionIndex];
   const answeredCount = Object.keys(answers).length;
 
-  // Get current question's passage
+  // Get current question's passage and audio context
   const getCurrentQuestionContext = () => {
-    if (!currentQuestion) return { currentQuestion: null, passage: null, passageQuestions: [], questionIndexInPassage: 0 };
+    if (!currentQuestion) return { currentQuestion: null, passage: null, passageQuestions: [], questionIndexInPassage: 0, audioUrl: null, audioQuestions: [], questionIndexInAudio: 0 };
 
+    // Check for passage
     for (const passageGroup of passages) {
       const indexInPassage = passageGroup.questions.findIndex((q) => q.id === currentQuestion.id);
       if (indexInPassage !== -1) {
@@ -718,6 +885,25 @@ export default function TakePlacementTestPage() {
           passage: passageGroup.passage,
           passageQuestions: passageGroup.questions,
           questionIndexInPassage: indexInPassage,
+          audioUrl: null,
+          audioQuestions: [],
+          questionIndexInAudio: 0,
+        };
+      }
+    }
+
+    // Check for shared audio
+    for (const audioGroup of audios) {
+      const indexInAudio = audioGroup.questions.findIndex((q) => q.id === currentQuestion.id);
+      if (indexInAudio !== -1) {
+        return {
+          currentQuestion,
+          passage: null,
+          passageQuestions: [currentQuestion],
+          questionIndexInPassage: 0,
+          audioUrl: audioGroup.audioUrl,
+          audioQuestions: audioGroup.questions,
+          questionIndexInAudio: indexInAudio,
         };
       }
     }
@@ -727,11 +913,23 @@ export default function TakePlacementTestPage() {
       passage: null,
       passageQuestions: [currentQuestion],
       questionIndexInPassage: 0,
+      audioUrl: null,
+      audioQuestions: [],
+      questionIndexInAudio: 0,
     };
   };
 
   const currentContext = getCurrentQuestionContext();
   const currentPassage = currentContext.passage;
+  const currentAudioUrl = currentContext.audioUrl;
+  const currentAudioQuestions = currentContext.audioQuestions;
+  
+  // Get audio play count and remaining plays for current audio
+  const normalizedCurrentAudioUrl = currentAudioUrl ? normalizeAudioUrl(currentAudioUrl) : null;
+  const currentAudioPlayCount = normalizedCurrentAudioUrl ? (questionAudioPlayCount[normalizedCurrentAudioUrl] || 0) : 0;
+  const currentAudioRemainingPlays = normalizedCurrentAudioUrl ? Math.max(0, MAX_AUDIO_PLAY_COUNT - currentAudioPlayCount) : 0;
+  const isCurrentAudioDisabled = normalizedCurrentAudioUrl ? currentAudioPlayCount >= MAX_AUDIO_PLAY_COUNT : false;
+  const currentAudioProgress = normalizedCurrentAudioUrl ? (questionAudioProgress[normalizedCurrentAudioUrl] || { currentTime: 0, duration: 0 }) : { currentTime: 0, duration: 0 };
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -742,12 +940,12 @@ export default function TakePlacementTestPage() {
         lastSaved={lastSaved}
         isSaving={isSaving}
         onBack={handleExit}
-        onSave={saveAnswers}
         onSubmit={() => handleSubmit(false)}
         canSubmit={!submitting}
         timeRemaining={timeRemaining}
         timeLimitSeconds={initialTimeLimit}
         formatTime={formatTime}
+        submitText="Submit"
       />
 
       {/* Time Warning Banner */}
@@ -797,9 +995,9 @@ export default function TakePlacementTestPage() {
             />
           </Card>
 
-          {/* Reading: luôn có layout 2 cột với passage cố định bên trái (nếu có passage thì hiển thị, không có thì không hiển thị nội dung) */}
+          {/* Reading: luôn có layout 2 cột với passage/audio cố định bên trái (nếu có passage/audio thì hiển thị, không có thì không hiển thị nội dung) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left - Reading Passage (cố định, chỉ hiển thị nội dung khi có passage) */}
+            {/* Left - Reading Passage or Shared Audio (cố định, chỉ hiển thị nội dung khi có passage hoặc audio) */}
             <div className="lg:sticky lg:top-24 h-full lg:self-start">
               {currentPassage && (
                 <Card className="p-4">
@@ -824,6 +1022,79 @@ export default function TakePlacementTestPage() {
                       </div>
                     </div>
                   )}
+                </Card>
+              )}
+              {currentAudioUrl && !currentPassage && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Headphones className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-lg font-semibold text-neutral-800">Audio ({currentAudioQuestions.length} {currentAudioQuestions.length > 1 ? 'questions' : 'question'})</h2>
+                  </div>
+                  <div className={`bg-white border rounded-lg p-4 ${isCurrentAudioDisabled ? 'border-red-300 bg-red-50' : 'border-purple-200 bg-purple-50'}`}>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => !isCurrentAudioDisabled && toggleQuestionAudio({ id: '', audioUrl: currentAudioUrl } as Question & { audioUrl?: string })}
+                        disabled={isCurrentAudioDisabled}
+                        className={`flex items-center justify-center w-12 h-12 rounded-full transition-colors ${
+                          isCurrentAudioDisabled
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                        }`}
+                        title={
+                          isCurrentAudioDisabled
+                            ? `Đã đạt giới hạn phát tối đa (${MAX_AUDIO_PLAY_COUNT} lần)`
+                            : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
+                            ? "Tạm dừng"
+                            : `Phát (còn ${currentAudioRemainingPlays} lần)`
+                        }
+                      >
+                        {isCurrentAudioDisabled ? (
+                          <X className="w-6 h-6" />
+                        ) : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false ? (
+                          <Pause className="w-6 h-6" />
+                        ) : (
+                          <Play className="w-6 h-6 ml-0.5" />
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${isCurrentAudioDisabled ? 'text-red-900' : 'text-purple-900'}`}>
+                          {isCurrentAudioDisabled
+                            ? `Đã đạt giới hạn phát (${MAX_AUDIO_PLAY_COUNT}/${MAX_AUDIO_PLAY_COUNT} lần)`
+                            : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
+                            ? "Đang phát audio..."
+                            : currentAudioRemainingPlays > 0
+                            ? `Nhấn để phát audio (còn ${currentAudioRemainingPlays} ${currentAudioRemainingPlays === 1 ? 'lần' : 'lần'})`
+                            : "Nhấn để phát audio"}
+                        </p>
+                        {currentAudioPlayCount > 0 && !isCurrentAudioDisabled && (
+                          <p className="text-xs text-purple-600 mt-1">
+                            Đã phát: {currentAudioPlayCount}/{MAX_AUDIO_PLAY_COUNT} lần
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {/* Progress Bar */}
+                    {(currentAudioProgress.duration > 0 || questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false) && (
+                      <div className="space-y-2 mt-3">
+                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-100 ${
+                              isCurrentAudioDisabled ? 'bg-gray-400' : 'bg-purple-600'
+                            }`}
+                            style={{
+                              width: currentAudioProgress.duration > 0
+                                ? `${(currentAudioProgress.currentTime / currentAudioProgress.duration) * 100}%`
+                                : '0%',
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-neutral-600">
+                          <span>{formatAudioTime(currentAudioProgress.currentTime)}</span>
+                          <span>{formatAudioTime(currentAudioProgress.duration)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </Card>
               )}
             </div>

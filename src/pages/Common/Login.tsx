@@ -53,8 +53,10 @@ interface LoginResponse {
     id: string;
     email: string;
     fullName: string;
+    phoneNumber?: string;
     roleNames: string[];
     isVerified?: boolean;
+    avatarUrl?: string;
     studentInfo?: any;
     teacherInfo?: any;
     staffInfo?:any;

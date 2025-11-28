@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, getStudentId } from "@/lib/utils";
+import { getStudentById } from "@/api/student.api";
 import type { Course } from "@/types/course";
 
 interface ClassReservationData {
@@ -28,19 +29,45 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
     paymentPlan: "OneTime", // "OneTime" or "TwoTime"
     notes: ""
   });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsError, setTermsError] = useState("");
 
   // Auto-populate user data when dialog opens and reset when closed
   useEffect(() => {
     if (open) {
-      const userInfo = getUserInfo();
-      if (userInfo) {
-        setReservationData(prev => ({
-          ...prev,
-          fullName: userInfo.fullName || "",
-          email: userInfo.email || "",
-          phone: userInfo.phoneNumber || "",
-        }));
-      }
+      const loadUserData = async () => {
+        const userInfo = getUserInfo();
+        if (userInfo) {
+          // First, set data from localStorage (fast)
+          setReservationData(prev => ({
+            ...prev,
+            fullName: userInfo.fullName || "",
+            email: userInfo.email || "",
+            phone: userInfo.phoneNumber || "",
+          }));
+
+          // Then, try to fetch complete student data to get phone number
+          const studentId = getStudentId();
+          if (studentId) {
+            try {
+              const student = await getStudentById(studentId);
+              if (student) {
+                setReservationData(prev => ({
+                  ...prev,
+                  fullName: student.fullName || prev.fullName,
+                  email: student.email || prev.email,
+                  phone: student.phoneNumber || prev.phone,
+                }));
+              }
+            } catch (error) {
+              // If fetching fails, keep the data from localStorage
+              console.error('Error fetching student data:', error);
+            }
+          }
+        }
+      };
+
+      loadUserData();
     } else {
       // Reset form when dialog closes
       setReservationData({
@@ -50,6 +77,8 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
         paymentPlan: "OneTime",
         notes: ""
       });
+      setAgreedToTerms(false);
+      setTermsError("");
     }
   }, [open]);
 
@@ -71,6 +100,13 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
   };
 
   const handleSubmit = () => {
+    // Validate terms agreement
+    if (!agreedToTerms) {
+      setTermsError("You must agree to the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
+    
+    setTermsError("");
     onSubmit(reservationData);
     onOpenChange(false);
   };
@@ -224,10 +260,27 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
             {/* Terms and Conditions */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-start gap-3">
-                <input type="checkbox" className="mt-1" />
-                <div className="text-sm text-gray-600">
-                  <p>I agree to the <a href="#" className="text-primary-600 hover:underline">Terms of Service</a> and <a href="#" className="text-primary-600 hover:underline">Privacy Policy</a>.</p>
+                <input 
+                  type="checkbox" 
+                  checked={agreedToTerms}
+                  onChange={(e) => {
+                    setAgreedToTerms(e.target.checked);
+                    if (e.target.checked) {
+                      setTermsError("");
+                    }
+                  }}
+                  className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  required
+                />
+                <div className="text-sm text-gray-600 flex-1">
+                  <p>
+                    I agree to the <a href="#" className="text-primary-600 hover:underline">Terms of Service</a> and <a href="#" className="text-primary-600 hover:underline">Privacy Policy</a>.
+                    <span className="text-red-500 ml-1">*</span>
+                  </p>
                   <p className="mt-1">I understand that this is a class reservation and payment will be processed separately. The reservation will expire in 7 days if not confirmed.</p>
+                  {termsError && (
+                    <p className="mt-2 text-sm text-red-600">{termsError}</p>
+                  )}
                 </div>
               </div>
             </div>

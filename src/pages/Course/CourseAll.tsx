@@ -1,15 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search, FileCheck } from "lucide-react";
+import { Search, FileCheck, X, Sparkles } from "lucide-react";
 import CoursesSection from "./components/CoursesSection";
 import PackagesSection from "./components/PackagesSection";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import courseBgImage from "@/assets/course-bg.png";
+import { isTokenValid } from "@/lib/utils";
+import { useToast } from "@/hooks/useToast";
 
 export default function CourseAll() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { error: showError } = useToast();
+  const [showPlacementTestMessage, setShowPlacementTestMessage] = useState(true);
 
   useEffect(() => {
     // Handle hash navigation
@@ -21,7 +25,18 @@ export default function CourseAll() {
         }, 100);
       }
     }
+
+    // Check if user has seen the placement test message before
+    const hasSeenMessage = localStorage.getItem('placementTestMessageSeen');
+    if (hasSeenMessage === 'true') {
+      setShowPlacementTestMessage(false);
+    }
   }, [location.hash]);
+
+  const handleDismissMessage = () => {
+    setShowPlacementTestMessage(false);
+    localStorage.setItem('placementTestMessageSeen', 'true');
+  };
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Hero Section */}
@@ -51,21 +66,6 @@ export default function CourseAll() {
               Choose individual courses or save with our course packages.
             </p>
 
-            <div className="max-w-2xl mx-auto relative mb-8">
-              <div className="relative">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 w-6 h-6 " />
-                <Input
-                  type="text"
-                  placeholder="What do you want to learn today?"
-                  className="pl-16 pr-6 py-5 text-lg rounded-2xl border-0 shadow-2xl bg-white/95 focus:ring-1 focus:!ring-accent-300 focus:!bg-white transition-all"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Button className="btn-secondary px-6 py-2 rounded-xl font-semibold">
-                    Search
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
         
@@ -95,21 +95,82 @@ export default function CourseAll() {
       {/* Packages Section */}
       <PackagesSection />
 
-      {/* Floating Action Button - Placement Test */}
-      <button
-        onClick={() => navigate('/student/placement-test')}
-        className="fixed bottom-8 right-8 z-50 w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-full shadow-2xl hover:shadow-primary-500/50 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group"
-        title="Làm bài Placement Test để tìm khóa học phù hợp"
-      >
-        <FileCheck className="w-7 h-7 md:w-8 md:h-8 group-hover:scale-110 transition-transform" />
-        {/* Pulse animation */}
-        <span className="absolute inset-0 rounded-full bg-primary-500 animate-ping opacity-20"></span>
-        {/* Tooltip on hover */}
-        <div className="absolute right-full mr-4 hidden md:group-hover:block whitespace-nowrap bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg pointer-events-none">
-          <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
-          Làm bài Placement Test để tìm khóa học phù hợp
-        </div>
-      </button>
+      {/* Floating Action Button - Placement Test with Enhanced Effects */}
+      <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3">
+        {/* Notification Message - Always visible (can be dismissed) */}
+        {showPlacementTestMessage && (
+          <div className="relative animate-in slide-in-from-right-4 fade-in-0 duration-500">
+            <div className="bg-gradient-to-r from-primary-600 to-accent-600 text-white px-5 py-3 rounded-xl shadow-2xl max-w-xs md:max-w-sm border-2 border-white/20">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm mb-1">Take Placement Test Now!</p>
+                  <p className="text-xs text-white/90 leading-relaxed">
+                    Find courses that match your level. Click the button below to get started.
+                  </p>
+                </div>
+                <button
+                  onClick={handleDismissMessage}
+                  className="flex-shrink-0 text-white/80 hover:text-white transition-colors"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            {/* Arrow pointing to button */}
+            <div className="absolute bottom-0 right-6 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[12px] border-t-primary-600 transform translate-y-full"></div>
+          </div>
+        )}
+
+        {/* FAB Button with enhanced animations */}
+        <button
+          onClick={() => {
+            // Check if user is logged in
+            if (!isTokenValid()) {
+              showError("Bạn cần đăng nhập để làm bài Placement Test. Vui lòng đăng nhập trước.");
+              navigate('/login');
+              return;
+            }
+            navigate('/student/placement-test');
+            handleDismissMessage(); // Auto-dismiss message when clicked
+          }}
+          className="relative w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-full shadow-2xl hover:shadow-primary-500/50 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group animate-bounce"
+          style={{ animationDuration: '2s', animationIterationCount: 'infinite' }}
+          title="Take Placement Test to find suitable courses"
+        >
+          {/* Glowing ring effect */}
+          <div className="absolute inset-0 rounded-full bg-primary-400 opacity-75 animate-ping" style={{ animationDuration: '2s' }}></div>
+          
+          {/* Outer glow ring */}
+          <div className="absolute inset-0 rounded-full bg-primary-500/50 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
+          
+          {/* Badge NEW */}
+          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-lg border-2 border-white">
+            NEW
+          </div>
+          
+          {/* Icon */}
+          <FileCheck className="relative z-10 w-7 h-7 md:w-8 md:h-8 group-hover:scale-110 transition-transform" />
+          
+          {/* Always visible tooltip on mobile */}
+          <div className="absolute right-full mr-3 md:hidden bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+            Take Test
+          </div>
+          
+          {/* Tooltip on desktop hover */}
+          <div className="absolute right-full mr-4 hidden md:block opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <div className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-xl whitespace-nowrap">
+              <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+              <div className="font-semibold mb-1">Placement Test</div>
+              <div className="text-xs text-gray-300">Find courses that suit you</div>
+            </div>
+          </div>
+        </button>
+      </div>
     </div>
   );
 }

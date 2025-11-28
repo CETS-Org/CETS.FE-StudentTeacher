@@ -81,15 +81,15 @@ export const transformStudentLearningClass = (apiClass: StudentLearningClassResp
 
   return {
     id: apiClass.id,
-    className: apiClass.className,
+    className: apiClass.className ?? "",
     classNum: 1, // Default value, can be enhanced if available in API
     description: `Learning ${apiClass.courseName}`,
-    instructor: apiClass.teacherName,
+    instructor: apiClass.teacherName ?? "",
     level: "Intermediate" as const, // Default level, can be enhanced later
     classStatus: apiClass.statusName,
     courseFormat: "In-person" as const, // Default format, can be enhanced later
-    courseName: apiClass.courseName,
-    courseCode: apiClass.courseCode, // Will be undefined if not provided by API
+    courseName: apiClass.courseName ?? "",
+    courseCode: apiClass.courseCode ?? "", // Will be undefined if not provided by API
     category: "General", // Default category, can be enhanced later
     startDate: apiClass.startDate,
     endDate: apiClass.endDate,
@@ -98,7 +98,7 @@ export const transformStudentLearningClass = (apiClass: StudentLearningClassResp
     enrolledCount: 1, // Default enrolled count, can be enhanced if available in API
     isActive: apiClass.isActive,
     certificate: classStatus === 'completed',
-    nextMeeting
+    nextMeeting: apiClass.nextMeeting ?? null,
   };
 };
 

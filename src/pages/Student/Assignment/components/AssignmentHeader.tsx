@@ -15,6 +15,7 @@ interface AssignmentHeaderProps {
   timeRemaining?: number | null;
   timeLimitSeconds?: number | null;
   formatTime?: (seconds: number | null) => string;
+  submitText?: string; // Custom submit button text
 }
 
 /**
@@ -33,6 +34,7 @@ export default function AssignmentHeader({
   timeRemaining,
   timeLimitSeconds,
   formatTime,
+  submitText = "Submit Assignment",
 }: AssignmentHeaderProps) {
   const [showExitDialog, setShowExitDialog] = useState(false);
 
@@ -58,10 +60,10 @@ export default function AssignmentHeader({
   return (
     <>
       <div className="bg-white border-b border-neutral-200 sticky top-0 z-10 mt-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+        <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between gap-4">
             {/* Left: Back button and title */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-1">
               <button
                 onClick={handleBackClick}
                 className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
@@ -69,56 +71,55 @@ export default function AssignmentHeader({
                 <ArrowLeft className="w-5 h-5" />
                 <span className="font-medium">Back</span>
               </button>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center text-white">
-                {getSkillIcon(skillName)}
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-neutral-900">{title}</h1>
-                {skillName && <p className="text-sm text-neutral-600">{skillName}</p>}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center text-white">
+                  {getSkillIcon(skillName)}
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-neutral-900">{title}</h1>
+                  {skillName && <p className="text-sm text-neutral-600">{skillName}</p>}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Right: Timer, Save status and submit button */}
-          <div className="flex items-center gap-4">
-            {lastSaved && (
-              <span className="text-sm text-neutral-400">
-                Last saved: {lastSaved.toLocaleTimeString()}
-              </span>
-            )}
-            {timeRemaining != null && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-red-100">
-                <Clock className="w-4 h-4 text-red-600" />
-                <span className="text-sm font-semibold text-red-600 tracking-wide">
-                  {formatTime ? formatTime(timeRemaining) : `${Math.max(0, Math.ceil(timeRemaining / 60))} min`}
+            {/* Right: Timer, Save status and submit button */}
+            <div className="flex items-center gap-4 flex-shrink-0">
+              {lastSaved && (
+                <span className="text-sm text-neutral-400">
+                  Last saved: {lastSaved.toLocaleTimeString()}
                 </span>
-              </div>
-            )}
-            {onSave && (
+              )}
+              {timeRemaining != null && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-red-100">
+                  <Clock className="w-4 h-4 text-red-600" />
+                  <span className="text-sm font-semibold text-red-600 tracking-wide">
+                    {formatTime ? formatTime(timeRemaining) : `${Math.max(0, Math.ceil(timeRemaining / 60))} min`}
+                  </span>
+                </div>
+              )}
+              {onSave && (
+                <Button
+                  variant="secondary"
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-2"
+                  iconLeft={<Save className="w-4 h-4" />}
+                >
+                  {isSaving ? "Saving..." : "Save Progress"}
+                </Button>
+              )}
               <Button
-                variant="secondary"
-                onClick={onSave}
-                disabled={isSaving}
+                variant="primary"
+                onClick={onSubmit}
+                disabled={!canSubmit}
                 className="flex items-center gap-2"
-                iconLeft={<Save className="w-4 h-4" />}
+                iconLeft={<Send className="w-4 h-4" />}
               >
-                
-                {isSaving ? "Saving..." : "Save Progress"}
+                {submitText}
               </Button>
-            )}
-            <Button
-              variant="primary"
-              onClick={onSubmit}
-              disabled={!canSubmit}
-              className="flex items-center gap-2"
-              iconLeft={<Send className="w-4 h-4" />}
-            >
-              Submit Assignment
-            </Button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
 
       {/* Exit Confirmation Dialog */}

@@ -2,10 +2,12 @@
 export { default as CategoryFilter } from './CategoryFilter';
 export { default as LevelFilter } from './LevelFilter';
 export { default as PriceFilter } from './PriceFilter';
+export { default as StandardScoreFilter } from './StandardScoreFilter';
 export { default as SkillsFilter } from './SkillsFilter';
 export { default as RequirementsFilter } from './RequirementsFilter';
 export { default as BenefitsFilter } from './BenefitsFilter';
 export { default as ScheduleFilter } from './ScheduleFilter';
+export { default as EnrollmentStatusFilter } from './EnrollmentStatusFilter';
 export { default as FilterSeparator } from './FilterSeparator';
 export { default as CollapsibleFilter } from './CollapsibleFilter';
 
@@ -16,3 +18,5 @@ export type FacetItem = {
   count: number; 
   selected?: boolean; 
 };
+
+export type { EnrollmentStatus } from './EnrollmentStatusFilter';

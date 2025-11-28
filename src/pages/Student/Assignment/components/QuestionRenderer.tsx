@@ -1,4 +1,4 @@
-import { Play, Pause, Headphones } from "lucide-react";
+import { Play, Pause, Headphones, X } from "lucide-react";
 import type { Question } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 import MultipleChoiceQuestion from "./MultipleChoiceQuestion";
 import TrueFalseQuestion from "./TrueFalseQuestion";
@@ -21,6 +21,10 @@ interface QuestionRendererProps {
   questionAudioPlaying?: Record<string, boolean>;
   toggleQuestionAudio?: (question: Question & { audioUrl?: string }) => void;
   normalizeAudioUrl?: (url: string | undefined) => string;
+  audioPlayCount?: number;
+  remainingAudioPlays?: number;
+  isAudioDisabled?: boolean;
+  maxAudioPlays?: number;
 }
 
 /**
@@ -40,6 +44,10 @@ export default function QuestionRenderer({
   questionAudioPlaying,
   toggleQuestionAudio,
   normalizeAudioUrl,
+  audioPlayCount = 0,
+  remainingAudioPlays,
+  isAudioDisabled = false,
+  maxAudioPlays,
 }: QuestionRendererProps) {
   const commonProps = {
     question,
@@ -86,29 +94,55 @@ export default function QuestionRenderer({
     <div className="space-y-4">
       {/* Audio Player for Question - chỉ hiển thị cho listening */}
       {shouldShowAudioPlayer && (
-        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+        <div className={`bg-purple-50 p-4 rounded-lg border ${isAudioDisabled ? 'border-red-300 bg-red-50' : 'border-purple-200'}`}>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => toggleQuestionAudio({ ...question, audioUrl: questionAudioUrl })}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-              title={questionAudioPlaying[normalizeAudioUrl(questionAudioUrl) || questionAudioUrl] ? "Pause" : "Play"}
+              onClick={() => !isAudioDisabled && toggleQuestionAudio && toggleQuestionAudio({ ...question, audioUrl: questionAudioUrl })}
+              disabled={isAudioDisabled}
+              className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+                isAudioDisabled
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
+              title={
+                isAudioDisabled
+                  ? `Maximum play limit reached (${maxAudioPlays || 2} times)`
+                  : questionAudioPlaying?.[normalizeAudioUrl?.(questionAudioUrl) || questionAudioUrl || '']
+                  ? "Pause"
+                  : remainingAudioPlays !== undefined
+                  ? `Play (${remainingAudioPlays} ${remainingAudioPlays === 1 ? 'time' : 'times'} remaining)`
+                  : "Play"
+              }
             >
-              {questionAudioPlaying[normalizeAudioUrl(questionAudioUrl) || questionAudioUrl] ? (
+              {isAudioDisabled ? (
+                <X className="w-5 h-5" />
+              ) : questionAudioPlaying?.[normalizeAudioUrl?.(questionAudioUrl) || questionAudioUrl || ''] ? (
                 <Pause className="w-5 h-5" />
               ) : (
                 <Play className="w-5 h-5 ml-0.5" />
               )}
             </button>
             <div className="flex-1 flex items-center gap-2">
-              <Headphones className="w-5 h-5 text-purple-600" />
+              <Headphones className={`w-5 h-5 ${isAudioDisabled ? 'text-red-600' : 'text-purple-600'}`} />
               <div>
-                <p className="text-sm font-medium text-purple-900">
-                  {questionAudioPlaying[normalizeAudioUrl(questionAudioUrl) || questionAudioUrl]
+                <p className={`text-sm font-medium ${isAudioDisabled ? 'text-red-900' : 'text-purple-900'}`}>
+                  {isAudioDisabled
+                    ? `Audio play limit reached (${maxAudioPlays || 2}/${maxAudioPlays || 2} times used)`
+                    : questionAudioPlaying?.[normalizeAudioUrl?.(questionAudioUrl) || questionAudioUrl || '']
                     ? "Playing audio..."
+                    : remainingAudioPlays !== undefined && remainingAudioPlays > 0
+                    ? `Click to play audio (${remainingAudioPlays} ${remainingAudioPlays === 1 ? 'time' : 'times'} remaining)`
                     : "Click to play audio for this question"}
                 </p>
                 {question.audioTimestamp && (
-                  <p className="text-xs text-purple-600 mt-1">Timestamp: {question.audioTimestamp}</p>
+                  <p className={`text-xs mt-1 ${isAudioDisabled ? 'text-red-600' : 'text-purple-600'}`}>
+                    Timestamp: {question.audioTimestamp}
+                  </p>
+                )}
+                {remainingAudioPlays !== undefined && remainingAudioPlays > 0 && !isAudioDisabled && (
+                  <p className="text-xs text-purple-600 mt-1">
+                    {audioPlayCount > 0 && `Played: ${audioPlayCount}/${maxAudioPlays || 2} times`}
+                  </p>
                 )}
               </div>
             </div>
