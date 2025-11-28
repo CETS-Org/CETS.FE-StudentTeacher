@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, AlertCircle, Upload, File, Calendar, Clock, MapPin, User } from "lucide-react";
+import { X, AlertCircle, Upload, File, Calendar, Clock, MapPin, User, AlertTriangle, CheckCircle2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { toast } from "@/components/ui/Toast";
 import { submitAcademicRequest, getAttachmentUploadUrl } from "@/api/academicRequest.api";
+import { validateSuspensionRequest } from "@/api/suspensionRequest.api";
 import { getAcademicRequestTypes, getTimeSlots } from "@/api/lookup.api";
 import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
 import { getAllClasses } from "@/api/classes.api";
@@ -12,6 +13,14 @@ import { getUserInfo, getStudentId, getUserRole } from "@/lib/utils";
 import { uploadToPresignedUrl } from "@/api/file.api";
 import type { SubmitAcademicRequest } from "@/types/academicRequest";
 import type { MyClass } from "@/types/class";
+import {
+  SuspensionReasonCategories,
+  SuspensionReasonCategoryLabels,
+  type SuspensionValidationResult,
+} from "@/types/suspensionRequest";
+import {
+  AcademicRequestReasonCategoryLabels,
+} from "@/types/academicRequestReasonCategories";
 
 interface AcademicChangeRequestPopupProps {
   isOpen: boolean;
@@ -43,6 +52,10 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     classID: "",
     classMeetingID: "",
     newRoomID: "",
+    // For suspension requests
+    suspensionStartDate: "",
+    suspensionEndDate: "",
+    reasonCategory: "",
   });
 
   const [requestTypes, setRequestTypes] = useState<any[]>([]);
@@ -66,6 +79,9 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suspensionValidationResult, setSuspensionValidationResult] = useState<SuspensionValidationResult | null>(null);
+  const [isValidatingSuspension, setIsValidatingSuspension] = useState(false);
+  const [showSuspensionValidation, setShowSuspensionValidation] = useState(false);
 
   // Get filtered classes based on selected course
   const filteredClasses = formData.courseID 
@@ -532,9 +548,78 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
            typeCode === 'classtransfer';
   };
 
+  const isSuspension = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
+    const selectedType = requestTypes.find(type => {
+      const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+      return typeId === formData.requestTypeID;
+    });
+
+    if (!selectedType) return false;
+
+    const typeName = (selectedType.name || '').toLowerCase();
+    const typeCode = (selectedType.code || '').toLowerCase();
+    
+    return typeName.includes('suspension') || 
+           typeName.includes('suspend') ||
+           typeCode.includes('suspension') ||
+           typeCode.includes('suspend');
+  };
+
+  const handleValidateSuspension = async () => {
+    if (!formData.suspensionStartDate || !formData.suspensionEndDate || !formData.reasonCategory || !formData.reason) {
+      toast.error("Please fill in all suspension fields before validating");
+      return;
+    }
+
+    setIsValidatingSuspension(true);
+    setShowSuspensionValidation(false);
+
+    try {
+      const validationData = {
+        studentID: userId!,
+        requestTypeID: formData.requestTypeID,
+        startDate: formData.suspensionStartDate,
+        endDate: formData.suspensionEndDate,
+        reasonCategory: formData.reasonCategory,
+        reasonDetail: formData.reason,
+      };
+
+      const response = await validateSuspensionRequest(validationData);
+      setSuspensionValidationResult(response.data);
+      setShowSuspensionValidation(true);
+
+      if (response.data.isValid) {
+        toast.success("✅ Request validation passed!");
+      } else {
+        toast.error("❌ Validation failed. Please review the errors.");
+      }
+    } catch (error: any) {
+      console.error("Validation error:", error);
+      toast.error(error.response?.data?.message || "Validation failed");
+    } finally {
+      setIsValidatingSuspension(false);
+    }
+  };
+
+  const calculateSuspensionDuration = () => {
+    if (!formData.suspensionStartDate || !formData.suspensionEndDate) return null;
+    const start = new Date(formData.suspensionStartDate);
+    const end = new Date(formData.suspensionEndDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const validateForm = (): boolean => {
     if (!formData.requestTypeID) {
       toast.error('Please select a request type');
+      return false;
+    }
+
+    if (!formData.reasonCategory?.trim()) {
+      toast.error('Please select a reason category');
       return false;
     }
 
@@ -598,6 +683,31 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       }
     }
 
+    // Validate suspension specific fields
+    if (isSuspension()) {
+      if (!formData.suspensionStartDate?.trim()) {
+        toast.error('Start Date is required for suspension requests');
+        return false;
+      }
+
+      if (!formData.suspensionEndDate?.trim()) {
+        toast.error('End Date is required for suspension requests');
+        return false;
+      }
+
+      // Check if validation has been performed
+      if (!suspensionValidationResult || !suspensionValidationResult.isValid) {
+        toast.error('Please validate your suspension request first');
+        return false;
+      }
+
+      // Check document requirement
+      if (suspensionValidationResult.requiresDocument && !selectedFile && !formData.attachmentUrl) {
+        toast.error('Supporting document is required for this suspension period');
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -642,6 +752,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         studentID: userId,
         requestTypeID: formData.requestTypeID,
         reason: formData.reason,
+        reasonCategory: formData.reasonCategory || undefined,
         attachmentUrl: attachmentUrl || undefined,
         // Class transfer fields - only include if it's a class transfer request
         ...(isClassTransfer() && {
@@ -657,6 +768,11 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           toMeetingDate: formData.toMeetingDate || undefined,
           toSlotID: formData.toSlotID || undefined,
           newRoomID: formData.newRoomID || undefined,
+        }),
+        // Suspension fields - only include if it's a suspension request
+        ...(isSuspension() && {
+          suspensionStartDate: formData.suspensionStartDate || undefined,
+          suspensionEndDate: formData.suspensionEndDate || undefined,
         }),
       };
 
@@ -679,11 +795,16 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         classID: "",
         classMeetingID: "",
         newRoomID: "",
+        suspensionStartDate: "",
+        suspensionEndDate: "",
+        reasonCategory: "",
       });
       setSelectedFile(null);
       setClassMeetings([]);
       setFromClassMeetings([]);
       setToClassMeetings([]);
+      setSuspensionValidationResult(null);
+      setShowSuspensionValidation(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -715,14 +836,19 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         classID: "",
         classMeetingID: "",
         newRoomID: "",
+        suspensionStartDate: "",
+        suspensionEndDate: "",
+        reasonCategory: "",
       });
-      setSelectedFile(null);
-      setClassMeetings([]);
-      setFromClassMeetings([]);
-      setToClassMeetings([]);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+    setSelectedFile(null);
+    setClassMeetings([]);
+    setFromClassMeetings([]);
+    setToClassMeetings([]);
+    setSuspensionValidationResult(null);
+    setShowSuspensionValidation(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     onClose();
   };
 
@@ -779,6 +905,40 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </select>
           </div>
 
+          {/* Reason Category - Required for all request types */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Reason Category <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="reasonCategory"
+              value={formData.reasonCategory}
+              onChange={(e) => {
+                handleInputChange(e);
+                if (isSuspension()) {
+                  setShowSuspensionValidation(false);
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+              disabled={isSubmitting}
+            >
+              <option value="" disabled>Select a reason category</option>
+              {Object.entries(
+                isSuspension() 
+                  ? SuspensionReasonCategoryLabels 
+                  : AcademicRequestReasonCategoryLabels
+              ).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Select the primary reason for your request
+            </p>
+          </div>
+
           {/* Reason */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -797,6 +957,202 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             />
             <p className="text-xs text-gray-500 mt-1">{formData.reason.length}/2000 characters</p>
           </div>
+
+          {/* Suspension-specific fields */}
+          {isSuspension() && (
+            <>
+              {/* Suspension Period */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="text-md font-semibold text-gray-900">Suspension Period</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Start Date */}
+                  <div>
+                    <label htmlFor="suspensionStartDate" className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="date"
+                        id="suspensionStartDate"
+                        name="suspensionStartDate"
+                        value={formData.suspensionStartDate}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          setShowSuspensionValidation(false);
+                        }}
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                        min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Must be at least 7 days from today</p>
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <label htmlFor="suspensionEndDate" className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="date"
+                        id="suspensionEndDate"
+                        name="suspensionEndDate"
+                        value={formData.suspensionEndDate}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          setShowSuspensionValidation(false);
+                        }}
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                        min={formData.suspensionStartDate || undefined}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Must be after start date</p>
+                  </div>
+                </div>
+
+                {/* Duration Display */}
+                {calculateSuspensionDuration() !== null && (
+                  <div className={`p-3 rounded-lg ${
+                    calculateSuspensionDuration()! >= 7 && calculateSuspensionDuration()! <= 90 
+                      ? 'bg-green-50 border border-green-200' 
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <p className={`text-sm font-medium ${
+                      calculateSuspensionDuration()! >= 7 && calculateSuspensionDuration()! <= 90 
+                        ? 'text-green-800' 
+                        : 'text-red-800'
+                    }`}>
+                      Duration: {calculateSuspensionDuration()} days
+                      {calculateSuspensionDuration()! < 7 && " (Minimum 7 days required)"}
+                      {calculateSuspensionDuration()! > 90 && " (Maximum 90 days allowed)"}
+                    </p>
+                  </div>
+                )}
+
+                {/* Validation Button */}
+                <div>
+                  <Button
+                    type="button"
+                    onClick={handleValidateSuspension}
+                    disabled={isValidatingSuspension || !formData.suspensionStartDate || !formData.suspensionEndDate || !formData.reasonCategory || !formData.reason}
+                    className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isValidatingSuspension ? "Validating..." : "Validate Suspension Request"}
+                  </Button>
+                </div>
+
+                {/* Validation Results */}
+                {showSuspensionValidation && suspensionValidationResult && (
+                  <div className="space-y-3">
+                    {/* Status Banner */}
+                    <div className={`p-4 rounded-lg border ${
+                      suspensionValidationResult.isValid
+                        ? "bg-green-50 border-green-200"
+                        : "bg-red-50 border-red-200"
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        {suspensionValidationResult.isValid ? (
+                          <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                          <h4 className={`text-sm font-semibold mb-1 ${
+                            suspensionValidationResult.isValid ? "text-green-800" : "text-red-800"
+                          }`}>
+                            {suspensionValidationResult.isValid ? "✅ Validation Passed" : "❌ Validation Failed"}
+                          </h4>
+                          <p className={`text-sm ${
+                            suspensionValidationResult.isValid ? "text-green-700" : "text-red-700"
+                          }`}>
+                            {suspensionValidationResult.isValid
+                              ? "Your request meets all requirements and can be submitted."
+                              : "Please resolve the errors below before submitting."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Errors */}
+                    {suspensionValidationResult.errors.length > 0 && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <h5 className="text-sm font-semibold text-red-800 mb-2">Errors:</h5>
+                        <ul className="space-y-1">
+                          {suspensionValidationResult.errors.map((error, index) => (
+                            <li key={index} className="text-sm text-red-700 flex items-start gap-2">
+                              <span className="text-red-500 mt-0.5">•</span>
+                              <span>{error}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Warnings */}
+                    {suspensionValidationResult.warnings.length > 0 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h5 className="text-sm font-semibold text-yellow-800 mb-2">Warnings:</h5>
+                        <ul className="space-y-1">
+                          {suspensionValidationResult.warnings.map((warning, index) => (
+                            <li key={index} className="text-sm text-yellow-700 flex items-start gap-2">
+                              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                              <span>{warning}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Info */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-blue-600 font-medium">Duration:</span>
+                          <span className="text-blue-800 ml-2">{suspensionValidationResult.durationDays} days</span>
+                        </div>
+                        <div>
+                          <span className="text-blue-600 font-medium">Suspensions this year:</span>
+                          <span className="text-blue-800 ml-2">{suspensionValidationResult.suspensionCountThisYear}/2</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-blue-600 font-medium">Document required:</span>
+                          <span className="text-blue-800 ml-2">
+                            {suspensionValidationResult.requiresDocument ? "Yes" : "No (but recommended)"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Important Notice for Suspension */}
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-sm font-medium text-orange-800 mb-1">
+                        Suspension Request Notice
+                      </h4>
+                      <ul className="text-sm text-orange-700 space-y-1">
+                        <li>• Submit at least 7 days before your intended start date</li>
+                        <li>• Duration must be between 7-90 days</li>
+                        <li>• Maximum 2 suspensions per year allowed</li>
+                        <li>• You must have no unpaid tuition</li>
+                        <li>• Document required for suspensions over 30 days</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Course - Only shown for class transfer, required when shown */}
           {isClassTransfer() && (

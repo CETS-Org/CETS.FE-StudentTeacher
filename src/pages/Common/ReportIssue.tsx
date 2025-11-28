@@ -267,7 +267,7 @@ const ReportIssue: React.FC = () => {
       {/* Main Card */}
       <Card>
         <div className="p-6">
-          {/* Card Header with Action Button */}
+          {/* Card Header with Action Buttons */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-md ${
