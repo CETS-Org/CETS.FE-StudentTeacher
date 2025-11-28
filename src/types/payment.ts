@@ -238,6 +238,15 @@ export interface InstallmentInfo {
   description: string;
 }
 
+// Second Payment Information (for 1stPaid status)
+export interface SecondPaymentInfo {
+  invoiceId?: string;
+  invoiceStatus?: string;
+  invoiceStatusCode?: string;
+  amount: number;
+  dueDate?: string;
+}
+
 // Reservation Item (for details page)
 export interface ReservationItem {
   id: string;
@@ -250,8 +259,10 @@ export interface ReservationItem {
   category: string;
   invoiceId?: string;
   invoiceStatus?: string;
+  invoiceStatusCode?: string;
   planType: string;
   classReservationId: string;
+  secondPayment?: SecondPaymentInfo;
 }
 
 // Payment History Record (from backend API)

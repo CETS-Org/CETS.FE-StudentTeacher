@@ -172,9 +172,18 @@ export default function Login() {
         localStorage.removeItem('rememberedEmail');
       }
       
+      // Normalize field names: convert PascalCase to camelCase for consistency
+      const normalizedAccount = {
+        ...response.account,
+        phoneNumber: (response.account as any).PhoneNumber || response.account.phoneNumber || "",
+        fullName: (response.account as any).FullName || response.account.fullName || "",
+        avatarUrl: (response.account as any).AvatarUrl || response.account.avatarUrl,
+        isVerified: (response.account as any).IsVerified ?? response.account.isVerified ?? true,
+        roleNames: (response.account as any).RoleNames || response.account.roleNames || []
+      };
+      
       // Check if account is verified
-      const isVerified = response.account.isVerified ?? true;
-      if (!isVerified) {
+      if (!normalizedAccount.isVerified) {
         // Redirect to home page for unverified accounts
         navigate("/", {
           state: {
@@ -186,7 +195,7 @@ export default function Login() {
       
       // Store token and user info in localStorage
       localStorage.setItem("authToken", response.token);
-      localStorage.setItem("userInfo", JSON.stringify(response.account));
+      localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
       
       // Navigate to return URL or default based on role
       if (returnUrl) {
