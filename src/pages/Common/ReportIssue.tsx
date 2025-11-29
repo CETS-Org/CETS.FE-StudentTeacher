@@ -150,12 +150,18 @@ const ReportIssue: React.FC = () => {
     return { Icon: Calendar, gradient: "from-blue-500 to-blue-600" };
   };
 
-  const renderTechnicalReports = () => {
+  const renderTechnicalReports = (tab: "all" | "pending" | "resolved" | "rejected") => {
     // For now, show empty state until Technical Reports API is implemented
+    // This will be updated when Technical Reports API is ready
     return (
       <div className="text-center py-12 text-neutral-500">
         <FileText className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
-        <p className="mb-2">No technical reports found</p>
+        <p className="mb-2">
+          {tab === "all" && "No technical reports found"}
+          {tab === "pending" && "No pending technical reports"}
+          {tab === "resolved" && "No resolved technical reports"}
+          {tab === "rejected" && "No rejected technical reports"}
+        </p>
         <p className="text-xs text-neutral-400">Technical report tracking coming soon</p>
       </div>
     );
@@ -303,7 +309,7 @@ const ReportIssue: React.FC = () => {
               onClick={handleReportClick}
               className="btn-primary"
             >
-              {currentReportType === "Technical" ? "Report Issue" : "Create Request"}
+              Create Request
             </Button>
           </div>
 
@@ -324,18 +330,16 @@ const ReportIssue: React.FC = () => {
           {/* Tabs */}
           <div className="border-b border-gray-200 mb-6">
             <nav className="flex space-x-8">
-              {currentReportType === "Academic" && (
-                <button
-                  onClick={() => setActiveTab("all")}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === "all"
-                      ? "border-primary-600 text-primary-700"
-                      : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
-                  }`}
-                >
-                  All Requests
-                </button>
-              )}
+              <button
+                onClick={() => setActiveTab("all")}
+                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === "all"
+                    ? "border-primary-600 text-primary-700"
+                    : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
+                }`}
+              >
+                All {currentReportType === "Academic" ? "Requests" : "Reports"}
+              </button>
               <button
                 onClick={() => setActiveTab("pending")}
                 className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -356,18 +360,16 @@ const ReportIssue: React.FC = () => {
               >
                 Resolved {currentReportType === "Academic" ? "Requests" : "Reports"}
               </button>
-              {currentReportType === "Academic" && (
-                <button
-                  onClick={() => setActiveTab("rejected")}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === "rejected"
-                      ? "border-red-600 text-red-700"
-                      : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
-                  }`}
-                >
-                  Rejected Requests
-                </button>
-              )}
+              <button
+                onClick={() => setActiveTab("rejected")}
+                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === "rejected"
+                    ? "border-red-600 text-red-700"
+                    : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
+                }`}
+              >
+                Rejected {currentReportType === "Academic" ? "Requests" : "Reports"}
+              </button>
             </nav>
           </div>
 
@@ -375,7 +377,7 @@ const ReportIssue: React.FC = () => {
           <div>
             {currentReportType === "Academic" 
               ? renderAcademicReports(activeTab)
-              : renderTechnicalReports()
+              : renderTechnicalReports(activeTab)
             }
           </div>
         </div>
