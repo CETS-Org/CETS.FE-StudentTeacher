@@ -19,7 +19,7 @@ const ReportIssue: React.FC = () => {
   const navigate = useNavigate();
   const userId = getStudentId();
   
-  const [activeTab, setActiveTab] = useState<"pending" | "resolved" | "rejected">("pending");
+  const [activeTab, setActiveTab] = useState<"all" | "pending" | "resolved" | "rejected">("all");
   const [showTechnicalPopup, setShowTechnicalPopup] = useState(false);
   const [showAcademicPopup, setShowAcademicPopup] = useState(false);
   const [showDetailPopup, setShowDetailPopup] = useState(false);
@@ -136,6 +136,10 @@ const ReportIssue: React.FC = () => {
     if (typeLower.includes("suspension") || typeLower.includes("suspend")) {
       return { Icon: PauseCircle, gradient: "from-orange-500 to-orange-600" };
     }
+    
+    if (typeLower.includes("dropout") || typeLower.includes("drop out") || typeLower.includes("dropping out")) {
+      return { Icon: AlertTriangle, gradient: "from-red-600 to-red-700" };
+    }
 
       
     if (typeLower.includes("other") || typeLower.includes("general")) {
@@ -157,7 +161,7 @@ const ReportIssue: React.FC = () => {
     );
   };
 
-  const renderAcademicReports = (tab: "pending" | "resolved" | "rejected") => {
+  const renderAcademicReports = (tab: "all" | "pending" | "resolved" | "rejected") => {
     if (isLoading) {
       return (
         <div className="text-center py-12 text-neutral-500">
@@ -170,7 +174,9 @@ const ReportIssue: React.FC = () => {
     // Filter based on status
     const filtered = academicReports.filter(report => {
       const statusLower = report.statusName?.toLowerCase() || '';
-      if (tab === "pending") {
+      if (tab === "all") {
+        return true; // Show all requests
+      } else if (tab === "pending") {
         return statusLower === 'pending';
       } else if (tab === "rejected") {
         return statusLower === 'rejected';
@@ -182,6 +188,7 @@ const ReportIssue: React.FC = () => {
 
     if (filtered.length === 0) {
       const emptyMessages = {
+        all: 'No academic requests found',
         pending: 'No pending academic requests found',
         resolved: 'No resolved academic requests found',
         rejected: 'No rejected academic requests found'
@@ -267,7 +274,7 @@ const ReportIssue: React.FC = () => {
       {/* Main Card */}
       <Card>
         <div className="p-6">
-          {/* Card Header with Action Button */}
+          {/* Card Header with Action Buttons */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-md ${
@@ -317,6 +324,18 @@ const ReportIssue: React.FC = () => {
           {/* Tabs */}
           <div className="border-b border-gray-200 mb-6">
             <nav className="flex space-x-8">
+              {currentReportType === "Academic" && (
+                <button
+                  onClick={() => setActiveTab("all")}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "all"
+                      ? "border-primary-600 text-primary-700"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
+                  }`}
+                >
+                  All Requests
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab("pending")}
                 className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${

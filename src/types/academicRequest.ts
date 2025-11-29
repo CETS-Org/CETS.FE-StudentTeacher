@@ -5,6 +5,7 @@ export interface SubmitAcademicRequest {
   requestTypeID: string;
   priorityID?: string; // Optional, will default to "Medium" if not provided
   reason: string;
+  reasonCategory?: string; // Required for all request types
   fromClassID?: string;
   toClassID?: string;
   effectiveDate?: string;
@@ -17,6 +18,12 @@ export interface SubmitAcademicRequest {
   // For meeting reschedule
   classMeetingID?: string;
   newRoomID?: string;
+  // For suspension requests
+  suspensionStartDate?: string;
+  suspensionEndDate?: string;
+  // For dropout requests
+  completedExitSurvey?: boolean;
+  exitSurveyUrl?: string;
 }
 
 export interface AcademicRequestResponse {
@@ -55,5 +62,13 @@ export interface AcademicRequestResponse {
   // New meeting details (for meeting reschedule, uses toMeetingDate and toSlotID)
   newRoomID?: string;
   newRoomName?: string;
+  // For suspension requests
+  suspensionStartDate?: string;
+  suspensionEndDate?: string;
+  reasonCategory?: string;
+  expectedReturnDate?: string;
+  // For dropout requests
+  completedExitSurvey?: boolean;
+  exitSurveyUrl?: string;
 }
 
