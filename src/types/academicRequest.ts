@@ -21,6 +21,9 @@ export interface SubmitAcademicRequest {
   // For suspension requests
   suspensionStartDate?: string;
   suspensionEndDate?: string;
+  // For dropout requests
+  completedExitSurvey?: boolean;
+  exitSurveyUrl?: string;
 }
 
 export interface AcademicRequestResponse {
@@ -64,5 +67,8 @@ export interface AcademicRequestResponse {
   suspensionEndDate?: string;
   reasonCategory?: string;
   expectedReturnDate?: string;
+  // For dropout requests
+  completedExitSurvey?: boolean;
+  exitSurveyUrl?: string;
 }
 

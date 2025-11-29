@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFoo
 import { toast } from "@/components/ui/Toast";
 import { submitAcademicRequest, getAttachmentUploadUrl } from "@/api/academicRequest.api";
 import { validateSuspensionRequest } from "@/api/suspensionRequest.api";
+import { validateDropoutRequest } from "@/api/dropoutRequest.api";
 import { getAcademicRequestTypes, getTimeSlots } from "@/api/lookup.api";
 import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
 import { getAllClasses } from "@/api/classes.api";
@@ -19,8 +20,15 @@ import {
   type SuspensionValidationResult,
 } from "@/types/suspensionRequest";
 import {
+  DropoutReasonCategories,
+  DropoutReasonCategoryLabels,
+  type DropoutValidationResult,
+} from "@/types/dropoutRequest";
+import {
   AcademicRequestReasonCategoryLabels,
 } from "@/types/academicRequestReasonCategories";
+import ExitSurveyModal from "./ExitSurveyModal";
+import DropoutWarningModal from "./DropoutWarningModal";
 
 interface AcademicChangeRequestPopupProps {
   isOpen: boolean;
@@ -57,6 +65,16 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     suspensionEndDate: "",
     reasonCategory: "",
   });
+
+  // For dropout requests
+  const [dropoutEffectiveDate, setDropoutEffectiveDate] = useState("");
+  const [dropoutExitSurveyUrl, setDropoutExitSurveyUrl] = useState("");
+  const [dropoutCompletedExitSurvey, setDropoutCompletedExitSurvey] = useState(false);
+  const [showDropoutWarning, setShowDropoutWarning] = useState(false);
+  const [showExitSurvey, setShowExitSurvey] = useState(false);
+  const [dropoutValidationResult, setDropoutValidationResult] = useState<DropoutValidationResult | null>(null);
+  const [isValidatingDropout, setIsValidatingDropout] = useState(false);
+  const [showDropoutValidation, setShowDropoutValidation] = useState(false);
 
   const [requestTypes, setRequestTypes] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -567,6 +585,26 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
            typeCode.includes('suspend');
   };
 
+  const isDropout = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
+    const selectedType = requestTypes.find(type => {
+      const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+      return typeId === formData.requestTypeID;
+    });
+
+    if (!selectedType) return false;
+
+    const typeName = (selectedType.name || '').toLowerCase();
+    const typeCode = (selectedType.code || '').toLowerCase();
+    
+    return typeName.includes('dropout') || 
+           typeName.includes('drop out') ||
+           typeName.includes('dropping out') ||
+           typeCode.includes('dropout') ||
+           typeCode.includes('droppingout');
+  };
+
   const handleValidateSuspension = async () => {
     if (!formData.suspensionStartDate || !formData.suspensionEndDate || !formData.reasonCategory || !formData.reason) {
       toast.error("Please fill in all suspension fields before validating");
@@ -612,12 +650,76 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     return diffDays;
   };
 
+  const handleDropoutWarningContinue = () => {
+    setShowDropoutWarning(false);
+    setShowExitSurvey(true);
+  };
+
+  const handleExitSurveyComplete = (surveyUrl: string, surveyData: any) => {
+    setDropoutExitSurveyUrl(surveyUrl);
+    setDropoutCompletedExitSurvey(true);
+    setShowExitSurvey(false);
+    
+    // Pre-fill reason fields from exit survey to avoid duplication
+    setFormData({
+      ...formData,
+      reasonCategory: surveyData.reasonCategory,
+      reason: surveyData.reasonDetail,
+    });
+    
+    toast.success("Exit survey completed. Reason details have been filled automatically.");
+  };
+
+  const handleValidateDropout = async () => {
+    if (!dropoutEffectiveDate || !formData.reasonCategory || !formData.reason) {
+      toast.error("Please fill in all dropout fields before validating");
+      return;
+    }
+
+    if (!dropoutCompletedExitSurvey || !dropoutExitSurveyUrl) {
+      toast.error("Please complete the exit survey before validating");
+      return;
+    }
+
+    setIsValidatingDropout(true);
+    setShowDropoutValidation(false);
+
+    try {
+      const validationData = {
+        studentID: userId!,
+        requestTypeID: formData.requestTypeID,
+        effectiveDate: dropoutEffectiveDate,
+        reasonCategory: formData.reasonCategory,
+        reasonDetail: formData.reason,
+        completedExitSurvey: dropoutCompletedExitSurvey,
+        exitSurveyUrl: dropoutExitSurveyUrl,
+      };
+
+      const response = await validateDropoutRequest(validationData);
+      setDropoutValidationResult(response.data);
+      setShowDropoutValidation(true);
+
+      if (response.data.isValid) {
+        toast.success("✅ Dropout request validation passed!");
+      } else {
+        toast.error("❌ Validation failed. Please review the errors.");
+      }
+    } catch (error: any) {
+      console.error("Validation error:", error);
+      toast.error(error.response?.data?.message || "Validation failed");
+    } finally {
+      setIsValidatingDropout(false);
+    }
+  };
+
   const validateForm = (): boolean => {
     if (!formData.requestTypeID) {
       toast.error('Please select a request type');
       return false;
     }
 
+    // Skip reason validation for dropout (collected in exit survey)
+    if (!isDropout()) {
     if (!formData.reasonCategory?.trim()) {
       toast.error('Please select a reason category');
       return false;
@@ -626,6 +728,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     if (!formData.reason.trim()) {
       toast.error('Please provide a reason for your request');
       return false;
+      }
     }
 
     // Validate meeting reschedule specific fields
@@ -708,6 +811,36 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       }
     }
 
+    // Validate dropout specific fields
+    if (isDropout()) {
+      // First check if exit survey is completed (most important step)
+      if (!dropoutCompletedExitSurvey || !dropoutExitSurveyUrl) {
+        toast.error('Please complete the exit survey first by clicking "Start Dropout Process"');
+        return false;
+      }
+
+      // Only validate effective date after survey is completed
+      if (!dropoutEffectiveDate?.trim()) {
+        toast.error('Effective Date is required for dropout requests');
+        return false;
+      }
+
+      // Check if effective date is not in the past
+      const effectiveDate = new Date(dropoutEffectiveDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (effectiveDate < today) {
+        toast.error('Effective date cannot be in the past');
+        return false;
+      }
+
+      // Check if validation has been performed
+      if (!dropoutValidationResult || !dropoutValidationResult.isValid) {
+        toast.error('Please validate your dropout request first');
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -774,6 +907,12 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           suspensionStartDate: formData.suspensionStartDate || undefined,
           suspensionEndDate: formData.suspensionEndDate || undefined,
         }),
+        // Dropout fields - only include if it's a dropout request
+        ...(isDropout() && {
+          effectiveDate: dropoutEffectiveDate || undefined,
+          completedExitSurvey: dropoutCompletedExitSurvey,
+          exitSurveyUrl: dropoutExitSurveyUrl || undefined,
+        }),
       };
 
       await submitAcademicRequest(requestData);
@@ -805,6 +944,13 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       setToClassMeetings([]);
       setSuspensionValidationResult(null);
       setShowSuspensionValidation(false);
+      setDropoutEffectiveDate("");
+      setDropoutExitSurveyUrl("");
+      setDropoutCompletedExitSurvey(false);
+      setDropoutValidationResult(null);
+      setShowDropoutValidation(false);
+      setShowDropoutWarning(false);
+      setShowExitSurvey(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -846,6 +992,13 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     setToClassMeetings([]);
     setSuspensionValidationResult(null);
     setShowSuspensionValidation(false);
+    setDropoutEffectiveDate("");
+    setDropoutExitSurveyUrl("");
+    setDropoutCompletedExitSurvey(false);
+    setDropoutValidationResult(null);
+    setShowDropoutValidation(false);
+    setShowDropoutWarning(false);
+    setShowExitSurvey(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -905,7 +1058,8 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </select>
           </div>
 
-          {/* Reason Category - Required for all request types */}
+          {/* Reason Category - Hidden for dropout (collected in exit survey) */}
+          {!isDropout() && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Reason Category <span className="text-red-500">*</span>
@@ -938,8 +1092,10 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               Select the primary reason for your request
             </p>
           </div>
+          )}
 
-          {/* Reason */}
+          {/* Reason - Hidden for dropout (collected in exit survey) */}
+          {!isDropout() && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Reason for Request <span className="text-red-500">*</span>
@@ -957,6 +1113,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             />
             <p className="text-xs text-gray-500 mt-1">{formData.reason.length}/2000 characters</p>
           </div>
+          )}
 
           {/* Suspension-specific fields */}
           {isSuspension() && (
@@ -1152,6 +1309,144 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                 </div>
               </div>
             </>
+          )}
+
+          {/* Dropout Request Fields */}
+          {isDropout() && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <h3 className="text-lg font-semibold text-red-900">Dropout Request</h3>
+              </div>
+
+              <div className="bg-red-100 border border-red-300 rounded-md p-3 mb-4">
+                <p className="text-sm text-red-800">
+                  <strong>⚠️ Important:</strong> Dropping out is permanent and cannot be reversed.
+                  You must complete an exit survey and receive validation before submitting.
+                </p>
+              </div>
+
+              {!dropoutCompletedExitSurvey && (
+                <div className="bg-white border border-red-200 rounded-md p-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Before submitting a dropout request, you must:
+                  </p>
+                  <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2 mb-4">
+                    <li>Read and acknowledge the important warnings</li>
+                    <li>Complete the exit survey</li>
+                    <li>Provide all required information</li>
+                    <li>Validate your request</li>
+                  </ol>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => setShowDropoutWarning(true)}
+                    disabled={isSubmitting}
+                  >
+                    Start Dropout Process
+                  </Button>
+                </div>
+              )}
+
+              {dropoutCompletedExitSurvey && (
+                <>
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <span className="text-sm text-green-800">
+                      ✓ Exit survey completed successfully
+                    </span>
+                  </div>
+
+                  {/* Effective Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Effective Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={dropoutEffectiveDate}
+                      onChange={(e) => setDropoutEffectiveDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                      disabled={isSubmitting}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      The date when you want the dropout to take effect (must be today or later)
+                    </p>
+                  </div>
+
+                  {/* Validation Button */}
+                  <div>
+                    <Button
+                      type="button"
+                      onClick={handleValidateDropout}
+                      disabled={isValidatingDropout || isSubmitting || !dropoutEffectiveDate || !formData.reasonCategory || !formData.reason}
+                      loading={isValidatingDropout}
+                      className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      {isValidatingDropout ? "Validating..." : "Validate Dropout Request"}
+                    </Button>
+                  </div>
+
+                  {/* Validation Results */}
+                  {showDropoutValidation && dropoutValidationResult && (
+                    <div className={`border rounded-lg p-4 ${
+                      dropoutValidationResult.isValid 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <div className="flex items-start gap-2 mb-3">
+                        {dropoutValidationResult.isValid ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                          <h4 className={`font-semibold text-sm ${
+                            dropoutValidationResult.isValid ? 'text-green-800' : 'text-red-800'
+                          }`}>
+                            {dropoutValidationResult.isValid 
+                              ? '✅ Validation Passed' 
+                              : '❌ Validation Failed'}
+                          </h4>
+                        </div>
+                      </div>
+
+                      {dropoutValidationResult.errors.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-sm font-medium text-red-700 mb-2">Errors:</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            {dropoutValidationResult.errors.map((error, index) => (
+                              <li key={index} className="text-sm text-red-600">{error}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {dropoutValidationResult.warnings.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-yellow-700 mb-2">Warnings:</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            {dropoutValidationResult.warnings.map((warning, index) => (
+                              <li key={index} className="text-sm text-yellow-600">{warning}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {dropoutValidationResult.hasUnpaidInvoices && (
+                        <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded">
+                          <p className="text-xs text-yellow-800">
+                            ⚠️ You have unpaid invoices. Financial clearance is required before dropout can be processed.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           )}
 
           {/* Course - Only shown for class transfer, required when shown */}
@@ -1634,6 +1929,21 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         </form>
         </DialogBody>
       </DialogContent>
+
+      {/* Dropout Warning Modal */}
+      <DropoutWarningModal
+        isOpen={showDropoutWarning}
+        onClose={() => setShowDropoutWarning(false)}
+        onContinue={handleDropoutWarningContinue}
+      />
+
+      {/* Exit Survey Modal */}
+      <ExitSurveyModal
+        isOpen={showExitSurvey}
+        onClose={() => setShowExitSurvey(false)}
+        studentID={userId!}
+        onSurveyComplete={handleExitSurveyComplete}
+      />
     </Dialog>
   );
 };
