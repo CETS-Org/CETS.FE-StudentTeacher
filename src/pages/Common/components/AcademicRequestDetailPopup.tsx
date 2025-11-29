@@ -118,18 +118,28 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
 
   // Load exit survey data
   const handleViewExitSurvey = async () => {
-    if (!request?.exitSurveyUrl) {
-      toast.error('Exit survey URL not available');
+    if (!request?.exitSurveyId) {
+      toast.error('Exit survey not available');
       return;
     }
 
     setIsLoadingExitSurvey(true);
     try {
-      const response = await getAttachmentDownloadUrl(request.exitSurveyUrl);
-      const downloadUrl = response.data.downloadUrl;
-
-      const surveyResponse = await fetch(downloadUrl);
-      const surveyData: ExitSurveyData = await surveyResponse.json();
+      // Fetch exit survey from MongoDB
+      const { getExitSurveyById } = await import('@/api/exitSurvey.api');
+      const surveyResponse = await getExitSurveyById(request.exitSurveyId);
+      
+      // Map MongoDB response to ExitSurveyData format
+      const surveyData: ExitSurveyData = {
+        studentID: surveyResponse.studentId,
+        reasonCategory: surveyResponse.reasonCategory as any,
+        reasonDetail: surveyResponse.reasonDetail,
+        feedback: surveyResponse.feedback,
+        futureIntentions: surveyResponse.futureIntentions,
+        comments: surveyResponse.comments,
+        acknowledgesPermanent: surveyResponse.acknowledgesPermanent,
+        completedAt: surveyResponse.completedAt,
+      };
       
       setExitSurveyData(surveyData);
       setShowExitSurvey(true);
@@ -511,7 +521,7 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                           <div className="text-sm font-medium text-gray-900 mb-2">
                             {request.completedExitSurvey ? 'Completed' : 'Not Completed'}
                           </div>
-                          {request.completedExitSurvey && request.exitSurveyUrl && (
+                          {request.completedExitSurvey && request.exitSurveyId && (
                             <Button
                               variant="secondary"
                               size="sm"

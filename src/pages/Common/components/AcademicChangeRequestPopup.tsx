@@ -655,8 +655,8 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     setShowExitSurvey(true);
   };
 
-  const handleExitSurveyComplete = (surveyUrl: string, surveyData: any) => {
-    setDropoutExitSurveyUrl(surveyUrl);
+  const handleExitSurveyComplete = (exitSurveyId: string, surveyData: any) => {
+    setDropoutExitSurveyUrl(exitSurveyId); // Now storing MongoDB ID instead of URL
     setDropoutCompletedExitSurvey(true);
     setShowExitSurvey(false);
     
@@ -692,7 +692,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         reasonCategory: formData.reasonCategory,
         reasonDetail: formData.reason,
         completedExitSurvey: dropoutCompletedExitSurvey,
-        exitSurveyUrl: dropoutExitSurveyUrl,
+        exitSurveyId: dropoutExitSurveyUrl, // Now contains MongoDB ID
       };
 
       const response = await validateDropoutRequest(validationData);
@@ -911,7 +911,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         ...(isDropout() && {
           effectiveDate: dropoutEffectiveDate || undefined,
           completedExitSurvey: dropoutCompletedExitSurvey,
-          exitSurveyUrl: dropoutExitSurveyUrl || undefined,
+          exitSurveyId: dropoutExitSurveyUrl || undefined, // Now contains MongoDB ID
         }),
       };
 

@@ -29,20 +29,28 @@ const DropoutRequestDetails: React.FC<DropoutRequestDetailsProps> = ({ request }
   };
 
   const handleViewExitSurvey = async () => {
-    if (!request.exitSurveyUrl) {
-      toast.error('Exit survey URL not available');
+    if (!request.exitSurveyId) {
+      toast.error('Exit survey not available');
       return;
     }
 
     setIsDownloadingExitSurvey(true);
     try {
-      // Get presigned download URL
-      const response = await getAttachmentDownloadUrl(request.exitSurveyUrl);
-      const downloadUrl = response.data.downloadUrl;
-
-      // Fetch the exit survey JSON
-      const surveyResponse = await fetch(downloadUrl);
-      const surveyData: ExitSurveyData = await surveyResponse.json();
+      // Fetch exit survey from MongoDB
+      const { getExitSurveyById } = await import('@/api/exitSurvey.api');
+      const surveyResponse = await getExitSurveyById(request.exitSurveyId);
+      
+      // Map MongoDB response to ExitSurveyData format
+      const surveyData: ExitSurveyData = {
+        studentID: surveyResponse.studentId,
+        reasonCategory: surveyResponse.reasonCategory as any,
+        reasonDetail: surveyResponse.reasonDetail,
+        feedback: surveyResponse.feedback,
+        futureIntentions: surveyResponse.futureIntentions,
+        comments: surveyResponse.comments,
+        acknowledgesPermanent: surveyResponse.acknowledgesPermanent,
+        completedAt: surveyResponse.completedAt,
+      };
       
       setExitSurveyData(surveyData);
       setShowExitSurvey(true);
@@ -142,7 +150,7 @@ const DropoutRequestDetails: React.FC<DropoutRequestDetailsProps> = ({ request }
       </div>
 
       {/* Exit Survey Section */}
-      {request.completedExitSurvey && request.exitSurveyUrl && (
+      {request.completedExitSurvey && request.exitSurveyId && (
         <div className="border border-neutral-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-base font-semibold text-neutral-800">Exit Survey</h4>

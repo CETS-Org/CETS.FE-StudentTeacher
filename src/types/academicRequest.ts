@@ -23,7 +23,7 @@ export interface SubmitAcademicRequest {
   suspensionEndDate?: string;
   // For dropout requests
   completedExitSurvey?: boolean;
-  exitSurveyUrl?: string;
+  exitSurveyId?: string;
 }
 
 export interface AcademicRequestResponse {
@@ -69,6 +69,6 @@ export interface AcademicRequestResponse {
   expectedReturnDate?: string;
   // For dropout requests
   completedExitSurvey?: boolean;
-  exitSurveyUrl?: string;
+  exitSurveyId?: string;
 }
 

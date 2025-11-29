@@ -14,7 +14,7 @@ export const validateDropoutRequest = (
     reasonCategory: string;
     reasonDetail: string;
     completedExitSurvey: boolean;
-    exitSurveyUrl?: string;
+    exitSurveyId?: string;
   },
   config?: AxiosRequestConfig
 ) =>
@@ -34,7 +34,7 @@ export const submitDropoutRequest = (
     reasonDetail: string;
     attachmentUrl?: string;
     completedExitSurvey: boolean;
-    exitSurveyUrl?: string;
+    exitSurveyId?: string;
   },
   config?: AxiosRequestConfig
 ) =>

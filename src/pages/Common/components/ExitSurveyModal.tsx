@@ -3,7 +3,7 @@ import { X, AlertTriangle, Star } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/ui/Dialog';
 import { toast } from '@/components/ui/Toast';
-import { uploadExitSurvey } from '@/api/dropoutRequest.api';
+import { createExitSurvey } from '@/api/exitSurvey.api';
 import {
   DropoutReasonCategories,
   DropoutReasonCategoryLabels,
@@ -15,7 +15,7 @@ interface ExitSurveyModalProps {
   isOpen: boolean;
   onClose: () => void;
   studentID: string;
-  onSurveyComplete: (surveyUrl: string, surveyData: ExitSurveyData) => void;
+  onSurveyComplete: (exitSurveyId: string, surveyData: ExitSurveyData) => void;
 }
 
 const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
@@ -126,11 +126,11 @@ const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
         studentID,
       };
 
-      const surveyUrl = await uploadExitSurvey(completeSurveyData);
-      onSurveyComplete(surveyUrl, completeSurveyData);
+      const response = await createExitSurvey(completeSurveyData);
+      onSurveyComplete(response.id, completeSurveyData);
       onClose();
     } catch (error: any) {
-      console.error('Failed to upload exit survey:', error);
+      console.error('Failed to save exit survey:', error);
       toast.error(error.response?.data?.message || 'Failed to submit survey. Please try again.');
     } finally {
       setIsSubmitting(false);

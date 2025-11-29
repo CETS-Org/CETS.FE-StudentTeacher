@@ -6,7 +6,7 @@ export interface CreateDropoutRequest {
   reasonDetail: string;
   attachmentUrl?: string;
   completedExitSurvey: boolean;
-  exitSurveyUrl?: string;
+  exitSurveyId?: string;
 }
 
 export interface DropoutValidationResult {
