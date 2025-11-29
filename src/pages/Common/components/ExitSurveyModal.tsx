@@ -103,8 +103,8 @@ const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
       return;
     }
 
-    if (!formData.reasonDetail || formData.reasonDetail.length < 20) {
-      toast.error('Please provide at least 20 characters of detailed explanation');
+    if (!formData.reasonDetail || formData.reasonDetail.trim().length === 0) {
+      toast.error('Please provide a detailed explanation');
       return;
     }
 
@@ -193,18 +193,14 @@ const ExitSurveyModal: React.FC<ExitSurveyModalProps> = ({
                 </label>
                 <textarea
                   required
-                  minLength={20}
                   value={formData.reasonDetail || ''}
                   onChange={(e) =>
                     setFormData({ ...formData, reasonDetail: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   rows={4}
-                  placeholder="Please provide details about your decision to leave (minimum 20 characters)..."
+                  placeholder="Please provide details about your decision to leave..."
                 />
-                <p className="text-xs text-neutral-500 mt-1">
-                  {formData.reasonDetail?.length || 0} / 20 characters minimum
-                </p>
               </div>
             </div>
 

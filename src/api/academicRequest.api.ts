@@ -67,3 +67,20 @@ export const getAttachmentDownloadUrl = (
     }
   );
 
+// Update attachment for request with NeedInfo status
+export interface UpdateAttachmentRequest {
+  requestID: string;
+  attachmentUrl: string;
+  additionalNotes?: string;
+}
+
+export const updateRequestAttachment = (
+  data: UpdateAttachmentRequest,
+  config?: AxiosRequestConfig
+) =>
+  api.put<{ message: string }>(
+    `${ACADEMIC_REQUEST_ENDPOINT}/update-attachment`,
+    data,
+    config
+  );
+

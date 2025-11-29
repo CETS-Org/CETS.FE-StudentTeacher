@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, File, Download, Calendar, User, AlertCircle, CheckCircle, Clock, XCircle, MapPin, PauseCircle, Star, ExternalLink, AlertTriangle } from "lucide-react";
+import { X, File, Download, Calendar, User, AlertCircle, CheckCircle, Clock, XCircle, MapPin, PauseCircle, Star, ExternalLink, AlertTriangle, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import { getAcademicRequestDetails, getAttachmentDownloadUrl } from "@/api/academicRequest.api";
+import { getAcademicRequestDetails, getAttachmentDownloadUrl, getAttachmentUploadUrl, updateRequestAttachment } from "@/api/academicRequest.api";
 import { getAllClasses } from "@/api/classes.api";
 import { getTimeSlots } from "@/api/lookup.api";
 import type { AcademicRequestResponse } from "@/types/academicRequest";
@@ -10,6 +10,7 @@ import { SuspensionReasonCategoryLabels } from "@/types/suspensionRequest";
 import { DropoutReasonCategoryLabels, type ExitSurveyData } from "@/types/dropoutRequest";
 import { AcademicRequestReasonCategoryLabels } from "@/types/academicRequestReasonCategories";
 import { toast } from "@/components/ui/Toast";
+import axios from "axios";
 
 interface AcademicRequestDetailPopupProps {
   isOpen: boolean;
@@ -30,6 +31,12 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
   const [exitSurveyData, setExitSurveyData] = useState<ExitSurveyData | null>(null);
   const [isLoadingExitSurvey, setIsLoadingExitSurvey] = useState(false);
   const [showExitSurvey, setShowExitSurvey] = useState(false);
+  const [isUpdatingAttachment, setIsUpdatingAttachment] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [showUpdateAttachment, setShowUpdateAttachment] = useState(false);
+  const [newAttachmentFile, setNewAttachmentFile] = useState<File | null>(null);
+  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
+  const [additionalNotes, setAdditionalNotes] = useState("");
 
   useEffect(() => {
     if (isOpen && requestId) {
@@ -214,6 +221,14 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
       );
     }
     
+    if (statusLower === 'needinfo' || statusLower === 'need info') {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+          <AlertCircle size={14} /> {status || 'Need Info'}
+        </span>
+      );
+    }
+    
     if (statusLower === 'approved' || statusLower === 'resolved') {
       return (
         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
@@ -268,6 +283,95 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
         }`
       );
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+      setNewAttachmentFile(file);
+    }
+  };
+
+  const handleUploadFile = async () => {
+    if (!newAttachmentFile || !request) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    setIsUploadingFile(true);
+    try {
+      // Step 1: Get presigned upload URL
+      const uploadResponse = await getAttachmentUploadUrl({
+        fileName: newAttachmentFile.name,
+        contentType: newAttachmentFile.type || 'application/octet-stream',
+      });
+
+      const { uploadUrl, filePath } = uploadResponse.data;
+
+      // Step 2: Upload file to S3
+      await axios.put(uploadUrl, newAttachmentFile, {
+        headers: {
+          'Content-Type': newAttachmentFile.type || 'application/octet-stream',
+        },
+      });
+
+      // Step 3: Store file path for confirmation
+      setUploadedFilePath(filePath);
+      toast.success('File uploaded successfully. Please confirm to update your request.');
+    } catch (error: any) {
+      console.error('Upload file error:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload file');
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
+  const handleConfirmUpdate = async () => {
+    if (!uploadedFilePath || !request) {
+      toast.error('No file uploaded to confirm');
+      return;
+    }
+
+    setIsUpdatingAttachment(true);
+    try {
+      // Update request with new attachment URL
+      await updateRequestAttachment({
+        requestID: request.id,
+        attachmentUrl: uploadedFilePath,
+        additionalNotes: additionalNotes || undefined,
+      });
+
+      toast.success('Attachment updated successfully. Request status changed to Pending for staff review.');
+      setShowUpdateAttachment(false);
+      setNewAttachmentFile(null);
+      setUploadedFilePath(null);
+      setAdditionalNotes('');
+      
+      // Refresh request details
+      await fetchRequestDetails();
+    } catch (error: any) {
+      console.error('Update attachment error:', error);
+      toast.error(error.response?.data?.message || 'Failed to update attachment');
+    } finally {
+      setIsUpdatingAttachment(false);
+    }
+  };
+
+  const handleCancelUpdate = () => {
+    setShowUpdateAttachment(false);
+    setNewAttachmentFile(null);
+    setUploadedFilePath(null);
+    setAdditionalNotes('');
+  };
+
+  const isNeedInfoStatus = () => {
+    const statusLower = request?.statusName?.toLowerCase() || '';
+    return statusLower === 'needinfo' || statusLower === 'need info';
   };
 
   if (!isOpen) return null;
@@ -928,6 +1032,158 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                 </div>
               )}
 
+              {/* Update Attachment Section for NeedInfo Status */}
+              {isNeedInfoStatus() && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-blue-800 mb-1">
+                        Additional Information Required
+                      </h4>
+                      <p className="text-sm text-blue-700 mb-3">
+                        {request.staffResponse || "The staff has requested additional information. Please update your attachment."}
+                      </p>
+                      
+                      {!showUpdateAttachment ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setShowUpdateAttachment(true)}
+                          iconLeft={<Upload className="w-4 h-4 mr-2" />}
+                        >
+                          Update Attachment
+                        </Button>
+                      ) : !uploadedFilePath ? (
+                        <div className="space-y-3 mt-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Upload New Attachment
+                            </label>
+                            <input
+                              type="file"
+                              onChange={handleFileChange}
+                              disabled={isUploadingFile}
+                              className="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-md file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-primary-50 file:text-primary-700
+                                hover:file:bg-primary-100
+                                disabled:opacity-50"
+                            />
+                            {newAttachmentFile && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Selected: {newAttachmentFile.name} ({(newAttachmentFile.size / 1024 / 1024).toFixed(2)} MB)
+                              </p>
+                            )}
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Additional Notes (Optional)
+                            </label>
+                            <textarea
+                              value={additionalNotes}
+                              onChange={(e) => setAdditionalNotes(e.target.value)}
+                              disabled={isUploadingFile}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                              rows={3}
+                              placeholder="Explain what you've updated or added..."
+                            />
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={handleUploadFile}
+                              disabled={!newAttachmentFile || isUploadingFile}
+                              loading={isUploadingFile}
+                            >
+                              Upload File
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleCancelUpdate}
+                              disabled={isUploadingFile}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 mt-3">
+                          <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-green-800 mb-1">
+                                  File Uploaded Successfully
+                                </p>
+                                <p className="text-xs text-green-700">
+                                  {newAttachmentFile?.name}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {additionalNotes && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Your Notes:
+                              </label>
+                              <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded border">
+                                {additionalNotes}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <p className="text-xs text-yellow-800">
+                              <strong>Note:</strong> Click "Confirm Update" to finalize the change. This will change the request status back to "Pending" for staff review.
+                            </p>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={handleConfirmUpdate}
+                              disabled={isUpdatingAttachment}
+                              loading={isUpdatingAttachment}
+                              iconLeft={<CheckCircle className="w-4 h-4 mr-2" />}
+                            >
+                              Confirm Update
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setUploadedFilePath(null);
+                                setNewAttachmentFile(null);
+                              }}
+                              disabled={isUpdatingAttachment}
+                            >
+                              Change File
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleCancelUpdate}
+                              disabled={isUpdatingAttachment}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Important Notice */}
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -943,6 +1199,8 @@ const AcademicRequestDetailPopup: React.FC<AcademicRequestDetailPopupProps> = ({
                         ? "Your request has been approved. Please check your email or notifications for further instructions."
                         : request.statusName?.toLowerCase() === 'rejected'
                         ? "Your request has been reviewed and was not approved. Please contact academic staff for more information."
+                        : isNeedInfoStatus()
+                        ? "Staff requires additional information. Please update your attachment above."
                         : "Your request has been processed."}
                     </p>
                   </div>
