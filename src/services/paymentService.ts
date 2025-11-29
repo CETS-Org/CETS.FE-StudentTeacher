@@ -8,6 +8,7 @@ export interface MonthlyPaymentRequest {
   email: string;
   phoneNumber: string;
   note: string;
+  amount: number;
 }
 
 export interface MonthlyPaymentResponse {
@@ -25,6 +26,7 @@ export interface FullPaymentRequest {
   email: string;
   phoneNumber: string;
   note: string;
+  amount: number;
 }
 
 export interface FullPaymentResponse {

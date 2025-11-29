@@ -33,6 +33,7 @@ export const endpoint = {
   teacherCredential: '/api/IDN_TeacherCredential',
   weeklyFeedback: '/api/weekly-feedback',
   notification: '/api/COM_Notification',
+  chat:'/api/COM_Chat',
 };
 
 // Request interceptor to add auth token

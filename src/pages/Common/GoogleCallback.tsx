@@ -48,17 +48,27 @@ export default function GoogleCallback() {
               const backendData = backendResponse.data;
               console.log('Backend Response:', backendData);
 
+              // Normalize field names: convert PascalCase to camelCase for consistency
+              const normalizedAccount = {
+                ...backendData.account,
+                phoneNumber: (backendData.account as any).PhoneNumber || backendData.account.phoneNumber || "",
+                fullName: (backendData.account as any).FullName || backendData.account.fullName || "",
+                avatarUrl: (backendData.account as any).AvatarUrl || backendData.account.avatarUrl,
+                isVerified: (backendData.account as any).IsVerified ?? backendData.account.isVerified ?? true,
+                roleNames: (backendData.account as any).RoleNames || backendData.account.roleNames || []
+              };
+
               // Gửi thông tin về parent window
               console.log('Sending to parent window:', {
                 token: backendData.token,
-                userInfo: backendData.account
+                userInfo: normalizedAccount
               });
               
               if (window.opener) {
                 window.opener.postMessage({
                   type: 'GOOGLE_AUTH_SUCCESS',
                   token: backendData.token, // Sử dụng token từ backend
-                  userInfo: backendData.account // Sử dụng thông tin từ backend
+                  userInfo: normalizedAccount // Sử dụng thông tin đã normalize từ backend
                 }, window.location.origin);
                 console.log('Message sent to parent, closing popup...');
                 window.close();
@@ -66,14 +76,14 @@ export default function GoogleCallback() {
                 // Nếu không có parent window, lưu thông tin và redirect theo role
                 console.log('No parent window, redirecting based on role...');
                 localStorage.setItem("authToken", backendData.token);
-                localStorage.setItem("userInfo", JSON.stringify(backendData.account));
+                localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
                 
                 // Navigate based on user role and verification status
-                if (!backendData.account.isVerified) {
+                if (!normalizedAccount.isVerified) {
                   window.location.href = '/';
-                } else if (backendData.account.roleNames && backendData.account.roleNames.includes('Student')) {
+                } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Student')) {
                   window.location.href = '/student/my-classes';
-                } else if (backendData.account.roleNames && backendData.account.roleNames.includes('Teacher')) {
+                } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Teacher')) {
                   window.location.href = '/teacher/courses';
                 } else {
                   window.location.href = '/';

@@ -53,6 +53,7 @@ import ScrollToTop from './components/ScrollToTop'
 import WeeklyFeedback from '@/pages/Student/WeeklyFeedback'
 import ToastContainer from './components/ui/ToastContainer'
 import TakePlacementTestPage from '@/pages/Student/PlacementTest/TakePlacementTestPage'
+import ChatWidget from '@/Shared/Chat/components/ChatWidget';
 
 
 export default function App() {
@@ -126,6 +127,7 @@ export default function App() {
             <Route path="/teacher/request-issue/:category" element={<TeacherReport />} />
             </Routes>
           </div>
+          <ChatWidget />
           <Footer />
         </UniversalLayout>
       } />
