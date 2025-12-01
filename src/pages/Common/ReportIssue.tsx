@@ -26,10 +26,23 @@ const ReportIssue: React.FC = () => {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [academicReports, setAcademicReports] = useState<AcademicRequestResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialSessionData, setInitialSessionData] = useState<any>(null);
 
   // Determine current report type from URL
   const currentReportType = location.pathname.includes("technical") ? "Technical" : "Academic";
   const pageTitle = currentReportType === "Technical" ? "Technical Issues" : "Academic Requests";
+
+  // Check for initial data from navigation state
+  useEffect(() => {
+    if (location.state?.initialData) {
+      setInitialSessionData(location.state.initialData);
+      setShowAcademicPopup(true);
+      // Clear the state after a short delay to ensure it's captured
+      setTimeout(() => {
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 100);
+    }
+  }, [location.state, location.pathname, navigate]);
 
   // Fetch academic requests on mount and when switching to academic tab
   useEffect(() => {
@@ -392,8 +405,12 @@ const ReportIssue: React.FC = () => {
       
       <AcademicChangeRequestPopup
         isOpen={showAcademicPopup}
-        onClose={() => setShowAcademicPopup(false)}
+        onClose={() => {
+          setShowAcademicPopup(false);
+          setInitialSessionData(null);
+        }}
         onSubmit={handleAcademicSubmit}
+        initialSessionData={initialSessionData}
       />
 
       <AcademicRequestDetailPopup

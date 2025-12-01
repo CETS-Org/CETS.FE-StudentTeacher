@@ -1,6 +1,6 @@
 // src/components/schedule/SessionDetailsDialog.tsx
 import React from "react";
-import { Video } from "lucide-react";
+import { Video, CalendarClock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
@@ -55,7 +55,7 @@ export default function SessionDetailsDialog({
             )}
 
             {sessionData.classId && (
-              <div className="pt-1">
+              <div className="pt-1 space-y-2">
                 <Button
                   variant="primary"
                   className="w-full"
@@ -79,6 +79,31 @@ export default function SessionDetailsDialog({
                 >
                   {sessionData.classMeetingId ? "View This Session" : "View Class"}
                 </Button>
+                {!isStudent && sessionData.classMeetingId && (
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      // Navigate to academic request page with session data
+                      navigate("/teacher/request-issue/academic", {
+                        state: {
+                          initialData: {
+                            classMeetingID: sessionData.classMeetingId,
+                            classId: sessionData.classId,
+                            date: sessionData.date,
+                            time: sessionData.time,
+                            roomNumber: sessionData.roomNumber,
+                            courseName: sessionData.courseName,
+                            className: sessionData.className,
+                          }
+                        }
+                      });
+                      onOpenChange(false);
+                    }}
+                  >
+                    Request Change Schedule
+                  </Button>
+                )}
               </div>
             )}
           </div>

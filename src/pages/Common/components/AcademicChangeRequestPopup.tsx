@@ -7,13 +7,14 @@ import { submitAcademicRequest, getAttachmentUploadUrl } from "@/api/academicReq
 import { validateSuspensionRequest } from "@/api/suspensionRequest.api";
 import { validateDropoutRequest } from "@/api/dropoutRequest.api";
 import { getAcademicRequestTypes, getTimeSlots } from "@/api/lookup.api";
-import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
+import { getClassMeetingsByClassId, getTeacherSchedule } from "@/api/classMeetings.api";
 import { getAllClasses } from "@/api/classes.api";
 import { getCourses } from "@/api/course.api";
-import { getUserInfo, getStudentId, getUserRole } from "@/lib/utils";
+import { getUserInfo, getStudentId, getUserRole, getTeacherId } from "@/lib/utils";
 import { uploadToPresignedUrl } from "@/api/file.api";
 import type { SubmitAcademicRequest } from "@/types/academicRequest";
 import type { MyClass } from "@/types/class";
+import type { TeacherScheduleApiResponse } from "@/types/teacherSchedule";
 import {
   SuspensionReasonCategories,
   SuspensionReasonCategoryLabels,
@@ -34,15 +35,26 @@ interface AcademicChangeRequestPopupProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: () => void; // Callback to refresh the reports list
+  initialSessionData?: {
+    classMeetingID?: string;
+    classId?: string;
+    date?: string;
+    time?: string;
+    roomNumber?: string;
+    courseName?: string;
+    className?: string;
+  } | null;
 }
 
 const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  initialSessionData,
 }) => {
   const userInfo = getUserInfo();
   const userId = getStudentId();
+  const userRole = getUserRole();
 
   const [formData, setFormData] = useState({
     requestTypeID: "", 
@@ -100,6 +112,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const [suspensionValidationResult, setSuspensionValidationResult] = useState<SuspensionValidationResult | null>(null);
   const [isValidatingSuspension, setIsValidatingSuspension] = useState(false);
   const [showSuspensionValidation, setShowSuspensionValidation] = useState(false);
+  const [teacherSchedule, setTeacherSchedule] = useState<TeacherScheduleApiResponse[]>([]);
 
   // Get filtered classes based on selected course
   const filteredClasses = formData.courseID 
@@ -127,6 +140,24 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     return slotCode;
   };
 
+  // Helper to get slot code from lookup ID
+  const getSlotCodeFromLookupId = (slotId: string): string | null => {
+    if (!slotId) return null;
+    const slot = timeSlotLookups.find((s: any) => {
+      const id = s.lookUpId || s.LookUpId || s.id;
+      return id === slotId;
+    });
+    if (!slot) return null;
+    return (slot.code || slot.Code || "") as string;
+  };
+
+  // Normalize date string (compare by date only)
+  const normalizeDate = (value: string | Date): string => {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0];
+  };
+
   const fromClass = formData.fromClassID ? getSelectedClass(formData.fromClassID) : null;
   const toClass = formData.toClassID ? getSelectedClass(formData.toClassID) : null;
 
@@ -137,8 +168,120 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       fetchCourses();
       fetchClasses();
       fetchTimeSlots();
+
+      // For teachers, pre-load their schedule for collision validation in meeting reschedule
+      const role = (userRole || "").toLowerCase();
+      if (role === "teacher") {
+        const teacherId = getTeacherId();
+        if (teacherId) {
+          getTeacherSchedule(teacherId)
+            .then((response) => {
+              // API might return data directly or wrapped in .data
+              const data = (response as any).data ?? response;
+              setTeacherSchedule(data || []);
+            })
+            .catch((error) => {
+              console.error("Error fetching teacher schedule for validation:", error);
+              setTeacherSchedule([]);
+            });
+        }
+      }
+    } else {
+      // Reset when popup closes
+      setTeacherSchedule([]);
     }
-  }, [isOpen]);
+  }, [isOpen, userRole]);
+
+  // Auto-fill form when initialSessionData is provided
+  useEffect(() => {
+    if (isOpen && initialSessionData && requestTypes.length > 0 && allClasses.length > 0) {
+      // Find "Meeting Reschedule" request type
+      const meetingRescheduleType = requestTypes.find(type => {
+        const typeName = (type.name || '').toLowerCase();
+        const typeCode = (type.code || '').toLowerCase();
+        return typeName.includes('meeting reschedule') || typeCode.includes('meetingreschedule');
+      });
+
+      if (meetingRescheduleType && initialSessionData.classMeetingID && initialSessionData.classId) {
+        const typeId = meetingRescheduleType.lookUpId || (meetingRescheduleType as any).LookUpId || meetingRescheduleType.id;
+        
+        // Set request type to Meeting Reschedule and class ID first
+        setFormData(prev => ({
+          ...prev,
+          requestTypeID: typeId,
+          classID: initialSessionData.classId || "",
+        }));
+
+        // Fetch class meetings for the selected class, then set classMeetingID
+        if (initialSessionData.classId) {
+          const loadMeetingsAndSetData = async () => {
+            await fetchClassMeetings(initialSessionData.classId!);
+            // After meetings are loaded, set the classMeetingID
+            // This will trigger the logic in handleInputChange to populate fromMeetingDate and fromSlotID
+            setFormData(prev => ({
+              ...prev,
+              classMeetingID: initialSessionData.classMeetingID || "",
+            }));
+          };
+          loadMeetingsAndSetData().catch(() => {
+            // If fetch fails, still set the classMeetingID
+            setFormData(prev => ({
+              ...prev,
+              classMeetingID: initialSessionData.classMeetingID || "",
+            }));
+          });
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialSessionData, requestTypes, allClasses]);
+
+  // Populate meeting details when classMeetings are loaded and we have initialSessionData
+  useEffect(() => {
+    if (isOpen && initialSessionData?.classMeetingID && classMeetings.length > 0 && formData.classMeetingID === initialSessionData.classMeetingID) {
+      const selectedMeeting = classMeetings.find(meeting => meeting.id === initialSessionData.classMeetingID);
+      
+      if (selectedMeeting && !formData.fromMeetingDate) {
+        // Try to get slot ID directly from meeting first, then from lookup
+        let slotId = selectedMeeting.slotID || selectedMeeting.SlotID;
+        
+        if (!slotId) {
+          // Fallback: Get slot ID from meeting slot code and lookup
+          const slotCode = selectedMeeting.slot;
+          
+          // Try multiple lookup strategies
+          let slotLookup = timeSlotLookups.find(s => (s.code || s.Code) === slotCode);
+          
+          if (!slotLookup) {
+            // Try finding by name containing the time
+            slotLookup = timeSlotLookups.find(s => {
+              const name = s.name || s.Name || '';
+              return name.includes(slotCode);
+            });
+          }
+          
+          if (!slotLookup) {
+            // Try reverse lookup using the timeSlots map
+            for (const [code, timeStr] of timeSlots.entries()) {
+              if (timeStr === slotCode || timeStr.includes(slotCode)) {
+                slotLookup = timeSlotLookups.find(s => (s.code || s.Code) === code);
+                break;
+              }
+            }
+          }
+          
+          slotId = slotLookup?.lookUpId || slotLookup?.LookUpId || slotLookup?.id;
+        }
+      
+        setFormData(prev => ({
+          ...prev,
+          fromMeetingDate: selectedMeeting.date,
+          fromSlotID: slotId || "",
+        }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialSessionData, classMeetings, timeSlotLookups, timeSlots]);
 
   const fetchRequestTypes = async () => {
     setIsLoading(true);
@@ -226,12 +369,30 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     setIsLoadingMeetings(true);
     try {
       const meetings = await getClassMeetingsByClassId(classId);
-      // Filter out deleted meetings and only show future meetings
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const futureMeetings = meetings
-        .filter(m => !m.isDeleted && new Date(m.date) >= today)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      // Sort all non-deleted meetings by date (and slot if available) 
+      // and assign a stable sessionNumber based on this chronological order
+      const sortedMeetingsWithSession = meetings
+        .filter((m: any) => !m.isDeleted)
+        .sort((a: any, b: any) => {
+          const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          const slotA = (a.slot || '').toString();
+          const slotB = (b.slot || '').toString();
+          return slotA.localeCompare(slotB);
+        })
+        .map((m: any, idx: number) => ({
+          ...m,
+          sessionNumber: idx + 1,
+        }));
+
+      // Only show future meetings in the dropdown, but keep their original sessionNumber
+      const futureMeetings = sortedMeetingsWithSession.filter(
+        (m: any) => new Date(m.date) >= today
+      );
+
       setClassMeetings(futureMeetings);
     } catch (error: any) {
       console.error('Error fetching class meetings:', error);
@@ -250,13 +411,29 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     }
     try {
       const meetings = await getClassMeetingsByClassId(classId);
-      // Filter out deleted meetings and only show future meetings
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const futureMeetings = meetings
-        .filter(m => !m.isDeleted && new Date(m.date) >= today)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      
+
+      // Sort all non-deleted meetings chronologically and assign sessionNumber
+      const sortedMeetingsWithSession = meetings
+        .filter((m: any) => !m.isDeleted)
+        .sort((a: any, b: any) => {
+          const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          const slotA = (a.slot || '').toString();
+          const slotB = (b.slot || '').toString();
+          return slotA.localeCompare(slotB);
+        })
+        .map((m: any, idx: number) => ({
+          ...m,
+          sessionNumber: idx + 1,
+        }));
+
+      // Only keep future meetings for selection, but preserve sessionNumber
+      const futureMeetings = sortedMeetingsWithSession.filter(
+        (m: any) => new Date(m.date) >= today
+      );
+
       if (type === 'from') {
         setFromClassMeetings(futureMeetings);
       } else {
@@ -760,6 +937,45 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       if (newDate < today) {
         toast.error('New meeting date cannot be in the past');
         return false;
+      }
+
+      // Validate that the new date/slot does not collide with another session
+      const newDateKey = normalizeDate(formData.toMeetingDate);
+      const newSlotCode = getSlotCodeFromLookupId(formData.toSlotID);
+
+      if (newDateKey && newSlotCode) {
+        // 1) Check within this class's meetings (exclude the meeting being rescheduled)
+        const hasClassConflict = classMeetings.some((meeting) => {
+          if (meeting.id === formData.classMeetingID) return false;
+
+          const meetingDate = normalizeDate(meeting.date || (meeting as any).Date);
+          const meetingSlotCode = (meeting.slot || (meeting as any).Slot || "").toString();
+
+          return meetingDate === newDateKey && meetingSlotCode === newSlotCode;
+        });
+
+        if (hasClassConflict) {
+          toast.error('This class already has another session at the selected date and time slot.');
+          return false;
+        }
+
+        // 2) If we have the teacher's overall schedule, also check for clashes with other classes
+        if (teacherSchedule.length > 0 && formData.classID) {
+          const hasTeacherConflict = teacherSchedule.some((item) => {
+            const itemDateKey = (item.date || "").split("T")[0];
+            const itemSlotCode = (item.slot || "").toString();
+
+            // Ignore sessions from the same class – we're only blocking collisions with *other* classes
+            if (item.classId === formData.classID) return false;
+
+            return itemDateKey === newDateKey && itemSlotCode === newSlotCode;
+          });
+
+          if (hasTeacherConflict) {
+            toast.error('You already have another class scheduled at this date and time. Please choose a different slot.');
+            return false;
+          }
+        }
       }
     }
 
@@ -1718,11 +1934,15 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                     disabled={isSubmitting || isLoadingMeetings || !formData.classID}
                   >
                     <option value="" disabled>Select a meeting</option>
-                    {classMeetings.map((meeting) => {
+                    {classMeetings.map((meeting, index) => {
                       const meetingDate = new Date(meeting.date);
-                      const slotTime = getTimeFromSlot(meeting.slot || '');
+                      const slotCode = meeting.slot || '';
+                      const slotTime = getTimeFromSlot(slotCode);
+                      // Prefer backend-derived sessionNumber if available; fallback to index
+                      const sessionNumber = (meeting as any).sessionNumber ?? index + 1;
                       return (
                         <option key={meeting.id} value={meeting.id}>
+                          Session {sessionNumber} -{" "}
                           {meetingDate.toLocaleDateString('en-US', { 
                             weekday: 'short', 
                             month: 'short', 
