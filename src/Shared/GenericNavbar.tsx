@@ -75,6 +75,9 @@ export default function GenericNavbar({
         // Clear any authentication tokens/data here
         localStorage.removeItem('authToken');
         localStorage.removeItem('userData');
+
+        // Clear in-memory notifications so previous account state is not shown
+        setNotifications([]);
         
         // Close dialog and navigate to login
         setIsLogoutDialogOpen(false);
