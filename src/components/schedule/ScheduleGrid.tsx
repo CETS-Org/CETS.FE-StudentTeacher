@@ -44,17 +44,30 @@ export default function ScheduleGrid<T extends BaseSession>({
         return [Math.floor(total / 60), total % 60] as const;
       });
 
+  // Helper function to normalize time string (handles both "9:00" and "09:00")
+  function normalizeTime(timeStr: string): string {
+    const parts = timeStr.split(":");
+    if (parts.length !== 2) return timeStr;
+    const hours = parts[0].padStart(2, "0");
+    const minutes = parts[1].padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
   function getPosition(dt: Date) {
     const dayIdx = (dt.getDay() + 6) % 7; // Mon=0
     const minutes = dt.getHours() * 60 + dt.getMinutes();
 
     if (timeSlots && timeSlots.length > 0) {
       const slotIdx = timeSlots.findIndex((slot) => {
-        const [startHours, startMinutes] = slot.start.split(":").map(Number);
-        const [endHours, endMinutes] = slot.end.split(":").map(Number);
+        // Normalize slot times to handle both "9:00" and "09:00" formats
+        const normalizedStart = normalizeTime(slot.start);
+        const normalizedEnd = normalizeTime(slot.end);
+        const [startHours, startMinutes] = normalizedStart.split(":").map(Number);
+        const [endHours, endMinutes] = normalizedEnd.split(":").map(Number);
         const slotStart = startHours * 60 + startMinutes;
         const slotEnd = endHours * 60 + endMinutes;
-        return minutes >= slotStart && minutes < slotEnd;
+        // Include both start and end boundaries: >= start and <= end
+        return minutes >= slotStart && minutes <= slotEnd;
       });
       return { dayIdx, slotIdx };
     }

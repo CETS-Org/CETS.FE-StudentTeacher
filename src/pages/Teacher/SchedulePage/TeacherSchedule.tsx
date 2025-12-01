@@ -24,14 +24,27 @@ function getErrorMessage(error: any, fallback = 'An error occurred'): string {
 }
 
 function transformScheduleToSessions(scheduleData: TeacherScheduleApiResponse[]): Session[] {
+  // Helper function to normalize time string (handles both "9:00" and "09:00")
+  const normalizeTime = (timeStr: string): string => {
+    const parts = timeStr.split(":");
+    if (parts.length !== 2) return timeStr;
+    const hours = parts[0].padStart(2, "0");
+    const minutes = parts[1].padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
   return scheduleData.map((item, index) => {
+    // Normalize startTime and endTime to handle both "9:00" and "09:00" formats
+    const normalizedStartTime = normalizeTime(item.startTime);
+    const normalizedEndTime = normalizeTime(item.endTime);
+    
     // Combine date and time to create ISO format: "YYYY-MM-DDTHH:mm:ss"
     const dateOnly = item.date.split('T')[0]; // "2025-10-05"
-    const startDateTime = `${dateOnly}T${item.startTime}:00`; // "2025-10-05T09:00:00"
+    const startDateTime = `${dateOnly}T${normalizedStartTime}:00`; // "2025-10-05T09:00:00"
     
     // Calculate duration from start and end time
-    const [startHour, startMin] = item.startTime.split(':').map(Number);
-    const [endHour, endMin] = item.endTime.split(':').map(Number);
+    const [startHour, startMin] = normalizedStartTime.split(':').map(Number);
+    const [endHour, endMin] = normalizedEndTime.split(':').map(Number);
     const durationMin = (endHour * 60 + endMin) - (startHour * 60 + startMin);
     
     // Determine attendance status based on date
