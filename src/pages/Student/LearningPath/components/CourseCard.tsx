@@ -18,6 +18,7 @@ export interface CourseItem {
     attendedSessions: number;
   };
   classItem?: MyClass | null;
+  className?: string; // Class name from enrollment data
 }
 
 interface CourseCardProps {
@@ -57,9 +58,15 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
     }
   };
 
-  // Extract short class name (e.g., "Advanced Business English - Class A1" -> "A1")
+  // Extract short class name (e.g., "CLS0009" -> "CLS0009", "Advanced Business English - Class A1" -> "A1")
   const getShortClassName = (className: string): string => {
     if (!className) return '';
+    
+    // If className is already in format like "CLS0009", return it directly
+    if (/^[A-Z]{3}\d+$/i.test(className.trim())) {
+      return className.trim();
+    }
+    
     // Try to find pattern like "Class A1", "Class C1", etc.
     const match = className.match(/Class\s+([A-Z]\d+)/i);
     if (match) {
@@ -76,10 +83,13 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
       }
       return lastPart;
     }
-    return '';
+    // If no pattern matches, return the className as is
+    return className.trim();
   };
 
-  const getProgressColor = (progressPercentage: number) => {
+  const getProgressColor = (progressPercentage: number, totalSessions?: number) => {
+    // If totalSessions is 0 (0/0 sessions), use gray
+    if (totalSessions !== undefined && totalSessions === 0) return "neutral";
     // If progress is less than 20%, use blue (xanh dương sáng)
     if (progressPercentage < 20) return "primary";
     // Otherwise use success (xanh lá cây)
@@ -95,7 +105,13 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
         return "bg-red-100 text-red-800 border-red-200";
       case "enrolled":
       case "in-progress":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        // Check if course has started (if classItem has startDate)
+        const hasStarted = classItem?.startDate 
+          ? new Date(classItem.startDate) <= new Date()
+          : false;
+        return hasStarted
+          ? "bg-blue-600 text-white border-blue-700"  // Xanh dương đậm khi đã bắt đầu
+          : "bg-blue-100 text-blue-800 border-blue-200";  // Xanh nhạt khi chưa bắt đầu
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -140,21 +156,55 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  const handleCourseClick = () => {
-    if (classItem) {
-      onCourseClick(classItem);
-    }
-  };
+  // Check if course can be clicked: allow all courses to be clicked
+  const statusLower = course.status?.toLowerCase() || '';
+  const isPending = statusLower === 'pending' || statusLower === 'waiting for class' || statusLower === 'waitingforclass';
+  
+  // Allow all courses to be clicked (including Pending status)
+  const canClick = !loadingClass;
 
-  const canClick = !loadingClass && classItem !== null;
+  const handleCourseClick = () => {
+    // If no classItem OR status is "Pending", create a minimal one for viewing learning timeline
+    if (!classItem || isPending) {
+      const minimalClassItem: MyClass = {
+        id: `temp-${course.courseId}`,
+        className: `${course.courseName} - No Class Assigned`,
+        classNum: 0,
+        description: '',
+        instructor: course.instructor,
+        level: 'Beginner',
+        classStatus: 'active',
+        courseFormat: 'In-person',
+        courseName: course.courseName,
+        courseCode: course.courseCode,
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
+        status: 'active',
+        isActive: true,
+        certificate: false
+      };
+      onCourseClick(minimalClassItem);
+      return;
+    }
+    
+    onCourseClick(classItem);
+  };
 
   return (
     <div
       className={`overflow-hidden transition-all duration-300 ${canClick ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}
-      onClick={canClick ? handleCourseClick : undefined}
+      onClick={(e) => {
+        if (!canClick) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        handleCourseClick();
+      }}
+      style={!canClick ? { pointerEvents: 'auto' } : undefined}
     >
       <Card 
-        className="border border-accent-100 hover:shadow-lg"
+        className={`border border-accent-100 ${canClick ? 'hover:shadow-lg' : 'hover:shadow-none'}`}
       >
       {/* Course Header */}
       <div className="p-6">
@@ -169,9 +219,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
             <h3 className="text-lg font-bold text-primary-800 mb-1">
               {course.courseName}
             </h3>
-            {classItem && classItem.className && (
+            {(course.className || classItem?.className) && (
               <p className="text-sm text-accent-600 mb-2">
-                Class: {getShortClassName(classItem.className)}
+                Class: {getShortClassName(course.className || classItem?.className || '')}
               </p>
             )}
             <div className="flex items-center gap-2 text-sm text-accent-600">
@@ -203,11 +253,18 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
           </div>
           <ProgressBar
             progress={course.attendanceData 
-              ? (course.attendanceData.attendedSessions / course.attendanceData.totalSessions) * 100
+              ? course.attendanceData.totalSessions > 0
+                ? (course.attendanceData.attendedSessions / course.attendanceData.totalSessions) * 100
+                : 0
               : course.attendanceRate}
-            variant={getProgressColor(course.attendanceData 
-              ? (course.attendanceData.attendedSessions / course.attendanceData.totalSessions) * 100
-              : course.attendanceRate) as any}
+            variant={getProgressColor(
+              course.attendanceData 
+                ? course.attendanceData.totalSessions > 0
+                  ? (course.attendanceData.attendedSessions / course.attendanceData.totalSessions) * 100
+                  : 0
+                : course.attendanceRate,
+              course.attendanceData?.totalSessions
+            ) as any}
             size="md"
             showLabel={false}
           />

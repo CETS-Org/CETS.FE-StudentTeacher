@@ -3,7 +3,7 @@ import React from "react";
 export interface ProgressBarProps {
   progress: number; // 0-100
   size?: "sm" | "md" | "lg";
-  variant?: "primary" | "success" | "warning" | "error";
+  variant?: "primary" | "success" | "warning" | "error" | "neutral";
   showLabel?: boolean;
   className?: string;
   label?: string;
@@ -34,6 +34,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       case "success": return "bg-success-500";
       case "warning": return "bg-warning-500";
       case "error": return "bg-error-500";
+      case "neutral": return "bg-neutral-400";
       case "primary":
       default: return "bg-primary-500";
     }

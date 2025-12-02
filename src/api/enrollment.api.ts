@@ -5,9 +5,13 @@ export interface CourseEnrollment {
   courseId?: string; 
   courseCode: string;
   courseName: string;
+  description?: string | null;
+  courseImageUrl?: string | null;
   teacherName?: string; 
   enrollmentStatus: string;
   enrollmentDate?: string; 
+  tentativeStartDate?: string; // Tentative start date for pending enrollments (from backend)
+  className?: string; // Class name if student is assigned to a class
   isActive: boolean;
   createdAt: string;
   teachers?: string[]; 

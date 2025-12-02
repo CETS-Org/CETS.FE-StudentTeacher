@@ -17,6 +17,8 @@ import type { ClassAttendanceSummary } from "@/types/attendance";
 import { getStudentId } from "@/lib/utils";
 import { getLearningPathOverview } from "@/api/academicResults.api";
 import type { LearningPathOverviewResponse } from "@/api/academicResults.api";
+import { getStudentEnrollments } from "@/api/enrollment.api";
+import type { CourseEnrollment } from "@/api/enrollment.api";
 import CourseCard, { type CourseItem } from "@/pages/Student/LearningPath/components/CourseCard";
 import ClassDetailsView from "@/pages/Student/LearningPath/components/ClassDetailsView";
 import type { MyClass } from "@/types/class";
@@ -30,6 +32,9 @@ export default function LearningPath() {
   
   // Classes data for mapping course to class
   const [classesData, setClassesData] = useState<MyClass[]>([]);
+
+  // Enrollment data
+  const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
 
   // View state: 'courseList' or 'classDetails'
   const [currentView, setCurrentView] = useState<'courseList' | 'classDetails'>('courseList');
@@ -65,18 +70,15 @@ export default function LearningPath() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching learning path data for student:', studentId);
         setLoading(true);
         setError(null);
         
         if (!studentId) {
           throw new Error('Student ID not found. Please log in again.');
         }
-        
+
         // Fetch learning path overview
-        console.log('Calling getLearningPathOverview...');
         const overviewData = await getLearningPathOverview(studentId);
-        console.log('Learning path overview response:', overviewData);
         
         if (overviewData && overviewData.courses) {
           setLearningPathData(overviewData);
@@ -86,14 +88,21 @@ export default function LearningPath() {
         
         // Fetch classes to map courses to classes
         try {
-          console.log('Fetching classes...');
           const classesResponse = await getStudentLearningClasses(studentId);
           const classes = classesResponse.data || [];
-          console.log('Classes response:', classes);
           setClassesData(Array.isArray(classes) ? classes : []);
         } catch (classError) {
           console.warn('Error fetching classes, continuing without class data:', classError);
           setClassesData([]);
+        }
+
+        // Fetch enrollments to get enrollment status and expected start date
+        try {
+          const enrollmentsData = await getStudentEnrollments(studentId);
+          setEnrollments(Array.isArray(enrollmentsData) ? enrollmentsData : []);
+        } catch (enrollmentError) {
+          console.warn('Error fetching enrollments, continuing without enrollment data:', enrollmentError);
+          setEnrollments([]);
         }
       } catch (err: any) {
         console.error('Error fetching learning path data:', err);
@@ -147,7 +156,6 @@ export default function LearningPath() {
   // Transform learning path data to course list
   const allCourseList = useMemo(() => {
     if (!learningPathData || !learningPathData.courses) {
-      console.log('No learning path data or courses:', { learningPathData });
       return [];
     }
 
@@ -159,6 +167,15 @@ export default function LearningPath() {
         const classItem = classesData.find(
           (cls) => cls.courseCode === course.courseCode
         );
+
+        // Find matching enrollment to get className
+        const matchingEnrollment = enrollments.find(
+          (enrollment) => 
+            enrollment.courseId === course.courseId ||
+            enrollment.courseCode === course.courseCode
+        );
+
+        const finalClassName = matchingEnrollment?.className || classItem?.className || undefined;
 
         return {
           courseId: course.courseId,
@@ -173,14 +190,15 @@ export default function LearningPath() {
             totalSessions: progress.totalSessions,
             attendedSessions: progress.attendedSessions
           },
-          classItem: classItem || null // Store class item for navigation
+          classItem: classItem || null, // Store class item for navigation
+          className: finalClassName // Get className from enrollment or classItem
         } as CourseItem & { classItem: MyClass | null };
       });
     } catch (err) {
       console.error('Error transforming course list:', err);
       return [];
     }
-  }, [learningPathData, classesData]);
+  }, [learningPathData, classesData, enrollments]);
 
   // Filter and search course list
   const courseList = useMemo(() => {
@@ -219,6 +237,28 @@ export default function LearningPath() {
   const handleCourseClick = (classItem: MyClass) => {
     setSelectedClass(classItem);
     setCurrentView('classDetails');
+    
+    // Find matching course from learningPathData to get statusCode
+    const matchingCourse = learningPathData?.courses.find(
+      (course) => course.courseCode === classItem.courseCode
+    );
+    
+    // Find matching enrollment for this course
+    const matchingEnrollment = enrollments.find(
+      (enrollment) => 
+        enrollment.courseId === classItem.courseCode || 
+        enrollment.courseCode === classItem.courseCode ||
+        enrollment.courseId === matchingCourse?.courseId
+    );
+    
+    if (matchingEnrollment) {
+      // Set courseId from enrollment if available
+      if (matchingEnrollment.courseId) {
+        setSelectedCourseId(matchingEnrollment.courseId);
+      }
+    } else if (matchingCourse?.courseId) {
+      setSelectedCourseId(matchingCourse.courseId);
+    }
   };
 
   const handleBackToCourseList = () => {
@@ -289,6 +329,56 @@ export default function LearningPath() {
           classItem={selectedClass}
           courseId={selectedCourseId || undefined}
           onBack={handleBackToCourseList}
+          enrollmentStatus={
+            (() => {
+              // First try to get from enrollment API
+              const matchingEnrollment = enrollments.find(
+                (enrollment) => 
+                  enrollment.courseId === selectedClass.courseCode || 
+                  enrollment.courseCode === selectedClass.courseCode ||
+                  enrollment.courseId === selectedCourseId
+              );
+              
+              if (matchingEnrollment?.enrollmentStatus) {
+                return matchingEnrollment.enrollmentStatus;
+              }
+              
+              // Fallback to statusCode from learning path data
+              const matchingCourse = learningPathData?.courses.find(
+                (course) => course.courseCode === selectedClass.courseCode
+              );
+              
+              // Map statusCode to enrollmentStatus format
+              if (matchingCourse?.statusCode) {
+                const statusCode = matchingCourse.statusCode.toLowerCase();
+                if (statusCode === "pending") {
+                  return "waiting for class";
+                }
+                return matchingCourse.statusCode;
+              }
+              
+              return undefined;
+            })()
+          }
+          expectedStartDate={
+            enrollments.find(
+              (enrollment) => 
+                enrollment.courseId === selectedClass.courseCode || 
+                enrollment.courseCode === selectedClass.courseCode ||
+                enrollment.courseId === selectedCourseId
+            )?.tentativeStartDate as string | undefined
+          }
+          enrollmentDate={
+            (() => {
+              const matchingEnrollment = enrollments.find(
+                (enrollment) => 
+                  enrollment.courseId === selectedClass.courseCode || 
+                  enrollment.courseCode === selectedClass.courseCode ||
+                  enrollment.courseId === selectedCourseId
+              );
+              return matchingEnrollment?.enrollmentDate || matchingEnrollment?.createdAt;
+            })()
+          }
         />
       ) : (
         /* Course List View */
