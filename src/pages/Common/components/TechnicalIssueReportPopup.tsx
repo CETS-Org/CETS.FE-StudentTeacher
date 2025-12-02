@@ -1,22 +1,16 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { X, Upload, File, AlertCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, getStudentId, getTeacherId } from "@/lib/utils";
+import { createComplaint, getReportTypes, getReportStatuses, getReportImageUploadUrl, type CreateComplaintRequest, type ReportType } from "@/api/complaint.api";
+import { uploadToPresignedUrl } from "@/api/file.api";
+import { useToast } from "@/hooks/useToast";
 
 interface TechnicalIssueReportPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TechnicalReportData) => void;
-}
-
-interface TechnicalReportData {
-  studentTeacherId: string;
-  fullName: string;
-  reportType: string;
-  title: string;
-  description: string;
-  attachments?: File[];
+  onSubmit: () => void;
 }
 
 const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
@@ -25,18 +19,49 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
   onSubmit,
 }) => {
   const userInfo = getUserInfo();
-  const [formData, setFormData] = useState<TechnicalReportData>({
-    studentTeacherId: "",
-    fullName: "",
-    reportType: "Technical",
+  const userId = getStudentId() || getTeacherId();
+  const { success: showSuccess, error: showError } = useToast();
+  
+  const [formData, setFormData] = useState<{
+    reportTypeID: string;
+    title: string;
+    description: string;
+  }>({
+    reportTypeID: "",
     title: "",
     description: "",
-    attachments: [],
   });
+  
+  const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingTypes, setIsLoadingTypes] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch report types on mount
+  useEffect(() => {
+    if (isOpen) {
+      fetchReportTypes();
+    }
+  }, [isOpen]);
+
+  const fetchReportTypes = async () => {
+    setIsLoadingTypes(true);
+    try {
+      const types = await getReportTypes();
+      setReportTypes(types.filter(type => type.isActive));
+      // Auto-select first type if available
+      if (types.length > 0 && !formData.reportTypeID) {
+        setFormData(prev => ({ ...prev, reportTypeID: types[0].id }));
+      }
+    } catch (error) {
+      console.error('Error fetching report types:', error);
+      showError('Failed to load report types. Please try again.');
+    } finally {
+      setIsLoadingTypes(false);
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -48,10 +73,16 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file size (max 50MB)
-      if (file.size > 50 * 1024 * 1024) {
-        // toast.error('File size must be less than 50MB');
-        alert('File size must be less than 50MB');
+      // Validate file type - only images allowed
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        showError('Please select an image file (jpg, jpeg, png, gif, or webp)');
+        return;
+      }
+      
+      // Validate file size (max 10MB for images)
+      if (file.size > 10 * 1024 * 1024) {
+        showError('Image size must be less than 10MB');
         return;
       }
       setSelectedFile(file);
@@ -73,10 +104,16 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
     setIsDragOver(false);
     const file = e.dataTransfer.files[0];
     if (file) {
-      // Validate file size (max 50MB)
-      if (file.size > 50 * 1024 * 1024) {
-        // toast.error('File size must be less than 50MB');
-        alert('File size must be less than 50MB');
+      // Validate file type - only images allowed
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        showError('Please select an image file (jpg, jpeg, png, gif, or webp)');
+        return;
+      }
+      
+      // Validate file size (max 10MB for images)
+      if (file.size > 10 * 1024 * 1024) {
+        showError('Image size must be less than 10MB');
         return;
       }
       setSelectedFile(file);
@@ -93,33 +130,113 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Submit clicked', { userId, formData, selectedFile });
+    
+    if (!userId) {
+      showError('User ID not found. Please login again.');
+      return;
+    }
+
+    if (!formData.reportTypeID) {
+      showError('Please select a report type');
+      return;
+    }
+
+    if (!formData.title || !formData.title.trim()) {
+      showError('Please enter a title');
+      return;
+    }
+
+    if (!formData.description || !formData.description.trim()) {
+      showError('Please enter a description');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Prepare form data with selected file
-      const submitData = {
-        ...formData,
-        attachments: selectedFile ? [selectedFile] : [],
+      let reportUrl: string | undefined;
+
+      // Upload image if selected
+      if (selectedFile) {
+        try {
+          // Get presigned upload URL from backend
+          const uploadUrlResponse = await getReportImageUploadUrl({
+            fileName: selectedFile.name,
+            contentType: selectedFile.type
+          });
+          
+          // Upload file to presigned URL
+          await uploadToPresignedUrl(uploadUrlResponse.uploadUrl, selectedFile, selectedFile.type);
+          
+          // Use the filePath returned from backend as the reportUrl
+          reportUrl = uploadUrlResponse.filePath;
+        } catch (uploadError: any) {
+          console.error('Error uploading image:', uploadError);
+          showError('Image upload failed. Please try again or submit without image.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Get "Open" status ID
+      const reportStatuses = await getReportStatuses();
+      const openStatus = reportStatuses.find((s) => s.name?.toLowerCase() === 'open' || s.code?.toLowerCase() === 'open' || s.code?.toLowerCase() === 'pending');
+      if (!openStatus) {
+        showError('Could not find Open status. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Auto-determine priority based on report type
+      const selectedReportType = reportTypes.find(t => t.id === formData.reportTypeID);
+      const reportTypeName = selectedReportType?.name?.toLowerCase() || '';
+      const reportTypeCode = selectedReportType?.code?.toLowerCase() || '';
+      
+      let priority: string = 'Low'; // Default priority
+      
+      // Priority mapping: incident -> High, academic/finance -> Medium, other -> Low
+      if (reportTypeCode.includes('incident') || reportTypeName.includes('incident')) {
+        priority = 'High';
+      } else if (
+        reportTypeCode.includes('academic') || reportTypeName.includes('academic') ||
+        reportTypeCode.includes('finance') || reportTypeName.includes('finance') ||
+        reportTypeCode.includes('financial') || reportTypeName.includes('financial')
+      ) {
+        priority = 'Medium';
+      } else {
+        priority = 'Low';
+      }
+
+      const complaintData: CreateComplaintRequest = {
+        reportTypeID: formData.reportTypeID,
+        submittedBy: userId,
+        title: formData.title,
+        description: formData.description,
+        reportStatusID: openStatus.id,
+        priority: priority,
+        reportUrl: reportUrl,
       };
       
-      onSubmit(submitData);
+      await createComplaint(complaintData);
+      
+      showSuccess('System complaint submitted successfully!');
       
       // Reset form
       setFormData({
-        studentTeacherId: "",
-        fullName: "",
-        reportType: "Technical",
+        reportTypeID: reportTypes[0]?.id || "",
         title: "",
         description: "",
-        attachments: [],
       });
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
       
+      onSubmit();
       onClose();
-    } catch (error) {
-      console.error('Error submitting technical report:', error);
+    } catch (error: any) {
+      console.error('Error submitting complaint:', error);
+      showError(error.response?.data?.message || 'Failed to submit complaint. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -128,12 +245,9 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
   const handleCancel = () => {
     // Reset form
     setFormData({
-      studentTeacherId: "",
-      fullName: "",
-      reportType: "Technical",
+      reportTypeID: reportTypes[0]?.id || "",
       title: "",
       description: "",
-      attachments: [],
     });
     setSelectedFile(null);
     if (fileInputRef.current) {
@@ -153,7 +267,7 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
       <DialogContent size="xl" className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-gray-900">
-            Submit Technical Request
+            Submit System Complaint
           </DialogTitle>
         </DialogHeader>
 
@@ -173,6 +287,28 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
               )}
             </div>
 
+            {/* Report Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Report Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="reportTypeID"
+                value={formData.reportTypeID}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+                disabled={isSubmitting || isLoadingTypes}
+              >
+                <option value="">Select a type...</option>
+                {reportTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -183,9 +319,10 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
                 name="title"
                 value={formData.title}
                 onChange={handleInputChange}
-                placeholder="Brief title of the issue"
+                placeholder="Brief title of the complaint"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                maxLength={255}
                 disabled={isSubmitting}
               />
             </div>
@@ -209,10 +346,10 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
               <p className="text-xs text-gray-500 mt-1">{formData.description.length}/2000 characters</p>
             </div>
 
-            {/* File Upload */}
+            {/* Problem Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Supporting Document (Optional)
+                Problem Image (Optional)
               </label>
               
               {/* Drag and Drop Area */}
@@ -227,24 +364,34 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
                 }`}
               >
                 {selectedFile ? (
-                  <div className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <File className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-700 truncate">{selectedFile.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(selectedFile.size / 1024).toFixed(1)} KB
-                        </p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <File className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-700 truncate">{selectedFile.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {(selectedFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={removeFile}
+                        className="ml-3 text-gray-400 hover:text-red-500 transition-colors"
+                        disabled={isSubmitting}
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={removeFile}
-                      className="ml-3 text-gray-400 hover:text-red-500 transition-colors"
-                      disabled={isSubmitting}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                    {/* Image Preview */}
+                    <div className="relative bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+                      <img
+                        src={URL.createObjectURL(selectedFile)}
+                        alt="Problem preview"
+                        className="w-full h-auto max-h-64 object-contain"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -253,7 +400,7 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
                       Drag & drop your file here or click to browse
                     </p>
                     <p className="text-xs text-gray-500 mb-3">
-                      Maximum file size: 50MB
+                      Supported formats: JPG, JPEG, PNG, GIF, WEBP (Max 10MB)
                     </p>
                     <button
                       type="button"
@@ -261,7 +408,7 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
                       className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                       disabled={isSubmitting}
                     >
-                      Choose File
+                      Choose Image
                     </button>
                     <input
                       type="file"
@@ -269,7 +416,7 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
                       onChange={handleFileSelect}
                       className="hidden"
                       disabled={isSubmitting}
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     />
                   </>
                 )}
@@ -285,8 +432,8 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
                     Important Notice
                   </h4>
                   <p className="text-sm text-orange-700">
-                    Technical issues are prioritized based on severity. Critical issues are addressed within 24 hours. 
-                    You will be notified once your request has been reviewed.
+                    Your complaint will be reviewed by admin staff. High priority issues are addressed within 24 hours. 
+                    You will be notified once your complaint has been reviewed.
                   </p>
                 </div>
               </div>
@@ -304,10 +451,10 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
               </button>
               <Button
                 type="submit"
-                className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSubmitting}
+                className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                {isSubmitting ? 'Submitting...' : isLoadingTypes ? 'Loading...' : 'Submit Complaint'}
               </Button>
             </div>
           </form>

@@ -9,7 +9,9 @@ import Button from "@/components/ui/Button";
 import TechnicalIssueReportPopup from "@/pages/Common/components/TechnicalIssueReportPopup";
 import AcademicChangeRequestPopup from "@/pages/Common/components/AcademicChangeRequestPopup";
 import AcademicRequestDetailPopup from "@/pages/Common/components/AcademicRequestDetailPopup";
+import ComplaintDetailDialog from "@/pages/Common/components/ComplaintDetailDialog";
 import { getMyAcademicRequests } from "@/api/academicRequest.api";
+import { getMyComplaints, type SystemComplaint } from "@/api/complaint.api";
 import { getStudentId } from "@/lib/utils";
 import type { AcademicRequestResponse } from "@/types/academicRequest";
 
@@ -19,18 +21,27 @@ const ReportIssue: React.FC = () => {
   const navigate = useNavigate();
   const userId = getStudentId();
   
-  const [activeTab, setActiveTab] = useState<"all" | "pending" | "resolved" | "rejected">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "open" | "pending" | "resolved" | "rejected">("all");
   const [showTechnicalPopup, setShowTechnicalPopup] = useState(false);
   const [showAcademicPopup, setShowAcademicPopup] = useState(false);
   const [showDetailPopup, setShowDetailPopup] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [academicReports, setAcademicReports] = useState<AcademicRequestResponse[]>([]);
+  const [systemComplaints, setSystemComplaints] = useState<SystemComplaint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [initialSessionData, setInitialSessionData] = useState<any>(null);
 
   // Determine current report type from URL
-  const currentReportType = location.pathname.includes("technical") ? "Technical" : "Academic";
-  const pageTitle = currentReportType === "Technical" ? "Technical Issues" : "Academic Requests";
+  const currentReportType = location.pathname.includes("technical") 
+    ? "Technical" 
+    : location.pathname.includes("complaint") || location.pathname.includes("system")
+    ? "SystemComplaint"
+    : "Academic";
+  const pageTitle = currentReportType === "Technical" 
+    ? "Technical Issues" 
+    : currentReportType === "SystemComplaint"
+    ? "System Complaints"
+    : "Academic Requests";
 
   // Check for initial data from navigation state
   useEffect(() => {
@@ -48,6 +59,8 @@ const ReportIssue: React.FC = () => {
   useEffect(() => {
     if (currentReportType === "Academic" && userId) {
       fetchAcademicReports();
+    } else if ((currentReportType === "SystemComplaint" || currentReportType === "Technical") && userId) {
+      fetchSystemComplaints();
     }
   }, [currentReportType, userId]);
 
@@ -65,9 +78,23 @@ const ReportIssue: React.FC = () => {
     }
   };
 
+  const fetchSystemComplaints = async () => {
+    if (!userId) return;
+    
+    setIsLoading(true);
+    try {
+      const complaints = await getMyComplaints(userId);
+      setSystemComplaints(complaints);
+    } catch (error) {
+      console.error('Error fetching system complaints:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleTechnicalSubmit = () => {
-    // TODO: Refresh technical reports after submission when API is ready
-    // For now, just close the popup
+    // Refresh system complaints after submission
+    fetchSystemComplaints();
   };
 
   const handleAcademicSubmit = () => {
@@ -75,8 +102,9 @@ const ReportIssue: React.FC = () => {
     fetchAcademicReports();
   };
 
+
   const handleReportClick = () => {
-    if (currentReportType === "Technical") {
+    if (currentReportType === "Technical" || currentReportType === "SystemComplaint") {
       setShowTechnicalPopup(true);
     } else {
       setShowAcademicPopup(true);
@@ -91,12 +119,21 @@ const ReportIssue: React.FC = () => {
   const getStatusConfig = (status: string) => {
     const statusLower = status?.toLowerCase() || '';
     
-    if (statusLower === "pending" || statusLower === "submitted") {
+    if (statusLower === "pending" || statusLower === "submitted" || statusLower === "open") {
       return {
         badge: "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-sm",
         border: "border-orange-200",
         hover: "hover:bg-gradient-to-r hover:from-orange-25 hover:to-orange-50 hover:border-orange-300",
         icon: "text-orange-500"
+      };
+    }
+    
+    if (statusLower === "in progress" || statusLower === "inprogress") {
+      return {
+        badge: "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm",
+        border: "border-blue-200",
+        hover: "hover:bg-gradient-to-r hover:from-blue-25 hover:to-blue-50 hover:border-blue-300",
+        icon: "text-blue-500"
       };
     }
     
@@ -109,7 +146,7 @@ const ReportIssue: React.FC = () => {
       };
     }
     
-    if (statusLower === "rejected") {
+    if (statusLower === "rejected" || statusLower === "closed") {
       return {
         badge: "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm",
         border: "border-red-200",
@@ -163,19 +200,195 @@ const ReportIssue: React.FC = () => {
     return { Icon: Calendar, gradient: "from-blue-500 to-blue-600" };
   };
 
-  const renderTechnicalReports = (tab: "all" | "pending" | "resolved" | "rejected") => {
-    // For now, show empty state until Technical Reports API is implemented
-    // This will be updated when Technical Reports API is ready
+  const renderTechnicalReports = (tab: "all" | "open" | "pending" | "resolved" | "rejected") => {
+    if (isLoading) {
+      return (
+        <div className="text-center py-12 text-neutral-500">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-3"></div>
+          <p>Loading system complaints...</p>
+        </div>
+      );
+    }
+
+    // Filter based on status
+    const filtered = systemComplaints.filter(complaint => {
+      const statusLower = complaint.statusName?.toLowerCase() || '';
+      if (tab === "all") {
+        return true;
+      } else if (tab === "open") {
+        // Open tab shows "open" status
+        return statusLower === 'open';
+      } else if (tab === "pending") {
+        // Pending tab shows "in progress" status
+        return statusLower === 'in progress';
+      } else if (tab === "rejected") {
+        // Rejected tab shows "closed" status
+        return statusLower === 'closed';
+      } else {
+        // resolved tab
+        return statusLower === 'resolved';
+      }
+    });
+
+    if (filtered.length === 0) {
+      const emptyMessages = {
+        all: 'No system complaints found',
+        open: 'No open system complaints found',
+        pending: 'No in progress system complaints found',
+        resolved: 'No resolved system complaints found',
+        rejected: 'No closed system complaints found'
+      };
+      return (
+        <div className="text-center py-12 text-neutral-500">
+          <FileText className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+          <p>{emptyMessages[tab]}</p>
+        </div>
+      );
+    }
+
     return (
-      <div className="text-center py-12 text-neutral-500">
-        <FileText className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
-        <p className="mb-2">
-          {tab === "all" && "No technical reports found"}
-          {tab === "pending" && "No pending technical reports"}
-          {tab === "resolved" && "No resolved technical reports"}
-          {tab === "rejected" && "No rejected technical reports"}
-        </p>
-        <p className="text-xs text-neutral-400">Technical report tracking coming soon</p>
+      <div className="space-y-3">
+        {filtered.map((complaint) => {
+          const statusConfig = getStatusConfig(complaint.statusName || 'Open');
+          return (
+            <div
+              key={complaint.id}
+              onClick={() => handleViewDetails(complaint.id)}
+              className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200 border-l-4
+                ${statusConfig.border} ${statusConfig.hover} hover:shadow-md`}
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-orange-600 shadow-md`}>
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-primary-800 mb-1">{complaint.title}</h4>
+                  <p className="text-sm text-neutral-600 mb-2 line-clamp-1">{complaint.description}</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {complaint.reportTypeName && (
+                      <span className="text-xs text-neutral-600">
+                        Type: {complaint.reportTypeName}
+                      </span>
+                    )}
+                    {complaint.priority && (
+                      <span className="text-xs text-neutral-600">
+                        Priority: {complaint.priority}
+                      </span>
+                    )}
+                    <span className="text-xs text-neutral-500">
+                      • {new Date(complaint.createdAt).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                    </span>
+                    <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${statusConfig.badge}`}>
+                      {complaint.statusName || 'Open'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${statusConfig.icon} bg-accent-50`}>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderSystemComplaints = (tab: "all" | "open" | "pending" | "resolved" | "rejected") => {
+    if (isLoading) {
+      return (
+        <div className="text-center py-12 text-neutral-500">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-3"></div>
+          <p>Loading system complaints...</p>
+        </div>
+      );
+    }
+
+    // Filter based on status
+    const filtered = systemComplaints.filter(complaint => {
+      const statusLower = complaint.statusName?.toLowerCase() || '';
+      if (tab === "all") {
+        return true;
+      } else if (tab === "open") {
+        return statusLower === 'open';
+      } else if (tab === "pending") {
+        return statusLower === 'in progress';
+      } else if (tab === "rejected") {
+        return statusLower === 'closed';
+      } else {
+        // resolved tab
+        return statusLower === 'resolved';
+      }
+    });
+
+    if (filtered.length === 0) {
+      const emptyMessages = {
+        all: 'No system complaints found',
+        open: 'No open system complaints found',
+        pending: 'No in progress system complaints found',
+        resolved: 'No resolved system complaints found',
+        rejected: 'No closed system complaints found'
+      };
+      return (
+        <div className="text-center py-12 text-neutral-500">
+          <FileText className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+          <p>{emptyMessages[tab]}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {filtered.map((complaint) => {
+          const statusConfig = getStatusConfig(complaint.statusName || 'Open');
+          return (
+            <div
+              key={complaint.id}
+              onClick={() => handleViewDetails(complaint.id)}
+              className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200 border-l-4
+                ${statusConfig.border} ${statusConfig.hover} hover:shadow-md`}
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-orange-500 to-orange-600 shadow-md`}>
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-primary-800 mb-1">{complaint.title}</h4>
+                  <p className="text-sm text-neutral-600 mb-2 line-clamp-1">{complaint.description}</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {complaint.reportTypeName && (
+                      <span className="text-xs text-neutral-600">
+                        Type: {complaint.reportTypeName}
+                      </span>
+                    )}
+                    {complaint.priority && (
+                      <span className="text-xs text-neutral-600">
+                        Priority: {complaint.priority}
+                      </span>
+                    )}
+                    <span className="text-xs text-neutral-500">
+                      • {new Date(complaint.createdAt).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                    </span>
+                    <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${statusConfig.badge}`}>
+                      {complaint.statusName || 'Open'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${statusConfig.icon} bg-accent-50`}>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -286,7 +499,9 @@ const ReportIssue: React.FC = () => {
           title={pageTitle}
           description={currentReportType === "Academic" 
             ? "Submit various academic requests such as schedule changes, class drops, academic purchases, and more" 
-            : "Report technical issues and track their resolution"}
+            : currentReportType === "SystemComplaint"
+            ? "Submit system complaints and track their resolution"
+            : "Submit system complaints and track their resolution"}
         />
       </div>
 
@@ -299,6 +514,8 @@ const ReportIssue: React.FC = () => {
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-md ${
                 currentReportType === "Academic"
                   ? "bg-gradient-to-br from-blue-500 to-blue-600"
+                  : currentReportType === "SystemComplaint"
+                  ? "bg-gradient-to-br from-orange-500 to-orange-600"
                   : "bg-gradient-to-br from-gray-500 to-gray-600"
               }`}>
                 {currentReportType === "Academic" ? (
@@ -309,11 +526,17 @@ const ReportIssue: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-primary-800">
-                  {currentReportType === "Academic" ? "Academic Requests" : "Technical Reports"}
+                  {currentReportType === "Academic" 
+                    ? "Academic Requests" 
+                    : currentReportType === "SystemComplaint"
+                    ? "System Complaints"
+                    : "Technical Reports"}
                 </h3>
                 <p className="text-sm text-accent-600">
                   {currentReportType === "Academic" 
                     ? "View and manage all your academic requests" 
+                    : currentReportType === "SystemComplaint"
+                    ? "View and track your system complaints"
                     : "View and track technical issue reports"}
                 </p>
               </div>
@@ -335,7 +558,9 @@ const ReportIssue: React.FC = () => {
               <span>
                 {currentReportType === "Academic" 
                   ? "Academic requests are reviewed by staff within 3-5 business days. You will be notified of any updates."
-                  : "Technical issues are prioritized based on severity. Critical issues are addressed within 24 hours."}
+                  : currentReportType === "SystemComplaint"
+                  ? "System complaints are reviewed by admin staff. High priority issues are addressed within 24 hours. You will be notified of any updates."
+                  : "System complaints are reviewed by admin staff. High priority issues are addressed within 24 hours. You will be notified of any updates."}
               </span>
             </div>
           </div>
@@ -353,6 +578,18 @@ const ReportIssue: React.FC = () => {
               >
                 All {currentReportType === "Academic" ? "Requests" : "Reports"}
               </button>
+              {(currentReportType === "Technical" || currentReportType === "SystemComplaint") && (
+                <button
+                  onClick={() => setActiveTab("open")}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "open"
+                      ? "border-primary-600 text-primary-700"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
+                  }`}
+                >
+                  Open Reports
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab("pending")}
                 className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -361,7 +598,9 @@ const ReportIssue: React.FC = () => {
                     : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
                 }`}
               >
-                Pending {currentReportType === "Academic" ? "Requests" : "Reports"}
+                {currentReportType === "Technical" || currentReportType === "SystemComplaint" 
+                  ? "In Progress" 
+                  : "Pending"} {currentReportType === "Academic" ? "Requests" : "Reports"}
               </button>
               <button
                 onClick={() => setActiveTab("resolved")}
@@ -381,7 +620,9 @@ const ReportIssue: React.FC = () => {
                     : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
                 }`}
               >
-                Rejected {currentReportType === "Academic" ? "Requests" : "Reports"}
+                {currentReportType === "Technical" || currentReportType === "SystemComplaint" 
+                  ? "Closed" 
+                  : "Rejected"} {currentReportType === "Academic" ? "Requests" : "Reports"}
               </button>
             </nav>
           </div>
@@ -389,7 +630,9 @@ const ReportIssue: React.FC = () => {
           {/* Content */}
           <div>
             {currentReportType === "Academic" 
-              ? renderAcademicReports(activeTab)
+              ? renderAcademicReports(activeTab === "open" ? "all" : activeTab as "all" | "pending" | "resolved" | "rejected")
+              : currentReportType === "SystemComplaint"
+              ? renderSystemComplaints(activeTab)
               : renderTechnicalReports(activeTab)
             }
           </div>
@@ -414,12 +657,21 @@ const ReportIssue: React.FC = () => {
       />
 
       <AcademicRequestDetailPopup
-        isOpen={showDetailPopup}
+        isOpen={showDetailPopup && currentReportType === "Academic"}
         onClose={() => {
           setShowDetailPopup(false);
           setSelectedRequestId(null);
         }}
         requestId={selectedRequestId}
+      />
+
+      <ComplaintDetailDialog
+        isOpen={showDetailPopup && (currentReportType === "Technical" || currentReportType === "SystemComplaint")}
+        onClose={() => {
+          setShowDetailPopup(false);
+          setSelectedRequestId(null);
+        }}
+        complaintId={selectedRequestId}
       />
     </div>
   );
