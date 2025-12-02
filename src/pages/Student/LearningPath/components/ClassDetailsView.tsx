@@ -85,6 +85,9 @@ interface ClassDetailsViewProps {
   classItem: MyClass;
   courseId?: string; // Optional courseId from parent component
   onBack: () => void;
+  enrollmentStatus?: string; // Enrollment status (e.g., "waiting for class", "pending", "enrolled")
+  expectedStartDate?: string; // Expected start date for waiting-for-class enrollments
+  enrollmentDate?: string; // Date when student enrolled
 }
 
 interface AssignmentWithStatus extends MeetingAssignment {
@@ -103,6 +106,9 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
   classItem,
   courseId: propCourseId,
   onBack,
+  enrollmentStatus,
+  expectedStartDate,
+  enrollmentDate,
 }) => {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionWithAssignments[]>([]);
@@ -151,12 +157,20 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
   // --- REF MỚI ĐỂ SCROLL ---
   const weekRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // Check if this is a minimal/temp classItem (no real class assigned)
+  const isMinimalClassItem = classItem?.id?.startsWith('temp-') || false;
+
   useEffect(() => {
-    if (classItem?.id) {
+    // Only fetch sessions if it's a real classItem (not minimal)
+    if (classItem?.id && !isMinimalClassItem) {
       fetchClassSessions();
       fetchCourseAttendanceSummary();
+    } else if (isMinimalClassItem) {
+      // For minimal classItem, set empty sessions and skip loading
+      setSessions([]);
+      setLoading(false);
     }
-  }, [classItem?.id]);
+  }, [classItem?.id, isMinimalClassItem]);
 
   // Khi chuyển sang tab weekly-feedback lần đầu thì mới call API
   useEffect(() => {
@@ -256,16 +270,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
         return;
       }
 
-      console.log("Fetching course attendance summary:", {
-        courseId,
-        studentId,
-        propCourseId,
-        classItemCourseCode: classItem.courseCode,
-        classItemId: classItem.id,
-      });
-
       const summary = await getCourseAttendanceSummary(courseId, studentId);
-      console.log("Course attendance summary received:", summary);
       setCourseAttendanceSummary(summary);
     } catch (err: any) {
       console.error("Error fetching course attendance summary:", err);
@@ -336,26 +341,14 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
       const courseId =
         propCourseId || (classItem as any).courseId || classItem.courseCode;
 
-      console.log("Assignment fetch debug:", {
-        propCourseId,
-        classItemCourseId: (classItem as any).courseId,
-        classItemCourseCode: classItem.courseCode,
-        finalCourseId: courseId,
-        studentId,
-      });
-
       let assignmentsByMeetingData: AssignmentByMeeting[] = [];
 
       if (courseId) {
         try {
-          console.log(
-            `Fetching course assignments for student ${studentId}, course ${courseId}`
-          );
           const courseDetailsResponse = await getCourseDetails(
             studentId,
             courseId
           );
-          console.log("Course details response:", courseDetailsResponse);
           assignmentsByMeetingData = courseDetailsResponse.assignments || [];
           setCourseDetailsData(courseDetailsResponse);
 
@@ -427,11 +420,6 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 
               let coveredTopic: string | null = null;
               try {
-                console.log(
-                  `Fetching coveredTopic from API for Session ${index + 1} (${
-                    meeting.id
-                  })...`
-                );
                 const coveredTopicData = await getCoveredTopicByMeetingId(
                   meeting.id
                 );
@@ -805,21 +793,24 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                   label: "Learning Timeline",
                   icon: <TrendingUp className="w-4 h-4" />,
                 },
-                {
-                  id: "assignments",
-                  label: "Assignments",
-                  icon: <FileText className="w-4 h-4" />,
-                },
-                {
-                  id: "attendance",
-                  label: "Attendance Report",
-                  icon: <ClipboardCheck className="w-4 h-4" />,
-                },
-                {
-                  id: "weekly-feedback",
-                  label: "Weekly feedback",
-                  icon: <MessageCircle className="w-4 h-4" />,
-                },
+                // Only show other tabs if it's a real classItem (not minimal)
+                ...(isMinimalClassItem ? [] : [
+                  {
+                    id: "assignments",
+                    label: "Assignments",
+                    icon: <FileText className="w-4 h-4" />,
+                  },
+                  {
+                    id: "attendance",
+                    label: "Attendance Report",
+                    icon: <ClipboardCheck className="w-4 h-4" />,
+                  },
+                  {
+                    id: "weekly-feedback",
+                    label: "Weekly feedback",
+                    icon: <MessageCircle className="w-4 h-4" />,
+                  },
+                ]),
               ]}
               activeTab={activeTab}
               onTabChange={(tabId) => {
@@ -832,24 +823,24 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
               <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50/30 via-white to-blue-50/20 rounded-lg">
                 {/* Learning Timeline - Split into 2 columns */}
                 <div>
-                  {sessions.length === 0 ? (
-                    <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
-                      <Clock className="w-12 h-12 text-accent-400 mx-auto mb-2" />
-                      <p className="text-accent-600">No sessions available</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Left Column: Session List */}
-                      <Card className="border-2 border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50/40">
-                        <div className="p-6">
-                          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-blue-200">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                              <BookOpen className="w-4 h-4 text-white" />
-                            </div>
-                            <h4 className="text-base font-semibold text-primary-800">
-                              Sessions
-                            </h4>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column: Session List */}
+                    <Card className="border-2 border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50/40">
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-blue-200">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                            <BookOpen className="w-4 h-4 text-white" />
                           </div>
+                          <h4 className="text-base font-semibold text-primary-800">
+                            Sessions
+                          </h4>
+                        </div>
+                        {sessions.length === 0 ? (
+                          <div className="text-center py-8">
+                            <Clock className="w-12 h-12 text-accent-400 mx-auto mb-2" />
+                            <p className="text-accent-600">No sessions available</p>
+                          </div>
+                        ) : (
                           <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
                             {sessions.map((session, index) => {
                               const sessionIndex = index;
@@ -923,10 +914,11 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                               );
                             })}
                           </div>
-                        </div>
-                      </Card>
+                        )}
+                      </div>
+                    </Card>
 
-                      {/* Right Column: Milestone Timeline */}
+                    {/* Right Column: Milestone Timeline */}
                       <Card className="border-2 border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50/40">
                         <div className="p-6">
                           <div className="flex items-center gap-2 mb-6 pb-3 border-b border-blue-200">
@@ -943,259 +935,354 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 
                             {/* Timeline Items */}
                             <div className="space-y-3">
-                              {/* Enrolled Event - First in timeline */}
-                              {classItem.startDate &&
-                                (() => {
-                                  // Check if date matches today (example: 5/11/2025)
-                                  const enrolledDate = new Date(
-                                    classItem.startDate
-                                  );
-                                  const today = new Date();
-                                  const targetDate = new Date("2025-11-05"); // Example: 5/11/2025
-
-                                  // Normalize dates to compare only year, month, day
-                                  const isToday =
-                                    enrolledDate.getFullYear() ===
-                                      today.getFullYear() &&
-                                    enrolledDate.getMonth() ===
-                                      today.getMonth() &&
-                                    enrolledDate.getDate() ===
-                                      today.getDate();
-
-                                  const isTargetDate =
-                                    enrolledDate.getFullYear() ===
-                                      targetDate.getFullYear() &&
-                                    enrolledDate.getMonth() ===
-                                      targetDate.getMonth() &&
-                                    enrolledDate.getDate() ===
-                                      targetDate.getDate();
-
-                                  const shouldGlow = isToday || isTargetDate;
-
+                              {/* Check if enrollment status is "waiting for class" or "pending", or if no sessions available */}
+                              {(() => {
+                                const isWaitingForClass = 
+                                  enrollmentStatus?.toLowerCase() === "waiting for class" ||
+                                  enrollmentStatus?.toLowerCase() === "pending" ||
+                                  enrollmentStatus?.toLowerCase() === "waitingforclass";
+                                
+                                const hasNoSessions = !sessions || sessions.length === 0;
+                                
+                                // Chỉ khi KHÔNG có sessions VÀ status là "Pending" → chỉ hiển thị Enrollment + Expected Start Date
+                                // Nếu có sessions → luôn hiển thị đầy đủ milestones (Enrollment + Sessions milestones)
+                                if (hasNoSessions && isWaitingForClass) {
+                                  // Only show Enrollment and Expected Start Date when no sessions AND pending status
                                   return (
-                                    <div className="relative flex items-start gap-4">
-                                      <div className="relative z-10 flex-shrink-0">
-                                        <div
-                                          className={`w-4 h-4 rounded-full bg-primary-300 border-2 border-primary-400 ${
-                                            shouldGlow
-                                              ? "ring-4 ring-primary-200 ring-opacity-75 shadow-lg animate-pulse"
-                                              : ""
-                                          }`}
-                                        ></div>
-                                      </div>
-                                      <div className="flex-1 pt-0">
-                                        <Card
-                                          className={`p-2 border shadow-sm transition-all duration-200 ${
-                                            shouldGlow
-                                              ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 hover:bg-blue-100 hover:border-blue-500 hover:shadow-md"
-                                              : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200 hover:bg-accent-25 hover:shadow"
-                                          }`}
-                                        >
-                                          <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                              <h5 className="font-semibold text-primary-800 text-sm mb-0.5">
-                                                Enrolled
-                                              </h5>
-                                              <p className="text-accent-600 text-xs">
-                                                Reservation confirmed -{" "}
-                                                {classItem.className}
-                                              </p>
+                                    <>
+                                      {/* Enrollment Milestone */}
+                                      {(enrollmentDate || classItem.startDate) && (() => {
+                                        const enrolledDate = enrollmentDate 
+                                          ? new Date(enrollmentDate)
+                                          : classItem.startDate 
+                                          ? new Date(classItem.startDate)
+                                          : null;
+                                        
+                                        if (!enrolledDate) return null;
+                                        
+                                        // Check if date has passed or is today
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const milestoneDate = new Date(enrolledDate);
+                                        milestoneDate.setHours(0, 0, 0, 0);
+                                        const isPastOrToday = milestoneDate <= today;
+                                        
+                                        return (
+                                          <div className="relative flex items-start gap-4">
+                                            {/* Timeline Node */}
+                                            <div className="relative z-10 flex-shrink-0">
+                                              <div className={`w-4 h-4 rounded-full border-2 ${
+                                                isPastOrToday 
+                                                  ? "bg-blue-600 border-blue-700" 
+                                                  : "bg-primary-300 border-primary-400"
+                                              }`}></div>
                                             </div>
-                                            <span className="text-accent-600 text-xs font-medium whitespace-nowrap ml-4">
-                                              {formatDate(classItem.startDate)}
-                                            </span>
+                                            {/* Timeline Content */}
+                                            <div className="flex-1 pt-0">
+                                              <Card className={`p-2 border shadow-sm ${
+                                                isPastOrToday
+                                                  ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300"
+                                                  : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200"
+                                              }`}>
+                                                <div className="flex items-start justify-between">
+                                                  <div className="flex-1">
+                                                    <h5 className={`text-sm mb-0.5 ${
+                                                      isPastOrToday 
+                                                        ? "font-semibold text-blue-700" 
+                                                        : "font-semibold text-primary-800"
+                                                    }`}>
+                                                      Enrolled
+                                                    </h5>
+                                                    <p className="text-accent-600 text-xs">
+                                                      Course enrollment confirmed
+                                                    </p>
+                                                  </div>
+                                                  <span className={`text-xs font-medium whitespace-nowrap ml-4 ${
+                                                    isPastOrToday 
+                                                      ? "text-blue-700" 
+                                                      : "text-accent-600"
+                                                  }`}>
+                                                    {formatDate(enrollmentDate || classItem.startDate)}
+                                                  </span>
+                                                </div>
+                                              </Card>
+                                            </div>
                                           </div>
-                                        </Card>
-                                      </div>
-                                    </div>
+                                        );
+                                      })()}
+
+                                      {/* Expected Start Date Milestone */}
+                                      {expectedStartDate && (() => {
+                                        // Check if date has passed or is today
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const expectedDate = new Date(expectedStartDate);
+                                        expectedDate.setHours(0, 0, 0, 0);
+                                        const isPastOrToday = expectedDate <= today;
+                                        
+                                        return (
+                                          <div className="relative flex items-start gap-4">
+                                            {/* Timeline Node */}
+                                            <div className="relative z-10 flex-shrink-0">
+                                              <div className={`w-4 h-4 rounded-full border-2 ${
+                                                isPastOrToday 
+                                                  ? "bg-blue-600 border-blue-700" 
+                                                  : "bg-primary-300 border-primary-400"
+                                              }`}></div>
+                                            </div>
+                                            {/* Timeline Content */}
+                                            <div className="flex-1 pt-0">
+                                              <Card className={`p-2 border shadow-sm ${
+                                                isPastOrToday
+                                                  ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300"
+                                                  : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200"
+                                              }`}>
+                                                <div className="flex items-start justify-between">
+                                                  <div className="flex-1">
+                                                    <h5 className={`text-sm mb-0.5 ${
+                                                      isPastOrToday 
+                                                        ? "font-semibold text-blue-700" 
+                                                        : "font-semibold text-primary-800"
+                                                    }`}>
+                                                      Expected Start Date
+                                                    </h5>
+                                                    <p className="text-accent-600 text-xs">
+                                                      Anticipated class start date
+                                                    </p>
+                                                  </div>
+                                                  <span className={`text-xs font-medium whitespace-nowrap ml-4 ${
+                                                    isPastOrToday 
+                                                      ? "text-blue-700" 
+                                                      : "text-accent-600"
+                                                  }`}>
+                                                    {formatDate(expectedStartDate)}
+                                                  </span>
+                                                </div>
+                                              </Card>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+                                    </>
                                   );
-                                })()}
-
-                              {/* Milestone Sessions (First Session, Exams, Mock Tests) */}
-                              {sessions.map((session, index) => {
-                                const sessionIndex = index;
-                                const isCurrent =
-                                  sessionIndex === currentSessionIndex;
-
-                                // Check if this is a milestone (First Session, Exam, Mock Test)
-                                const isFirstAttendance = sessionIndex === 0;
-
-                                // Check milestone based on coveredTopic.topicTitle instead of assignment.title
-                                const checkIfMilestone = (
-                                  topicTitle: string | null | undefined
-                                ): boolean => {
-                                  if (!topicTitle) {
-                                    console.log(
-                                      `🔍 Milestone check - Session ${session.sessionNumber}: No topicTitle`
-                                    );
-                                    return false;
-                                  }
-                                  const title = topicTitle.toLowerCase();
-                                  const isMilestone =
-                                    title.includes("exam") ||
-                                    title.includes("mock") ||
-                                    title.includes("test") ||
-                                    title.includes("assessment");
-
-                                  console.log(
-                                    `🔍 Milestone check - Session ${session.sessionNumber}:`,
-                                    {
-                                      topicTitle,
-                                      lowercased: title,
-                                      isMilestone,
-                                      containsExam: title.includes("exam"),
-                                      containsMock: title.includes("mock"),
-                                      containsTest: title.includes("test"),
-                                      containsAssessment:
-                                        title.includes("assessment"),
-                                    }
-                                  );
-
-                                  return isMilestone;
-                                };
-
-                                const isMilestone = checkIfMilestone(
-                                  session.coveredTopic
-                                );
-
-                                if (!isFirstAttendance && !isMilestone) {
-                                  return null;
                                 }
-
-                                // Get session title
-                                const getMilestoneTitle = () => {
-                                  if (isFirstAttendance)
-                                    return "First Session";
-                                  // Use coveredTopic instead of assignment title
-                                  return (
-                                    session.coveredTopic ||
-                                    `Session ${session.sessionNumber}`
-                                  );
-                                };
-
-                                // Get session description
-                                const getMilestoneDescription = () => {
-                                  if (isFirstAttendance) {
-                                    return "Attendance started - Materials assigned";
-                                  }
-                                  // For milestone sessions, show the coveredTopic as description
-                                  if (session.coveredTopic) {
-                                    // Try to find assignment score if available
-                                    const milestoneAssignment =
-                                      session.assignments.find((a) => {
-                                        const sub = a.submissions?.[0];
-                                        return sub && sub.score !== null;
-                                      });
-                                    if (milestoneAssignment) {
-                                      const sub =
-                                        milestoneAssignment.submissions?.[0];
-                                      if (sub && sub.score !== null) {
-                                        return `Score: ${sub.score}%${
-                                          sub.feedback
-                                            ? " - Feedback available"
-                                            : ""
-                                        }`;
-                                      }
-                                    }
-                                    return "Important assessment";
-                                  }
-                                  return "Milestone session";
-                                };
-
-                                // Format date short (e.g., "01 Sep")
-                                const formatShortDate = (
-                                  dateString: string
-                                ) => {
-                                  try {
-                                    const date = new Date(dateString);
-                                    return date.toLocaleDateString("en-US", {
-                                      day: "2-digit",
-                                      month: "short",
-                                    });
-                                  } catch {
-                                    return formatDate(dateString);
-                                  }
-                                };
-
-                                // Check if session date matches today or target date (5/11/2025)
-                                const sessionDate = new Date(session.date);
-                                const today = new Date();
-                                const targetDate = new Date("2025-11-05"); // Example: 5/11/2025
-
-                                // Normalize dates to compare only year, month, day
-                                const isToday =
-                                  sessionDate.getFullYear() ===
-                                    today.getFullYear() &&
-                                  sessionDate.getMonth() ===
-                                    today.getMonth() &&
-                                  sessionDate.getDate() === today.getDate();
-
-                                const isTargetDate =
-                                  sessionDate.getFullYear() ===
-                                    targetDate.getFullYear() &&
-                                  sessionDate.getMonth() ===
-                                    targetDate.getMonth() &&
-                                  sessionDate.getDate() ===
-                                    targetDate.getDate();
-
-                                const shouldGlow = isToday || isTargetDate;
-
+                                
+                                // Normal flow: Show Enrollment and Session Milestones
                                 return (
-                                  <div
-                                    key={session.id}
-                                    className="relative flex items-start gap-4"
-                                  >
-                                    {/* Timeline Node */}
-                                    <div className="relative z-10 flex-shrink-0">
-                                      <div
-                                        className={`w-4 h-4 rounded-full bg-primary-300 border-2 border-primary-400 ${
-                                          shouldGlow
-                                            ? "ring-4 ring-primary-200 ring-opacity-75 shadow-lg animate-pulse"
-                                            : ""
-                                        }`}
-                                      ></div>
-                                    </div>
-
-                                    {/* Timeline Content */}
-                                    <div className="flex-1 pt-0">
-                                      <Card
-                                        className={`p-2 border shadow-sm transition-all duration-200 ${
-                                          shouldGlow
-                                            ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 hover:bg-blue-100 hover:border-blue-500 hover:shadow-md"
-                                            : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200 hover:bg-accent-25 hover:shadow"
-                                        }`}
-                                      >
-                                        <div className="flex items-start justify-between">
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                              <h5 className="font-semibold text-primary-800 text-sm">
-                                                {getMilestoneTitle()}
-                                              </h5>
-                                              {isCurrent && (
-                                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent2-500 text-white shadow-sm">
-                                                  Current
-                                                </span>
-                                              )}
+                                  <>
+                                    {/* Enrolled Event - First in timeline */}
+                                    {classItem.startDate &&
+                                      (() => {
+                                        // Check if date has passed or is today
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const enrolledDate = new Date(classItem.startDate);
+                                        enrolledDate.setHours(0, 0, 0, 0);
+                                        const isPastOrToday = enrolledDate <= today;
+                                        
+                                        return (
+                                          <div className="relative flex items-start gap-4">
+                                            {/* Timeline Node */}
+                                            <div className="relative z-10 flex-shrink-0">
+                                              <div className={`w-4 h-4 rounded-full border-2 ${
+                                                isPastOrToday 
+                                                  ? "bg-blue-600 border-blue-700" 
+                                                  : "bg-primary-300 border-primary-400"
+                                              }`}></div>
                                             </div>
-                                            <p className="text-accent-600 text-xs">
-                                              {getMilestoneDescription()}
-                                            </p>
+                                            {/* Timeline Content */}
+                                            <div className="flex-1 pt-0">
+                                              <Card className={`p-2 border shadow-sm ${
+                                                isPastOrToday
+                                                  ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300"
+                                                  : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200"
+                                              }`}>
+                                                <div className="flex items-start justify-between">
+                                                  <div className="flex-1">
+                                                    <h5 className={`text-sm mb-0.5 ${
+                                                      isPastOrToday 
+                                                        ? "font-semibold text-blue-700" 
+                                                        : "font-semibold text-primary-800"
+                                                    }`}>
+                                                      Enrolled
+                                                    </h5>
+                                                    <p className="text-accent-600 text-xs">
+                                                      Reservation confirmed -{" "}
+                                                      {classItem.className}
+                                                    </p>
+                                                  </div>
+                                                  <span className={`text-xs font-medium whitespace-nowrap ml-4 ${
+                                                    isPastOrToday 
+                                                      ? "text-blue-700" 
+                                                      : "text-accent-600"
+                                                  }`}>
+                                                    {formatDate(classItem.startDate)}
+                                                  </span>
+                                                </div>
+                                              </Card>
+                                            </div>
                                           </div>
-                                          <span className="text-accent-600 text-xs font-medium whitespace-nowrap ml-4">
-                                            {formatDate(session.date)}
-                                          </span>
+                                        );
+                                      })()}
+
+                                    {/* Milestone Sessions (First Session, Exams, Mock Tests) */}
+                                    {sessions.map((session, index) => {
+                                      const sessionIndex = index;
+                                      const isCurrent =
+                                        sessionIndex === currentSessionIndex;
+
+                                      // Check if this is a milestone (First Session, Exam, Mock Test)
+                                      const isFirstAttendance = sessionIndex === 0;
+
+                                      // Check milestone based on coveredTopic.topicTitle instead of assignment.title
+                                      const checkIfMilestone = (
+                                        topicTitle: string | null | undefined
+                                      ): boolean => {
+                                        if (!topicTitle) {
+                                          return false;
+                                        }
+                                        const title = topicTitle.toLowerCase();
+                                        const isMilestone =
+                                          title.includes("exam") ||
+                                          title.includes("mock") ||
+                                          title.includes("test") ||
+                                          title.includes("assessment");
+
+                                        return isMilestone;
+                                      };
+
+                                      const isMilestone = checkIfMilestone(
+                                        session.coveredTopic
+                                      );
+
+                                      if (!isFirstAttendance && !isMilestone) {
+                                        return null;
+                                      }
+
+                                      // Get session title
+                                      const getMilestoneTitle = () => {
+                                        if (isFirstAttendance)
+                                          return "First Session";
+                                        // Use coveredTopic instead of assignment title
+                                        return (
+                                          session.coveredTopic ||
+                                          `Session ${session.sessionNumber}`
+                                        );
+                                      };
+
+                                      // Get session description
+                                      const getMilestoneDescription = () => {
+                                        if (isFirstAttendance) {
+                                          return "Attendance started - Materials assigned";
+                                        }
+                                        // For milestone sessions, show the coveredTopic as description
+                                        if (session.coveredTopic) {
+                                          // Try to find assignment score if available
+                                          const milestoneAssignment =
+                                            session.assignments.find((a) => {
+                                              const sub = a.submissions?.[0];
+                                              return sub && sub.score !== null;
+                                            });
+                                          if (milestoneAssignment) {
+                                            const sub =
+                                              milestoneAssignment.submissions?.[0];
+                                            if (sub && sub.score !== null) {
+                                              return `Score: ${sub.score}%${
+                                                sub.feedback
+                                                  ? " - Feedback available"
+                                                  : ""
+                                              }`;
+                                            }
+                                          }
+                                          return "Important assessment";
+                                        }
+                                        return "Milestone session";
+                                      };
+
+                                      // Format date short (e.g., "01 Sep")
+                                      const formatShortDate = (
+                                        dateString: string
+                                      ) => {
+                                        try {
+                                          const date = new Date(dateString);
+                                          return date.toLocaleDateString("en-US", {
+                                            day: "2-digit",
+                                            month: "short",
+                                          });
+                                        } catch {
+                                          return formatDate(dateString);
+                                        }
+                                      };
+
+                                      // Check if date has passed or is today
+                                      const today = new Date();
+                                      today.setHours(0, 0, 0, 0);
+                                      const sessionDate = new Date(session.date);
+                                      sessionDate.setHours(0, 0, 0, 0);
+                                      const isPastOrToday = sessionDate <= today;
+                                      
+                                      return (
+                                        <div
+                                          key={session.id}
+                                          className="relative flex items-start gap-4"
+                                        >
+                                          {/* Timeline Node */}
+                                          <div className="relative z-10 flex-shrink-0">
+                                            <div className={`w-4 h-4 rounded-full border-2 ${
+                                              isPastOrToday 
+                                                ? "bg-blue-600 border-blue-700" 
+                                                : "bg-primary-300 border-primary-400"
+                                            }`}></div>
+                                          </div>
+
+                                          {/* Timeline Content */}
+                                          <div className="flex-1 pt-0">
+                                            <Card className={`p-2 border shadow-sm ${
+                                              isPastOrToday
+                                                ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300"
+                                                : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200"
+                                            }`}>
+                                              <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                  <div className="flex items-center gap-2 mb-0.5">
+                                                    <h5 className={`text-sm ${
+                                                      isPastOrToday 
+                                                        ? "font-semibold text-blue-700" 
+                                                        : "font-semibold text-primary-800"
+                                                    }`}>
+                                                      {getMilestoneTitle()}
+                                                    </h5>
+                                                    {isCurrent && (
+                                                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent2-500 text-white shadow-sm">
+                                                        Current
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className="text-accent-600 text-xs">
+                                                    {getMilestoneDescription()}
+                                                  </p>
+                                                </div>
+                                                <span className={`text-xs font-medium whitespace-nowrap ml-4 ${
+                                                  isPastOrToday 
+                                                    ? "text-blue-700" 
+                                                    : "text-accent-600"
+                                                }`}>
+                                                  {formatDate(session.date)}
+                                                </span>
+                                              </div>
+                                            </Card>
+                                          </div>
                                         </div>
-                                      </Card>
-                                    </div>
-                                  </div>
+                                      );
+                                    })}
+                                  </>
                                 );
-                              })}
+                              })()}
                             </div>
                           </div>
                         </div>
                       </Card>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </TabContent>
