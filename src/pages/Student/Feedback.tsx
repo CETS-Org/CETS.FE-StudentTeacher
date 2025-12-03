@@ -3,6 +3,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import FeedbackDialog from "./components/FeedbackDialog";
+import { toast } from "@/components/ui/Toast";
 import { 
   ChevronRight,
   MessageSquare,
@@ -139,7 +140,7 @@ export default function Feedback() {
   };
 
   const handleFeedbackComplete = () => {
-    alert("Feedback submitted successfully!");
+    toast.success("Feedback submitted successfully!");
     setSelectedCourse(null);
     // Refresh the course list to update feedback status
     fetchStudentClasses();
