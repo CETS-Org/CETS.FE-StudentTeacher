@@ -373,17 +373,27 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       const requestTypesResponse = await getAcademicRequestTypes();
       const requestTypesList = requestTypesResponse.data as any[];
       
-      // Filter out "Meeting Reschedule" for students (only show for teachers)
+      // Filter request types based on user role
       const userRole = getUserRole();
       const isTeacher = userRole?.toLowerCase() === 'teacher' || userRole?.toLowerCase() === 'staff';
       
-      const filteredTypes = isTeacher 
-        ? requestTypesList 
-        : requestTypesList.filter(type => {
-            const typeName = (type.name || '').toLowerCase();
-            const typeCode = (type.code || '').toLowerCase();
-            return !typeName.includes('meeting reschedule');
-          });
+      const filteredTypes = requestTypesList.filter(type => {
+        const typeCode = (type.code || '').toLowerCase();
+        
+        // Request types only for teachers
+        if (typeCode === 'reschedule') {
+          return isTeacher;
+        }
+        
+        // Request types only for students
+        const studentOnlyTypes = ['transfer', 'suspension', 'cancel', 'dropout', 'resume'];
+        if (studentOnlyTypes.includes(typeCode)) {
+          return !isTeacher;
+        }
+        
+        // "Other" and any remaining types are visible to both roles
+        return true;
+      });
       
       setRequestTypes(filteredTypes);
     } catch (error: any) {
@@ -881,6 +891,79 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     const typeCode = (selectedType.code || '').toLowerCase();
 
     return typeCode === 'dropout';
+  };
+
+  // Check if all required fields are filled to enable/disable submit button
+  const isFormComplete = (): boolean => {
+    // Base requirements
+    if (!formData.requestTypeID || !formData.reason?.trim()) {
+      return false;
+    }
+
+    // Meeting Reschedule requirements
+    if (isMeetingReschedule()) {
+      if (!formData.classID?.trim() || !formData.classMeetingID?.trim() || 
+          !formData.toMeetingDate?.trim() || !formData.toSlotID?.trim()) {
+        return false;
+      }
+    }
+
+    // Class Transfer requirements
+    if (isClassTransfer()) {
+      if (!formData.courseID?.trim() || !formData.fromClassID?.trim() || 
+          !formData.toClassID?.trim()) {
+        return false;
+      }
+    }
+
+    // Suspension requirements
+    if (isSuspension()) {
+      if (!formData.suspensionStartDate?.trim() || !formData.suspensionEndDate?.trim()) {
+        return false;
+      }
+      if (!enrollmentID && !selectedEnrollmentId) {
+        return false;
+      }
+      if (!suspensionValidationResult || !suspensionValidationResult.isValid) {
+        return false;
+      }
+      // Check document requirement
+      if (suspensionValidationResult.requiresDocument && !selectedFile && !formData.attachmentUrl) {
+        return false;
+      }
+    }
+
+    // Dropout requirements
+    if (isDropout()) {
+      if (!dropoutCompletedExitSurvey || !dropoutExitSurveyUrl) {
+        return false;
+      }
+      if (!enrollmentID && !selectedEnrollmentId) {
+        return false;
+      }
+      if (!dropoutEffectiveDate?.trim()) {
+        return false;
+      }
+      if (!dropoutValidationResult || !dropoutValidationResult.isValid) {
+        return false;
+      }
+    }
+
+    // Enrollment Cancellation requirements
+    if (isEnrollmentCancellation()) {
+      if (!enrollmentID && !selectedEnrollmentId) {
+        return false;
+      }
+    }
+
+    // Resume from Suspension requirements
+    if (isResumeFromSuspension()) {
+      if (!enrollmentID && !selectedEnrollmentId) {
+        return false;
+      }
+    }
+
+    return true;
   };
 
   const handleValidateSuspension = async () => {
@@ -2367,7 +2450,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             <Button
               type="submit"
               className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting || isLoading}
+              disabled={isSubmitting || isLoading || !isFormComplete()}
             >
               {isSubmitting ? 'Submitting...' : 'Submit Request'}
             </Button>
