@@ -875,12 +875,21 @@ export default function StudentAssignmentTaking() {
 
   // Get audio URL for a question (helper function)
   const getQuestionAudioUrl = (question: Question): string | null => {
-    const audioUrl = (question as any)._audioUrl || question.reference;
+    // Priority: 1) question._audioUrl, 2) question.reference, 3) questionData.media.audioUrl (for listening assignments)
+    let audioUrl = (question as any)._audioUrl || question.reference;
+    
+    // If no audio URL on question, check top-level media.audioUrl (common for listening assignments)
+    if (!audioUrl && questionData?.media?.audioUrl) {
+      audioUrl = questionData.media.audioUrl;
+    }
+    
     if (!audioUrl) return null;
+    
     // If already a full URL, return as is
     if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
       return audioUrl;
     }
+    
     // Convert filePath to full URL
     return `${config.storagePublicUrl}${audioUrl.startsWith('/') ? audioUrl : '/' + audioUrl}`;
   };

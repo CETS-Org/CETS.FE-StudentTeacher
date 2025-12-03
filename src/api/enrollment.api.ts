@@ -64,6 +64,7 @@ export const getStudentEnrollments = async (studentId: string): Promise<CourseEn
 
 /**
  * Check if a student is enrolled in a specific course
+ * Only returns true if enrollment status is "Enrolled" or "Pending"
  * @param studentId - The student ID
  * @param courseId - The course ID to check
  * @returns Promise<boolean>
@@ -71,7 +72,12 @@ export const getStudentEnrollments = async (studentId: string): Promise<CourseEn
 export const isStudentEnrolledInCourse = async (studentId: string, courseId: string): Promise<boolean> => {
   try {
     const enrollments = await getStudentEnrollments(studentId);
-    return enrollments.some(enrollment => enrollment.courseId === courseId && enrollment.isActive);
+    return enrollments.some(enrollment => {
+      const status = (enrollment.enrollmentStatus || '').toString().toLowerCase();
+      return enrollment.courseId === courseId && 
+             enrollment.isActive && 
+             (status === 'enrolled' || status === 'pending');
+    });
   } catch (error) {
     console.error('Error checking enrollment status:', error);
     // If there's an error fetching enrollments, assume not enrolled

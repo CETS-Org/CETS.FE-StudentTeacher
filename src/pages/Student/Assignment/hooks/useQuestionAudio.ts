@@ -5,7 +5,7 @@ interface UseQuestionAudioReturn {
   questionAudioPlaying: Record<string, boolean>;
   questionAudioRefs: React.MutableRefObject<Record<string, HTMLAudioElement>>;
   toggleQuestionAudio: (question: Question) => void;
-  normalizeAudioUrl: (url: string) => string;
+  normalizeAudioUrl: (url: string | undefined) => string;
 }
 
 /**
@@ -17,8 +17,8 @@ export function useQuestionAudio(): UseQuestionAudioReturn {
   const questionAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
   // Normalize audio URL for consistent tracking
-  const normalizeAudioUrl = useCallback((url: string): string => {
-    if (!url) return url;
+  const normalizeAudioUrl = useCallback((url: string | undefined): string => {
+    if (!url) return '';
     try {
       const urlObj = new URL(url);
       return urlObj.pathname + urlObj.search;
@@ -33,7 +33,7 @@ export function useQuestionAudio(): UseQuestionAudioReturn {
 
     const audioUrl = question.audioUrl;
     const normalizedUrl = normalizeAudioUrl(audioUrl);
-    const trackingKey = normalizedUrl || audioUrl;
+    const trackingKey = normalizedUrl || audioUrl || '';
 
     // Stop all other audio first
     Object.keys(questionAudioRefs.current).forEach((key) => {

@@ -168,10 +168,13 @@ export default function CoursesSection() {
 
       try {
         const enrollments = await getStudentEnrollments(userInfo.id);
-        // Only include active enrollments
+        // Only include enrollments that are active AND have status "Enrolled"
         const activeEnrolledIds = new Set(
           enrollments
-            .filter(enrollment => enrollment.isActive)
+            .filter(enrollment => {
+              const status = (enrollment.enrollmentStatus || '').toString().toLowerCase();
+              return enrollment.isActive && status === 'enrolled';
+            })
             .map(enrollment => enrollment.courseId) // Use courseId (id is now enrollmentID, not courseID)
             .filter(id => id != null && id !== '') // Filter out null/undefined/empty IDs
         );
