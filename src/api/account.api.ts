@@ -82,3 +82,18 @@ export const checkCIDExist = async (cid: string): Promise<boolean> => {
   }
 };
 
+export interface ResendVerificationResponse {
+  message: string;
+  success: boolean;
+}
+
+export const resendVerificationEmail = async (email: string): Promise<ResendVerificationResponse> => {
+  try {
+    const response = await api.post(`${endpoint.account}/resend-verification`, { email });
+    return response.data;
+  } catch (error) {
+    console.error('Error resending verification email:', error);
+    throw error;
+  }
+};
+

@@ -6,14 +6,18 @@ import PackagesSection from "./components/PackagesSection";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import courseBgImage from "@/assets/course-bg.png";
-import { isTokenValid } from "@/lib/utils";
+import { isTokenValid, getUserInfo } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
+import VerificationDialog from "@/components/ui/VerificationDialog";
+import { api } from "@/api";
 
 export default function CourseAll() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { error: showError } = useToast();
+  const { error: showError, success: showSuccess } = useToast();
   const [showPlacementTestMessage, setShowPlacementTestMessage] = useState(true);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
     // Handle hash navigation
@@ -31,13 +35,62 @@ export default function CourseAll() {
     if (hasSeenMessage === 'true') {
       setShowPlacementTestMessage(false);
     }
+
+    // Check if user is logged in and not verified
+    if (isTokenValid()) {
+      const userInfo = getUserInfo();
+      
+      if (userInfo && userInfo.isVerified === false) {
+        setUserEmail(userInfo.email || "");
+        
+        // Use a combination of userId and a flag to track if dialog was shown
+        // This ensures dialog shows at least once per page visit for unverified users
+        const dialogKey = `verificationDialog_${userInfo.id}_shown`;
+        const hasSeenInThisVisit = sessionStorage.getItem(dialogKey);
+        
+        if (!hasSeenInThisVisit) {
+          setShowVerificationDialog(true);
+        }
+      }
+    }
   }, [location.hash]);
 
   const handleDismissMessage = () => {
     setShowPlacementTestMessage(false);
     localStorage.setItem('placementTestMessageSeen', 'true');
   };
+
+  const handleResendVerification = async () => {
+    try {
+      await api.resendVerificationEmail(userEmail);
+      showSuccess('Verification email has been resent successfully!');
+    } catch (error) {
+      console.error('Failed to resend verification email:', error);
+      showError('Failed to resend verification email. Please try again later.');
+      throw error;
+    }
+  };
+
+  const handleCloseVerificationDialog = () => {
+    setShowVerificationDialog(false);
+    // Remember that user has seen the dialog for this page visit
+    const userInfo = getUserInfo();
+    if (userInfo?.id) {
+      const dialogKey = `verificationDialog_${userInfo.id}_shown`;
+      sessionStorage.setItem(dialogKey, 'true');
+    }
+  };
+
   return (
+    <>
+      {/* Verification Dialog */}
+      <VerificationDialog
+        isOpen={showVerificationDialog}
+        onClose={handleCloseVerificationDialog}
+        onResendVerification={handleResendVerification}
+        userEmail={userEmail}
+      />
+
     <div className="min-h-screen bg-neutral-50">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
@@ -172,5 +225,6 @@ export default function CourseAll() {
         </button>
       </div>
     </div>
+    </>
   );
 }
