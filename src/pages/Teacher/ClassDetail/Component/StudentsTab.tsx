@@ -6,6 +6,7 @@ import { getStudentsInClass, bulkMarkAttendance } from "@/api/attendance.api";
 import type { StudentInClass } from "@/api/attendance.api";
 import Loader from "@/components/ui/Loader";
 import { getTeacherId } from "@/lib/utils";
+import { toast } from "@/components/ui/Toast";
 
 // Cache for students data to avoid reloading when switching tabs
 const studentsCache = new Map<string, { data: StudentInClass[]; timestamp: number }>();
@@ -113,12 +114,12 @@ export default function StudentsTab({
       
       // Validate required fields
       if (!classMeetingId) {
-        alert("Class meeting ID is required to save attendance.");
+        toast.error("Class meeting ID is required to save attendance.");
         return;
       }
 
       if (!teacherId) {
-        alert("Teacher ID is not available. Please log in again.");
+        toast.error("Teacher ID is not available. Please log in again.");
         return;
       }
 
@@ -148,19 +149,16 @@ export default function StudentsTab({
       setStudents(updatedStudents);
 
       // Hiển thị thông báo thành công
-      alert(
-        `Attendance saved successfully!\n` +
-        `Total Students: ${response.totalStudents}\n` +
-        `Present: ${response.presentCount}\n` +
-        `Absent: ${response.absentCount}\n` +
-        `Marked by: ${response.markedByTeacher}`
+      toast.success(
+        `Attendance saved successfully! Total: ${response.totalStudents} | Present: ${response.presentCount} | Absent: ${response.absentCount}`
       );
       
       setIsTaking(false);
       setAbsent({});
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving attendance:", error);
-      alert("Failed to save attendance. Please try again.");
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to save attendance. Please try again.";
+      toast.error(errorMessage);
     }
   };
 
