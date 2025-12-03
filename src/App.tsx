@@ -50,10 +50,11 @@ import PaymentHistory from './pages/Student/ChoosePaidItem/PaymentHistory/Paymen
 import UniversalLayout from './Shared/UniversalLayout'
 import StudentDetailPage from './pages/Student/Profile/StudentDetailPage'
 import ScrollToTop from './components/ScrollToTop'
-import WeeklyFeedback from '@/pages/Student/WeeklyFeedback'
+import WeeklyFeedback from './pages/Student/WeeklyFeedback'
 import ToastContainer from './components/ui/ToastContainer'
 import TakePlacementTestPage from '@/pages/Student/PlacementTest/TakePlacementTestPage'
-import ChatWidget from '@/Shared/Chat/components/ChatWidget';
+import ChatWidget from './Shared/Chat/components/ChatWidget';
+import PostponeConfirmationPage from './Shared/Verification/PostponeConfirmationPage';
 
 
 export default function App() {
@@ -72,6 +73,7 @@ export default function App() {
       <Route path="/google-callback" element={<GoogleCallback />} />
       <Route path="/verification-success" element={<VerificationSuccess />} />
       <Route path="/verification-error" element={<VerificationError />} />
+      <Route path="/postpone-confirmation" element={<PostponeConfirmationPage />} />
       
       {/* All other routes with UniversalLayout */}
       <Route path="/*" element={

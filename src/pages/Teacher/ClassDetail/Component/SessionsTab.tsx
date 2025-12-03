@@ -28,18 +28,17 @@ type Props = {
 const stripTime = (d: Date) =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const getMondayOfWeek = (date: Date): number => {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = d.getDay(); 
-  const diff = day === 0 ? -6 : 1 - day; 
+  const day = d.getDay(); // 0 = Sun, 1 = Mon, ...
+  const diff = day === 0 ? -6 : 1 - day; // move to Monday
   d.setDate(d.getDate() + diff);
   return stripTime(d);
 };
 
-/**
- * dd/mm/yyyy
- */
+/** dd/mm/yyyy */
 const formatDateDDMMYYYY = (dateString: string) => {
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return dateString;
@@ -65,6 +64,7 @@ export default function SessionsTab({ classId }: Props) {
   );
   const [selectedClassMeetingId, setSelectedClassMeetingId] =
     useState<string | null>(null);
+  const [modalCanEditWeek, setModalCanEditWeek] = useState<boolean>(false);
 
   const itemsPerPage = 4;
   const navigate = useNavigate();
@@ -120,7 +120,7 @@ export default function SessionsTab({ classId }: Props) {
 
   /**
    * Tính:
-   * - academicWeekMap: session.id -> "tuần học" (tuần 1 = tuần chứa buổi học sớm nhất, tuần tính theo ISO (Mon–Sun))
+   * - academicWeekMap: session.id -> "tuần học" (tuần 1 = tuần chứa buổi học sớm nhất, tuần tính theo Mon–Sun)
    * - lastOfWeekIdSet: tập ID buổi cuối cùng của từng tuần học
    */
   const { lastOfWeekIdSet, academicWeekMap } = useMemo(() => {
@@ -131,7 +131,7 @@ export default function SessionsTab({ classId }: Props) {
       return { lastOfWeekIdSet: new Set<string>(), academicWeekMap: weekMap };
     }
 
-    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const WEEK_MS = 7 * DAY_MS;
 
     // 1) Tìm Monday của tuần chứa buổi học SỚM NHẤT -> baseMonday
     let baseMonday: number | null = null;
@@ -148,7 +148,6 @@ export default function SessionsTab({ classId }: Props) {
       return { lastOfWeekIdSet: new Set<string>(), academicWeekMap: weekMap };
     }
 
-    // === SỬA LỖI 1: Gán vào const mới ===
     const finalBaseMonday = baseMonday;
 
     // 2) Với mỗi session, tính tuần học (weekIndex) từ baseMonday
@@ -157,7 +156,6 @@ export default function SessionsTab({ classId }: Props) {
       if (isNaN(d.getTime())) return;
 
       const monday = getMondayOfWeek(d);
-      // === SỬA LỖI 1: Dùng const mới ===
       const diffWeeks = Math.floor((monday - finalBaseMonday) / WEEK_MS);
       const weekIndex = diffWeeks + 1; // Tuần bắt đầu từ 1
 
@@ -204,6 +202,8 @@ export default function SessionsTab({ classId }: Props) {
     ? Math.round((completedCount / totalCount) * 100)
     : 0;
 
+  const todayTs = stripTime(new Date());
+
   // UI states
   if (loading) {
     return (
@@ -230,6 +230,7 @@ export default function SessionsTab({ classId }: Props) {
 
   return (
     <div>
+      {/* Progress */}
       <div className="mt-3 mb-6">
         <div className="flex items-center justify-between text-sm font-semibold text-primary-800 mb-1">
           <div className="flex items-center gap-2">
@@ -249,7 +250,7 @@ export default function SessionsTab({ classId }: Props) {
         </div>
       </div>
 
-      {/* Header + Progress */}
+      {/* Header */}
       <div className="mb-4">
         <h2 className="text-xl font-bold text-primary-800">
           Sessions ({totalCount})
@@ -276,14 +277,28 @@ export default function SessionsTab({ classId }: Props) {
             {currentSessions.map((sess) => {
               const isPinned = sess.id === pinnedId;
               const isLastOfWeek = lastOfWeekIdSet.has(sess.id);
-              const week = academicWeekMap[sess.id] ?? 1; // tuần học (bắt đầu từ 1)
+              const week = academicWeekMap[sess.id] ?? 1; // tuần học
               const sessionNo = sessionNumberMap[sess.id];
 
-              // badges
               const isCompleted = !sess.isStudy;
               const isComingUp =
                 sess.isStudy &&
                 stripTime(new Date(sess.date)) >= stripTime(new Date());
+
+              // ====== LOGIC REMINDER FEEDBACK ======
+              let showReminderBadge = false;
+              let canEditWeek = false;
+
+              if (isLastOfWeek) {
+                const sessionTs = stripTime(new Date(sess.date));
+
+                // Window cho phép edit feedback: từ 3 ngày trước tới hết ngày buổi cuối tuần
+                const startEditTs = sessionTs - 3 * DAY_MS;
+                const endEditTs = sessionTs + 1 * DAY_MS;
+
+                canEditWeek = todayTs >= startEditTs && todayTs <= endEditTs;
+                showReminderBadge = canEditWeek;
+              }
 
               return (
                 <Card
@@ -302,14 +317,15 @@ export default function SessionsTab({ classId }: Props) {
                         <Sparkles className="w-3.5 h-3.5" />
                         Next session
                         <span className="relative ml-1 inline-flex">
-                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
                         </span>
                       </div>
                     </div>
                   )}
 
                   <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                    {/* LEFT info */}
                     <div className="flex items-start gap-4 flex-1">
                       <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
                         <NotebookPen className="w-6 h-6 text-white" />
@@ -332,8 +348,6 @@ export default function SessionsTab({ classId }: Props) {
                               Completed
                             </span>
                           )}
-
-                        
                         </div>
 
                         <div className="space-y-2">
@@ -343,22 +357,21 @@ export default function SessionsTab({ classId }: Props) {
                               {formatDateDDMMYYYY(sess.date)}
                             </span>
                           </div>
-                           <div className="flex items-center gap-2 text-sm text-neutral-700">
+
+                          <div className="flex items-center gap-2 text-sm text-neutral-700">
                             <Clock className="w-4 h-4 text-primary-600" />
-                            <span className="font-medium">
-                              {sess.slot}
-                            </span>
+                            <span className="font-medium">{sess.slot}</span>
                           </div>
 
-                          {/* === SỬA LỖI 2: Logic Online/Offline === */}
-                        <div className="flex items-center gap-2 text-sm text-neutral-700">
+                          {/* Online / Offline + passcode */}
+                          <div className="flex items-center gap-2 text-sm text-neutral-700">
                             {sess.roomID ? (
                               <>
                                 <Building className="w-4 h-4 text-primary-600 font-semibold" />
                                 <span>Offline</span>
                                 <MapPin className="w-4 h-4 text-primary-600 font-semibold" />
-                                <span> Room: {sess.roomCode}</span>                               
-                                  {sess.onlineMeetingUrl && sess.passcode && (
+                                <span>Room: {sess.roomCode}</span>
+                                {sess.onlineMeetingUrl && sess.passcode && (
                                   <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
                                     Meeting Password: {sess.passcode}
                                   </span>
@@ -368,8 +381,7 @@ export default function SessionsTab({ classId }: Props) {
                               <>
                                 <Globe className="w-4 h-4 text-primary-600 font-semibold" />
                                 <span>Online</span>
-                                {/* Hiển thị passcode nếu có, vì đây là Online */}
-                               {sess.onlineMeetingUrl && sess.passcode && (
+                                {sess.onlineMeetingUrl && sess.passcode && (
                                   <span className="ml-2 px-2 py-1 bg-neutral-100 rounded text-xs font-semibold text-primary-800">
                                     Meeting Password: {sess.passcode}
                                   </span>
@@ -377,7 +389,6 @@ export default function SessionsTab({ classId }: Props) {
                               </>
                             )}
                           </div>
-                          {/* === KẾT THÚC SỬA LỖI 2 === */}
 
                           {sess.recordingUrl && (
                             <div className="flex items-center gap-2 text-sm text-neutral-700">
@@ -389,46 +400,97 @@ export default function SessionsTab({ classId }: Props) {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 lg:flex-shrink-0">
-                      {sess.onlineMeetingUrl && !isCompleted && (
-                        <Button
-                          variant="secondary"
-                          className="border-primary-300 text-primary-700 hover:bg-primary-50"
-                          onClick={() =>
-                            window.open(sess.onlineMeetingUrl!, "_blank")
-                          }
-                          iconLeft={<Globe className="w-4 h-4" />}
-                        >
-                          Join
-                        </Button>
-                      )}
+                    {/* RIGHT buttons + reminder */}
+                    <div className="flex flex-col gap-1 lg:flex-shrink-0">
+                      {/* Row buttons */}
+                      <div className="flex flex-row items-center gap-2">
+                        {sess.onlineMeetingUrl && !isCompleted && (
+                          <Button
+                            variant="secondary"
+                            className="border-primary-300 text-primary-700 hover:bg-primary-50"
+                            onClick={() =>
+                              window.open(sess.onlineMeetingUrl!, "_blank")
+                            }
+                            iconLeft={<Globe className="w-4 h-4" />}
+                          >
+                            Join
+                          </Button>
+                        )}
 
-                      {/* Weekly Feedback ở BUỔI CUỐI CỦA TUẦN HỌC (weekNumber là tuần học tính từ tuần 1) */}
+                        {isLastOfWeek ? (
+                          <>
+                            <div className="relative">
+                              {/* 💭 Reminder bubble */}
+                           {showReminderBadge && (
+                                    <div
+                                      className="
+                                        absolute left-1/2 bottom-full mb-2 -translate-x-1/2
+                                        bg-white px-3 py-1 rounded-full shadow-md
+                                        text-[11px] font-semibold text-amber-700
+                                        border border-amber-300
+                                        flex items-center gap-1
+                                        whitespace-nowrap
+                                        animate-pulse
+                                      "
+                                    >
+                                      <span className="text-amber-600">💭</span>
+                                      Give feedback this week
+                                    </div>
+                                  )}
+
+                              <Button
+                                variant="secondary"
+                                className="border-primary-300 text-primary-700 hover:bg-primary-50 flex items-center gap-2"
+                                onClick={() => {
+                                  setSelectedClassMeetingId(sess.id);
+                                  setSelectedWeekNumber(week);
+                                  setModalCanEditWeek(canEditWeek);
+                                  setFeedbackOpen(true);
+                                }}
+                              >
+                                Weekly Feedback
+                              </Button>
+                            </div>
+
+                            <Button
+                              variant="primary"
+                              onClick={() =>
+                                navigate(
+                                  `/teacher/class/${classId}/session/${sess.id}`
+                                )
+                              }
+                            >
+                              Go to Session
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="primary"
+                            onClick={() =>
+                              navigate(
+                                `/teacher/class/${classId}/session/${sess.id}`
+                              )
+                            }
+                          >
+                            Go to Session
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Text trạng thái feedback */}
                       {isLastOfWeek && (
-                        <Button
-                          variant="secondary"
-                          className="border-primary-300 text-primary-700 hover:bg-primary-50"
-                          onClick={() => {
-                            setSelectedClassMeetingId(sess.id);
-                            setSelectedWeekNumber(week);
-                            setFeedbackOpen(true);
-                          }}
-                        >
-                          Weekly Feedback
-                        </Button>
+                        <div className="w-full text-left">
+                          {!canEditWeek ? (
+                            <span className="text-[10px] text-neutral-500">
+                              Feedback is locked for editing. View only.
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-success-700">
+                              Feedback is open for this week.
+                            </span>
+                          )}
+                        </div>
                       )}
-
-                      <Button
-                        variant="primary"
-                        className="btn-secondary"
-                        onClick={() =>
-                          navigate(
-                            `/teacher/class/${classId}/session/${sess.id}`
-                          )
-                        }
-                      >
-                        Go to Session
-                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -458,6 +520,7 @@ export default function SessionsTab({ classId }: Props) {
                 classMeetingId={selectedClassMeetingId}
                 weekNumber={selectedWeekNumber}
                 isOpen={feedbackOpen}
+                canEditWeek={modalCanEditWeek} // nhớ thêm prop này bên WeeklyFeedbackModal
                 onClose={() => setFeedbackOpen(false)}
               />
             )}
