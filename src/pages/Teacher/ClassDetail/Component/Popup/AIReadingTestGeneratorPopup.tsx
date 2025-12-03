@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -821,21 +820,15 @@ export default function AIReadingTestGeneratorPopup({
       </Dialog>
 
       {/* Toast Notifications */}
-      {toasts.length > 0 &&
-        createPortal(
-          <>
-            {toasts.map((toast) => (
-              <Toast
-                key={toast.id}
-                message={toast.message}
-                type={toast.type}
-                onClose={() => hideToast(toast.id)}
-                duration={3000}
-              />
-            ))}
-          </>,
-          document.body
-        )}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+          duration={3000}
+        />
+      ))}
     </>
   );
 }
