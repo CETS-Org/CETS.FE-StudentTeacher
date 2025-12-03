@@ -86,24 +86,13 @@ export default function QuestionRenderer({
     }
   };
 
-  // Hiển thị audio player nếu có audio URL
-  // Nếu có audio URL, đây có thể là listening question (vì chỉ listening questions có audio)
-  const isListening = skillType?.toLowerCase().includes("listening") || false;
-  // Hiển thị audio player nếu có audio URL (không cần kiểm tra skillType vì chỉ listening questions mới có audio URL)
-  const shouldShowAudioPlayer = !!questionAudioUrl;
-  
-  // Debug: ALWAYS log to see what's happening
-  console.log("🔊 QuestionRenderer props:", {
-      questionId: question.id,
-      skillType,
-      isListening,
-      hasQuestionAudioUrl: !!questionAudioUrl,
-      questionAudioUrl,
-      hasToggleQuestionAudio: !!toggleQuestionAudio,
-      hasQuestionAudioPlaying: !!questionAudioPlaying,
-      hasNormalizeAudioUrl: !!normalizeAudioUrl,
-      shouldShowAudioPlayer
-    });
+  // Chỉ hiển thị audio player cho listening questions
+  // Logic:
+  // - Nếu skillType có giá trị: chỉ hiển thị khi chứa "listening" (cho PlacementTest)
+  // - Nếu skillType null/empty: hiển thị nếu có audio URL (cho StudentAssignmentTaking khi skillName chưa được set)
+  const hasSkillType = skillType && skillType.trim() !== "";
+  const isListening = hasSkillType ? skillType.toLowerCase().includes("listening") : false;
+  const shouldShowAudioPlayer = (hasSkillType ? isListening : true) && !!questionAudioUrl;
 
   return (
     <div className="space-y-4">
