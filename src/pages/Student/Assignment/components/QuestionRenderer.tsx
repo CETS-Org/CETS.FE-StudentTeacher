@@ -86,27 +86,48 @@ export default function QuestionRenderer({
     }
   };
 
-  // Chỉ hiển thị audio player cho listening questions
+  // Hiển thị audio player nếu có audio URL
+  // Nếu có audio URL, đây có thể là listening question (vì chỉ listening questions có audio)
   const isListening = skillType?.toLowerCase().includes("listening") || false;
-  const shouldShowAudioPlayer = isListening && questionAudioUrl && toggleQuestionAudio && questionAudioPlaying && normalizeAudioUrl;
+  // Hiển thị audio player nếu có audio URL (không cần kiểm tra skillType vì chỉ listening questions mới có audio URL)
+  const shouldShowAudioPlayer = !!questionAudioUrl;
+  
+  // Debug: ALWAYS log to see what's happening
+  console.log("🔊 QuestionRenderer props:", {
+      questionId: question.id,
+      skillType,
+      isListening,
+      hasQuestionAudioUrl: !!questionAudioUrl,
+      questionAudioUrl,
+      hasToggleQuestionAudio: !!toggleQuestionAudio,
+      hasQuestionAudioPlaying: !!questionAudioPlaying,
+      hasNormalizeAudioUrl: !!normalizeAudioUrl,
+      shouldShowAudioPlayer
+    });
 
   return (
     <div className="space-y-4">
       {/* Audio Player for Question - chỉ hiển thị cho listening */}
-      {shouldShowAudioPlayer && (
+      {shouldShowAudioPlayer && questionAudioUrl && (
         <div className={`bg-purple-50 p-4 rounded-lg border ${isAudioDisabled ? 'border-red-300 bg-red-50' : 'border-purple-200'}`}>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => !isAudioDisabled && toggleQuestionAudio && toggleQuestionAudio({ ...question, audioUrl: questionAudioUrl })}
-              disabled={isAudioDisabled}
+              onClick={() => {
+                if (!isAudioDisabled && toggleQuestionAudio && questionAudioUrl) {
+                  toggleQuestionAudio({ ...question, audioUrl: questionAudioUrl });
+                }
+              }}
+              disabled={isAudioDisabled || !toggleQuestionAudio}
               className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
-                isAudioDisabled
+                isAudioDisabled || !toggleQuestionAudio
                   ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                   : 'bg-purple-600 text-white hover:bg-purple-700'
               }`}
               title={
                 isAudioDisabled
                   ? `Maximum play limit reached (${maxAudioPlays || 2} times)`
+                  : !toggleQuestionAudio
+                  ? "Audio player not available"
                   : questionAudioPlaying?.[normalizeAudioUrl?.(questionAudioUrl) || questionAudioUrl || '']
                   ? "Pause"
                   : remainingAudioPlays !== undefined
@@ -114,7 +135,7 @@ export default function QuestionRenderer({
                   : "Play"
               }
             >
-              {isAudioDisabled ? (
+              {isAudioDisabled || !toggleQuestionAudio ? (
                 <X className="w-5 h-5" />
               ) : questionAudioPlaying?.[normalizeAudioUrl?.(questionAudioUrl) || questionAudioUrl || ''] ? (
                 <Pause className="w-5 h-5" />
@@ -128,6 +149,8 @@ export default function QuestionRenderer({
                 <p className={`text-sm font-medium ${isAudioDisabled ? 'text-red-900' : 'text-purple-900'}`}>
                   {isAudioDisabled
                     ? `Audio play limit reached (${maxAudioPlays || 2}/${maxAudioPlays || 2} times used)`
+                    : !toggleQuestionAudio
+                    ? "Audio player not available"
                     : questionAudioPlaying?.[normalizeAudioUrl?.(questionAudioUrl) || questionAudioUrl || '']
                     ? "Playing audio..."
                     : remainingAudioPlays !== undefined && remainingAudioPlays > 0

@@ -29,6 +29,7 @@ import { api, apiClient } from "@/api";
 import { getQuestionDataUrl } from "@/api/assignments.api";
 import { getStudentId } from "@/lib/utils";
 import { config } from "@/lib/config";
+import { useToast } from "@/hooks/useToast";
 import type { Question, AssignmentQuestionData } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 import { submitSpeakingAssignment, validateSpeakingSubmission } from "./components/SpeakingAssignmentSubmission";
 
@@ -70,6 +71,7 @@ export default function StudentAssignmentTaking() {
   const { assignmentId } = useParams<{ assignmentId: string }>();
   const navigate = useNavigate();
   const studentId = getStudentId();
+  const { error: showError } = useToast();
   
   const [assignment, setAssignment] = useState<AssignmentDetails | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -123,7 +125,12 @@ export default function StudentAssignmentTaking() {
     return formatTime(seconds);
   }, [formatTime]);
 
-  const { questionAudioPlaying, questionAudioRefs, toggleQuestionAudio, normalizeAudioUrl } = useQuestionAudio();
+  const { questionAudioPlaying, questionAudioRefs, toggleQuestionAudio, normalizeAudioUrl, questionAudioPlayCount, questionAudioHasEnded } = useQuestionAudio({
+    onError: (message) => showError(message)
+  });
+  
+  // Maximum play count for listening questions (2 times)
+  const MAX_AUDIO_PLAY_COUNT = 2;
 
   const { lastSaved, isSaving, triggerSave } = useAutoSave({
     enabled: !submitting && !loading,
@@ -182,22 +189,82 @@ export default function StudentAssignmentTaking() {
             const questionData: AssignmentQuestionData = await questionResponse.json();
             setQuestionData(questionData);
             
-            // Process questions: assign passage to questions
-            // Priority: 1) question._passage, 2) question.readingPassage, 3) questionData.readingPassage
+            // Debug: log question data structure
+            console.log("📋 Question Data loaded:", {
+              skillName: assignmentData.skillName,
+              hasMedia: !!questionData.media,
+              mediaAudioUrl: questionData.media?.audioUrl,
+              questionsCount: questionData.questions?.length || 0,
+              firstQuestion: questionData.questions?.[0] ? {
+                id: questionData.questions[0].id,
+                _audioUrl: (questionData.questions[0] as any)._audioUrl,
+                audioUrl: (questionData.questions[0] as any).audioUrl,
+                reference: questionData.questions[0].reference
+              } : null
+            });
+            
+            // Process questions: assign passage and audio to questions
+            // Priority for passage: 1) question._passage, 2) question.readingPassage, 3) questionData.readingPassage
+            // Priority for audio: 1) question._audioUrl (from JSON), 2) question.audioUrl, 3) question.reference, 4) questionData.media?.audioUrl
             const processedQuestions = (questionData.questions || []).map((q: any) => {
+              const processedQ: any = { ...q };
+              
+              // Debug: log ALL questions (not just listening) to see data structure
+              console.log("🔊 Processing question:", {
+                questionId: q.id,
+                skillName: assignmentData.skillName,
+                isListening: assignmentData.skillName?.toLowerCase().includes("listening"),
+                has_audioUrl: !!q._audioUrl,
+                _audioUrl: q._audioUrl,
+                has_audioUrl_field: !!q.audioUrl,
+                audioUrl: q.audioUrl,
+                has_reference: !!q.reference,
+                reference: q.reference,
+                has_media_audioUrl: !!questionData.media?.audioUrl,
+                media_audioUrl: questionData.media?.audioUrl,
+                allKeys: Object.keys(q)
+              });
+              
+              // Process passage
               // If question already has _passage, keep it (for multiple passages)
-              if (q._passage) {
-                return q;
+              if (!processedQ._passage) {
+                // If question has readingPassage field, use it as _passage
+                if (q.readingPassage) {
+                  processedQ._passage = q.readingPassage;
+                }
+                // If questionData has readingPassage at top level, assign it to question
+                else if (questionData.readingPassage) {
+                  processedQ._passage = questionData.readingPassage;
+                }
               }
-              // If question has readingPassage field, use it as _passage
-              if (q.readingPassage) {
-                return { ...q, _passage: q.readingPassage };
+              
+              // Process audio URL
+              // Priority: 1) question._audioUrl (from JSON - highest priority), 2) question.audioUrl, 3) question.reference, 4) questionData.media?.audioUrl
+              // Note: _audioUrl from JSON is already copied via spread operator, so we only need to set it if it doesn't exist
+              if (!processedQ._audioUrl) {
+                // If question has audioUrl field, use it
+                if (q.audioUrl) {
+                  processedQ._audioUrl = q.audioUrl;
+                }
+                // If question has reference field (often used for audio in listening), use it
+                else if (q.reference) {
+                  processedQ._audioUrl = q.reference;
+                }
+                // If questionData has media.audioUrl at top level, assign it to question
+                else if (questionData.media?.audioUrl) {
+                  processedQ._audioUrl = questionData.media.audioUrl;
+                }
               }
-              // If questionData has readingPassage at top level, assign it to question
-              if (questionData.readingPassage) {
-                return { ...q, _passage: questionData.readingPassage };
-              }
-              return q;
+              
+              // Debug: log final processed question
+              console.log("🔊 Processed question result:", {
+                questionId: processedQ.id,
+                skillName: assignmentData.skillName,
+                final_audioUrl: processedQ._audioUrl,
+                final_reference: processedQ.reference
+              });
+              
+              return processedQ;
             });
             
           
@@ -875,14 +942,34 @@ export default function StudentAssignmentTaking() {
 
   // Get audio URL for a question (helper function)
   const getQuestionAudioUrl = (question: Question): string | null => {
-    const audioUrl = (question as any)._audioUrl || question.reference;
+    // Priority: 1) _audioUrl (from JSON), 2) reference field
+    const _audioUrl = (question as any)._audioUrl;
+    const reference = question.reference;
+    const audioUrl = _audioUrl || reference;
+    
+    // Debug log - always log to see what's happening
+    console.log("🔊 getQuestionAudioUrl called:", {
+      questionId: question.id,
+      skillName: assignment?.skillName,
+      _audioUrl,
+      reference,
+      finalAudioUrl: audioUrl,
+      questionKeys: Object.keys(question)
+    });
+    
     if (!audioUrl) return null;
-    // If already a full URL, return as is
-    if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
+    
+    // If already a full URL (http:// or https://), return as is
+    if (typeof audioUrl === 'string' && (audioUrl.startsWith('http://') || audioUrl.startsWith('https://'))) {
       return audioUrl;
     }
-    // Convert filePath to full URL
-    return `${config.storagePublicUrl}${audioUrl.startsWith('/') ? audioUrl : '/' + audioUrl}`;
+    
+    // Convert relative filePath to full URL
+    if (typeof audioUrl === 'string') {
+      return `${config.storagePublicUrl}${audioUrl.startsWith('/') ? audioUrl : '/' + audioUrl}`;
+    }
+    
+    return null;
   };
 
   // Memoized callback for recording updates to prevent infinite loops
@@ -898,6 +985,26 @@ export default function StudentAssignmentTaking() {
   const renderQuestion = (question: Question) => {
     const answer = answers[question.id];
     const questionAudioUrl = getQuestionAudioUrl(question);
+    const normalizedAudioUrl = questionAudioUrl ? normalizeAudioUrl(questionAudioUrl) : null;
+    const audioPlayCount = normalizedAudioUrl ? (questionAudioPlayCount[normalizedAudioUrl] || 0) : 0;
+    const remainingPlays = normalizedAudioUrl ? Math.max(0, MAX_AUDIO_PLAY_COUNT - audioPlayCount) : 0;
+    const isAudioDisabled = normalizedAudioUrl ? audioPlayCount >= MAX_AUDIO_PLAY_COUNT : false;
+    
+    // Debug: log ALL questions to see what's happening
+    console.log("🔊 renderQuestion called:", {
+      questionId: question.id,
+      skillName: assignment?.skillName,
+      isListening: assignment?.skillName?.toLowerCase().includes("listening"),
+      questionAudioUrl,
+      _audioUrl: (question as any)._audioUrl,
+      reference: question.reference,
+      hasToggleAudio: !!toggleQuestionAudio,
+      hasAudioPlaying: !!questionAudioPlaying,
+      hasNormalizeUrl: !!normalizeAudioUrl,
+      audioPlayCount,
+      remainingPlays,
+      isAudioDisabled
+    });
 
     return (
       <QuestionRenderer
@@ -913,6 +1020,10 @@ export default function StudentAssignmentTaking() {
         questionAudioPlaying={questionAudioPlaying}
         toggleQuestionAudio={toggleQuestionAudio}
         normalizeAudioUrl={normalizeAudioUrl}
+        audioPlayCount={audioPlayCount}
+        remainingAudioPlays={remainingPlays}
+        isAudioDisabled={isAudioDisabled}
+        maxAudioPlays={MAX_AUDIO_PLAY_COUNT}
       />
     );
   };
@@ -1200,7 +1311,7 @@ export default function StudentAssignmentTaking() {
                             return (
                               <div className="space-y-4">
                                 {/* Current Question Display */}
-                                <div className="p-4 rounded-lg border-1 border-gray-200 bg-white shadow-md bg-white">
+                                <div className="p-4 rounded-lg border-1 border-gray-200 bg-white shadow-md">
                                   <div className="mb-4 flex items-center justify-between">
                                     <div>
                                       <span className="text-sm font-medium text-primary-600">
@@ -1469,94 +1580,193 @@ export default function StudentAssignmentTaking() {
                 }
 
                 // Standard Question Navigation Layout (for questions without passages)
+                // Check if current question is reading without passage (should be centered)
+                const currentQuestionHasPassage = (currentQuestion as any)?._passage || (currentQuestion as any)?.readingPassage;
+                const shouldCenterQuestion = isReading && !currentQuestionHasPassage;
+                
                 return (
                   <div className="space-y-6">
-                    <Card className="p-6">
-                      {currentQuestion && (() => {
-                        const globalIndex = currentQuestionIndex;
-                        const isAnswered = answers[currentQuestion.id] !== undefined && 
-                                         answers[currentQuestion.id] !== null && 
-                                         answers[currentQuestion.id] !== "";
-                        
-                        return (
-                          <div className="space-y-4">
-                            {/* Current Question Display */}
-                            <div className="p-4 rounded-lg border-1 border-gray-200 bg-white shadow-md">
-                              <div className="mb-4 flex items-center justify-between">
-                                <div>
-                                  <span className="text-sm font-medium text-primary-600">
-                                    Question {globalIndex + 1} of {questions.length}
-                                  </span>
-                                  <span className="ml-2 text-sm text-neutral-500">
-                                    ({currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''})
-                                  </span>
-                                </div>
-                                {isAnswered && (
-                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
-                                    Answered
-                                  </span>
-                                )}
-                              </div>
+                    {shouldCenterQuestion ? (
+                      /* Layout căn giữa cho reading question không có passage */
+                      <div className="flex justify-center">
+                        <div className="w-full max-w-3xl">
+                          <Card className="p-6">
+                            {currentQuestion && (() => {
+                              const globalIndex = currentQuestionIndex;
+                              const isAnswered = answers[currentQuestion.id] !== undefined && 
+                                               answers[currentQuestion.id] !== null && 
+                                               answers[currentQuestion.id] !== "";
+                              
+                              return (
+                                <div className="space-y-4">
+                                  {/* Current Question Display */}
+                                  <div className="p-4 rounded-lg border-1 border-gray-200 bg-white shadow-md">
+                                    <div className="mb-4 flex items-center justify-between">
+                                      <div>
+                                        <span className="text-sm font-medium text-primary-600">
+                                          Question {globalIndex + 1} of {questions.length}
+                                        </span>
+                                        <span className="ml-2 text-sm text-neutral-500">
+                                          ({currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''})
+                                        </span>
+                                      </div>
+                                      {isAnswered && (
+                                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                          Answered
+                                        </span>
+                                      )}
+                                    </div>
 
-                              <div className="mb-4">
-                                {renderQuestion(currentQuestion)}
-                              </div>
-                            </div>
-                            
-                            {/* Navigation Buttons */}
-                            <div className="flex justify-between items-center pt-4 border-t border-neutral-200">
-                              <Button
-                                variant="secondary"
-                                onClick={handlePrevious}
-                                disabled={currentQuestionIndex === 0}
-                              >
-                                Previous
-                              </Button>
-                              <Button
-                                variant="primary"
-                                onClick={handleNext}
-                                disabled={currentQuestionIndex === questions.length - 1}
-                              >
-                                Next
-                              </Button>
-                            </div>
-                            
-                            {/* Question Number List */}
-                            {questions.length > 1 && (
-                              <div className="pt-4 border-t border-neutral-200">
-                                <p className="text-sm font-medium text-neutral-700 mb-3">
-                                  All Questions:
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {questions.map((q, qIndex) => {
-                                    const qIsAnswered = answers[q.id] !== undefined && 
-                                                      answers[q.id] !== null && 
-                                                      answers[q.id] !== "";
-                                    const qIsCurrent = qIndex === currentQuestionIndex;
-                                    
-                                    return (
-                                      <button
-                                        key={q.id}
-                                        onClick={() => handleQuestionClick(qIndex)}
-                                        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-                                          qIsCurrent
-                                            ? "bg-primary-600 text-white"
-                                            : qIsAnswered
-                                            ? "bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
-                                            : "bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200"
-                                        }`}
-                                      >
-                                        {qIndex + 1}
-                                      </button>
-                                    );
-                                  })}
+                                    <div className="mb-4">
+                                      {renderQuestion(currentQuestion)}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Navigation Buttons */}
+                                  <div className="flex justify-between items-center pt-4 border-t border-neutral-200">
+                                    <Button
+                                      variant="secondary"
+                                      onClick={handlePrevious}
+                                      disabled={currentQuestionIndex === 0}
+                                    >
+                                      Previous
+                                    </Button>
+                                    <Button
+                                      variant="primary"
+                                      onClick={handleNext}
+                                      disabled={currentQuestionIndex === questions.length - 1}
+                                    >
+                                      Next
+                                    </Button>
+                                  </div>
+                                  
+                                  {/* Question Number List */}
+                                  {questions.length > 1 && (
+                                    <div className="pt-4 border-t border-neutral-200">
+                                      <p className="text-sm font-medium text-neutral-700 mb-3">
+                                        All Questions:
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {questions.map((q, qIndex) => {
+                                          const qIsAnswered = answers[q.id] !== undefined && 
+                                                            answers[q.id] !== null && 
+                                                            answers[q.id] !== "";
+                                          const qIsCurrent = qIndex === currentQuestionIndex;
+                                          
+                                          return (
+                                            <button
+                                              key={q.id}
+                                              onClick={() => handleQuestionClick(qIndex)}
+                                              className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                                                qIsCurrent
+                                                  ? "bg-primary-600 text-white"
+                                                  : qIsAnswered
+                                                  ? "bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
+                                                  : "bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200"
+                                              }`}
+                                            >
+                                              {qIndex + 1}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </Card>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Layout chuẩn cho các câu hỏi khác */
+                      <Card className="p-6">
+                        {currentQuestion && (() => {
+                          const globalIndex = currentQuestionIndex;
+                          const isAnswered = answers[currentQuestion.id] !== undefined && 
+                                           answers[currentQuestion.id] !== null && 
+                                           answers[currentQuestion.id] !== "";
+                          
+                          return (
+                            <div className="space-y-4">
+                              {/* Current Question Display */}
+                              <div className="p-4 rounded-lg border-1 border-gray-200 bg-white shadow-md">
+                                <div className="mb-4 flex items-center justify-between">
+                                  <div>
+                                    <span className="text-sm font-medium text-primary-600">
+                                      Question {globalIndex + 1} of {questions.length}
+                                    </span>
+                                    <span className="ml-2 text-sm text-neutral-500">
+                                      ({currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''})
+                                    </span>
+                                  </div>
+                                  {isAnswered && (
+                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                      Answered
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="mb-4">
+                                  {renderQuestion(currentQuestion)}
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </Card>
+                              
+                              {/* Navigation Buttons */}
+                              <div className="flex justify-between items-center pt-4 border-t border-neutral-200">
+                                <Button
+                                  variant="secondary"
+                                  onClick={handlePrevious}
+                                  disabled={currentQuestionIndex === 0}
+                                >
+                                  Previous
+                                </Button>
+                                <Button
+                                  variant="primary"
+                                  onClick={handleNext}
+                                  disabled={currentQuestionIndex === questions.length - 1}
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                              
+                              {/* Question Number List */}
+                              {questions.length > 1 && (
+                                <div className="pt-4 border-t border-neutral-200">
+                                  <p className="text-sm font-medium text-neutral-700 mb-3">
+                                    All Questions:
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {questions.map((q, qIndex) => {
+                                      const qIsAnswered = answers[q.id] !== undefined && 
+                                                        answers[q.id] !== null && 
+                                                        answers[q.id] !== "";
+                                      const qIsCurrent = qIndex === currentQuestionIndex;
+                                      
+                                      return (
+                                        <button
+                                          key={q.id}
+                                          onClick={() => handleQuestionClick(qIndex)}
+                                          className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                                            qIsCurrent
+                                              ? "bg-primary-600 text-white"
+                                              : qIsAnswered
+                                              ? "bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
+                                              : "bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200"
+                                          }`}
+                                        >
+                                          {qIndex + 1}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </Card>
+                    )}
 
                     {/* Progress and Submit Section */}
                     <Card className="p-6 border-primary-200">
