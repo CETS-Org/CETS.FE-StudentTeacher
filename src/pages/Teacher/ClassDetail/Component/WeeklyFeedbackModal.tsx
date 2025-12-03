@@ -73,10 +73,12 @@ const SUGGESTIONS = {
 
 type Props = {
   classId: string;
-  classMeetingId: string; // buổi cuối tuần (nếu có)
-  weekNumber: number; // tuần học (custom)
+  classMeetingId: string; // buổi cuối tuần
+  weekNumber: number; // tuần học
   isOpen: boolean;
   onClose: () => void;
+  /** Nếu false => tuần đang bị khóa (chưa tới hoặc đã qua), chỉ được xem, không được edit */
+  canEditWeek?: boolean;
 };
 
 type FieldKey =
@@ -101,6 +103,7 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
   weekNumber,
   isOpen,
   onClose,
+  canEditWeek = true,
 }) => {
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState<StudentInClass[]>([]);
@@ -114,6 +117,9 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
   const [openSuggestOf, setOpenSuggestOf] =
     useState<{ sid: string; field: FieldKey } | null>(null);
   const portalRef = useRef<HTMLDivElement>(null);
+
+  // Tuần bị khóa (chưa tới hoặc đã qua)
+  const weekLocked = !canEditWeek;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -129,7 +135,7 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
 
         setStudents(list);
 
-        // 🔧 Hỗ trợ cả 2 kiểu: API trả thẳng array hoặc AxiosResponse
+        // Hỗ trợ cả 2 kiểu: API trả thẳng array hoặc AxiosResponse
         let feedbackList: WeeklyFeedbackView[] = [];
         if (Array.isArray(fbRes)) {
           feedbackList = fbRes;
@@ -144,7 +150,7 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
         const readOnlyFlags: Record<string, boolean> = {};
 
         list.forEach((s) => {
-          // 🔧 API đã filter theo classId + weekNumber rồi, nên chỉ cần match studentId
+          // API đã filter theo classId + weekNumber rồi, nên chỉ cần match studentId
           const fb = feedbackList.find((f) => f.studentId === s.studentId);
 
           if (fb) {
@@ -198,7 +204,7 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
   };
 
   const isValid = (sid: string) => {
-    if (readOnlyMap[sid]) return true; // đã khóa thì khỏi check
+    if (weekLocked || readOnlyMap[sid]) return true; // tuần lock hoặc đã submitted -> khỏi check
 
     const f = mapForm[sid];
     if (!f) return false;
@@ -210,7 +216,7 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
   };
 
   const doSaveOrSubmit = async (sid: string, submit: boolean) => {
-    if (readOnlyMap[sid]) return; // đã khóa thì không gửi
+    if (weekLocked || readOnlyMap[sid]) return; // tuần bị khóa hoặc đã submitted -> không gửi
 
     const f = mapForm[sid];
     if (!f) return;
@@ -309,6 +315,12 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
             <p className="text-sm text-neutral-600">
               Week: <b>{weekNumber}</b>
             </p>
+            {weekLocked && (
+              <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-1 inline-block">
+                Feedback for this week is currently locked. You can only view
+                existing entries.
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -331,7 +343,8 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
                 const active = selectedId === s.studentId;
                 const ok = isValid(s.studentId);
                 const st = mapForm[s.studentId]?.status ?? "idle";
-                const isReadOnly = !!readOnlyMap[s.studentId];
+                const isReadOnlyStudent = !!readOnlyMap[s.studentId];
+                const isReadOnly = weekLocked || isReadOnlyStudent;
 
                 return (
                   <button
@@ -385,7 +398,7 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
           <div className="flex-1 p-6 overflow-auto relative">
             {!selected ? (
               <div className="text-center text-neutral-500">
-                Select a student to write feedback.
+                Select a student to view feedback.
               </div>
             ) : (
               <Card className="p-5 border border-accent-100">
@@ -400,10 +413,17 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
                       view it.
                     </p>
                   )}
+                  {weekLocked && (
+                    <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-1.5 inline-block">
+                      Feedback for this week is locked by schedule. Editing is
+                      disabled.
+                    </p>
+                  )}
                 </div>
 
                 {(() => {
-                  const isReadOnly = !!readOnlyMap[selected.studentId];
+                  const isReadOnlyStudent = !!readOnlyMap[selected.studentId];
+                  const isReadOnly = weekLocked || isReadOnlyStudent;
 
                   return (
                     <>
@@ -546,7 +566,7 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Portal container */}
+      {/* Portal container (nếu sau này dùng Portal) */}
       <div ref={portalRef} />
     </div>
   );
