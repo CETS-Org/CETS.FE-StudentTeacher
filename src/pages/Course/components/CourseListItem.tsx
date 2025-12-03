@@ -1,18 +1,20 @@
-import { Star, Clock, BookOpen, ArrowRight, Heart, Award } from "lucide-react";
+import { Star, Clock, BookOpen, ArrowRight, Heart, Award, CheckCircle } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import CourseSchedule from "@/components/ui/CourseSchedule";
 import type { CourseCardProps } from "@/types/course";
 
-export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false, isRecommended = false }: CourseCardProps) {
+export default function CourseListItem({ course, onEnroll, onToggleWishlist, isInWishlist = false, isRecommended = false, isEnrolled = false }: CourseCardProps) {
   // Use schedules from course prop (already loaded from search API)
   const schedules = course.schedules || [];
   const schedulesLoading = false;
   
   return (
     <div className={`group bg-white rounded-lg hover:shadow-md transition-all duration-300 p-3 md:p-4 ${
-      isRecommended 
-        ? 'border-2 border-primary-400 shadow-lg hover:border-primary-500' 
-        : 'border border-gray-200 hover:border-primary-300'
+      isEnrolled
+        ? 'border-2 border-blue-300 bg-blue-50/30 opacity-90'
+        : isRecommended 
+          ? 'border-2 border-primary-400 shadow-lg hover:border-primary-500' 
+          : 'border border-gray-200 hover:border-primary-300'
     }`}>
       <div className="flex flex-col md:flex-row gap-3 md:gap-4 md:h-[240px]">
         {/* Course Image */}
@@ -26,6 +28,12 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
             {/* Badges */}
             <div className="absolute top-2 left-2 flex flex-col gap-1">
               <div className="flex gap-1">
+                {isEnrolled && (
+                  <span className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-2 py-0.5 rounded text-xs font-bold shadow-lg flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Enrolled
+                  </span>
+                )}
                 {course.isPopular && (
                 <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded text-xs font-bold">
                     🔥 Popular
@@ -150,11 +158,24 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
           
           <Button
             onClick={() => onEnroll(course)}
-            className="btn-secondary text-xs md:text-sm w-auto md:w-full px-3 md:px-4 py-2"
-            iconRight={<ArrowRight className="w-3 h-3 md:w-4 md:h-4" />}
+            className={`text-xs md:text-sm w-auto md:w-full px-3 md:px-4 py-2 ${
+              isEnrolled 
+                ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
+                : 'btn-secondary'
+            }`}
+            iconRight={isEnrolled ? <CheckCircle className="w-3 h-3 md:w-4 md:h-4" /> : <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />}
           >
-            <span className="md:hidden">Details</span>
-            <span className="hidden md:inline">View Details</span>
+            {isEnrolled ? (
+              <>
+                <span className="md:hidden">Enrolled</span>
+                <span className="hidden md:inline">View Course</span>
+              </>
+            ) : (
+              <>
+                <span className="md:hidden">Details</span>
+                <span className="hidden md:inline">View Details</span>
+              </>
+            )}
           </Button>
         </div>
       </div>

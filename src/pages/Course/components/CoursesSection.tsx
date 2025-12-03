@@ -91,7 +91,9 @@ export default function CoursesSection() {
   const [timeSlotsFacet, setTimeSlotsFacet] = useState<FacetItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(4); 
+  const [pageSize, setPageSize] = useState(4);
+  const [clientPage, setClientPage] = useState(1);
+  const clientPageSize = 4; // Items per page for client-side pagination 
 
   const [loading, setLoading] = useState(true); // Start with loading true
   const [err, setErr] = useState<string | null>(null);
@@ -193,7 +195,7 @@ export default function CoursesSection() {
     const s = new URLSearchParams();
     s.set("Sort", uiSortToServer[uiSort] ?? "Relevance");
     s.set("Page", String(page));
-    s.set("PageSize", String(pageSize));
+    s.set("PageSize", String(100)); // Fetch more results to handle enrollment sorting client-side
     
     // Always set these to avoid conditional logic causing re-renders
     if (qDebounced) s.set("Q", qDebounced);
@@ -354,7 +356,18 @@ export default function CoursesSection() {
   // Filter and sort courses based on placement test grade
   const { recommendedCourses, otherCourses } = useMemo(() => {
     if (!placementTestGrade || placementTestGrade === null) {
-      return { recommendedCourses: [], otherCourses: filteredItems };
+      // Sort enrolled courses to the bottom when no placement test grade
+      const sortedItems = [...filteredItems].sort((a, b) => {
+        const aEnrolled = enrolledCourseIds.has(a.id);
+        const bEnrolled = enrolledCourseIds.has(b.id);
+        
+        // Not enrolled courses come first (return -1), enrolled courses go last (return 1)
+        if (aEnrolled && !bEnrolled) return 1;
+        if (!aEnrolled && bEnrolled) return -1;
+        return 0; // Keep original order for courses with same enrollment status
+      });
+      
+      return { recommendedCourses: [], otherCourses: sortedItems };
     }
 
     const recommended: Course[] = [];
@@ -373,20 +386,61 @@ export default function CoursesSection() {
       }
     });
 
-    // Only apply default recommended sorting if user hasn't selected a specific sort
-    // This preserves the user's sort choice (e.g., score sorting)
-    if (uiSort === 'popular' || uiSort === 'newest' || uiSort === 'rating') {
-      // Sort recommended courses by standardScore (lower score first - easier courses)
-      recommended.sort((a, b) => {
-        const scoreA = a.standardScore ?? 0;
-        const scoreB = b.standardScore ?? 0;
-        return scoreA - scoreB;
+    // Sort each section to put enrolled courses at the bottom
+    const sortByEnrollment = (courses: Course[]) => {
+      return courses.sort((a, b) => {
+        const aEnrolled = enrolledCourseIds.has(a.id);
+        const bEnrolled = enrolledCourseIds.has(b.id);
+        
+        // Not enrolled courses come first, enrolled courses go last
+        if (aEnrolled && !bEnrolled) return 1;
+        if (!aEnrolled && bEnrolled) return -1;
+        
+        // If both have same enrollment status, apply other sorting logic
+        // Only apply default recommended sorting if user hasn't selected a specific sort
+        if (uiSort === 'popular' || uiSort === 'newest' || uiSort === 'rating') {
+          const scoreA = a.standardScore ?? 0;
+          const scoreB = b.standardScore ?? 0;
+          return scoreA - scoreB;
+        }
+        
+        return 0; // Keep original order from filteredItems
       });
-    }
-    // For score sorting, price sorting, etc., the order from filteredItems is already correct
+    };
+
+    sortByEnrollment(recommended);
+    sortByEnrollment(others);
 
     return { recommendedCourses: recommended, otherCourses: others };
-  }, [filteredItems, placementTestGrade, uiSort]);
+  }, [filteredItems, placementTestGrade, uiSort, enrolledCourseIds]);
+
+  // Apply client-side pagination after sorting
+  const paginatedRecommended = useMemo(() => {
+    if (recommendedCourses.length === 0) return [];
+    const start = (clientPage - 1) * clientPageSize;
+    return recommendedCourses.slice(start, start + clientPageSize);
+  }, [recommendedCourses, clientPage, clientPageSize]);
+
+  const paginatedOthers = useMemo(() => {
+    if (recommendedCourses.length > 0) {
+      // If we have recommended courses, paginate others separately
+      const start = (clientPage - 1) * clientPageSize;
+      return otherCourses.slice(start, start + clientPageSize);
+    } else {
+      // If no recommended courses, paginate all filtered items
+      const start = (clientPage - 1) * clientPageSize;
+      return otherCourses.slice(start, start + clientPageSize);
+    }
+  }, [otherCourses, recommendedCourses.length, clientPage, clientPageSize]);
+
+  // Calculate total items for pagination
+  const totalFilteredItems = recommendedCourses.length + otherCourses.length;
+  const totalClientPages = Math.ceil(totalFilteredItems / clientPageSize);
+
+  // Reset client page when filters change
+  useEffect(() => {
+    setClientPage(1);
+  }, [qDebounced, levelIds, categoryIds, skillIds, requirementIds, benefitIds, selectedDays, selectedTimeSlots, priceMin, priceMax, scoreMin, scoreMax, enrollmentStatus, uiSort]);
 
   return (
     <div id="courses" className="bg-gradient-to-b from-secondary-100 via-neutral-100 to-neutral-50">
@@ -635,7 +689,7 @@ export default function CoursesSection() {
             {!loading && !err && items.length > 0 ? (
               <>
                 {/* Recommended Courses Section */}
-                {recommendedCourses.length > 0 && placementTestGrade !== null && (
+                {paginatedRecommended.length > 0 && placementTestGrade !== null && (
                   <div className="mb-12">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-full shadow-lg">
@@ -648,7 +702,7 @@ export default function CoursesSection() {
                       </span>
                     </div>
                     <div className="space-y-4">
-                      {recommendedCourses.map((course, index) => (
+                      {paginatedRecommended.map((course, index) => (
                         <div
                           key={course.id}
                           className="animate-in fade-in-0 slide-in-from-left-4"
@@ -660,6 +714,7 @@ export default function CoursesSection() {
                             onToggleWishlist={toggleWishlist}
                             isInWishlist={isInWishlist(course.id)}
                             isRecommended={true}
+                            isEnrolled={enrolledCourseIds.has(course.id)}
                           />
                         </div>
                       ))}
@@ -668,9 +723,9 @@ export default function CoursesSection() {
                 )}
 
                 {/* Other Courses Section */}
-                {(otherCourses.length > 0 || recommendedCourses.length === 0) && (
+                {(paginatedOthers.length > 0 || recommendedCourses.length === 0) && (
                   <div>
-                    {recommendedCourses.length > 0 && placementTestGrade !== null && (
+                    {paginatedRecommended.length > 0 && placementTestGrade !== null && (
                       <div className="flex items-center gap-3 mb-6 mt-8">
                         <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
                         <span className="text-sm text-gray-600 font-medium px-4">All course</span>
@@ -678,7 +733,7 @@ export default function CoursesSection() {
                       </div>
                     )}
                     <div className="space-y-4">
-                      {(recommendedCourses.length > 0 ? otherCourses : filteredItems).map((course, index) => (
+                      {paginatedOthers.map((course, index) => (
                         <div
                           key={course.id}
                           className="animate-in fade-in-0 slide-in-from-left-4"
@@ -690,6 +745,7 @@ export default function CoursesSection() {
                             onToggleWishlist={toggleWishlist}
                             isInWishlist={isInWishlist(course.id)}
                             isRecommended={false}
+                            isEnrolled={enrolledCourseIds.has(course.id)}
                           />
                         </div>
                       ))}
@@ -697,13 +753,15 @@ export default function CoursesSection() {
                   </div>
                 )}
 
-                <Pagination
-                  page={page}
-                  pageSize={pageSize}
-                  total={total}
-                  onPageChange={setPage}
-                  loading={loading}
-                />
+                {totalClientPages > 1 && (
+                  <Pagination
+                    page={clientPage}
+                    pageSize={clientPageSize}
+                    total={totalFilteredItems}
+                    onPageChange={setClientPage}
+                    loading={loading}
+                  />
+                )}
               </>
             ) : !loading && !err ? (
               <div className="text-center py-16">

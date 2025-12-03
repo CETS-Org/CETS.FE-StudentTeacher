@@ -148,6 +148,7 @@ export interface CourseCardProps {
   onToggleWishlist?: (courseId: string) => void;
   isInWishlist?: boolean;
   isRecommended?: boolean;
+  isEnrolled?: boolean;
 }
 
 export interface SimpleCourseCardProps {
