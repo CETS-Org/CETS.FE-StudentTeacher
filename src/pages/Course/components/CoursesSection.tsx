@@ -170,7 +170,7 @@ export default function CoursesSection() {
         const activeEnrolledIds = new Set(
           enrollments
             .filter(enrollment => enrollment.isActive)
-            .map(enrollment => enrollment.courseId || enrollment.id) // Use courseId if available, otherwise use id (which is the course ID)
+            .map(enrollment => enrollment.courseId) // Use courseId (id is now enrollmentID, not courseID)
             .filter(id => id != null && id !== '') // Filter out null/undefined/empty IDs
         );
         setEnrolledCourseIds(activeEnrolledIds);

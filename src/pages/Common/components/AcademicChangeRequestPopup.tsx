@@ -10,6 +10,7 @@ import { getAcademicRequestTypes, getTimeSlots } from "@/api/lookup.api";
 import { getClassMeetingsByClassId, getTeacherSchedule } from "@/api/classMeetings.api";
 import { getAllClasses } from "@/api/classes.api";
 import { getCourses } from "@/api/course.api";
+import { getStudentEnrollments } from "@/api/enrollment.api";
 import { getUserInfo, getStudentId, getUserRole, getTeacherId } from "@/lib/utils";
 import { uploadToPresignedUrl } from "@/api/file.api";
 import type { SubmitAcademicRequest } from "@/types/academicRequest";
@@ -44,6 +45,13 @@ interface AcademicChangeRequestPopupProps {
     courseName?: string;
     className?: string;
   } | null;
+  enrollmentID?: string; // For suspension/dropout requests - which enrollment to affect
+  enrollmentInfo?: {
+    courseName?: string;
+    className?: string;
+    courseCode?: string;
+    enrollmentStatus?: string;
+  }; // Display info about the enrollment being affected
 }
 
 const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
@@ -51,6 +59,8 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   onClose,
   onSubmit,
   initialSessionData,
+  enrollmentID,
+  enrollmentInfo,
 }) => {
   const userInfo = getUserInfo();
   const userId = getStudentId();
@@ -87,6 +97,11 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const [dropoutValidationResult, setDropoutValidationResult] = useState<DropoutValidationResult | null>(null);
   const [isValidatingDropout, setIsValidatingDropout] = useState(false);
   const [showDropoutValidation, setShowDropoutValidation] = useState(false);
+
+  // For enrollment selection (when enrollmentID not provided via prop)
+  const [studentEnrollments, setStudentEnrollments] = useState<any[]>([]);
+  const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string>("");
+  const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false);
 
   const [requestTypes, setRequestTypes] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -160,6 +175,51 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
   const fromClass = formData.fromClassID ? getSelectedClass(formData.fromClassID) : null;
   const toClass = formData.toClassID ? getSelectedClass(formData.toClassID) : null;
+
+  // Fetch student enrollments when popup opens (for suspension/dropout/cancellation)
+  useEffect(() => {
+    if (isOpen && userId && !enrollmentID && (isSuspension() || isDropout() || isEnrollmentCancellation())) {
+      fetchStudentEnrollments();
+    }
+  }, [isOpen, userId, enrollmentID, formData.requestTypeID]);
+
+  const fetchStudentEnrollments = async () => {
+    try {
+      setIsLoadingEnrollments(true);
+      const enrollmentsData = await getStudentEnrollments(userId!);
+      
+      let filteredEnrollments = enrollmentsData;
+      
+      // For Suspension and Dropout: Only show "Enrolled" status
+      if (isSuspension() || isDropout()) {
+        filteredEnrollments = enrollmentsData.filter((e: any) => {
+          const status = (e.enrollmentStatus || '').toLowerCase();
+          return status === 'enrolled';
+        });
+      }
+      // For Enrollment Cancellation: Only show "Pending" status
+      else if (isEnrollmentCancellation()) {
+        filteredEnrollments = enrollmentsData.filter((e: any) => {
+          const status = (e.enrollmentStatus || '').toLowerCase();
+          return status === 'pending' || status === 'pending confirmation';
+        });
+      }
+      // Default: Show all active enrollments (not dropped/suspended/completed)
+      else {
+        filteredEnrollments = enrollmentsData.filter((e: any) => 
+          e.enrollmentStatus && 
+          !['dropped', 'suspended', 'completed'].includes(e.enrollmentStatus.toLowerCase())
+        );
+      }
+      
+      setStudentEnrollments(filteredEnrollments);
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
+      toast.error('Failed to load your enrollments');
+    } finally {
+      setIsLoadingEnrollments(false);
+    }
+  };
 
   // Fetch request types, courses, classes, and time slots on mount
   useEffect(() => {
@@ -762,6 +822,22 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
            typeCode.includes('suspend');
   };
 
+  const isEnrollmentCancellation = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
+    const selectedType = requestTypes.find(type => {
+      const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+      return typeId === formData.requestTypeID;
+    });
+
+    if (!selectedType) return false;
+    
+    const typeName = (selectedType.name || '').toLowerCase();
+    const typeCode = (selectedType.code || '').toLowerCase();
+    return typeName.includes('cancel') || typeCode.includes('cancel') || 
+           typeName.includes('enrollment cancellation') || typeCode.includes('enrollmentcancellation');
+  };
+
   const isDropout = (): boolean => {
     if (!formData.requestTypeID) return false;
     
@@ -1014,6 +1090,12 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         return false;
       }
 
+      // Check if enrollmentID is provided (either via prop or selected)
+      if (!enrollmentID && !selectedEnrollmentId) {
+        toast.error('Please select a course/enrollment to suspend.');
+        return false;
+      }
+
       // Check if validation has been performed
       if (!suspensionValidationResult || !suspensionValidationResult.isValid) {
         toast.error('Please validate your suspension request first');
@@ -1032,6 +1114,12 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       // First check if exit survey is completed (most important step)
       if (!dropoutCompletedExitSurvey || !dropoutExitSurveyUrl) {
         toast.error('Please complete the exit survey first by clicking "Start Dropout Process"');
+        return false;
+      }
+
+      // Check if enrollmentID is provided (either via prop or selected)
+      if (!enrollmentID && !selectedEnrollmentId) {
+        toast.error('Please select a course/enrollment to drop out from.');
         return false;
       }
 
@@ -1122,12 +1210,18 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         ...(isSuspension() && {
           suspensionStartDate: formData.suspensionStartDate || undefined,
           suspensionEndDate: formData.suspensionEndDate || undefined,
+          enrollmentID: enrollmentID || selectedEnrollmentId || undefined, // ✅ Use prop or selected
         }),
         // Dropout fields - only include if it's a dropout request
         ...(isDropout() && {
           effectiveDate: dropoutEffectiveDate || undefined,
           completedExitSurvey: dropoutCompletedExitSurvey,
           exitSurveyId: dropoutExitSurveyUrl || undefined, // Now contains MongoDB ID
+          enrollmentID: enrollmentID || selectedEnrollmentId || undefined, // ✅ Use prop or selected
+        }),
+        // Enrollment cancellation fields - only include if it's a cancellation request
+        ...(isEnrollmentCancellation() && {
+          enrollmentID: enrollmentID || selectedEnrollmentId || undefined, // ✅ Use prop or selected
         }),
       };
 
@@ -1167,6 +1261,8 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       setShowDropoutValidation(false);
       setShowDropoutWarning(false);
       setShowExitSurvey(false);
+      setSelectedEnrollmentId(""); // Reset selected enrollment
+      setStudentEnrollments([]); // Clear enrollments list
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -1215,6 +1311,8 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     setShowDropoutValidation(false);
     setShowDropoutWarning(false);
     setShowExitSurvey(false);
+    setSelectedEnrollmentId(""); // Reset selected enrollment
+    setStudentEnrollments([]); // Clear enrollments list
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -1273,6 +1371,89 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               })}
             </select>
           </div>
+
+          {/* Enrollment Selection Dropdown (For Suspension/Dropout/Cancellation when no enrollmentID provided) */}
+          {(isSuspension() || isDropout() || isEnrollmentCancellation()) && !enrollmentID && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Course/Enrollment to {isSuspension() ? 'Suspend' : isDropout() ? 'Drop' : 'Cancel'} <span className="text-red-500">*</span>
+              </label>
+              {isLoadingEnrollments ? (
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                  Loading your enrollments...
+                </div>
+              ) : (
+                <select
+                  value={selectedEnrollmentId}
+                  onChange={(e) => setSelectedEnrollmentId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select a course to {isSuspension() ? 'suspend' : isDropout() ? 'drop out from' : 'cancel'}</option>
+                  {studentEnrollments.map((enrollment: any) => (
+                    <option key={enrollment.id} value={enrollment.id}>
+                      {enrollment.courseName}
+                      {enrollment.className ? ` - ${enrollment.className}` : ''}
+                      {' '}({enrollment.enrollmentStatus || 'Status N/A'})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                {isSuspension() && 'Only enrolled courses can be suspended'}
+                {isDropout() && 'Only enrolled courses can be dropped'}
+                {isEnrollmentCancellation() && 'Only pending enrollments can be cancelled'}
+              </p>
+              
+              {studentEnrollments.length === 0 && !isLoadingEnrollments && (
+                <p className="text-xs text-red-600 mt-2">
+                  {isSuspension() && 'No enrolled courses found. You need an enrolled course to request suspension.'}
+                  {isDropout() && 'No enrolled courses found. You need an enrolled course to request dropout.'}
+                  {isEnrollmentCancellation() && 'No pending enrollments found. You need a pending enrollment to request cancellation.'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Enrollment Info Display (When enrollmentID or enrollmentInfo provided via prop) */}
+          {(isSuspension() || isDropout() || isEnrollmentCancellation()) && (enrollmentInfo || enrollmentID || selectedEnrollmentId) && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-medium text-amber-900">
+                  {isSuspension() ? 'Suspending Enrollment:' : isDropout() ? 'Dropping Out From:' : 'Cancelling Enrollment:'}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-amber-800 font-semibold">
+                  {enrollmentInfo?.courseName || 
+                   studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.courseName || 
+                   'Course Name Not Available'}
+                </p>
+                {(enrollmentInfo?.courseCode || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.courseCode) && (
+                  <p className="text-xs text-amber-700">
+                    Course Code: {enrollmentInfo?.courseCode || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.courseCode}
+                  </p>
+                )}
+                {(enrollmentInfo?.className || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.className) && (
+                  <p className="text-xs text-amber-700">
+                    Class: {enrollmentInfo?.className || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.className}
+                  </p>
+                )}
+                {(enrollmentInfo?.enrollmentStatus || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.enrollmentStatus) && (
+                  <p className="text-xs text-amber-700">
+                    Current Status: {enrollmentInfo?.enrollmentStatus || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.enrollmentStatus}
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-amber-600 mt-2 italic">
+                {isSuspension() && 'This enrollment will be suspended and you will not be able to attend classes during the suspension period.'}
+                {isDropout() && 'This enrollment will be permanently terminated. This action cannot be undone.'}
+                {isEnrollmentCancellation() && 'This pending enrollment will be cancelled. You can re-enroll later if you change your mind.'}
+              </p>
+            </div>
+          )}
 
           {/* Reason Category - Hidden for dropout (collected in exit survey) */}
           {!isDropout() && (

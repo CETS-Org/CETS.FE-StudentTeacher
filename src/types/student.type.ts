@@ -18,7 +18,8 @@ export interface Student extends Account {
     studentInfo: StudentInfo | null;
 }
   export interface CourseEnrollment {
-      id: string;
+      id: string; // This is the enrollmentID
+      courseId: string; // This is the courseID
       courseCode: string;
       courseName: string;
       description: string | null;

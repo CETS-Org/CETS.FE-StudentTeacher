@@ -1,8 +1,8 @@
 import { api, endpoint } from './api';
 
 export interface CourseEnrollment {
-  id: string; 
-  courseId?: string; 
+  id: string; // This is the enrollmentID
+  courseId: string; // This is the courseID 
   courseCode: string;
   courseName: string;
   description?: string | null;

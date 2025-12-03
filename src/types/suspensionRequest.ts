@@ -6,6 +6,7 @@ export interface CreateSuspensionRequest {
   reasonCategory: string;
   reasonDetail: string;
   attachmentUrl?: string;
+  enrollmentID: string;  // Required for tracking which enrollment to suspend
 }
 
 export interface SuspensionValidationResult {

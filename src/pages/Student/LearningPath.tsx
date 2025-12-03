@@ -99,7 +99,14 @@ export default function LearningPath() {
         // Fetch enrollments to get enrollment status and expected start date
         try {
           const enrollmentsData = await getStudentEnrollments(studentId);
-          setEnrollments(Array.isArray(enrollmentsData) ? enrollmentsData : []);
+          // Filter out only cancelled enrollments (keep dropped for student records)
+          const visibleEnrollments = Array.isArray(enrollmentsData) 
+            ? enrollmentsData.filter(e => {
+                const status = (e.enrollmentStatus || '').toLowerCase();
+                return status !== 'cancelled'; // Only exclude cancelled, keep dropped
+              })
+            : [];
+          setEnrollments(visibleEnrollments);
         } catch (enrollmentError) {
           console.warn('Error fetching enrollments, continuing without enrollment data:', enrollmentError);
           setEnrollments([]);

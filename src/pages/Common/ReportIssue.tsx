@@ -654,6 +654,8 @@ const ReportIssue: React.FC = () => {
         }}
         onSubmit={handleAcademicSubmit}
         initialSessionData={initialSessionData}
+        enrollmentID={undefined} 
+        enrollmentInfo={undefined} 
       />
 
       <AcademicRequestDetailPopup

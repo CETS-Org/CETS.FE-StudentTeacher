@@ -7,6 +7,7 @@ export interface CreateDropoutRequest {
   attachmentUrl?: string;
   completedExitSurvey: boolean;
   exitSurveyId?: string;
+  enrollmentID: string;  // Required for tracking which enrollment to drop
 }
 
 export interface DropoutValidationResult {
