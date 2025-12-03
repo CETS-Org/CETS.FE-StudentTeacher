@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -715,27 +714,6 @@ export default function AIReadingTestGeneratorPopup({
                           </div>
                         </div>
 
-                        {/* Grading Settings */}
-                        <div className="border-t pt-3 mt-3">
-                          <h5 className="font-medium text-gray-900 mb-2">📝 Grading Settings</h5>
-                          <div className="flex items-center">
-                            <input
-                              type="checkbox"
-                              id="autoGradable"
-                              checked={isAutoGradable}
-                              onChange={(e) => setIsAutoGradable(e.target.checked)}
-                              disabled={loading}
-                              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                            />
-                            <label htmlFor="autoGradable" className="ml-2 text-sm text-gray-700">
-                              Enable automatic grading
-                            </label>
-                          </div>
-                          <p className="mt-1 text-xs text-gray-500 ml-6">
-                            Multiple choice and fill-in-the-blank questions will be graded automatically.
-                          </p>
-                        </div>
-
                         {/* Answer Visibility */}
                         <div className="border-t pt-3 mt-3">
                           <h5 className="font-medium text-gray-900 mb-2">👁️ Answer Visibility</h5>
@@ -780,49 +758,6 @@ export default function AIReadingTestGeneratorPopup({
                               />
                               <span className="ml-2 text-sm text-gray-700">
                                 Never show answers
-                              </span>
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Display Settings */}
-                        <div className="border-t pt-3 mt-3">
-                          <h5 className="font-medium text-gray-900 mb-2">🎨 Display Settings</h5>
-                          <div className="space-y-2">
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={allowBackNavigation}
-                                onChange={(e) => setAllowBackNavigation(e.target.checked)}
-                                disabled={loading}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">
-                                Allow back navigation between questions
-                              </span>
-                            </label>
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={showProgress}
-                                onChange={(e) => setShowProgress(e.target.checked)}
-                                disabled={loading}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">
-                                Show progress indicator
-                              </span>
-                            </label>
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={showQuestionNumbers}
-                                onChange={(e) => setShowQuestionNumbers(e.target.checked)}
-                                disabled={loading}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">
-                                Show question numbers
                               </span>
                             </label>
                           </div>
@@ -885,21 +820,15 @@ export default function AIReadingTestGeneratorPopup({
       </Dialog>
 
       {/* Toast Notifications */}
-      {toasts.length > 0 &&
-        createPortal(
-          <>
-            {toasts.map((toast) => (
-              <Toast
-                key={toast.id}
-                message={toast.message}
-                type={toast.type}
-                onClose={() => hideToast(toast.id)}
-                duration={3000}
-              />
-            ))}
-          </>,
-          document.body
-        )}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+          duration={3000}
+        />
+      ))}
     </>
   );
 }

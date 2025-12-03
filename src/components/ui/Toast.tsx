@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -76,21 +77,24 @@ export default function Toast({ message, type = 'info', duration = 5000, onClose
     }
   };
 
-  return (
-    <div className={`max-w-md w-full animate-slide-in-right flex items-start gap-3 p-4 rounded-lg border shadow-lg ${getStyles()}`}>
-      <div className="flex-shrink-0 mt-0.5">
-        {getIcon()}
+  return createPortal(
+    <div className="fixed top-4 right-4 z-[10000] max-w-md w-full animate-slide-in-right">
+      <div className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${getStyles()}`}>
+        <div className="flex-shrink-0 mt-0.5">
+          {getIcon()}
+        </div>
+        <div className="flex-1 text-sm font-medium">
+          {message}
+        </div>
+        <button
+          onClick={onClose}
+          className="flex-shrink-0 ml-2 hover:opacity-70 transition-opacity"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
-      <div className="flex-1 text-sm font-medium">
-        {message}
-      </div>
-      <button
-        onClick={onClose}
-        className="flex-shrink-0 ml-2 hover:opacity-70 transition-opacity"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
+    </div>,
+    document.body
   );
 }
 
