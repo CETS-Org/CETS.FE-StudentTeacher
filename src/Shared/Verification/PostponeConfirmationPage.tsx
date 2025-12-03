@@ -95,11 +95,13 @@ export default function PostponeConfirmationPage() {
         </p>
 
         <div className="flex flex-col gap-3">
-          <Button onClick={() => navigate("/login")} className="w-full justify-center bg-blue-600 hover:bg-blue-700 text-white">
-            Go to Login <ArrowRight className="w-4 h-4 ml-2" />
+          <Button onClick={() => navigate("/login")} className="w-full justify-center bg-blue-600 hover:bg-blue-700 text-white"
+            iconLeft={<ArrowRight className="w-4 h-4 mr-2" />}>
+            Go to Login 
           </Button>
-          <Button variant="secondary" onClick={() => window.location.href = "/"} className="w-full justify-center">
-            <Home className="w-4 h-4 mr-2" /> Back to Homepage
+          <Button variant="secondary" onClick={() => window.location.href = "/"} className="w-full justify-center" 
+          iconLeft={<Home className="w-4 h-4 mr-2" />}>
+          Back to Homepage
           </Button>
         </div>
       </Card>
