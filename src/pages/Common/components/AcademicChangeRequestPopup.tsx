@@ -176,10 +176,17 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const fromClass = formData.fromClassID ? getSelectedClass(formData.fromClassID) : null;
   const toClass = formData.toClassID ? getSelectedClass(formData.toClassID) : null;
 
-  // Fetch student enrollments when popup opens (for suspension/dropout/cancellation)
+  // Fetch student enrollments when popup opens or request type changes
   useEffect(() => {
-    if (isOpen && userId && !enrollmentID && (isSuspension() || isDropout() || isEnrollmentCancellation())) {
-      fetchStudentEnrollments();
+    if (isOpen && userId && !enrollmentID && formData.requestTypeID) {
+      // Only fetch if it's a request type that needs enrollment selection
+      if (isSuspension() || isDropout() || isEnrollmentCancellation() || isResumeFromSuspension()) {
+        fetchStudentEnrollments();
+      }
+    }
+    // Reset selected enrollment when request type changes
+    if (formData.requestTypeID) {
+      setSelectedEnrollmentId("");
     }
   }, [isOpen, userId, enrollmentID, formData.requestTypeID]);
 
@@ -190,12 +197,27 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       
       let filteredEnrollments = enrollmentsData;
       
+      console.log('All enrollments:', enrollmentsData.map((e: any) => ({ 
+        name: e.courseName, 
+        status: e.enrollmentStatus 
+      })));
+      
+      // For Resume from Suspension: Only show "Suspended" or "AwaitingReturn" status (check FIRST!)
+      if (isResumeFromSuspension()) {
+        filteredEnrollments = enrollmentsData.filter((e: any) => {
+          const status = (e.enrollmentStatus || '').toLowerCase();
+          console.log('Checking enrollment:', e.courseName, 'Status:', status);
+          return status === 'suspended' || status === 'awaiting return' || status === 'awaitingreturn';
+        });
+        console.log('Filtered for resume (Suspended/AwaitingReturn only):', filteredEnrollments.length);
+      }
       // For Suspension and Dropout: Only show "Enrolled" status
-      if (isSuspension() || isDropout()) {
+      else if (isSuspension() || isDropout()) {
         filteredEnrollments = enrollmentsData.filter((e: any) => {
           const status = (e.enrollmentStatus || '').toLowerCase();
           return status === 'enrolled';
         });
+        console.log('Filtered for suspension/dropout (Enrolled only):', filteredEnrollments.length);
       }
       // For Enrollment Cancellation: Only show "Pending" status
       else if (isEnrollmentCancellation()) {
@@ -203,6 +225,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           const status = (e.enrollmentStatus || '').toLowerCase();
           return status === 'pending' || status === 'pending confirmation';
         });
+        console.log('Filtered for cancellation (Pending only):', filteredEnrollments.length);
       }
       // Default: Show all active enrollments (not dropped/suspended/completed)
       else {
@@ -776,10 +799,9 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
     if (!selectedType) return false;
 
-    const typeName = (selectedType.name || '').toLowerCase();
     const typeCode = (selectedType.code || '').toLowerCase();
     
-    return typeName.includes('meeting reschedule') || typeCode.includes('meetingreschedule');
+    return typeCode === 'reschedule';
   };
 
   // Check if the selected request type is "class transfer"
@@ -813,13 +835,9 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
     if (!selectedType) return false;
 
-    const typeName = (selectedType.name || '').toLowerCase();
     const typeCode = (selectedType.code || '').toLowerCase();
     
-    return typeName.includes('suspension') || 
-           typeName.includes('suspend') ||
-           typeCode.includes('suspension') ||
-           typeCode.includes('suspend');
+    return typeCode === 'suspension';
   };
 
   const isEnrollmentCancellation = (): boolean => {
@@ -832,10 +850,22 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
     if (!selectedType) return false;
     
-    const typeName = (selectedType.name || '').toLowerCase();
     const typeCode = (selectedType.code || '').toLowerCase();
-    return typeName.includes('cancel') || typeCode.includes('cancel') || 
-           typeName.includes('enrollment cancellation') || typeCode.includes('enrollmentcancellation');
+    return typeCode === 'cancel';
+  };
+
+  const isResumeFromSuspension = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
+    const selectedType = requestTypes.find(type => {
+      const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+      return typeId === formData.requestTypeID;
+    });
+
+    if (!selectedType) return false;
+    
+    const typeCode = (selectedType.code || '').toLowerCase();
+    return typeCode === 'resume';
   };
 
   const isDropout = (): boolean => {
@@ -848,14 +878,9 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
 
     if (!selectedType) return false;
 
-    const typeName = (selectedType.name || '').toLowerCase();
     const typeCode = (selectedType.code || '').toLowerCase();
-    
-    return typeName.includes('dropout') || 
-           typeName.includes('drop out') ||
-           typeName.includes('dropping out') ||
-           typeCode.includes('dropout') ||
-           typeCode.includes('droppingout');
+
+    return typeCode === 'dropout';
   };
 
   const handleValidateSuspension = async () => {
@@ -1223,6 +1248,11 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
         ...(isEnrollmentCancellation() && {
           enrollmentID: enrollmentID || selectedEnrollmentId || undefined, // ✅ Use prop or selected
         }),
+        // Resume from suspension fields - only include if it's a resume request
+        ...(isResumeFromSuspension() && {
+          enrollmentID: enrollmentID || selectedEnrollmentId || undefined, // ✅ Use prop or selected
+          effectiveDate: formData.suspensionEndDate || undefined, // Optional: when they want to return
+        }),
       };
 
       await submitAcademicRequest(requestData);
@@ -1372,11 +1402,11 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
             </select>
           </div>
 
-          {/* Enrollment Selection Dropdown (For Suspension/Dropout/Cancellation when no enrollmentID provided) */}
-          {(isSuspension() || isDropout() || isEnrollmentCancellation()) && !enrollmentID && (
+          {/* Enrollment Selection Dropdown (For Suspension/Dropout/Cancellation/Resume when no enrollmentID provided) */}
+          {(isSuspension() || isDropout() || isEnrollmentCancellation() || isResumeFromSuspension()) && !enrollmentID && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Course/Enrollment to {isSuspension() ? 'Suspend' : isDropout() ? 'Drop' : 'Cancel'} <span className="text-red-500">*</span>
+                Select Course/Enrollment to {isSuspension() ? 'Suspend' : isDropout() ? 'Drop' : isResumeFromSuspension() ? 'Resume' : 'Cancel'} <span className="text-red-500">*</span>
               </label>
               {isLoadingEnrollments ? (
                 <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
@@ -1390,7 +1420,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                   required
                   disabled={isSubmitting}
                 >
-                  <option value="">Select a course to {isSuspension() ? 'suspend' : isDropout() ? 'drop out from' : 'cancel'}</option>
+                  <option value="">Select a course to {isSuspension() ? 'suspend' : isDropout() ? 'drop out from' : isResumeFromSuspension() ? 'resume' : 'cancel'}</option>
                   {studentEnrollments.map((enrollment: any) => (
                     <option key={enrollment.id} value={enrollment.id}>
                       {enrollment.courseName}
@@ -1404,53 +1434,68 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                 {isSuspension() && 'Only enrolled courses can be suspended'}
                 {isDropout() && 'Only enrolled courses can be dropped'}
                 {isEnrollmentCancellation() && 'Only pending enrollments can be cancelled'}
+                {isResumeFromSuspension() && 'Only suspended or awaiting return enrollments can be resumed'}
               </p>
               
               {studentEnrollments.length === 0 && !isLoadingEnrollments && (
-                <p className="text-xs text-red-600 mt-2">
-                  {isSuspension() && 'No enrolled courses found. You need an enrolled course to request suspension.'}
-                  {isDropout() && 'No enrolled courses found. You need an enrolled course to request dropout.'}
-                  {isEnrollmentCancellation() && 'No pending enrollments found. You need a pending enrollment to request cancellation.'}
-                </p>
+                <div className="bg-red-50 border border-red-200 p-3 rounded-md mt-2">
+                  <p className="text-xs text-red-800 font-medium mb-1">
+                    {isSuspension() && '❌ No enrolled courses found'}
+                    {isDropout() && '❌ No enrolled courses found'}
+                    {isEnrollmentCancellation() && '❌ No pending enrollments found'}
+                    {isResumeFromSuspension() && '❌ No suspended enrollments found'}
+                  </p>
+                  <p className="text-xs text-red-700">
+                    {isSuspension() && 'You need an enrolled course to request suspension.'}
+                    {isDropout() && 'You need an enrolled course to request dropout.'}
+                    {isEnrollmentCancellation() && 'You need a pending enrollment to request cancellation.'}
+                    {isResumeFromSuspension() && 'You need a suspended or awaiting return enrollment to resume. Please suspend a course first, or wait for your suspension period to end.'}
+                  </p>
+                </div>
               )}
             </div>
           )}
 
           {/* Enrollment Info Display (When enrollmentID or enrollmentInfo provided via prop) */}
-          {(isSuspension() || isDropout() || isEnrollmentCancellation()) && (enrollmentInfo || enrollmentID || selectedEnrollmentId) && (
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 rounded-lg">
+          {(isSuspension() || isDropout() || isEnrollmentCancellation() || isResumeFromSuspension()) && (enrollmentInfo || enrollmentID || selectedEnrollmentId) && (
+            <div className={`bg-gradient-to-r ${isResumeFromSuspension() ? 'from-green-50 to-emerald-50 border-green-200' : 'from-amber-50 to-orange-50 border-amber-200'} border p-4 rounded-lg`}>
               <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="w-4 h-4 text-amber-600" />
-                <span className="text-sm font-medium text-amber-900">
-                  {isSuspension() ? 'Suspending Enrollment:' : isDropout() ? 'Dropping Out From:' : 'Cancelling Enrollment:'}
+                {isResumeFromSuspension() ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                )}
+                <span className={`text-sm font-medium ${isResumeFromSuspension() ? 'text-green-900' : 'text-amber-900'}`}>
+                  {isSuspension() ? 'Suspending Enrollment:' : isDropout() ? 'Dropping Out From:' : isResumeFromSuspension() ? 'Resuming Enrollment:' : 'Cancelling Enrollment:'}
                 </span>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-amber-800 font-semibold">
+                <p className={`text-sm font-semibold ${isResumeFromSuspension() ? 'text-green-800' : 'text-amber-800'}`}>
                   {enrollmentInfo?.courseName || 
                    studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.courseName || 
                    'Course Name Not Available'}
                 </p>
                 {(enrollmentInfo?.courseCode || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.courseCode) && (
-                  <p className="text-xs text-amber-700">
+                  <p className={`text-xs ${isResumeFromSuspension() ? 'text-green-700' : 'text-amber-700'}`}>
                     Course Code: {enrollmentInfo?.courseCode || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.courseCode}
                   </p>
                 )}
                 {(enrollmentInfo?.className || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.className) && (
-                  <p className="text-xs text-amber-700">
+                  <p className={`text-xs ${isResumeFromSuspension() ? 'text-green-700' : 'text-amber-700'}`}>
                     Class: {enrollmentInfo?.className || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.className}
                   </p>
                 )}
                 {(enrollmentInfo?.enrollmentStatus || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.enrollmentStatus) && (
-                  <p className="text-xs text-amber-700">
+                  <p className={`text-xs ${isResumeFromSuspension() ? 'text-green-700' : 'text-amber-700'}`}>
                     Current Status: {enrollmentInfo?.enrollmentStatus || studentEnrollments.find((e: any) => e.id === selectedEnrollmentId)?.enrollmentStatus}
                   </p>
                 )}
               </div>
-              <p className="text-xs text-amber-600 mt-2 italic">
+              <p className={`text-xs mt-2 italic ${isResumeFromSuspension() ? 'text-green-600' : 'text-amber-600'}`}>
                 {isSuspension() && 'This enrollment will be suspended and you will not be able to attend classes during the suspension period.'}
                 {isDropout() && 'This enrollment will be permanently terminated. This action cannot be undone.'}
                 {isEnrollmentCancellation() && 'This pending enrollment will be cancelled. You can re-enroll later if you change your mind.'}
+                {isResumeFromSuspension() && 'This enrollment will be reactivated and you can resume attending classes. Your suspension will be lifted.'}
               </p>
             </div>
           )}
