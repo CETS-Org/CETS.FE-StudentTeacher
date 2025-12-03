@@ -163,19 +163,9 @@ export default function TakePlacementTestPage() {
             (r): r is NonNullable<typeof r> => r !== null
           );
 
-          // Sắp xếp theo thứ tự đã lưu trong DB (giữ nguyên thứ tự từ test.questions)
-          // Backend đã lưu questions theo đúng thứ tự: Reading multiple_choice -> Passage ngắn -> Passage dài -> Listening multiple_choice -> Audio ngắn -> Audio dài
+          // Sắp xếp: ưu tiên những câu hỏi không có passage lên đầu
+          // Thứ tự: Reading không passage -> Reading có passage -> Listening không audio -> Listening có audio
           const sortedResults = validResults.sort((a, b) => {
-            // Lấy index từ test.questions để giữ nguyên thứ tự
-            const indexA = test.questions.findIndex((q) => q.id === a.question.id);
-            const indexB = test.questions.findIndex((q) => q.id === b.question.id);
-
-            // Nếu có index, giữ nguyên thứ tự từ test.questions
-            if (indexA !== -1 && indexB !== -1) {
-              return indexA - indexB;
-            }
-
-            // Fallback: sắp xếp theo logic nếu không tìm thấy index
             const getSortOrder = (
               result: { question: PlacementQuestion; data: PlacementQuestionData; questions: Question[] }
             ): number => {
@@ -184,11 +174,14 @@ export default function TakePlacementTestPage() {
               const difficulty = result.question.difficulty;
               const isReading = skillType.includes("reading");
               const isListening = skillType.includes("listening");
+              
+              // Kiểm tra xem có passage hay không
+              const hasPassage = result.data.readingPassage && result.data.readingPassage.trim().length > 0;
 
-              // Reading questions (order 1-3)
+              // Reading questions
               if (isReading) {
-                // 1. Reading multiple_choice (không phải passage)
-                if (questionType !== "passage") {
+                // 1. Reading không có passage (ưu tiên lên đầu)
+                if (!hasPassage) {
                   return 1;
                 }
                 // 2. Passage ngắn (difficulty = 2)
@@ -202,7 +195,7 @@ export default function TakePlacementTestPage() {
                 return 4;
               }
 
-              // Listening questions (order 4-6)
+              // Listening questions
               if (isListening) {
                 // 4. Listening multiple_choice (không phải audio)
                 if (questionType !== "audio") {
@@ -222,7 +215,19 @@ export default function TakePlacementTestPage() {
               return 50;
             };
 
-            return getSortOrder(a) - getSortOrder(b);
+            const orderA = getSortOrder(a);
+            const orderB = getSortOrder(b);
+            
+            // Nếu cùng order, giữ nguyên thứ tự từ test.questions
+            if (orderA === orderB) {
+              const indexA = test.questions.findIndex((q) => q.id === a.question.id);
+              const indexB = test.questions.findIndex((q) => q.id === b.question.id);
+              if (indexA !== -1 && indexB !== -1) {
+                return indexA - indexB;
+              }
+            }
+            
+            return orderA - orderB;
           });
 
           setQuestionDataList(sortedResults);
@@ -931,6 +936,13 @@ export default function TakePlacementTestPage() {
   const isCurrentAudioDisabled = normalizedCurrentAudioUrl ? currentAudioPlayCount >= MAX_AUDIO_PLAY_COUNT : false;
   const currentAudioProgress = normalizedCurrentAudioUrl ? (questionAudioProgress[normalizedCurrentAudioUrl] || { currentTime: 0, duration: 0 }) : { currentTime: 0, duration: 0 };
 
+  // Check if current question is reading without passage (should be centered)
+  const questionDataResult = currentQuestion ? (currentQuestion as any)._questionDataResult : null;
+  const currentSkillType = questionDataResult?.question?.skillType || placementTest?.questions?.[0]?.skillType || "";
+  const isReadingQuestion = currentSkillType?.toLowerCase().includes("reading");
+  const hasPassageOrAudio = currentPassage || currentAudioUrl;
+  const shouldCenterQuestion = isReadingQuestion && !hasPassageOrAudio;
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
@@ -995,160 +1007,215 @@ export default function TakePlacementTestPage() {
             />
           </Card>
 
-          {/* Reading: luôn có layout 2 cột với passage/audio cố định bên trái (nếu có passage/audio thì hiển thị, không có thì không hiển thị nội dung) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left - Reading Passage or Shared Audio (cố định, chỉ hiển thị nội dung khi có passage hoặc audio) */}
-            <div className="lg:sticky lg:top-24 h-full lg:self-start">
-              {currentPassage && (
-                <Card className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-5 h-5 text-primary-600" />
-                      <h2 className="text-lg font-semibold text-neutral-800">Reading Passage</h2>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setShowReadingPassage(!showReadingPassage)}
-                      iconLeft={showReadingPassage ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    >
-                      {showReadingPassage ? "Hide" : "Show"}
+          {/* Reading: layout 2 cột nếu có passage/audio, layout 1 cột căn giữa nếu không có passage cho reading question */}
+          {shouldCenterQuestion ? (
+            /* Layout 1 cột căn giữa cho reading question không có passage */
+            <div className="flex justify-center">
+              <div className="w-full max-w-3xl">
+                <Card className="p-6">
+                  {currentQuestion && renderQuestion(currentQuestion)}
+
+                  {/* Navigation */}
+                  <div className="flex justify-between items-center mt-8 pt-8 border-t">
+                    <Button variant="secondary" onClick={handlePrevious} disabled={currentQuestionIndex === 0}>
+                      Previous
                     </Button>
-                  </div>
-                  {showReadingPassage && (
-                    <div className="bg-white border border-neutral-200 rounded-lg p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                      <div className="whitespace-pre-wrap text-neutral-700 leading-relaxed text-sm">
-                        {currentPassage}
-                      </div>
+                    <div className="flex gap-2">
+                      {currentQuestionIndex < questions.length - 1 ? (
+                        <Button onClick={handleNext}>Next</Button>
+                      ) : (
+                        <Button onClick={() => handleSubmit(false)} disabled={submitting}>
+                          {submitting ? "Submitting..." : "Submit Test"}
+                        </Button>
+                      )}
                     </div>
-                  )}
-                </Card>
-              )}
-              {currentAudioUrl && !currentPassage && (
-                <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Headphones className="w-5 h-5 text-purple-600" />
-                    <h2 className="text-lg font-semibold text-neutral-800">Audio ({currentAudioQuestions.length} {currentAudioQuestions.length > 1 ? 'questions' : 'question'})</h2>
-                  </div>
-                  <div className={`bg-white border rounded-lg p-4 ${isCurrentAudioDisabled ? 'border-red-300 bg-red-50' : 'border-purple-200 bg-purple-50'}`}>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => !isCurrentAudioDisabled && toggleQuestionAudio({ id: '', audioUrl: currentAudioUrl } as Question & { audioUrl?: string })}
-                        disabled={isCurrentAudioDisabled}
-                        className={`flex items-center justify-center w-12 h-12 rounded-full transition-colors ${
-                          isCurrentAudioDisabled
-                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                            : 'bg-purple-600 text-white hover:bg-purple-700'
-                        }`}
-                        title={
-                          isCurrentAudioDisabled
-                            ? `Đã đạt giới hạn phát tối đa (${MAX_AUDIO_PLAY_COUNT} lần)`
-                            : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
-                            ? "Tạm dừng"
-                            : `Phát (còn ${currentAudioRemainingPlays} lần)`
-                        }
-                      >
-                        {isCurrentAudioDisabled ? (
-                          <X className="w-6 h-6" />
-                        ) : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false ? (
-                          <Pause className="w-6 h-6" />
-                        ) : (
-                          <Play className="w-6 h-6 ml-0.5" />
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${isCurrentAudioDisabled ? 'text-red-900' : 'text-purple-900'}`}>
-                          {isCurrentAudioDisabled
-                            ? `Đã đạt giới hạn phát (${MAX_AUDIO_PLAY_COUNT}/${MAX_AUDIO_PLAY_COUNT} lần)`
-                            : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
-                            ? "Đang phát audio..."
-                            : currentAudioRemainingPlays > 0
-                            ? `Nhấn để phát audio (còn ${currentAudioRemainingPlays} ${currentAudioRemainingPlays === 1 ? 'lần' : 'lần'})`
-                            : "Nhấn để phát audio"}
-                        </p>
-                        {currentAudioPlayCount > 0 && !isCurrentAudioDisabled && (
-                          <p className="text-xs text-purple-600 mt-1">
-                            Đã phát: {currentAudioPlayCount}/{MAX_AUDIO_PLAY_COUNT} lần
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {/* Progress Bar */}
-                    {(currentAudioProgress.duration > 0 || questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false) && (
-                      <div className="space-y-2 mt-3">
-                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-100 ${
-                              isCurrentAudioDisabled ? 'bg-gray-400' : 'bg-purple-600'
-                            }`}
-                            style={{
-                              width: currentAudioProgress.duration > 0
-                                ? `${(currentAudioProgress.currentTime / currentAudioProgress.duration) * 100}%`
-                                : '0%',
-                            }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-xs text-neutral-600">
-                          <span>{formatAudioTime(currentAudioProgress.currentTime)}</span>
-                          <span>{formatAudioTime(currentAudioProgress.duration)}</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </Card>
-              )}
+
+                {/* Question Navigation Panel */}
+                <Card className="mt-6 p-6">
+                  <h3 className="font-semibold text-neutral-900 mb-4">Question Navigation</h3>
+                  <div className="grid grid-cols-10 gap-2">
+                    {questions.map((q, index) => {
+                      const isAnswered = answers[q.id] !== undefined;
+                      const isCurrent = index === currentQuestionIndex;
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => handleQuestionClick(index)}
+                          className={`p-3 rounded-lg border-2 transition-colors ${
+                            isCurrent
+                              ? "border-primary-600 bg-primary-50"
+                              : isAnswered
+                              ? "border-green-500 bg-green-50"
+                              : "border-neutral-300 bg-white hover:border-primary-300"
+                          }`}
+                        >
+                          <div className="text-sm font-medium">{index + 1}</div>
+                          {isAnswered && <CheckCircle className="w-4 h-4 text-green-600 mx-auto mt-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
             </div>
-
-            {/* Right - Question Area */}
-            <div>
-              <Card className="p-6">
-                {currentQuestion && renderQuestion(currentQuestion)}
-
-                {/* Navigation */}
-                <div className="flex justify-between items-center mt-8 pt-8 border-t">
-                  <Button variant="secondary" onClick={handlePrevious} disabled={currentQuestionIndex === 0}>
-                    Previous
-                  </Button>
-                  <div className="flex gap-2">
-                    {currentQuestionIndex < questions.length - 1 ? (
-                      <Button onClick={handleNext}>Next</Button>
-                    ) : (
-                      <Button onClick={() => handleSubmit(false)} disabled={submitting}>
-                        {submitting ? "Submitting..." : "Submit Test"}
+          ) : (
+            /* Layout 2 cột với passage/audio bên trái và question bên phải */
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left - Reading Passage or Shared Audio (cố định, chỉ hiển thị nội dung khi có passage hoặc audio) */}
+              <div className="lg:sticky lg:top-24 h-full lg:self-start">
+                {currentPassage && (
+                  <Card className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-primary-600" />
+                        <h2 className="text-lg font-semibold text-neutral-800">Reading Passage</h2>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowReadingPassage(!showReadingPassage)}
+                        iconLeft={showReadingPassage ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      >
+                        {showReadingPassage ? "Hide" : "Show"}
                       </Button>
+                    </div>
+                    {showReadingPassage && (
+                      <div className="bg-white border border-neutral-200 rounded-lg p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                        <div className="whitespace-pre-wrap text-neutral-700 leading-relaxed text-sm">
+                          {currentPassage}
+                        </div>
+                      </div>
                     )}
-                  </div>
-                </div>
-              </Card>
+                  </Card>
+                )}
+                {currentAudioUrl && !currentPassage && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Headphones className="w-5 h-5 text-purple-600" />
+                      <h2 className="text-lg font-semibold text-neutral-800">Audio ({currentAudioQuestions.length} {currentAudioQuestions.length > 1 ? 'questions' : 'question'})</h2>
+                    </div>
+                    <div className={`bg-white border rounded-lg p-4 ${isCurrentAudioDisabled ? 'border-red-300 bg-red-50' : 'border-purple-200 bg-purple-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => !isCurrentAudioDisabled && toggleQuestionAudio({ id: '', audioUrl: currentAudioUrl } as Question & { audioUrl?: string })}
+                          disabled={isCurrentAudioDisabled}
+                          className={`flex items-center justify-center w-12 h-12 rounded-full transition-colors ${
+                            isCurrentAudioDisabled
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              : 'bg-purple-600 text-white hover:bg-purple-700'
+                          }`}
+                          title={
+                            isCurrentAudioDisabled
+                              ? `Đã đạt giới hạn phát tối đa (${MAX_AUDIO_PLAY_COUNT} lần)`
+                              : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
+                              ? "Tạm dừng"
+                              : `Phát (còn ${currentAudioRemainingPlays} lần)`
+                          }
+                        >
+                          {isCurrentAudioDisabled ? (
+                            <X className="w-6 h-6" />
+                          ) : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false ? (
+                            <Pause className="w-6 h-6" />
+                          ) : (
+                            <Play className="w-6 h-6 ml-0.5" />
+                          )}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${isCurrentAudioDisabled ? 'text-red-900' : 'text-purple-900'}`}>
+                            {isCurrentAudioDisabled
+                              ? `Đã đạt giới hạn phát (${MAX_AUDIO_PLAY_COUNT}/${MAX_AUDIO_PLAY_COUNT} lần)`
+                              : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
+                              ? "Đang phát audio..."
+                              : currentAudioRemainingPlays > 0
+                              ? `Nhấn để phát audio (còn ${currentAudioRemainingPlays} ${currentAudioRemainingPlays === 1 ? 'lần' : 'lần'})`
+                              : "Nhấn để phát audio"}
+                          </p>
+                          {currentAudioPlayCount > 0 && !isCurrentAudioDisabled && (
+                            <p className="text-xs text-purple-600 mt-1">
+                              Đã phát: {currentAudioPlayCount}/{MAX_AUDIO_PLAY_COUNT} lần
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Progress Bar */}
+                      {(currentAudioProgress.duration > 0 || questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false) && (
+                        <div className="space-y-2 mt-3">
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-100 ${
+                                isCurrentAudioDisabled ? 'bg-gray-400' : 'bg-purple-600'
+                              }`}
+                              style={{
+                                width: currentAudioProgress.duration > 0
+                                  ? `${(currentAudioProgress.currentTime / currentAudioProgress.duration) * 100}%`
+                                  : '0%',
+                              }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-xs text-neutral-600">
+                            <span>{formatAudioTime(currentAudioProgress.currentTime)}</span>
+                            <span>{formatAudioTime(currentAudioProgress.duration)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+              </div>
 
-              {/* Question Navigation Panel */}
-              <Card className="mt-6 p-6">
-                <h3 className="font-semibold text-neutral-900 mb-4">Question Navigation</h3>
-                <div className="grid grid-cols-10 gap-2">
-                  {questions.map((q, index) => {
-                    const isAnswered = answers[q.id] !== undefined;
-                    const isCurrent = index === currentQuestionIndex;
-                    return (
-                      <button
-                        key={q.id}
-                        onClick={() => handleQuestionClick(index)}
-                        className={`p-3 rounded-lg border-2 transition-colors ${
-                          isCurrent
-                            ? "border-primary-600 bg-primary-50"
-                            : isAnswered
-                            ? "border-green-500 bg-green-50"
-                            : "border-neutral-300 bg-white hover:border-primary-300"
-                        }`}
-                      >
-                        <div className="text-sm font-medium">{index + 1}</div>
-                        {isAnswered && <CheckCircle className="w-4 h-4 text-green-600 mx-auto mt-1" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Card>
+              {/* Right - Question Area */}
+              <div>
+                <Card className="p-6">
+                  {currentQuestion && renderQuestion(currentQuestion)}
+
+                  {/* Navigation */}
+                  <div className="flex justify-between items-center mt-8 pt-8 border-t">
+                    <Button variant="secondary" onClick={handlePrevious} disabled={currentQuestionIndex === 0}>
+                      Previous
+                    </Button>
+                    <div className="flex gap-2">
+                      {currentQuestionIndex < questions.length - 1 ? (
+                        <Button onClick={handleNext}>Next</Button>
+                      ) : (
+                        <Button onClick={() => handleSubmit(false)} disabled={submitting}>
+                          {submitting ? "Submitting..." : "Submit Test"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Question Navigation Panel */}
+                <Card className="mt-6 p-6">
+                  <h3 className="font-semibold text-neutral-900 mb-4">Question Navigation</h3>
+                  <div className="grid grid-cols-10 gap-2">
+                    {questions.map((q, index) => {
+                      const isAnswered = answers[q.id] !== undefined;
+                      const isCurrent = index === currentQuestionIndex;
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => handleQuestionClick(index)}
+                          className={`p-3 rounded-lg border-2 transition-colors ${
+                            isCurrent
+                              ? "border-primary-600 bg-primary-50"
+                              : isAnswered
+                              ? "border-green-500 bg-green-50"
+                              : "border-neutral-300 bg-white hover:border-primary-300"
+                          }`}
+                        >
+                          <div className="text-sm font-medium">{index + 1}</div>
+                          {isAnswered && <CheckCircle className="w-4 h-4 text-green-600 mx-auto mt-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -117,8 +117,6 @@ export default function Login() {
   const callLoginAPI = async (data: LoginFormData): Promise<LoginResponse> => {
     const { email, password, role } = data;
     const credentials = { email, password };
-    
-    console.log("Request payload:", credentials); // Debug log
 
     try {
       let response;
@@ -135,7 +133,6 @@ export default function Login() {
           throw new Error("Invalid role selected");
       }
 
-      console.log("Response status:", response.status); // Debug log
       return response.data;
     } catch (error: any) {
       console.error("API Error:", error);
@@ -160,8 +157,6 @@ export default function Login() {
     setErrorMessage("");
     
     try {
-      console.log("Login data:", data);
-      
       const response = await callLoginAPI(data);
       
       
@@ -180,26 +175,25 @@ export default function Login() {
         phoneNumber: (response.account as any).PhoneNumber || response.account.phoneNumber || "",
         fullName: (response.account as any).FullName || response.account.fullName || "",
         avatarUrl: (response.account as any).AvatarUrl || response.account.avatarUrl,
-        isVerified: (response.account as any).IsVerified ?? response.account.isVerified ?? true,
+        // Use !== undefined to preserve false values
+        isVerified: (response.account as any).IsVerified !== undefined 
+          ? (response.account as any).IsVerified 
+          : (response.account.isVerified !== undefined ? response.account.isVerified : true),
         roleNames: (response.account as any).RoleNames || response.account.roleNames || []
       };
       
-      // Check if account is verified
-      if (!normalizedAccount.isVerified) {
-        // Redirect to home page for unverified accounts
-        navigate("/", {
-          state: {
-            message: "Please verify your email address to access all features"
-          }
-        });
-        return;
-      }
-      
-      // Store token and user info in localStorage
+      // Always store token and user info in localStorage first
       localStorage.setItem("authToken", response.token);
       localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
       
-      // Navigate to return URL or default based on role
+      // Check if account is verified and navigate accordingly
+      if (!normalizedAccount.isVerified) {
+        // Redirect to courses page for unverified accounts to show popup
+        navigate("/courses");
+        return;
+      }
+      
+      // Navigate to return URL or default based on role for verified users
       if (returnUrl) {
         navigate(returnUrl);
       } else if (data.role === "student") {
@@ -227,8 +221,6 @@ export default function Login() {
       const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/google-callback`;
       const scope = "email profile";
       
-      console.log("Google OAuth Config:", { clientId, redirectUri, scope });
-      
       // Create Google OAuth URL
       const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${clientId}&` +
@@ -236,8 +228,6 @@ export default function Login() {
         `response_type=token&` +
         `scope=${encodeURIComponent(scope)}&` +
         `prompt=consent`;
-      
-      console.log("Google Auth URL:", googleAuthUrl);
       
       // Open Google OAuth popup
       const popup = window.open(
@@ -252,13 +242,10 @@ export default function Login() {
       
       // Listen for popup messages
       const messageListener = (event: MessageEvent) => {
-        console.log('Received message in Login:', event.data);
         if (event.origin !== window.location.origin) return;
         
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
           const { token, userInfo } = event.data;
-          
-          console.log('Received from GoogleCallback:', { token, userInfo });
           
           // Store token and user info 
           localStorage.setItem("authToken", token);
@@ -266,12 +253,8 @@ export default function Login() {
           
           // Navigate based on user role from backend response
           if (!userInfo.isVerified) {
-            // Account not verified - redirect to home page
-            navigate("/", {
-              state: {
-                message: "Please verify your email address to access all features"
-              }
-            });
+            // Account not verified - redirect to courses page to show verification popup
+            navigate("/courses");
           } else if (userInfo.roleNames && userInfo.roleNames.includes('Student')) {
             navigate("/student/my-classes");
           } else if (userInfo.roleNames && userInfo.roleNames.includes('Teacher')) {

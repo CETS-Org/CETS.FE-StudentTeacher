@@ -8,6 +8,7 @@ import {
   verifyOtp,
   resetPassword,
   changePassword,
+  resendVerificationEmail,
 } from './account.api';
 import { getCourses, getCourseDetail, searchCourses } from './course.api';
 import { getTeachingCourses, getTeachingClasses } from './teacher.api';
@@ -81,6 +82,7 @@ export const api = {
   verifyOtp,
   resetPassword,
   changePassword,
+  resendVerificationEmail,
 
   // Teacher
   getTeachingCourses,

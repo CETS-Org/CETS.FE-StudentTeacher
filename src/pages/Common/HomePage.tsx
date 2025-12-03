@@ -1,31 +1,61 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import HeroImage from "../../assets/Gateway1.png";
-import { AlertCircle, Mail, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { isTokenValid, getUserInfo } from "@/lib/utils";
+import VerificationDialog from "@/components/ui/VerificationDialog";
+import { api } from "@/api";
+import { useToast } from "@/hooks/useToast";
 
 export default function HomePage() {
   usePageTitle("Home - Online Learning Platform");
   const navigate = useNavigate();
   const location = useLocation();
-  const [showDialog, setShowDialog] = useState(false);
-  const [message, setMessage] = useState("");
+  const { error: showError, success: showSuccess } = useToast();
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
 
-  // Check for message from navigation state
+  // Check if user is logged in and not verified
   useEffect(() => {
-    if (location.state?.message) {
-      setMessage(location.state.message);
-      setShowDialog(true);
-      
-      // Clear the location state to prevent showing message on refresh
-      window.history.replaceState({}, document.title);
+    if (isTokenValid()) {
+      const userInfo = getUserInfo();
+      if (userInfo && userInfo.isVerified === false) {
+        setUserEmail(userInfo.email || "");
+        // Use a combination of userId and a flag to track if dialog was shown
+        const dialogKey = `verificationDialog_${userInfo.id}_shown`;
+        const hasSeenInThisVisit = sessionStorage.getItem(dialogKey);
+        if (!hasSeenInThisVisit) {
+          setShowVerificationDialog(true);
+        }
+      }
     }
-  }, [location]);
+  }, []);
 
   const handleExploreCourses = () => {
     navigate("/courses");
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      await api.resendVerificationEmail(userEmail);
+      showSuccess('Verification email has been resent successfully!');
+    } catch (error) {
+      console.error('Failed to resend verification email:', error);
+      showError('Failed to resend verification email. Please try again later.');
+      throw error;
+    }
+  };
+
+  const handleCloseVerificationDialog = () => {
+    setShowVerificationDialog(false);
+    // Remember that user has seen the dialog for this page visit
+    const userInfo = getUserInfo();
+    if (userInfo?.id) {
+      const dialogKey = `verificationDialog_${userInfo.id}_shown`;
+      sessionStorage.setItem(dialogKey, 'true');
+    }
   };
 
   // Featured courses data
@@ -63,73 +93,16 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-accent-50">
+    <>
       {/* Verification Dialog */}
-      {showDialog && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowDialog(false);
-            }
-          }}
-        >
-          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl animate-fade-in-up">
-            {/* Dialog Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <AlertCircle className="w-6 h-6 text-yellow-600" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900">Email Verification Required</h2>
-              </div>
-              <button
-                onClick={() => setShowDialog(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
+      <VerificationDialog
+        isOpen={showVerificationDialog}
+        onClose={handleCloseVerificationDialog}
+        onResendVerification={handleResendVerification}
+        userEmail={userEmail}
+      />
 
-            {/* Dialog Content */}
-            <div className="p-6 space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-900 mb-1">
-                      {message}
-                    </p>
-                    <p className="text-xs text-yellow-700">
-                      A verification email has been sent to your email address. Please check your inbox and click the verification link to activate your account.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-900">What you can do:</h3>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-600 flex-shrink-0">•</span>
-                    <span>Check your email inbox for the verification link</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-600 flex-shrink-0">•</span>
-                    <span>Check spam/junk folder if you don't see the email</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary-600 flex-shrink-0">•</span>
-                    <span>Contact support if you need assistance</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-accent-50">
       {/* Hero Section */}
       <div className="mx-auto max-w-7xl px-4 py-12 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -333,5 +306,6 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

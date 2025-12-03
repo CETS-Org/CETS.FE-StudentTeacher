@@ -34,8 +34,6 @@ export default function GoogleCallback() {
         fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${accessToken}`)
           .then(response => response.json())
           .then(async (userInfo) => {
-            console.log('Google User Info:', userInfo);
-            
             try {
               // Gửi thông tin về backend để xác thực và lấy token của hệ thống
               const backendResponse = await api.googleLogin({
@@ -46,7 +44,6 @@ export default function GoogleCallback() {
               });
 
               const backendData = backendResponse.data;
-              console.log('Backend Response:', backendData);
 
               // Normalize field names: convert PascalCase to camelCase for consistency
               const normalizedAccount = {
@@ -54,27 +51,22 @@ export default function GoogleCallback() {
                 phoneNumber: (backendData.account as any).PhoneNumber || backendData.account.phoneNumber || "",
                 fullName: (backendData.account as any).FullName || backendData.account.fullName || "",
                 avatarUrl: (backendData.account as any).AvatarUrl || backendData.account.avatarUrl,
-                isVerified: (backendData.account as any).IsVerified ?? backendData.account.isVerified ?? true,
+                // Use !== undefined to preserve false values (don't use ?? which treats false as falsy)
+                isVerified: (backendData.account as any).IsVerified !== undefined 
+                  ? (backendData.account as any).IsVerified 
+                  : (backendData.account.isVerified !== undefined ? backendData.account.isVerified : true),
                 roleNames: (backendData.account as any).RoleNames || backendData.account.roleNames || []
               };
-
-              // Gửi thông tin về parent window
-              console.log('Sending to parent window:', {
-                token: backendData.token,
-                userInfo: normalizedAccount
-              });
               
               if (window.opener) {
                 window.opener.postMessage({
                   type: 'GOOGLE_AUTH_SUCCESS',
-                  token: backendData.token, // Sử dụng token từ backend
-                  userInfo: normalizedAccount // Sử dụng thông tin đã normalize từ backend
+                  token: backendData.token,
+                  userInfo: normalizedAccount
                 }, window.location.origin);
-                console.log('Message sent to parent, closing popup...');
                 window.close();
               } else {
                 // Nếu không có parent window, lưu thông tin và redirect theo role
-                console.log('No parent window, redirecting based on role...');
                 localStorage.setItem("authToken", backendData.token);
                 localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
                 
@@ -102,21 +94,14 @@ export default function GoogleCallback() {
                 isVerified: true
               };
 
-              console.log('Using fallback data:', {
-                token: accessToken,
-                userInfo: fallbackUserInfo
-              });
-
               if (window.opener) {
                 window.opener.postMessage({
                   type: 'GOOGLE_AUTH_SUCCESS',
                   token: accessToken, // Sử dụng Google token làm fallback
                   userInfo: fallbackUserInfo
                 }, window.location.origin);
-                console.log('Fallback message sent to parent, closing popup...');
                 window.close();
               } else {
-                console.log('No parent window, using fallback data...');
                 localStorage.setItem("authToken", accessToken);
                 localStorage.setItem("userInfo", JSON.stringify(fallbackUserInfo));
                 
