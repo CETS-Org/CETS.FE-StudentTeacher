@@ -1,6 +1,6 @@
 // src/pages/Teacher/ClassDetail/Component/WeeklyFeedbackModal.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import { X, Loader2, User, Sparkles, Lightbulb } from "lucide-react";
 import { getStudentsInClass, type StudentInClass } from "@/api/attendance.api";

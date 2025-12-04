@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { updateAssignment } from "@/api/assignments.api";
@@ -249,7 +249,7 @@ export default function EditAssignmentPopup({
         id: string;
         title: string;
         description: string;
-        dueDate: string;
+        dueAt: string;
         storeUrl?: string;
         contentType?: string;
         fileName?: string;
@@ -257,7 +257,7 @@ export default function EditAssignmentPopup({
         id: assignmentId,
         title,
         description: instructions,
-        dueDate: new Date(dueDate).toISOString(),
+        dueAt: new Date(dueDate).toISOString(),
       };
 
       // If new file is uploaded, include file info and upload to R2

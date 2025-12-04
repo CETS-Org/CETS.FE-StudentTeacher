@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Loader from "@/components/ui/Loader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import { 

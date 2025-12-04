@@ -7,7 +7,7 @@ import type {
   SubmitHandler,
   UseFormReturn,
 } from "react-hook-form";
-import Input, { type InputProps } from "./Input";
+import Input, { type InputProps } from "./input";
 import Select, { type SelectProps, type SelectOption } from "./Select";
 
 export type FormProps<TFieldValues extends FieldValues> = Omit<

@@ -1,7 +1,7 @@
 // src/pages/Student/ClassDetailsView.tsx
 import React, { useState, useEffect, useRef } from "react"; // Thêm useRef
 import { useNavigate } from "react-router-dom";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import {
@@ -39,12 +39,6 @@ import { getStudentId } from "@/lib/utils";
 
 import { getWeeklyFeedbackByStudent } from "@/api/weeklyFeedback.api";
 import type { WeeklyFeedbackView } from "@/services/teachingClassesService";
-
-import {
-  mockClassMeetings,
-  mockAssignmentsByMeeting,
-  mockAttendanceData,
-} from "@/pages/Student/LearningPath/data/mockLearningPathData";
 
 // Mock topics for sessions (fallback if not in attendance data)
 const mockSessionTopics: Record<string, string[]> = {
@@ -274,14 +268,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
       setCourseAttendanceSummary(summary);
     } catch (err: any) {
       console.error("Error fetching course attendance summary:", err);
-      const mockSummary = mockAttendanceData.classSummaries.find(
-        (cs) =>
-          cs.className === classItem.className ||
-          cs.courseCode === classItem.courseCode
-      );
-      if (mockSummary) {
-        setCourseAttendanceSummary(null); // để render fallback mock ở UI
-      }
+      setCourseAttendanceSummary(null);
     } finally {
       setAttendanceLoading(false);
     }
@@ -302,8 +289,8 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
       try {
         meetings = await getClassMeetingsByClassId(classItem.id);
       } catch (meetingError) {
-        console.warn("Error fetching meetings, using mock data:", meetingError);
-        meetings = mockClassMeetings[classItem.id] || [];
+        console.warn("Error fetching meetings:", meetingError);
+        meetings = [];
       }
 
       const sortedMeetings = meetings.sort((a, b) => {
@@ -326,15 +313,10 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
         setAttendanceSummary(attendanceSummaryData);
       } catch (attendanceError) {
         console.warn(
-          "Error fetching attendance report, using mock data:",
+          "Error fetching attendance report:",
           attendanceError
         );
-        attendanceSummaryData = mockAttendanceData.classSummaries.find(
-          (cs) =>
-            cs.className === classItem.className ||
-            cs.courseCode === classItem.courseCode
-        );
-        setAttendanceSummary(attendanceSummaryData);
+        setAttendanceSummary(null);
       }
 
       // 3. Assignments / course details
@@ -1517,16 +1499,9 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                   </div>
                 ) : (
                   (() => {
-                    // Prefer API data; fallback to mock
                     const summary = courseAttendanceSummary;
-                    const mockSummary =
-                      mockAttendanceData.classSummaries.find(
-                        (cs) =>
-                          cs.className === classItem.className ||
-                          cs.courseCode === classItem.courseCode
-                      );
 
-                    if (!summary && !mockSummary) {
+                    if (!summary) {
                       return (
                         <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
                           <ClipboardCheck className="w-12 h-12 text-accent-400 mx-auto mb-2" />
@@ -1705,166 +1680,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                       );
                     }
 
-                    // Fallback to mock data
-                    return (
-                      <div className="space-y-4">
-                        <Card className="p-4 border border-accent-200">
-                          <div className="grid grid-cols-3 gap-4 mb-3">
-                            <div className="text-center p-3 bg-success-50 rounded-lg">
-                              <p className="text-sm font-medium text-success-700">
-                                Present
-                              </p>
-                              <p className="text-2xl font-bold text-success-600">
-                                {mockSummary!.attendedSessions}
-                              </p>
-                            </div>
-                            <div className="text-center p-3 bg-error-50 rounded-lg">
-                              <p className="text-sm font-medium text-error-700">
-                                Absent
-                              </p>
-                              <p className="text-2xl font-bold text-error-600">
-                                {mockSummary!.absentSessions}
-                              </p>
-                            </div>
-                            <div className="text-center p-3 bg-primary-50 rounded-lg">
-                              <p className="text-sm font-medium text-primary-700">
-                                Total
-                              </p>
-                              <p className="text-2xl font-bold text-primary-600">
-                                {mockSummary!.totalSessions}
-                              </p>
-                            </div>
-                          </div>
-                        </Card>
-
-                        {sessions && sessions.length > 0 ? (
-                          <div className="space-y-3">
-                            <h4 className="text-md font-semibold text-primary-800">
-                              Attendance Records
-                            </h4>
-                            <div className="space-y-2">
-                              {sessions.map((session) => {
-                                const attendanceRecord =
-                                  mockSummary!.records?.find(
-                                    (record: AttendanceRecord) =>
-                                      record.meeting.id === session.id ||
-                                      record.meetingId === session.id
-                                  );
-
-                                const meetingDate = new Date(session.date);
-                                const dateStr =
-                                  meetingDate.toLocaleDateString("en-US", {
-                                    weekday: "short",
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  });
-
-                                const status =
-                                  attendanceRecord?.attendanceStatus ||
-                                  "Not Marked";
-                                const present = status === "Present";
-                                const absent = status === "Absent";
-
-                                return (
-                                  <Card
-                                    key={session.id}
-                                    className={`p-4 border ${
-                                      present
-                                        ? "bg-success-50 border-success-200"
-                                        : absent
-                                        ? "bg-error-50 border-error-200"
-                                        : "bg-gray-50 border-gray-200"
-                                    }`}
-                                  >
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex items-start gap-3 flex-1">
-                                        {present ? (
-                                          <div className="w-10 h-10 bg-success-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <CheckCircle className="w-5 h-5 text-success-600" />
-                                          </div>
-                                        ) : absent ? (
-                                          <div className="w-10 h-10 bg-error-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <AlertCircle className="w-5 h-5 text-error-600" />
-                                          </div>
-                                        ) : (
-                                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <Clock className="w-5 h-5 text-gray-600" />
-                                          </div>
-                                        )}
-                                        <div className="flex-1">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-semibold text-primary-800">
-                                              Session {session.sessionNumber}
-                                            </span>
-                                            <span
-                                              className={`px-2 py-1 rounded text-xs font-medium ${
-                                                present
-                                                  ? "bg-success-200 text-success-800"
-                                                  : absent
-                                                  ? "bg-error-200 text-error-800"
-                                                  : "bg-gray-200 text-gray-800"
-                                              }`}
-                                            >
-                                              {status}
-                                            </span>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="flex items-center gap-2 text-sm">
-                                              <Calendar className="w-4 h-4 text-accent-500" />
-                                              <span className="font-medium text-primary-700">
-                                                {dateStr}
-                                              </span>
-                                            </div>
-                                            {session.coveredTopic && (
-                                              <div className="mt-2">
-                                                <p className="text-xs font-medium text-primary-700 mb-1">
-                                                  Topic:
-                                                </p>
-                                                <p className="text-sm text-accent-600">
-                                                  {session.coveredTopic}
-                                                </p>
-                                              </div>
-                                            )}
-                                            {attendanceRecord?.notes && (
-                                              <div className="mt-2 p-2 bg-accent-50 rounded border border-accent-200">
-                                                <p className="text-xs font-medium text-primary-700 mb-1">
-                                                  Notes:
-                                                </p>
-                                                <p className="text-sm text-accent-600">
-                                                  {attendanceRecord.notes}
-                                                </p>
-                                              </div>
-                                            )}
-                                            {attendanceRecord?.checkedByName && (
-                                              <div className="flex items-center gap-2 text-xs text-accent-500 mt-1">
-                                                <span>
-                                                  Checked by:{" "}
-                                                  {
-                                                    attendanceRecord.checkedByName
-                                                  }
-                                                </span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </Card>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-6 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
-                            <ClipboardCheck className="w-8 h-8 text-accent-400 mx-auto mb-2" />
-                            <p className="text-sm text-accent-600">
-                              No sessions available
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
+                    return null;
                   })()
                 )}
               </div>

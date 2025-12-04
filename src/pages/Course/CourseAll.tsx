@@ -4,7 +4,7 @@ import { Search, FileCheck, X, Sparkles } from "lucide-react";
 import CoursesSection from "./components/CoursesSection";
 import PackagesSection from "./components/PackagesSection";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import courseBgImage from "@/assets/course-bg.png";
 import { isTokenValid, getUserInfo } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";

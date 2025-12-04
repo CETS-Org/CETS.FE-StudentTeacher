@@ -19,7 +19,7 @@ import type { MyClass } from "@/types/class";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import PageHeader from "@/components/ui/PageHeader";
 import Loader from "@/components/ui/Loader";

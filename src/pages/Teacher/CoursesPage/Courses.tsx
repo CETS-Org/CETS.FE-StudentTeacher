@@ -1,7 +1,7 @@
 // src/pages/Teacher/Courses.tsx
 import { useEffect, useMemo, useState } from "react";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";
 import type { Crumb } from "@/components/ui/Breadcrumbs";

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Star, Clock, Users, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import { api } from "@/api";
 import type { Course } from "@/types/course";

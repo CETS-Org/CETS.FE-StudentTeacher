@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { 

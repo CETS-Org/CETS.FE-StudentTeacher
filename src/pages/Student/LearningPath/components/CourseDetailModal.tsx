@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import { X, BookOpen, User, Calendar, FileText, CheckCircle, Clock, AlertCircle, ClipboardCheck, MapPin } from "lucide-react";
 import type { CourseDetailResponse, Assignment } from "@/types/academicResults";
 import type { ClassAttendanceSummary } from "@/types/attendance";
-import { mockCourseDetails } from "@/pages/Student/LearningPath/data/mockLearningPathData";
+import { getCourseDetails } from "@/api/academicResults.api";
+import { getUserInfo } from "@/lib/utils";
 
 interface CourseDetailModalProps {
   isOpen: boolean;
@@ -36,16 +37,15 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
       setLoading(true);
       setError(null);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const userInfo = getUserInfo();
+      const studentId = userInfo?.id;
       
-      // Use mock data
-      const details = mockCourseDetails[courseId];
-      if (details) {
-        setCourseDetails(details);
-      } else {
-        setError(`Course details not found for: ${courseId}`);
+      if (!studentId) {
+        throw new Error('Student ID not found');
       }
+      
+      const details = await getCourseDetails(studentId, courseId);
+      setCourseDetails(details);
     } catch (err) {
       console.error('Error fetching course details:', err);
       setError('Failed to load course details. Please try again.');
@@ -227,63 +227,68 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {courseDetails.assignments.map((assignment) => (
-                            <Card key={assignment.assignmentId} className="p-4 border border-accent-100 hover:shadow-md transition-shadow">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-primary-800 mb-1">
-                                    {assignment.title}
-                                  </h4>
-                                  {assignment.description && (
-                                    <p className="text-sm text-accent-600 mb-2">
-                                      {assignment.description}
+                          {courseDetails.assignments.flatMap(meeting =>
+                            meeting.assignments.map((assignment) => (
+                              <Card key={assignment.assignmentId} className="p-4 border border-accent-100 hover:shadow-md transition-shadow">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-primary-800 mb-1">
+                                      {assignment.title}
+                                    </h4>
+                                    {assignment.description && (
+                                      <p className="text-sm text-accent-600 mb-2">
+                                        {assignment.description}
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-accent-500">
+                                      Meeting: {meeting.topic} ({formatDate(meeting.meetingDate)})
                                     </p>
+                                  </div>
+                                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(assignment.submissionStatus)}`}>
+                                    {getStatusIcon(assignment.submissionStatus)}
+                                    {assignment.submissionStatus}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-accent-500" />
+                                    <div>
+                                      <p className="font-medium text-primary-700">Due Date</p>
+                                      <p className="text-accent-600">{formatDate(assignment.dueAt)}</p>
+                                    </div>
+                                  </div>
+
+                                  {assignment.submittedAt && (
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle className="w-4 h-4 text-accent-500" />
+                                      <div>
+                                        <p className="font-medium text-primary-700">Submitted</p>
+                                        <p className="text-accent-600">{formatDate(assignment.submittedAt)}</p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {assignment.score !== null && assignment.score !== undefined && (
+                                    <div className="flex items-center gap-2">
+                                      <FileText className="w-4 h-4 text-accent-500" />
+                                      <div>
+                                        <p className="font-medium text-primary-700">Score</p>
+                                        <p className="text-accent-600">{assignment.score}%</p>
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
-                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(assignment.submissionStatus)}`}>
-                                  {getStatusIcon(assignment.submissionStatus)}
-                                  {assignment.submissionStatus}
-                                </div>
-                              </div>
 
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-accent-500" />
-                                  <div>
-                                    <p className="font-medium text-primary-700">Due Date</p>
-                                    <p className="text-accent-600">{formatDate(assignment.dueAt)}</p>
-                                  </div>
-                                </div>
-
-                                {assignment.submittedAt && (
-                                  <div className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-accent-500" />
-                                    <div>
-                                      <p className="font-medium text-primary-700">Submitted</p>
-                                      <p className="text-accent-600">{formatDate(assignment.submittedAt)}</p>
-                                    </div>
+                                {assignment.feedback && (
+                                  <div className="mt-3 p-3 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
+                                    <p className="text-sm font-medium text-primary-700 mb-1">Feedback</p>
+                                    <p className="text-sm text-accent-600">{assignment.feedback}</p>
                                   </div>
                                 )}
-
-                                {assignment.score !== null && assignment.score !== undefined && (
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-accent-500" />
-                                    <div>
-                                      <p className="font-medium text-primary-700">Score</p>
-                                      <p className="text-accent-600">{assignment.score}%</p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {assignment.feedback && (
-                                <div className="mt-3 p-3 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
-                                  <p className="text-sm font-medium text-primary-700 mb-1">Feedback</p>
-                                  <p className="text-sm text-accent-600">{assignment.feedback}</p>
-                                </div>
-                              )}
-                            </Card>
-                          ))}
+                              </Card>
+                            ))
+                          )}
                         </div>
                       )}
                     </div>

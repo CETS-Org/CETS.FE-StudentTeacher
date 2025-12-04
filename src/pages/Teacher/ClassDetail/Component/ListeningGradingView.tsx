@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Eye, CheckCircle, XCircle, Play, Pause, Volume2 } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 

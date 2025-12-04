@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { XCircle, RefreshCw, Home, Mail, AlertTriangle } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
+import Card from '@/components/ui/card';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import '../../styles/login-animations.css';
 

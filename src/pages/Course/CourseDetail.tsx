@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Star, Clock, Users, BookOpen, CheckCircle, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp, CalendarCheck, UserCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import ClassReservationDialog from "./components/ClassReservationDialog";
 import RelatedCourses from "./components/RelatedCourses";
 import CourseSchedule from "@/components/ui/CourseSchedule";

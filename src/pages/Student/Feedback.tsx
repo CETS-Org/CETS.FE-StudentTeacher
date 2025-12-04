@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import PageHeader from "@/components/ui/PageHeader";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import FeedbackDialog from "./components/FeedbackDialog";
 import { toast } from "@/components/ui/Toast";

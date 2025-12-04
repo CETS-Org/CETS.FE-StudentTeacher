@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import PaymentHistoryItem from "./PaymentHistoryItem";
 import { Receipt, Search, Filter } from "lucide-react";
 import { api } from "@/api";

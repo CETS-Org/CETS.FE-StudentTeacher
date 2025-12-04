@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +18,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/Dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import NotificationDialog from "@/components/ui/NotificationDialog";
 import type { GenericNavbarProps } from "@/types/navbar";

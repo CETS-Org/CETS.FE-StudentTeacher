@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import { getUserInfo, getStudentId } from "@/lib/utils";
 import { getStudentById } from "@/api/student.api";
 import type { Course } from "@/types/course";

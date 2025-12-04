@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Plus, Trash2, GripVertical, X, CheckCircle, PenTool, Play, Pause, Headphones } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import type { Question, QuestionType, QuestionOption, FillInTheBlank, MatchingData, MatchingItem, MatchingPair, SkillType } from "../AdvancedAssignmentPopup";
 import { config } from "@/lib/config";
 

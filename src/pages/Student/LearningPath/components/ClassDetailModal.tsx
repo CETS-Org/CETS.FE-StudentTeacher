@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import { X, BookOpen, Calendar, FileText, CheckCircle, Clock, AlertCircle, GraduationCap, PlayCircle, ClipboardCheck } from "lucide-react";
 import type { ClassMeeting } from "@/api/classMeetings.api";
 import type { MeetingAssignment } from "@/services/teachingClassesService";
 import type { MyClass } from "@/types/class";
-import { mockClassMeetings, mockAssignmentsByMeeting, mockAttendanceData } from "@/pages/Student/LearningPath/data/mockLearningPathData";
+import { getClassMeetingsByClassId } from "@/api/classMeetings.api";
+import { getCourseAttendanceSummary } from "@/api/academicResults.api";
 
 interface ClassDetailModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSessionIndex, setCurrentSessionIndex] = useState<number>(-1); // Track which session student is currently on
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
   // Derived metrics per class
   const [completionRate, setCompletionRate] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number>(0);
@@ -41,16 +43,32 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
   useEffect(() => {
     if (isOpen && classItem?.id) {
       fetchClassSessions();
+      fetchAttendance();
     }
   }, [isOpen, classItem?.id]);
+
+  const fetchAttendance = async () => {
+    try {
+      // Get user info to fetch attendance by studentId
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const studentId = userInfo.id;
+      
+      if (!studentId || !classItem.courseCode) return;
+      
+      const summary = await getCourseAttendanceSummary(classItem.courseCode, studentId);
+      setAttendanceSummary(summary);
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+    }
+  };
 
   const fetchClassSessions = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Use mock meetings directly (no API calls)
-      let meetings: ClassMeeting[] = mockClassMeetings[classItem.id] || [];
+      // Fetch meetings from API
+      const meetings: ClassMeeting[] = await getClassMeetingsByClassId(classItem.id);
       
       // Sort meetings by date (oldest first)
       const sortedMeetings = meetings.sort((a, b) => {
@@ -59,11 +77,13 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
         return dateA - dateB;
       });
 
-      // Fetch assignments for each session (mock only)
+      // Fetch assignments for each session from API
       const sessionsWithAssignments: SessionWithAssignments[] = await Promise.all(
         sortedMeetings.map(async (meeting, index) => {
           try {
-            const assignments: MeetingAssignment[] = mockAssignmentsByMeeting[meeting.id] || [];
+            // TODO: Fetch assignments for this meeting
+            // For now, use empty array until proper API is integrated
+            const assignments: MeetingAssignment[] = [];
             
             // Determine if session is completed
             // A session is considered completed if:
@@ -138,7 +158,7 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
       return !!(sub && (sub.score != null || sub.storeUrl));
     }).length;
     const overdue = allAssignments.filter(a => {
-      const due = new Date(a.dueDate);
+      const due = new Date(a.dueAt);
       const sub = a.submissions?.[0];
       return due < now && !(sub && sub.storeUrl);
     }).length;
@@ -526,7 +546,7 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
                                           <div className="flex items-center gap-4 text-xs text-accent-600">
                                             <div className="flex items-center gap-1">
                                               <Calendar className="w-3 h-3" />
-                                              <span>Due: {formatDate(assignment.dueDate)}</span>
+                                              <span>Due: {formatDate(assignment.dueAt)}</span>
                                             </div>
                                             {hasScore && (
                                               <div className="flex items-center gap-1 text-green-700">
@@ -565,7 +585,7 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
                 <TabContent activeTab={activeTab} tabId="attendance">
                   <div className="p-6">
                     {(() => {
-                      const summary = mockAttendanceData.classSummaries.find(cs => cs.className === classItem.className || cs.courseCode === classItem.courseCode);
+                      const summary = attendanceSummary;
                       if (!summary) {
                         return (
                           <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
@@ -605,7 +625,7 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
                             <div className="space-y-3">
                               <h4 className="text-md font-semibold text-primary-800">Attendance Records</h4>
                               <div className="space-y-2">
-                                {summary.records.map((record) => {
+                                {summary.records.map((record: any) => {
                                   const meetingDate = new Date(record.meeting.startsAt);
                                   const dateStr = meetingDate.toLocaleDateString('en-US', {
                                     weekday: 'short',
