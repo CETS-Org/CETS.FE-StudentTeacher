@@ -1,4 +1,4 @@
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import type { Question } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 
 interface Props {

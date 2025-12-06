@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { getTeacherId } from "@/lib/utils";

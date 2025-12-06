@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet, Bot, Edit2, Trash2 } from "lucide-react";
 import JSZip from 'jszip';
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Pagination from "@/Shared/Pagination";
 import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";

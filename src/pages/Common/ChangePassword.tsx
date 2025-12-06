@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useNavigate } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import { Eye, EyeOff, CheckCircle, Lock } from "lucide-react";
 import { api } from "@/api";
 import { clearAuthData } from "@/lib/utils";

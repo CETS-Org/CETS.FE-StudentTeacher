@@ -22,23 +22,30 @@ export interface AcademicResultItem {
 export interface Assignment {
   assignmentId: string;
   title: string;
-  description: string;
+  description: string | null;
   dueAt: string;
-  submittedAt: string;
-  score: number;
-  feedback: string;
+  submittedAt: string | null;
+  score: number | null;
+  feedback: string | null;
   submissionStatus: string;
+}
+
+export interface AssignmentByMeeting {
+  meetingId: string;
+  meetingDate: string;
+  topic: string;
+  assignments: Assignment[];
 }
 
 export interface CourseDetailResponse {
   courseId: string;
   courseCode: string;
   courseName: string;
-  description: string;
+  description: string | null;
   teacherNames: string[];
   statusCode: string;
   statusName: string;
-  assignments: Assignment[];
+  assignments: AssignmentByMeeting[];
 }
 
 // Grade types

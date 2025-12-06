@@ -1,5 +1,5 @@
 import React from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import { BookOpen, CheckCircle, XCircle, Clock } from "lucide-react";
 import type { AcademicResultsApiResponse } from "@/types/academicResults";
 

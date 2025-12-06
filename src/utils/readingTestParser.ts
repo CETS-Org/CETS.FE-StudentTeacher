@@ -152,8 +152,12 @@ export async function createReadingTestDocument(
       q.options.forEach((option) => {
         children.push(
           new Paragraph({
-            text: option,
-            size: 24,
+            children: [
+              new TextRun({
+                text: option,
+                size: 24,
+              }),
+            ],
             spacing: { after: 50 },
             indent: { left: 720 }, // 0.5 inch indent
           })
@@ -274,8 +278,12 @@ export async function createSeparateDocuments(
       q.options.forEach((option) => {
         questionsChildren.push(
           new Paragraph({
-            text: option,
-            size: 24,
+            children: [
+              new TextRun({
+                text: option,
+                size: 24,
+              }),
+            ],
             spacing: { after: 50 },
             indent: { left: 720 },
           })

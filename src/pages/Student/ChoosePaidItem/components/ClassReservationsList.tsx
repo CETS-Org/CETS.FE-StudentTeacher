@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import ClassReservationItem from "./ClassReservationItem";
 import { Package, Search } from "lucide-react";
 import { api } from "@/api";

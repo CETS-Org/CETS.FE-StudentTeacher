@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Tabs from "@/components/ui/Tabs";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import Loader from "@/components/ui/Loader";

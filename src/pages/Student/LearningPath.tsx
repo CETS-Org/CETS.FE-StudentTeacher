@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Spinner from "@/components/ui/Spinner";

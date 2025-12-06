@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { createAssignment } from "@/api/assignments.api";
@@ -235,7 +235,7 @@ export default function CreateAssignmentPopup({
         teacherId,
         title,
         description: instructions,
-        dueDate: new Date(dueDate).toISOString(),
+        dueAt: new Date(dueDate).toISOString(),
         contentType: contentType,
         fileName: file.name.replace(/\.[^/.]+$/, "") // Remove extension
       };

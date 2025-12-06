@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import Card from "../../components/ui/card";
 import { Eye, EyeOff, UserCheck, CheckCircle, AlertCircle, BookOpen, GraduationCap, Users } from "lucide-react";
 import { api } from "@/api";
 import "../../styles/login-animations.css";

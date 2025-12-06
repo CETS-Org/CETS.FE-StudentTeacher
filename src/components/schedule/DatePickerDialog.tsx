@@ -1,6 +1,6 @@
 // src/components/schedule/DatePickerDialog.tsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog";
-import { Calendar as ShadCalendar } from "@/components/ui/Calendar";
+import { Calendar as ShadCalendar } from "@/components/ui/calendar";
 
 type Props = {
   open: boolean;

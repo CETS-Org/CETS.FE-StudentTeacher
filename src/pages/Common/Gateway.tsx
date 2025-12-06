@@ -1,6 +1,6 @@
 import { usePageTitle } from "../../hooks/usePageTitle";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import Card from "../../components/ui/card";
 import GateWayImg1 from "../../assets/Gateway1.png";
 import GateWayImg2 from "../../assets/Gateway2.png";
 import GateWayImg3 from "../../assets/Gateway3.png";

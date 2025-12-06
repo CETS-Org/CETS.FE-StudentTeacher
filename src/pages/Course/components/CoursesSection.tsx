@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, Filter, BookOpen } from "lucide-react";
 
 import CourseListItem from "@/pages/Course/components/CourseListItem";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";

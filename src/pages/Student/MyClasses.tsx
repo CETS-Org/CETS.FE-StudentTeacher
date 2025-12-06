@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";

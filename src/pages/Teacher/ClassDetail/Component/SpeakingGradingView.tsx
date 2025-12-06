@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ChevronLeft, ChevronRight, Save, MessageSquare, Award, Bot, Play, Pause, Volume2, Download } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";

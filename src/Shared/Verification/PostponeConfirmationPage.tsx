@@ -2,7 +2,7 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, XCircle, ArrowRight, Home, Clock, Wallet } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 
 export default function PostponeConfirmationPage() {
   const [searchParams] = useSearchParams();

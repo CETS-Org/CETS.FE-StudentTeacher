@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { BookOpen, User, TrendingUp, GraduationCap, Calendar } from "lucide-react";
 import type { MyClass } from "@/types/class";
 import Spinner from "@/components/ui/Spinner";
-import { mockClassesByCourseCode } from "@/pages/Student/LearningPath/data/mockLearningPathData";
+import { getStudentLearningClasses } from "@/api/classes.api";
+import { getStudentId } from "@/lib/utils";
 
 export interface CourseItem {
   courseId: string;
@@ -45,14 +46,17 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
   const fetchClass = async () => {
     try {
       setLoadingClass(true);
-      // Use mock data directly - 1 course = 1 class (fallback)
-      const mockClasses = mockClassesByCourseCode[course.courseCode] || [];
-      const firstClass = mockClasses[0] || null;
-      setClassItem(firstClass);
+      const studentId = getStudentId();
+      if (!studentId) throw new Error('Student ID not found');
+      
+      // Fetch classes for this student from API
+      const response = await getStudentLearningClasses(studentId);
+      const classes = response.data || [];
+      const courseClass = classes.find((c: MyClass) => c.courseCode === course.courseCode);
+      setClassItem(courseClass || null);
     } catch (err) {
       console.error('Error fetching class:', err);
-      const mockClasses = mockClassesByCourseCode[course.courseCode] || [];
-      setClassItem(mockClasses[0] || null);
+      setClassItem(null);
     } finally {
       setLoadingClass(false);
     }

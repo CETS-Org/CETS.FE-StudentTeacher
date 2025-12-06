@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Form } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import Card from "../../components/ui/card";
 import { ArrowLeft, Shield, RotateCcw, Check, AlertCircle, CheckCircle, Mail, Clock } from "lucide-react";
 import { api } from "@/api";
 import "../../styles/login-animations.css";
