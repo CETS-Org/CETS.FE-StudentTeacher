@@ -737,7 +737,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                       <div className="flex items-center gap-2">
                         <Star className="w-5 h-5 text-yellow-400 fill-current" />
                         <span className="text-2xl font-bold text-gray-900">{course.rating}</span>
-                        <span className="text-gray-600">({course.studentsCount} reviews)</span>
+                        <span className="text-gray-600">({course.feedbacks.length} reviews)</span>
                       </div>
                     </div>
                   </div>

@@ -6,7 +6,8 @@ import {
   BookOpen, 
   ChevronDown,
   Settings, 
-  HelpCircle
+  HelpCircle,
+  MessageCircle
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
@@ -26,6 +27,7 @@ import type { UserNotification } from "@/types/notification";
 import { getUserInfo } from "@/lib/utils";
 import { getNotificationsByUser, markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notification.api";
 import { useNotificationSocket } from "@/hooks/useNotificationSocket";
+import { triggerChatWidget } from "@/Shared/Chat/components/ChatWidget";
 
 // Re-export types for backward compatibility
 export type { NavbarConfig } from "@/types/navbar";
@@ -182,7 +184,16 @@ export default function GenericNavbar({
                         </div>
 
                         {/* Right Side Actions */}
-                        <div className="flex items-center space-x-6">
+                        <div className="flex items-center space-x-4">
+
+                            {/* Chat Icon */}
+                            <button 
+                                onClick={triggerChatWidget}
+                                className="relative p-2 text-neutral-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                                aria-label="Chat"
+                            >
+                                <MessageCircle className="w-5 h-5" />
+                            </button>
 
                             {/* Notifications */}
                             <NotificationDialog 
