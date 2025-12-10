@@ -260,8 +260,74 @@ export default function TakePlacementTestPage() {
         if (test.durationMinutes) {
           const timeInSeconds = test.durationMinutes * 60;
           setInitialTimeLimit(timeInSeconds);
-          setTimeRemaining(timeInSeconds);
-          setIsTimerRunning(true);
+          
+          // Load saved progress if available
+          const savedProgressKey = `placement_test_${test.id}_answers`;
+          const savedProgressStr = localStorage.getItem(savedProgressKey);
+          const savedStartTime = localStorage.getItem(`placement_test_${test.id}_startTime`);
+          
+          if (savedProgressStr && savedStartTime) {
+            try {
+              const progressData = JSON.parse(savedProgressStr);
+              
+              // Restore answers
+              if (progressData.answers) {
+                setAnswers(progressData.answers);
+              }
+              
+              // Restore current question index
+              if (progressData.currentQuestionIndex !== undefined) {
+                setCurrentQuestionIndex(progressData.currentQuestionIndex);
+              }
+              
+              // Calculate elapsed time and restore remaining time
+              const startTime = new Date(savedStartTime).getTime();
+              const currentTime = new Date().getTime();
+              const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+              const remainingTime = Math.max(0, timeInSeconds - elapsedSeconds);
+              
+              setTimeRemaining(remainingTime);
+              
+              // Only start timer if there's still time remaining
+              if (remainingTime > 0) {
+                setIsTimerRunning(true);
+              } else {
+                // Time is up, auto-submit
+                setIsTimerRunning(false);
+                // Note: We can't auto-submit here because answers aren't loaded yet
+                // The timer will handle this once answers are set
+              }
+            } catch (err) {
+              console.error("Failed to load saved progress:", err);
+              // Fallback to starting fresh
+              setTimeRemaining(timeInSeconds);
+              setIsTimerRunning(true);
+            }
+          } else {
+            // No saved progress, start fresh
+            const startTime = new Date().toISOString();
+            localStorage.setItem(`placement_test_${test.id}_startTime`, startTime);
+            setTimeRemaining(timeInSeconds);
+            setIsTimerRunning(true);
+          }
+        } else {
+          // Load saved progress even if no timer (for answers and question index)
+          const savedProgressKey = `placement_test_${test.id}_answers`;
+          const savedProgressStr = localStorage.getItem(savedProgressKey);
+          
+          if (savedProgressStr) {
+            try {
+              const progressData = JSON.parse(savedProgressStr);
+              if (progressData.answers) {
+                setAnswers(progressData.answers);
+              }
+              if (progressData.currentQuestionIndex !== undefined) {
+                setCurrentQuestionIndex(progressData.currentQuestionIndex);
+              }
+            } catch (err) {
+              console.error("Failed to load saved progress:", err);
+            }
+          }
         }
       } catch (err: any) {
         console.error("Failed to load placement test:", err);
@@ -273,6 +339,14 @@ export default function TakePlacementTestPage() {
 
     loadPlacementTest();
   }, [studentId]);
+
+  // Check if time expired when loading (after answers are loaded)
+  useEffect(() => {
+    if (!loading && timeRemaining !== null && timeRemaining <= 0 && !submitting && questions.length > 0) {
+      // Time has expired, auto-submit
+      handleSubmit(true);
+    }
+  }, [loading, timeRemaining, submitting, questions.length]);
 
   // Timer countdown
   useEffect(() => {
@@ -390,7 +464,18 @@ export default function TakePlacementTestPage() {
       setIsSaving(true);
       // Save answers to localStorage as backup
       if (placementTest) {
-        localStorage.setItem(`placement_test_${placementTest.id}_answers`, JSON.stringify(answers));
+        const progressData = {
+          answers,
+          currentQuestionIndex,
+          timeRemaining,
+          startTime: localStorage.getItem(`placement_test_${placementTest.id}_startTime`) || new Date().toISOString(),
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem(`placement_test_${placementTest.id}_answers`, JSON.stringify(progressData));
+        // Also save start time separately if not already saved
+        if (!localStorage.getItem(`placement_test_${placementTest.id}_startTime`)) {
+          localStorage.setItem(`placement_test_${placementTest.id}_startTime`, progressData.startTime);
+        }
       }
       setLastSaved(new Date());
     } catch (err) {
@@ -583,8 +668,8 @@ export default function TakePlacementTestPage() {
     setShowExitDialog(true);
   };
 
-  const confirmExit = () => {
-    saveAnswers();
+  const confirmExit = async () => {
+    await saveAnswers();
     navigate(-1);
   };
 

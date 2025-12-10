@@ -1,0 +1,264 @@
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { FileCheck, Clock, HelpCircle, X } from 'lucide-react';
+import Button from './Button';
+import Loader from './Loader';
+import { getRandomPlacementTestForStudent, type PlacementTest } from '@/api/placementTest.api';
+import { config } from '@/lib/config';
+
+interface PlacementTestConfirmationDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export default function PlacementTestConfirmationDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+}: PlacementTestConfirmationDialogProps) {
+  const [testDetails, setTestDetails] = useState<PlacementTest | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalQuestions, setTotalQuestions] = useState<number>(0);
+
+  // Fetch test details when dialog opens
+  useEffect(() => {
+    if (!isOpen) {
+      setTestDetails(null);
+      setError(null);
+      setTotalQuestions(0);
+      return;
+    }
+
+    const fetchTestDetails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch random placement test for student
+        const response = await getRandomPlacementTestForStudent();
+        const test = response.data;
+        setTestDetails(test);
+
+        // Calculate total questions by loading question data
+        if (test.questions && test.questions.length > 0) {
+          let questionCount = 0;
+          
+          // Load question data to count actual questions
+          const questionDataPromises = test.questions.map(async (question) => {
+            if (!question.questionUrl) {
+              return null;
+            }
+
+            try {
+              const questionUrl = question.questionUrl.startsWith("/")
+                ? question.questionUrl
+                : `/${question.questionUrl}`;
+              const directUrl = `${config.storagePublicUrl}${questionUrl}`;
+
+              const questionResponse = await fetch(directUrl);
+              if (!questionResponse.ok) {
+                return null;
+              }
+
+              const data = await questionResponse.json();
+              return data.questions?.length || 0;
+            } catch (err) {
+              console.error(`Error loading question ${question.id}:`, err);
+              return 0;
+            }
+          });
+
+          const results = await Promise.all(questionDataPromises);
+          questionCount = results.reduce((sum, count) => sum + (count || 0), 0);
+          setTotalQuestions(questionCount);
+        } else {
+          setTotalQuestions(0);
+        }
+      } catch (err: any) {
+        console.error("Failed to load placement test details:", err);
+        setError(err.response?.data || err.message || "Failed to load test details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTestDetails();
+  }, [isOpen]);
+
+  // Handle escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const formatTime = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (mins === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    }
+    return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''}`;
+  };
+
+  return createPortal(
+    <>
+      {/* Background overlay */}
+      <div 
+        className="fixed inset-0 bg-black/50 transition-opacity z-[60]"
+        onClick={onClose}
+      ></div>
+      
+      {/* Dialog Container */}
+      <div className="fixed inset-0 z-[60] overflow-y-auto pointer-events-none scrollbar-hide">
+        <div className="flex items-center justify-center min-h-full p-4 text-center pointer-events-auto">
+          {/* Dialog */}
+          <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full max-w-lg max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex-shrink-0 bg-gradient-to-r from-primary-600 to-accent-600 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-white/20">
+                    <FileCheck className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">
+                    Placement Test Confirmation
+                  </h3>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-white/80 hover:text-white transition-colors"
+                  title="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="bg-white px-6 py-6 overflow-y-auto flex-1 min-h-0 scrollbar-hide">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Loader />
+                  <p className="mt-4 text-sm text-gray-600">Loading test details...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <HelpCircle className="h-6 w-6 text-red-600" />
+                  </div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">Error Loading Test</h4>
+                  <p className="text-sm text-gray-600 mb-4">{error}</p>
+                  <Button
+                    variant="secondary"
+                    onClick={onClose}
+                    className="mt-2"
+                  >
+                    Close
+                  </Button>
+                </div>
+              ) : testDetails ? (
+                <div className="space-y-6">
+                  {/* Test Purpose */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4 text-primary-600" />
+                      Test Purpose
+                    </h4>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      The placement test helps us determine your current English proficiency level 
+                      and recommend courses that best match your skills. Your results will be used 
+                      to suggest appropriate courses for your learning journey.
+                    </p>
+                  </div>
+
+                  {/* Test Details */}
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Test Details</h4>
+                    
+                    {/* Test Title */}
+                    <div className="flex items-start gap-3">
+                      <FileCheck className="h-5 w-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Test Name</p>
+                        <p className="text-sm font-semibold text-gray-900">{testDetails.title}</p>
+                      </div>
+                    </div>
+
+                    {/* Number of Questions */}
+                    <div className="flex items-start gap-3">
+                      <HelpCircle className="h-5 w-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Number of Questions</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {loading ? 'Calculating...' : `${totalQuestions} question${totalQuestions !== 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Time Limit */}
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Time Limit</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {formatTime(testDetails.durationMinutes)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Important Notes */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      <strong className="font-semibold">Note:</strong> Please be honest and answer all questions 
+                      to the best of your ability without external assistance, as accurate results 
+                      will help you get placed in the most suitable courses.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            
+            {/* Footer */}
+            {!loading && !error && testDetails && (
+              <div className="flex-shrink-0 bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:gap-3">
+                <Button
+                  onClick={onConfirm}
+                  className="w-full sm:w-auto bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 text-white font-medium"
+                >
+                  Start Test
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={onClose}
+                  className="mt-3 w-full sm:mt-0 sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-100"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+

@@ -9,6 +9,7 @@ import courseBgImage from "@/assets/course-bg.png";
 import { isTokenValid, getUserInfo } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import VerificationDialog from "@/components/ui/VerificationDialog";
+import PlacementTestConfirmationDialog from "@/components/ui/PlacementTestConfirmationDialog";
 import { api } from "@/api";
 
 export default function CourseAll() {
@@ -17,6 +18,7 @@ export default function CourseAll() {
   const { error: showError, success: showSuccess } = useToast();
   const [showPlacementTestMessage, setShowPlacementTestMessage] = useState(true);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showPlacementTestDialog, setShowPlacementTestDialog] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
@@ -81,6 +83,11 @@ export default function CourseAll() {
     }
   };
 
+  const handleConfirmPlacementTest = () => {
+    setShowPlacementTestDialog(false);
+    navigate('/student/placement-test');
+  };
+
   return (
     <>
       {/* Verification Dialog */}
@@ -89,6 +96,13 @@ export default function CourseAll() {
         onClose={handleCloseVerificationDialog}
         onResendVerification={handleResendVerification}
         userEmail={userEmail}
+      />
+      
+      {/* Placement Test Confirmation Dialog */}
+      <PlacementTestConfirmationDialog
+        isOpen={showPlacementTestDialog}
+        onClose={() => setShowPlacementTestDialog(false)}
+        onConfirm={handleConfirmPlacementTest}
       />
 
     <div className="min-h-screen bg-neutral-50">
@@ -187,7 +201,7 @@ export default function CourseAll() {
               navigate('/login');
               return;
             }
-            navigate('/student/placement-test');
+            setShowPlacementTestDialog(true);
             handleDismissMessage(); // Auto-dismiss message when clicked
           }}
           className="relative w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-full shadow-2xl hover:shadow-primary-500/50 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group animate-bounce"
