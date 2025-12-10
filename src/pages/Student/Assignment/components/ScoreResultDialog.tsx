@@ -14,6 +14,10 @@ interface ScoreResultDialogProps {
   isOpen: boolean;
   onClose: () => void;
   submissionScore: SubmissionScore | null;
+  onRecommendCourses?: () => void;
+  onRecommendPackages?: () => void;
+  recommendCoursesLabel?: string;
+  recommendPackagesLabel?: string;
 }
 
 /**
@@ -24,6 +28,10 @@ export default function ScoreResultDialog({
   isOpen,
   onClose,
   submissionScore,
+  onRecommendCourses,
+  onRecommendPackages,
+  recommendCoursesLabel = "Courses for you",
+  recommendPackagesLabel = "Learning path for you",
 }: ScoreResultDialogProps) {
   if (!submissionScore) return null;
 
@@ -43,7 +51,7 @@ export default function ScoreResultDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">
             Assignment Submitted!
@@ -111,10 +119,17 @@ export default function ScoreResultDialog({
             </div>
           </div>
         </DialogBody>
-        <DialogFooter>
-          <Button variant="primary" onClick={onClose} className="w-full">
-            Close
-          </Button>
+        <DialogFooter className="flex flex-col sm:flex-row gap-3 w-full">
+          {onRecommendCourses && (
+            <Button variant="secondary" onClick={onRecommendCourses} className="w-full sm:w-1/2">
+              {recommendCoursesLabel}
+            </Button>
+          )}
+          {onRecommendPackages && (
+            <Button variant="secondary" onClick={onRecommendPackages} className="w-full sm:w-1/2">
+              {recommendPackagesLabel}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

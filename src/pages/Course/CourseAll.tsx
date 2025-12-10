@@ -24,12 +24,39 @@ export default function CourseAll() {
   useEffect(() => {
     // Handle hash navigation
     if (location.hash) {
-      const element = document.getElementById(location.hash.substring(1));
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
+      const hash = location.hash.substring(1);
+      const scrollToElement = () => {
+        const element = document.getElementById(hash);
+        if (element) {
+          // Use requestAnimationFrame to ensure DOM is ready
+          requestAnimationFrame(() => {
+            // Account for fixed header/navbar and spacing (approximately 100px)
+            const headerOffset = 100;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+          });
+        }
+      };
+
+      // Try immediately after a small delay to let React render
+      const immediateId = setTimeout(scrollToElement, 50);
+      
+      // Also try after a delay to ensure content is loaded
+      const timeoutId = setTimeout(scrollToElement, 300);
+      
+      // And try after images/content might have loaded
+      const longTimeoutId = setTimeout(scrollToElement, 800);
+
+      return () => {
+        clearTimeout(immediateId);
+        clearTimeout(timeoutId);
+        clearTimeout(longTimeoutId);
+      };
     }
 
     // Check if user has seen the placement test message before
@@ -55,7 +82,7 @@ export default function CourseAll() {
         }
       }
     }
-  }, [location.hash]);
+  }, [location]);
 
   const handleDismissMessage = () => {
     setShowPlacementTestMessage(false);

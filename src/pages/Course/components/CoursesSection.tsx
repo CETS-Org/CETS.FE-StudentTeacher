@@ -483,7 +483,7 @@ export default function CoursesSection() {
         </div>
 
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto relative mb-12">
+        <div id="courses-content" className="max-w-2xl mx-auto relative mb-12 scroll-mt-24">
           <div className="relative">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 w-6 h-6" />
             <Input
