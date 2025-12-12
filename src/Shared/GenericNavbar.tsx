@@ -24,7 +24,7 @@ import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import NotificationDialog from "@/components/ui/NotificationDialog";
 import type { GenericNavbarProps } from "@/types/navbar";
 import type { UserNotification } from "@/types/notification";
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, clearAuthData } from "@/lib/utils";
 import { getNotificationsByUser, markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notification.api";
 import { useNotificationSocket } from "@/hooks/useNotificationSocket";
 import { triggerChatWidget } from "@/Shared/Chat/components/ChatWidget";
@@ -68,6 +68,18 @@ export default function GenericNavbar({
 
         loadNotifications();
     }, []);
+
+    // Listen for logout event and clear notifications
+    useEffect(() => {
+        const handleLogout = () => {
+            setNotifications([]);
+        };
+
+        window.addEventListener('auth:logout', handleLogout);
+        return () => {
+            window.removeEventListener('auth:logout', handleLogout);
+        };
+    }, []);
     
     const handleLogoutClick = () => {
         setIsLogoutDialogOpen(true);
@@ -75,7 +87,8 @@ export default function GenericNavbar({
 
     const handleLogoutConfirm = () => {
         // Clear any authentication tokens/data here
-        localStorage.removeItem('authToken');
+        clearAuthData();
+        // Legacy key cleanup
         localStorage.removeItem('userData');
 
         // Clear in-memory notifications so previous account state is not shown
@@ -126,6 +139,12 @@ export default function GenericNavbar({
     };
 
     const handleSocketNotification = useCallback((notification: UserNotification) => {
+        // Check if user is still logged in before processing notification
+        const userInfo = getUserInfo();
+        if (!userInfo?.id) {
+            return;
+        }
+        
         setNotifications(prev => {
             const existing = prev.find(n => n.id === notification.id);
             if (existing) {

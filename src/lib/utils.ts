@@ -29,6 +29,8 @@ export function isTokenValid(): boolean {
 export function clearAuthData(): void {
   localStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
+  // Dispatch event to notify components (e.g., navbar) to clear state
+  window.dispatchEvent(new Event('auth:logout'));
 }
 
 // User information utilities
