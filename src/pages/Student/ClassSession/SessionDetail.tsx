@@ -920,73 +920,65 @@ export default function SessionDetail() {
               )}
               {!loadingContext && !errorContext && context && (
                 <>
-                  {/* Session Overview Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-gradient-to-br from-secondary-200 to-secondary-300 border border-primary-200 rounded-xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-                          <BookOpen className="w-4 h-4 text-white" />
-                        </div>
-                        <h4 className="font-semibold text-primary-800">Topic Title</h4>
-                      </div>
-                      <p className="text-primary-700 font-medium">{context.topicTitle}</p>
-                    </div>
-                    
-                    <div className="p-4 bg-gradient-to-br from-accent-50 to-accent-100 border border-accent-200 rounded-xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center">
-                          <Clock className="w-4 h-4 text-white" />
-                        </div>
-                        <h4 className="font-semibold text-accent-800">Duration</h4>
-                      </div>
-                      <p className="text-accent-700 font-medium">{context.totalSlots} minutes</p>
-                    </div>
-                    
-                    <div className="p-4 bg-gradient-to-br from-warning-50 to-warning-100 border border-warning-200 rounded-xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 bg-warning-500 rounded-lg flex items-center justify-center">
-                          <CheckCircle className="w-4 h-4 text-white" />
-                        </div>
-                        <h4 className="font-semibold text-warning-800">Required</h4>
-                      </div>
-                      <p className="text-warning-700 font-medium">{context.required ? 'Yes' : 'No'}</p>
-                    </div>
-                  </div>
-
-                  {/* Learning Objectives */}
-                  <div className="p-6 bg-gradient-to-br from-success-50 to-success-100 border border-success-200 rounded-xl">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-success-500 rounded-xl flex items-center justify-center">
-                        <Target className="w-5 h-5 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-success-800">Learning Objectives</h3>
-                    </div>
-                    {(!context.objectives || !Array.isArray(context.objectives) || context.objectives.length === 0) ? (
-                      <div className="text-success-700">No objectives provided.</div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {context.objectives.map((objective, index) => (
-                          <div key={index} className="flex items-start gap-3 p-4 bg-white border border-success-200 rounded-lg shadow-sm">
-                            <div className="w-6 h-6 bg-success-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-white text-xs font-bold">{index + 1}</span>
-                            </div>
-                            <p className="text-success-800 font-medium">{objective}</p>
+                  {/* Main Content Area with 2-column layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left Column - Topic and Content Summary */}
+                    <div className="lg:col-span-2 space-y-6">
+                      {/* Session Topic */}
+                      <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                            <BookOpen className="w-6 h-6 text-white" />
                           </div>
-                        ))}
+                          <div className="flex-1">
+                            <h3 className="text-sm font-medium text-blue-600 mb-1">Session Topic</h3>
+                            <p className="text-xl font-bold text-gray-900">{context.topicTitle}</p>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  {/* Content Summary */}
-                  <div className="p-6 bg-gradient-to-br from-info-50 to-info-100 border border-info-200 rounded-xl">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-info-500 rounded-xl flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-white" />
+
+                      {/* Content Summary */}
+                      <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl shadow-sm">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                            <FileText className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900">Content Summary</h3>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-white rounded-lg border border-blue-100">
+                          <p className="text-gray-700 leading-relaxed">{context.contentSummary || 'No content summary provided.'}</p>
+                        </div>
                       </div>
-                      <h3 className="text-xl font-bold text-info-800">Content Summary</h3>
                     </div>
-                    <div className="p-4 bg-white border border-info-200 rounded-lg">
-                      <p className="text-info-700 leading-relaxed text-base">{context.contentSummary || '—'}</p>
+
+                    {/* Right Column - Learning Objectives */}
+                    <div className="lg:col-span-1">
+                      <div className="p-6 bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 rounded-xl shadow-sm h-full">
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                            <Target className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900">Learning Objectives</h3>
+                          </div>
+                        </div>
+                        {(!context.objectives || !Array.isArray(context.objectives) || context.objectives.length === 0) ? (
+                          <div className="text-gray-600 text-sm">No objectives provided.</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {context.objectives.map((objective, index) => (
+                              <div key={index} className="flex items-start gap-3 p-3 bg-white border border-emerald-200 rounded-lg shadow-sm">
+                                <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <span className="text-white text-xs font-bold">{index + 1}</span>
+                                </div>
+                                <p className="text-gray-800 text-sm leading-relaxed">{objective}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
