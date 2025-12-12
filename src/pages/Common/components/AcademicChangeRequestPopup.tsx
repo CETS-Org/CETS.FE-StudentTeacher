@@ -107,6 +107,10 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const [courses, setCourses] = useState<any[]>([]);
   const [allClasses, setAllClasses] = useState<MyClass[]>([]);
   const [timeSlots, setTimeSlots] = useState<Map<string, string>>(new Map());
+  
+  // Calendar month navigation state
+  const [fromClassCurrentMonth, setFromClassCurrentMonth] = useState<Date>(new Date());
+  const [toClassCurrentMonth, setToClassCurrentMonth] = useState<Date>(new Date());
   const [timeSlotLookups, setTimeSlotLookups] = useState<any[]>([]);
   const [classMeetings, setClassMeetings] = useState<any[]>([]);
   const [fromClassMeetings, setFromClassMeetings] = useState<any[]>([]);
@@ -180,7 +184,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   useEffect(() => {
     if (isOpen && userId && !enrollmentID && formData.requestTypeID) {
       // Only fetch if it's a request type that needs enrollment selection
-      if (isSuspension() || isDropout() || isEnrollmentCancellation() || isResumeFromSuspension()) {
+      if (isSuspension() || isDropout() || isEnrollmentCancellation() || isResumeFromSuspension() || isClassTransfer()) {
         fetchStudentEnrollments();
       }
     }
@@ -379,6 +383,11 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       
       const filteredTypes = requestTypesList.filter(type => {
         const typeCode = (type.code || '').toLowerCase();
+        
+        // Hide refund type for both students and teachers (handled elsewhere)
+        if (typeCode === 'refund') {
+          return false;
+        }
         
         // Request types only for teachers
         if (typeCode === 'reschedule') {
@@ -668,13 +677,30 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     setFormData(prev => ({ ...prev, [name]: value }));
       }
     } else if (name === 'courseID') {
-      // When course changes, clear class selections
-        setFormData(prev => ({
-          ...prev,
-          [name]: value,
-          fromClassID: "",
-          toClassID: "",
-        }));
+      // When course changes, auto-populate fromClassID if student is enrolled in this course
+      let autoFromClassID = "";
+      
+      if (isClassTransfer() && value && studentEnrollments.length > 0) {
+        // Find the enrollment for this course with "Enrolled" status
+        const enrollment = studentEnrollments.find((e: any) => {
+          const courseId = e.courseId || e.CourseId;
+          const status = (e.enrollmentStatus || '').toLowerCase();
+          return courseId === value && status === 'enrolled' && e.classId;
+        });
+        
+        if (enrollment && enrollment.classId) {
+          autoFromClassID = enrollment.classId;
+          // Fetch class meetings for the auto-populated from class
+          fetchClassMeetingsForClass(autoFromClassID, 'from');
+        }
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        fromClassID: autoFromClassID,
+        toClassID: "",
+      }));
     } else if (name === 'fromClassID') {
       // When from class changes, clear related fields
       setFormData(prev => ({
@@ -1892,7 +1918,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                       value={dropoutEffectiveDate}
                       onChange={(e) => setDropoutEffectiveDate(e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       required
                       disabled={isSubmitting}
                     />
@@ -1986,25 +2012,33 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
-                disabled={isSubmitting || isLoadingCourses}
+                disabled={isSubmitting || isLoadingEnrollments}
               >
                 <option value="" disabled>Select a course</option>
-                {courses.map((course) => {
-                  const courseId = course.id || course.Id;
-                  const courseCode = course.courseCode || course.CourseCode || '';
-                  const courseName = course.courseName || course.CourseName;
-                  return (
-                    <option key={courseId} value={courseId}>
-                      {courseCode ? `${courseCode} - ${courseName}` : courseName}
-                    </option>
-                  );
-                })}
+                {studentEnrollments
+                  .filter((e: any) => {
+                    const status = (e.enrollmentStatus || '').toLowerCase();
+                    return status === 'enrolled';
+                  })
+                  .map((enrollment: any) => {
+                    const courseId = enrollment.courseId || enrollment.CourseId;
+                    const courseCode = enrollment.courseCode || enrollment.CourseCode || '';
+                    const courseName = enrollment.courseName || enrollment.CourseName;
+                    return (
+                      <option key={courseId} value={courseId}>
+                        {courseCode ? `${courseCode} - ${courseName}` : courseName}
+                      </option>
+                    );
+                  })}
               </select>
-              {isLoadingCourses && (
+              {isLoadingEnrollments && (
                 <p className="text-xs text-gray-500 mt-1">Loading courses...</p>
               )}
-              {!isLoadingCourses && courses.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">No courses available</p>
+              {!isLoadingEnrollments && studentEnrollments.filter((e: any) => {
+                const status = (e.enrollmentStatus || '').toLowerCase();
+                return status === 'enrolled';
+              }).length === 0 && (
+                <p className="text-xs text-red-500 mt-1">No enrolled courses available</p>
               )}
             </div>
           )}
@@ -2019,25 +2053,25 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               name="fromClassID"
               value={formData.fromClassID}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-100 cursor-not-allowed"
                 required
-                disabled={isSubmitting || isLoadingClasses || !formData.courseID}
+                disabled={true}
               >
-                <option value="" disabled>Select a class</option>
-                {filteredClasses.map((classItem) => (
+                <option value="" disabled>Auto-selected from your enrollment</option>
+                {formData.fromClassID && filteredClasses.map((classItem) => (
                   <option key={classItem.id} value={classItem.id}>
                     {classItem.className}
                   </option>
                 ))}
               </select>
-              {isLoadingClasses && (
-                <p className="text-xs text-gray-500 mt-1">Loading classes...</p>
+              {!formData.courseID && (
+                <p className="text-xs text-gray-500 mt-1">Select a course to auto-populate your current class</p>
               )}
-              {!isLoadingClasses && !formData.courseID && (
-                <p className="text-xs text-red-500 mt-1">Please select a course first</p>
+              {formData.courseID && !formData.fromClassID && (
+                <p className="text-xs text-yellow-600 mt-1">No class found for this course. Please contact support.</p>
               )}
-              {!isLoadingClasses && formData.courseID && filteredClasses.length === 0 && (
-                <p className="text-xs text-red-500 mt-1">No classes available for this course</p>
+              {formData.courseID && formData.fromClassID && (
+                <p className="text-xs text-green-600 mt-1">✓ Your current class has been auto-selected</p>
               )}
           </div>
           )}
@@ -2052,6 +2086,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
                     <span className="font-medium text-gray-700">Class:</span>
                     <span className="text-gray-900">{fromClass.className}</span>
                   </div>
@@ -2082,18 +2117,157 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                 {(fromClass as any).schedule && Array.isArray((fromClass as any).schedule) && (fromClass as any).schedule.length > 0 && (
                   <div className="mt-3">
                     <span className="text-xs font-medium text-gray-700 block mb-2">Schedule:</span>
-                    <div className="space-y-1">
-                      {(fromClass as any).schedule.map((scheduleItem: any, index: number) => {
+                    {(() => {
+                      // Parse meeting dates
+                      const meetingDates: Date[] = [];
+                      const meetingTimes = new Map<string, string>();
+                      
+                      (fromClass as any).schedule.forEach((scheduleItem: any) => {
+                        const dateStr = scheduleItem.date || scheduleItem.Date;
+                        if (!dateStr) return;
+                        
+                        const date = new Date(dateStr);
+                        if (isNaN(date.getTime())) return;
+                        
+                        const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                        meetingDates.push(normalizedDate);
                         const slotCode = scheduleItem.slot || scheduleItem.Slot || '';
                         const timeDisplay = getTimeFromSlot(slotCode);
-                        return (
-                          <div key={index} className="text-xs bg-white px-2 py-1 rounded border border-blue-100">
-                            <span className="font-medium text-gray-700">{scheduleItem.date || scheduleItem.Date}:</span>
-                            <span className="ml-2 text-gray-900">{timeDisplay}</span>
+                        const dateKey = normalizedDate.toISOString().split('T')[0];
+                        meetingTimes.set(dateKey, timeDisplay);
+                      });
+
+                      // Group by month
+                      const meetingsByMonth = new Map<string, Date[]>();
+                      meetingDates.forEach(date => {
+                        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        if (!meetingsByMonth.has(monthKey)) {
+                          meetingsByMonth.set(monthKey, []);
+                        }
+                        meetingsByMonth.get(monthKey)!.push(date);
+                      });
+
+                      // Initialize current month if not set
+                      if (meetingDates.length > 0 && fromClassCurrentMonth.getTime() === new Date().setHours(0,0,0,0)) {
+                        setFromClassCurrentMonth(new Date(meetingDates[0].getFullYear(), meetingDates[0].getMonth(), 1));
+                      }
+
+                      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                      const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+                      // Get current month key
+                      const currentMonthKey = `${fromClassCurrentMonth.getFullYear()}-${String(fromClassCurrentMonth.getMonth() + 1).padStart(2, '0')}`;
+                      const dates = meetingsByMonth.get(currentMonthKey) || [];
+                      
+                      const year = fromClassCurrentMonth.getFullYear();
+                      const month = fromClassCurrentMonth.getMonth() + 1;
+                      
+                      // Get calendar days for current month
+                      const firstDay = new Date(year, month - 1, 1);
+                      const lastDay = new Date(year, month, 0);
+                      const calendarDays: (Date | null)[] = [];
+                      
+                      let firstDayOfWeek = firstDay.getDay();
+                      
+                      for (let i = 0; i < firstDayOfWeek; i++) {
+                        calendarDays.push(null);
+                      }
+                      
+                      for (let i = 1; i <= lastDay.getDate(); i++) {
+                        calendarDays.push(new Date(year, month - 1, i));
+                      }
+
+                      // Navigation handlers
+                      const handlePrevMonth = () => {
+                        setFromClassCurrentMonth(new Date(fromClassCurrentMonth.getFullYear(), fromClassCurrentMonth.getMonth() - 1, 1));
+                      };
+
+                      const handleNextMonth = () => {
+                        setFromClassCurrentMonth(new Date(fromClassCurrentMonth.getFullYear(), fromClassCurrentMonth.getMonth() + 1, 1));
+                      };
+
+                      return (
+                        <div className="mt-3 bg-white rounded-lg border border-blue-200">
+                          {/* Navigation */}
+                          <div className="flex items-center justify-between px-3 py-2.5 border-b border-blue-200">
+                            <button
+                              type="button"
+                              onClick={handlePrevMonth}
+                              className="h-8 w-8 flex items-center justify-center rounded-md border border-gray-300 hover:bg-blue-50 transition-colors"
+                              aria-label="Previous month"
+                            >
+                              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <h5 className="text-sm font-bold text-gray-900">
+                              {monthNames[month - 1]} {year}
+                            </h5>
+                            <button
+                              type="button"
+                              onClick={handleNextMonth}
+                              className="h-8 w-8 flex items-center justify-center rounded-md border border-gray-300 hover:bg-blue-50 transition-colors"
+                              aria-label="Next month"
+                            >
+                              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
                           </div>
-                        );
-                      })}
-                    </div>
+                          
+                          <div className="p-3">
+                            {/* Day headers */}
+                            <div className="grid grid-cols-7 gap-1 mb-2">
+                              {dayNames.map(day => (
+                                <div key={day} className="text-center text-xs font-semibold text-gray-600 h-7 flex items-center justify-center">
+                                  {day}
+                                </div>
+                              ))}
+                            </div>
+                            {/* Calendar grid */}
+                            <div className="grid grid-cols-7 gap-1">
+                              {calendarDays.map((day, idx) => {
+                                if (!day) {
+                                  return <div key={idx} className="h-7"></div>;
+                                }
+                                
+                                const dayKey = day.toISOString().split('T')[0];
+                                const hasMeeting = dates.some((d: Date) => d.toISOString().split('T')[0] === dayKey);
+                                const isToday = day.toDateString() === new Date().toDateString();
+                                const time = meetingTimes.get(dayKey);
+                                
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`h-7 flex items-center justify-center text-xs rounded ${
+                                      hasMeeting
+                                        ? 'bg-blue-500 text-white font-semibold'
+                                        : isToday
+                                        ? 'bg-blue-100 text-blue-700 font-medium'
+                                        : 'text-gray-700'
+                                    }`}
+                                    title={hasMeeting && time ? `Class at ${time}` : undefined}
+                                  >
+                                    {day.getDate()}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* Legend */}
+                            <div className="mt-3 pt-3 border-t border-blue-100 flex items-center gap-4 text-xs text-gray-600">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                                <span>Class session</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 bg-blue-100 rounded"></div>
+                                <span>Today</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
                 {(!(fromClass as any).schedule || !Array.isArray((fromClass as any).schedule) || (fromClass as any).schedule.length === 0) && (
@@ -2148,6 +2322,7 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
                     <span className="font-medium text-gray-700">Class:</span>
                     <span className="text-gray-900">{toClass.className}</span>
                   </div>
@@ -2178,18 +2353,157 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                 {(toClass as any).schedule && Array.isArray((toClass as any).schedule) && (toClass as any).schedule.length > 0 && (
                   <div className="mt-3">
                     <span className="text-xs font-medium text-gray-700 block mb-2">Schedule:</span>
-                    <div className="space-y-1">
-                      {(toClass as any).schedule.map((scheduleItem: any, index: number) => {
+                    {(() => {
+                      // Parse meeting dates
+                      const meetingDates: Date[] = [];
+                      const meetingTimes = new Map<string, string>();
+                      
+                      (toClass as any).schedule.forEach((scheduleItem: any) => {
+                        const dateStr = scheduleItem.date || scheduleItem.Date;
+                        if (!dateStr) return;
+                        
+                        const date = new Date(dateStr);
+                        if (isNaN(date.getTime())) return;
+                        
+                        const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                        meetingDates.push(normalizedDate);
                         const slotCode = scheduleItem.slot || scheduleItem.Slot || '';
                         const timeDisplay = getTimeFromSlot(slotCode);
-                        return (
-                          <div key={index} className="text-xs bg-white px-2 py-1 rounded border border-green-100">
-                            <span className="font-medium text-gray-700">{scheduleItem.date || scheduleItem.Date}:</span>
-                            <span className="ml-2 text-gray-900">{timeDisplay}</span>
+                        const dateKey = normalizedDate.toISOString().split('T')[0];
+                        meetingTimes.set(dateKey, timeDisplay);
+                      });
+
+                      // Group by month
+                      const meetingsByMonth = new Map<string, Date[]>();
+                      meetingDates.forEach(date => {
+                        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        if (!meetingsByMonth.has(monthKey)) {
+                          meetingsByMonth.set(monthKey, []);
+                        }
+                        meetingsByMonth.get(monthKey)!.push(date);
+                      });
+
+                      // Initialize current month if not set
+                      if (meetingDates.length > 0 && toClassCurrentMonth.getTime() === new Date().setHours(0,0,0,0)) {
+                        setToClassCurrentMonth(new Date(meetingDates[0].getFullYear(), meetingDates[0].getMonth(), 1));
+                      }
+
+                      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                      const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+                      // Get current month key
+                      const currentMonthKey = `${toClassCurrentMonth.getFullYear()}-${String(toClassCurrentMonth.getMonth() + 1).padStart(2, '0')}`;
+                      const dates = meetingsByMonth.get(currentMonthKey) || [];
+                      
+                      const year = toClassCurrentMonth.getFullYear();
+                      const month = toClassCurrentMonth.getMonth() + 1;
+                      
+                      // Get calendar days for current month
+                      const firstDay = new Date(year, month - 1, 1);
+                      const lastDay = new Date(year, month, 0);
+                      const calendarDays: (Date | null)[] = [];
+                      
+                      let firstDayOfWeek = firstDay.getDay();
+                      
+                      for (let i = 0; i < firstDayOfWeek; i++) {
+                        calendarDays.push(null);
+                      }
+                      
+                      for (let i = 1; i <= lastDay.getDate(); i++) {
+                        calendarDays.push(new Date(year, month - 1, i));
+                      }
+
+                      // Navigation handlers
+                      const handlePrevMonth = () => {
+                        setToClassCurrentMonth(new Date(toClassCurrentMonth.getFullYear(), toClassCurrentMonth.getMonth() - 1, 1));
+                      };
+
+                      const handleNextMonth = () => {
+                        setToClassCurrentMonth(new Date(toClassCurrentMonth.getFullYear(), toClassCurrentMonth.getMonth() + 1, 1));
+                      };
+
+                      return (
+                        <div className="mt-3 bg-white rounded-lg border border-green-200">
+                          {/* Navigation */}
+                          <div className="flex items-center justify-between px-3 py-2.5 border-b border-green-200">
+                            <button
+                              type="button"
+                              onClick={handlePrevMonth}
+                              className="h-8 w-8 flex items-center justify-center rounded-md border border-gray-300 hover:bg-green-50 transition-colors"
+                              aria-label="Previous month"
+                            >
+                              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <h5 className="text-sm font-bold text-gray-900">
+                              {monthNames[month - 1]} {year}
+                            </h5>
+                            <button
+                              type="button"
+                              onClick={handleNextMonth}
+                              className="h-8 w-8 flex items-center justify-center rounded-md border border-gray-300 hover:bg-green-50 transition-colors"
+                              aria-label="Next month"
+                            >
+                              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
                           </div>
-                        );
-                      })}
-                    </div>
+                          
+                          <div className="p-3">
+                            {/* Day headers */}
+                            <div className="grid grid-cols-7 gap-1 mb-2">
+                              {dayNames.map(day => (
+                                <div key={day} className="text-center text-xs font-semibold text-gray-600 h-7 flex items-center justify-center">
+                                  {day}
+                                </div>
+                              ))}
+                            </div>
+                            {/* Calendar grid */}
+                            <div className="grid grid-cols-7 gap-1">
+                              {calendarDays.map((day, idx) => {
+                                if (!day) {
+                                  return <div key={idx} className="h-7"></div>;
+                                }
+                                
+                                const dayKey = day.toISOString().split('T')[0];
+                                const hasMeeting = dates.some((d: Date) => d.toISOString().split('T')[0] === dayKey);
+                                const isToday = day.toDateString() === new Date().toDateString();
+                                const time = meetingTimes.get(dayKey);
+                                
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`h-7 flex items-center justify-center text-xs rounded ${
+                                      hasMeeting
+                                        ? 'bg-green-500 text-white font-semibold'
+                                        : isToday
+                                        ? 'bg-green-100 text-green-700 font-medium'
+                                        : 'text-gray-700'
+                                    }`}
+                                    title={hasMeeting && time ? `Class at ${time}` : undefined}
+                                  >
+                                    {day.getDate()}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* Legend */}
+                            <div className="mt-3 pt-3 border-t border-green-100 flex items-center gap-4 text-xs text-gray-600">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                                <span>Class session</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 bg-green-100 rounded"></div>
+                                <span>Today</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
                 {(!(toClass as any).schedule || !Array.isArray((toClass as any).schedule) || (toClass as any).schedule.length === 0) && (
@@ -2423,14 +2737,14 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
                   Important Notice
                 </h4>
                 <p className="text-sm text-orange-700">
-                  All academic requests are subject to approval by academic staff. 
+                  All academic requests are subject to approval by staff. 
                   Processing typically takes 3-5 business days. You will be notified once 
                   your request has been reviewed.
                 </p>
                 {isClassTransfer() && (
                   <p className="text-sm text-orange-700 mt-2">
                     <strong>Class Transfer:</strong> Your request will be valid for 7 days from submission. 
-                    If not processed within this period, it will automatically expire.
+                    If not processed within this period, it will be expired.
                   </p>
                 )}
               </div>

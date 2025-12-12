@@ -12,6 +12,7 @@ export interface CourseEnrollment {
   enrollmentDate?: string; 
   tentativeStartDate?: string; // Tentative start date for pending enrollments (from backend)
   className?: string; // Class name if student is assigned to a class
+  classId?: string; // Class ID if student is assigned to a class
   isActive: boolean;
   createdAt: string;
   teachers?: string[]; 
