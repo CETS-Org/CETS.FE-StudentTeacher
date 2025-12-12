@@ -33,8 +33,8 @@ export default function PaymentSuccess() {
     navigate('/student/choose-paid-item');
   };
 
-  const handleViewMyClasses = () => {
-    navigate('/student/my-classes');
+  const handleViewLearningPath = () => {
+    navigate('/student/learning-path');
   };
 
   const formatPrice = (price: number) => {
@@ -124,7 +124,7 @@ export default function PaymentSuccess() {
                   <ul className="text-blue-800 space-y-1">
                     <li>• You will receive a confirmation email shortly</li>
                     <li>• Your course access will be activated within 5 minutes</li>
-                    <li>• You can start learning immediately in "My Classes"</li>
+                <li>• You can start learning immediately in "Learning Path"</li>
                     <li>• Your payment receipt is available in your account</li>
                   </ul>
                 </div>
@@ -135,11 +135,11 @@ export default function PaymentSuccess() {
             <div className="space-y-4">
               <Button
                 variant="primary"
-                onClick={handleViewMyClasses}
+                onClick={handleViewLearningPath}
                 className="w-full"
                 iconLeft={<ExternalLink className="w-5 h-5" />}
               >
-                Go to My Classes
+                Go to Learning Path
               </Button>
               
               <Button
