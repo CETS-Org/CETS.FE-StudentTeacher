@@ -855,14 +855,6 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             <div className="flex gap-2">
               <Button 
                 variant="secondary"
-                onClick={() => setCreateOpen(true)} 
-                iconLeft={<PlusCircle size={16} />}
-                className="btn-secondary"
-              >
-                Create Assignment
-              </Button>
-              <Button 
-                variant="secondary"
                 onClick={() => setAIReadingTestOpen(true)} 
                 iconLeft={<Bot size={16} />}
                 className="btn-secondary"
@@ -875,7 +867,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                 iconLeft={<PlusCircle size={16} />}
                 className="btn-primary"
               >
-                Create Advanced Assignment
+                Create Assignment
               </Button>
             </div>
           </div>

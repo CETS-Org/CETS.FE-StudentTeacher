@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Trash2, GripVertical, X, CheckCircle, PenTool, Play, Pause, Headphones } from "lucide-react";
+import { Plus, Trash2, GripVertical, X, CheckCircle, PenTool, Play, Pause, Headphones, ChevronDown, ChevronUp } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/input";
 import type { Question, QuestionType, QuestionOption, FillInTheBlank, MatchingData, MatchingItem, MatchingPair, SkillType } from "../AdvancedAssignmentPopup";
@@ -26,6 +26,7 @@ export default function QuestionBuilder({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   // Reading: Store passage (shared across multiple questions)
   const [currentPassage, setCurrentPassage] = useState<string>("");
   // Track if passage should be removed (for editing questions)
@@ -36,6 +37,8 @@ export default function QuestionBuilder({
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioObjectUrl, setAudioObjectUrl] = useState<string | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  // Tab state for audio input (file vs URL)
+  const [audioInputTab, setAudioInputTab] = useState<"file" | "url">("file");
   
   // Helper function to get existing passage from questions
   const getExistingPassage = useMemo(() => {
@@ -650,20 +653,42 @@ export default function QuestionBuilder({
           {/* Listening Audio Section - Show first for Listening */}
           {(skillType === "Listening" || skillType.toLowerCase().includes("listening")) && (
             <div className="border-2 border-purple-200 rounded-lg p-4 bg-purple-50">
-              <label className="block text-sm font-medium text-purple-800 mb-2">
-                Listening Audio File 
+              <label className="block text-sm font-semibold text-purple-900 mb-3">
+                Listening Audio 
                 {!getExistingAudio && !currentAudioFile && !currentAudioUrl && questions.length === 0 && <span className="text-red-500">*</span>}
                 {getExistingAudio && !currentAudioFile && !currentAudioUrl && (
-                  <span className="text-xs text-purple-600 ml-2">(Using audio from imported questions)</span>
+                  <span className="text-xs text-purple-600 ml-2 font-normal">(Using audio from imported questions)</span>
                 )}
               </label>
-              <p className="text-xs text-purple-700 mb-3">
-                {getExistingAudio && !currentAudioFile && !currentAudioUrl
-                  ? "Audio is already set from imported questions. You can upload a new file below or add more questions."
-                  : "Upload an MP3 audio file. You can add multiple questions for this audio."}
-              </p>
               
-              {/* File Upload */}
+              {/* Tabs for File Upload vs URL */}
+              <div className="flex border-b border-purple-300 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setAudioInputTab("file")}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    audioInputTab === "file"
+                      ? "border-purple-600 text-purple-700"
+                      : "border-transparent text-purple-500 hover:text-purple-700"
+                  }`}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAudioInputTab("url")}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    audioInputTab === "url"
+                      ? "border-purple-600 text-purple-700"
+                      : "border-transparent text-purple-500 hover:text-purple-700"
+                  }`}
+                >
+                  Enter URL
+                </button>
+              </div>
+              
+              {/* File Upload Tab */}
+              {audioInputTab === "file" && (
               <div className="mb-3">
                 <input
                   type="file"
@@ -734,13 +759,18 @@ export default function QuestionBuilder({
                     </div>
                   </div>
                 )}
+                <p className="text-xs text-purple-600 mt-2">
+                  Upload an MP3, WAV, OGG, or M4A audio file. You can add multiple questions for this audio.
+                </p>
               </div>
+              )}
 
-              {/* Audio URL Input (alternative to file upload) */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between mb-1">
+              {/* URL Input Tab */}
+              {audioInputTab === "url" && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
                   <label className="block text-xs font-medium text-purple-700">
-                    Or enter audio URL:
+                    Audio URL
                   </label>
                   {/* Show clear button when editing and has audio */}
                   {editingId && (currentAudioUrl || getExistingAudio) && (
@@ -789,13 +819,13 @@ export default function QuestionBuilder({
                       }
                     }}
                     placeholder={editingId && getExistingAudio ? "Clear to remove audio, or enter new URL" : "https://example.com/audio.mp3"}
-                    className="flex-1 border border-purple-300 rounded-md p-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
+                    className="flex-1 border-2 border-purple-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                   />
                   {(currentAudioUrl || (!editingId && getExistingAudio)) && getAudioSource() && (
                     <button
                       type="button"
                       onClick={toggleAudioPlayback}
-                      className="flex items-center justify-center w-10 h-10 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                      className="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
                       title={audioPlaying ? "Pause" : "Play"}
                     >
                       {audioPlaying ? (
@@ -819,7 +849,11 @@ export default function QuestionBuilder({
                     </p>
                   </div>
                 )}
+                <p className="text-xs text-purple-600 mt-2">
+                  Enter a direct URL to an audio file. You can add multiple questions for this audio.
+                </p>
               </div>
+              )}
 
               {/* Audio Preview for URL (when no file is uploaded) */}
               {(currentAudioUrl || (!editingId && getExistingAudio)) && !currentAudioFile && getAudioSource() && (
@@ -859,13 +893,14 @@ export default function QuestionBuilder({
           {!(skillType === "Speaking" || skillType.toLowerCase().includes("speaking") || 
              skillType === "Writing" || skillType.toLowerCase().includes("writing")) && (
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Question Type
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
                 {questionTypes.map((type) => (
                   <button
                     key={type.value}
+                    type="button"
                     onClick={() => {
                       setNewQuestion({
                         ...newQuestion,
@@ -874,29 +909,29 @@ export default function QuestionBuilder({
                         correctAnswer: undefined,
                       });
                     }}
-                    className={`p-3 border-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`p-2.5 border-2 rounded-lg text-sm font-medium transition-all ${
                       newQuestion.type === type.value
-                        ? "border-gray-400 bg-secondary-200 text-primary-700"
-                        : "border-neutral-300 bg-white text-neutral-700 hover:border-primary-300"
+                        ? "border-blue-400 bg-blue-400 text-white shadow-md"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50"
                     }`}
                   >
                     <div className="text-lg mb-1">{type.icon}</div>
-                    <div>{type.label}</div>
+                    <div className="text-[10px] leading-tight">{type.label}</div>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Question Text */}
+          {/* Question Text - Improved with better styling */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
               Question Text <span className="text-red-500">*</span>
               {(skillType === "Speaking" || skillType.toLowerCase().includes("speaking")) && (
-                <span className="text-xs text-neutral-500 ml-2">(Speaking Prompt)</span>
+                <span className="text-xs text-blue-600 ml-2 font-normal">(Speaking Prompt)</span>
               )}
               {(skillType === "Writing" || skillType.toLowerCase().includes("writing")) && (
-                <span className="text-xs text-neutral-500 ml-2">(Writing Prompt)</span>
+                <span className="text-xs text-blue-600 ml-2 font-normal">(Writing Prompt)</span>
               )}
             </label>
             <textarea
@@ -909,7 +944,7 @@ export default function QuestionBuilder({
                   ? "Enter the writing prompt (e.g., 'Write an essay about the importance of education' or 'Describe your ideal learning environment in 300 words')..."
                   : "Enter your question here..."
               }
-              className="w-full border bg-white border-neutral-300 rounded-md p-3 text-sm min-h-[100px] focus:outline-none focus:ring-1 focus:ring-primary-100"
+              className="w-full border-2 bg-white border-blue-200 rounded-lg p-4 text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm resize-none"
             />
             {(skillType === "Speaking" || skillType.toLowerCase().includes("speaking")) && (
               <p className="text-xs text-neutral-500 mt-1">
@@ -936,24 +971,6 @@ export default function QuestionBuilder({
                 min={1}
               />
             </div>
-            {/* Speaking Time Limit for Speaking skills */}
-            {(skillType === "Speaking" || skillType.toLowerCase().includes("speaking")) && (
-              <div>
-                <Input
-                  label="Speaking Time Limit (seconds)"
-                  type="number"
-                  placeholder="e.g., 120 for 2 minutes"
-                  value={newQuestion.maxLength ? newQuestion.maxLength.toString() : ""}
-                  onChange={(e) =>
-                    setNewQuestion({
-                      ...newQuestion,
-                      maxLength: e.target.value ? parseInt(e.target.value) : undefined,
-                    })
-                  }
-                  hint="Maximum time students have to record their response"
-                />
-              </div>
-            )}
             {/* Shuffle options for multiple choice/matching */}
             {(newQuestion.type === "multiple_choice" || newQuestion.type === "matching") && 
              !(skillType === "Speaking" || skillType.toLowerCase().includes("speaking") || 
@@ -1277,61 +1294,105 @@ export default function QuestionBuilder({
             .map((question, index) => {
               const sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
               const actualIndex = sortedQuestions.findIndex(q => q.id === question.id);
+              const isExpanded = expandedQuestions.has(question.id);
               
               return (
               <div
                 key={question.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, actualIndex)}
-                onDragOver={(e) => handleDragOver(e, actualIndex)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, actualIndex)}
-                onDragEnd={handleDragEnd}
-                className={`border rounded-lg p-5 bg-white hover:shadow-md transition-all ${
+                className={`border rounded-lg bg-white transition-all ${
                   draggedIndex === actualIndex 
-                    ? "opacity-50 cursor-grabbing" 
+                    ? "opacity-50" 
                     : dragOverIndex === actualIndex && draggedIndex !== null
                     ? "border-primary-500 border-2 shadow-lg"
-                    : "border-neutral-200 cursor-grab"
+                    : "border-neutral-200"
                 }`}
               >
-                <div className="flex items-start justify-between mb-3">
+                {/* Header - Always visible */}
+                <div 
+                  className="flex items-start justify-between p-4 cursor-pointer hover:bg-gray-50"
+                  onClick={() => {
+                    setExpandedQuestions(prev => {
+                      const newSet = new Set(prev);
+                      if (newSet.has(question.id)) {
+                        newSet.delete(question.id);
+                      } else {
+                        newSet.add(question.id);
+                      }
+                      return newSet;
+                    });
+                  }}
+                >
                   <div className="flex items-center gap-2 flex-1">
-                    <div className="text-neutral-400 cursor-move" draggable={false}>
+                    <div 
+                      className="text-neutral-400 cursor-move" 
+                      draggable
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        handleDragStart(e, actualIndex);
+                      }}
+                      onDragOver={(e) => {
+                        e.stopPropagation();
+                        handleDragOver(e, actualIndex);
+                      }}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => {
+                        e.stopPropagation();
+                        handleDrop(e, actualIndex);
+                      }}
+                      onDragEnd={handleDragEnd}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <GripVertical className="w-5 h-5" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-accent-300 bg-secondary-200 px-2.5 py-1 rounded">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-blue-700 bg-blue-100 px-2.5 py-1 rounded">
                         Q{question.order}
                       </span>
                       <span className="text-xs text-neutral-500 uppercase tracking-wide">
                         {question.type.replace("_", " ")}
                       </span>
                       <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded">
-                        {question.points} point{question.points !== 1 ? 's' : ''}
+                        {question.points} pt{question.points !== 1 ? 's' : ''}
                       </span>
                     </div>
+                    <div className="flex-1 ml-3 min-w-0">
+                      <p className="text-sm font-medium text-neutral-900 truncate">{question.question}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2" onMouseDown={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2 ml-2" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => handleEdit(question)}
-                      className="p-2 text-green-500 hover:bg-green-100 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(question);
+                      }}
+                      className="p-2 text-blue-500 hover:bg-blue-100 rounded"
                       title="Edit question"
-                      onMouseDown={(e) => e.stopPropagation()}
                     >
                       <PenTool className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => onDeleteQuestion(question.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteQuestion(question.id);
+                      }}
                       className="p-2 text-red-500 hover:bg-red-100 rounded"
                       title="Delete question"
-                      onMouseDown={(e) => e.stopPropagation()}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
+                    <button
+                      className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+                      title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-neutral-900 mb-3 leading-relaxed">{question.question}</p>
+
+                {/* Collapsible Content */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 border-t border-gray-100">
+                    <p className="text-sm font-medium text-neutral-900 mt-3 mb-3 leading-relaxed whitespace-pre-wrap">{question.question}</p>
                 
                 {/* Multiple Choice - Show options with correct answer */}
                 {question.options && question.options.length > 0 && (
@@ -1431,9 +1492,11 @@ export default function QuestionBuilder({
                     </p>
                   </div>
                 )}
+                  </div>
+                )}
               </div>
-              );
-            })}
+            );
+          })}
         </div>
       )}
 
