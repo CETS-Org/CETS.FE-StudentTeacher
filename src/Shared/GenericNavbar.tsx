@@ -273,16 +273,20 @@ export default function GenericNavbar({
                                         <>
                                             <DropdownMenuSeparator className="bg-neutral-200 my-2" />
                                             
-                                            {/* Settings & Help */}
-                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
-                                                <Settings className="w-4 h-4" />
-                                                <span>Settings</span>
-                                            </DropdownMenuItem>
-                                            
-                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
-                                                <HelpCircle className="w-4 h-4" />
-                                                <span>Help & Support</span>
-                                            </DropdownMenuItem>
+                                            {/* Settings & Help - Hidden for Students and Teachers */}
+                                            {config.userInfo.role !== "Student" && config.userInfo.role !== "Teacher" && (
+                                                <>
+                                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                        <Settings className="w-4 h-4" />
+                                                        <span>Settings</span>
+                                                    </DropdownMenuItem>
+                                                    
+                                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                        <HelpCircle className="w-4 h-4" />
+                                                        <span>Help & Support</span>
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
 
                                             <DropdownMenuItem 
                                                 onClick={handleChangePassword} 
