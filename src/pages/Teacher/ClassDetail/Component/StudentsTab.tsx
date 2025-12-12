@@ -28,7 +28,7 @@ export default function StudentsTab({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isTaking, setIsTaking] = useState(false);
-  const [absent, setAbsent] = useState<Record<string, boolean>>({});
+  const [present, setPresent] = useState<Record<string, boolean>>({});
 
   // Fetch students when component mounts or classId/classMeetingId changes
   useEffect(() => {
@@ -86,25 +86,27 @@ export default function StudentsTab({
     );
   }, [searchQuery, students]);
 
-  const toggleAbsent = (id: string, checked: boolean) => {
-    setAbsent((prev) => ({ ...prev, [id]: checked }));
+  const togglePresent = (id: string, checked: boolean) => {
+    setPresent((prev) => ({ ...prev, [id]: checked }));
   };
 
   const startTaking = () => {
-    // Pre-fill absent checkboxes based on current attendance status
-    const preFilledAbsent: Record<string, boolean> = {};
+    // Pre-fill checkboxes so students are marked present by default
+    const preFilledPresent: Record<string, boolean> = {};
     students.forEach((student) => {
       if (student.attendanceStatus === "Absent") {
-        preFilledAbsent[student.studentId] = true;
+        preFilledPresent[student.studentId] = false;
+      } else {
+        preFilledPresent[student.studentId] = true;
       }
     });
-    setAbsent(preFilledAbsent);
+    setPresent(preFilledPresent);
     setIsTaking(true);
   };
   
   const cancelTaking = () => {
     setIsTaking(false);
-    setAbsent({});
+    setPresent({});
   };
 
   const saveAttendance = async () => {
@@ -124,7 +126,7 @@ export default function StudentsTab({
       }
 
       // Lấy danh sách studentId của những người vắng (checked = true)
-      const absentStudentIds = Object.keys(absent).filter((id) => absent[id]);
+      const absentStudentIds = Object.keys(present).filter((id) => !present[id]);
 
       // Call bulk-mark API
       const response = await bulkMarkAttendance({
@@ -154,7 +156,7 @@ export default function StudentsTab({
       );
       
       setIsTaking(false);
-      setAbsent({});
+      setPresent({});
     } catch (error: any) {
       console.error("Error saving attendance:", error);
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to save attendance. Please try again.";
@@ -271,7 +273,7 @@ export default function StudentsTab({
                 </tr>
               ) : (
                 filtered.map((s, idx) => {
-                  const isAbsent = !!absent[s.studentId];
+                  const isPresent = present[s.studentId];
                   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.studentName)}&background=random`;
                   
                   return (
@@ -327,13 +329,13 @@ export default function StudentsTab({
                           <label className="inline-flex items-center gap-3 cursor-pointer select-none">
                             <input
                               type="checkbox"
-                              checked={isAbsent}
+                              checked={isPresent}
                               onChange={(e) =>
-                                toggleAbsent(s.studentId, e.target.checked)
+                                togglePresent(s.studentId, e.target.checked)
                               }
-                              className="w-4 h-4 text-warning-600 border-2 border-neutral-300 rounded focus:ring-warning-500 focus:ring-2"
+                              className="w-4 h-4 text-success-600 border-2 border-neutral-300 rounded focus:ring-success-500 focus:ring-2"
                             />
-                            <span className="text-sm font-medium text-warning-700">Absent</span>
+                            <span className="text-sm font-medium text-success-700">Present</span>
                           </label>
                         )}
                       </td>
@@ -357,7 +359,7 @@ export default function StudentsTab({
             <Button 
               variant="secondary" 
               onClick={cancelTaking}
-              className="border-neutral-300 text-neutral-700 hover:bg-neutral-50"
+              className="border-neutral-300 bg-secondary-600 text-white hover:bg-secondary-600"
             >
               Cancel
             </Button>

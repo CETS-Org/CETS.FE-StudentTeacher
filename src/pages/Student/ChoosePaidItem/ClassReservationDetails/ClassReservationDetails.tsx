@@ -272,10 +272,6 @@ export default function ClassReservationDetails() {
             {/* Dates and Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <span className="text-blue-700 font-medium">Reserved: <span className="text-blue-900">{formatDate(reservation.createdAt)}</span></span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
                 <Clock className={`w-4 h-4 ${isExpired() ? 'text-red-600' : isExpiringSoon() ? 'text-orange-600' : 'text-red-600'}`} />
                 <span className={isExpired() ? 'text-red-600 font-medium' : isExpiringSoon() ? 'text-orange-600 font-medium' : 'text-red-700 font-medium'}>
                   Expires: <span className={isExpired() ? 'text-red-800' : isExpiringSoon() ? 'text-orange-800' : 'text-red -900'}>{formatDate(reservation.expiresAt)}</span>
