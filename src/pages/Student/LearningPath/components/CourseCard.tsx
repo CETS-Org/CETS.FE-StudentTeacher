@@ -172,7 +172,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
     if (!classItem || isPending) {
       const minimalClassItem: MyClass = {
         id: `temp-${course.courseId}`,
-        className: `${course.courseName} - No Class Assigned`,
+        className: `${course.courseName} - Waiting for class`,
         classNum: 0,
         description: '',
         instructor: course.instructor,
