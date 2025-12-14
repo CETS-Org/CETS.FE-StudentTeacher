@@ -224,7 +224,7 @@ export default function StudentAssignmentTaking() {
                   processedQ._audioUrl = questionData.media.audioUrl;
                 }
               }
-              });
+            
               
               return processedQ;
             });
@@ -936,13 +936,7 @@ export default function StudentAssignmentTaking() {
     const audioPlayCount = normalizedAudioUrl ? (questionAudioPlayCount[normalizedAudioUrl] || 0) : 0;
     const remainingPlays = normalizedAudioUrl ? Math.max(0, MAX_AUDIO_PLAY_COUNT - audioPlayCount) : 0;
     const isAudioDisabled = normalizedAudioUrl ? audioPlayCount >= MAX_AUDIO_PLAY_COUNT : false;
-      hasToggleAudio: !!toggleQuestionAudio,
-      hasAudioPlaying: !!questionAudioPlaying,
-      hasNormalizeUrl: !!normalizeAudioUrl,
-      audioPlayCount,
-      remainingPlays,
-      isAudioDisabled
-    });
+
 
     return (
       <QuestionRenderer
