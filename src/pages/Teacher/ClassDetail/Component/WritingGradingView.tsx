@@ -262,18 +262,7 @@ export default function WritingGradingView({
                 setDocumentError(true);
                 setDocumentLoading(false);
               }}
-            />
-            
-            <div className="absolute top-2 right-2 z-20">
-              <a
-                href={getFullFileUrl(selectedSubmission.file)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-primary-600 text-white px-3 py-1 rounded text-sm hover:bg-primary-700 transition-colors shadow-lg"
-              >
-                Open in New Tab
-              </a>
-            </div>
+            />            
           </>
         ) : (
           <div className="h-full flex items-center justify-center">
