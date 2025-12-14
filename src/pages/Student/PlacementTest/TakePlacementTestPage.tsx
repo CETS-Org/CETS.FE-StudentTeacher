@@ -507,8 +507,8 @@ export default function TakePlacementTestPage() {
     });
 
     if (totalPoints > 0) {
-      const percentageScore = (totalScore / totalPoints) * 10;
-      const finalScore = Math.round(percentageScore * 100) / 100;
+      // Return actual score (0-900) instead of converting to 10-point scale
+      const finalScore = Math.round(totalScore * 100) / 100;
 
       return {
         score: finalScore,
@@ -1244,7 +1244,12 @@ export default function TakePlacementTestPage() {
       />
 
       {/* Score Result Dialog */}
-      <ScoreResultDialog isOpen={showScoreDialog} onClose={() => navigate(-1)} submissionScore={submissionScore} />
+      <ScoreResultDialog 
+        isOpen={showScoreDialog} 
+        onClose={() => navigate(-1)} 
+        submissionScore={submissionScore}
+        maxScore={900}
+      />
     </div>
   );
 }

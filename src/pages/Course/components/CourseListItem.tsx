@@ -131,7 +131,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
               <div className="flex items-center gap-1">
                 <Award className="w-3 h-3 text-orange-500 flex-shrink-0" />
                 <span className="text-orange-700 font-medium truncate">
-                  Required Score: {course.standardScore.toFixed(1)} / 10
+                  Required Score: {course.standardScore.toFixed(1)} / 900
                 </span>
               </div>
             )}
