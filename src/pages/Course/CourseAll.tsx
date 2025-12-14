@@ -6,20 +6,58 @@ import PackagesSection from "./components/PackagesSection";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/input";
 import courseBgImage from "@/assets/course-bg.png";
-import { isTokenValid, getUserInfo } from "@/lib/utils";
+import { isTokenValid, getUserInfo, getUserRole } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import VerificationDialog from "@/components/ui/VerificationDialog";
 import PlacementTestConfirmationDialog from "@/components/ui/PlacementTestConfirmationDialog";
 import { api } from "@/api";
+import { getStudentById } from "@/api/student.api";
 
 export default function CourseAll() {
   const location = useLocation();
   const navigate = useNavigate();
   const { error: showError, success: showSuccess } = useToast();
-  const [showPlacementTestMessage, setShowPlacementTestMessage] = useState(true);
+  const [showPlacementTestMessage, setShowPlacementTestMessage] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showPlacementTestDialog, setShowPlacementTestDialog] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
+
+  // Check placement test grade and show message if student hasn't taken the test
+  useEffect(() => {
+    const checkPlacementTestGrade = async () => {
+      // Only check if user is logged in and is a student
+      if (!isTokenValid()) {
+        setShowPlacementTestMessage(false);
+        return;
+      }
+
+      const userRole = getUserRole();
+      if (userRole?.toLowerCase() !== 'student') {
+        setShowPlacementTestMessage(false);
+        return;
+      }
+
+      const userInfo = getUserInfo();
+      if (!userInfo?.id) {
+        setShowPlacementTestMessage(false);
+        return;
+      }
+
+      try {
+        const student = await getStudentById(userInfo.id);
+        const grade = student.studentInfo?.placementTestGrade ?? null;
+        
+        // Show message if student hasn't taken placement test (no grade)
+        setShowPlacementTestMessage(grade === null || grade === undefined);
+      } catch (err) {
+        console.error('Error loading placement test grade:', err);
+        // If error, still show message to encourage taking the test
+        setShowPlacementTestMessage(true);
+      }
+    };
+
+    checkPlacementTestGrade();
+  }, []); // Run on mount and when component mounts (every F5)
 
   useEffect(() => {
     // Handle hash navigation
@@ -59,12 +97,6 @@ export default function CourseAll() {
       };
     }
 
-    // Check if user has seen the placement test message before
-    const hasSeenMessage = localStorage.getItem('placementTestMessageSeen');
-    if (hasSeenMessage === 'true') {
-      setShowPlacementTestMessage(false);
-    }
-
     // Check if user is logged in and not verified
     if (isTokenValid()) {
       const userInfo = getUserInfo();
@@ -85,8 +117,8 @@ export default function CourseAll() {
   }, [location]);
 
   const handleDismissMessage = () => {
+    // Only dismiss for current session, will show again on next F5 if still no grade
     setShowPlacementTestMessage(false);
-    localStorage.setItem('placementTestMessageSeen', 'true');
   };
 
   const handleResendVerification = async () => {

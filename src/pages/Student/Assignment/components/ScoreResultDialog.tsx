@@ -18,6 +18,7 @@ interface ScoreResultDialogProps {
   onRecommendPackages?: () => void;
   recommendCoursesLabel?: string;
   recommendPackagesLabel?: string;
+  maxScore?: number; // Optional max score (default: 10 for assignments, 900 for placement test)
 }
 
 /**
@@ -32,20 +33,23 @@ export default function ScoreResultDialog({
   onRecommendPackages,
   recommendCoursesLabel = "Courses for you",
   recommendPackagesLabel = "Learning path for you",
+  maxScore = 900, // Default to 10 for assignments
 }: ScoreResultDialogProps) {
   if (!submissionScore) return null;
 
-  const getScoreMessage = (score: number) => {
-    if (score >= 8) return "Excellent!";
-    if (score >= 6) return "Good Job!";
-    if (score >= 4) return "Keep Trying!";
+  const getScoreMessage = (score: number, max: number) => {
+    const percentage = (score / max) * 100;
+    if (percentage >= 80) return "Excellent!";
+    if (percentage >= 60) return "Good Job!";
+    if (percentage >= 40) return "Keep Trying!";
     return "Practice More!";
   };
 
-  const getProgressColor = (score: number) => {
-    if (score >= 8) return "bg-green-500";
-    if (score >= 6) return "bg-blue-500";
-    if (score >= 4) return "bg-yellow-500";
+  const getProgressColor = (score: number, max: number) => {
+    const percentage = (score / max) * 100;
+    if (percentage >= 80) return "bg-green-500";
+    if (percentage >= 60) return "bg-blue-500";
+    if (percentage >= 40) return "bg-yellow-500";
     return "bg-red-500";
   };
 
@@ -66,11 +70,11 @@ export default function ScoreResultDialog({
                   <div className="text-4xl font-bold text-white">
                     {submissionScore.score.toFixed(1)}
                   </div>
-                  <div className="text-sm text-primary-100">out of 10</div>
+                  <div className="text-sm text-primary-100">out of {maxScore}</div>
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-neutral-800 mt-2">
-                {getScoreMessage(submissionScore.score)}
+                {getScoreMessage(submissionScore.score, maxScore)}
               </h3>
             </div>
 
@@ -98,7 +102,7 @@ export default function ScoreResultDialog({
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-600 font-medium">Final Score:</span>
                   <span className="text-xl font-bold text-primary-700">
-                    {submissionScore.score.toFixed(2)} / 10
+                    {submissionScore.score.toFixed(2)} / {maxScore}
                   </span>
                 </div>
               </div>
@@ -108,12 +112,12 @@ export default function ScoreResultDialog({
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-neutral-600">
                 <span>Progress</span>
-                <span>{Math.round((submissionScore.score / 10) * 100)}%</span>
+                <span>{Math.round((submissionScore.score / maxScore) * 100)}%</span>
               </div>
               <div className="w-full bg-neutral-200 rounded-full h-3">
                 <div
-                  className={`h-3 rounded-full transition-all ${getProgressColor(submissionScore.score)}`}
-                  style={{ width: `${(submissionScore.score / 10) * 100}%` }}
+                  className={`h-3 rounded-full transition-all ${getProgressColor(submissionScore.score, maxScore)}`}
+                  style={{ width: `${(submissionScore.score / maxScore) * 100}%` }}
                 />
               </div>
             </div>
