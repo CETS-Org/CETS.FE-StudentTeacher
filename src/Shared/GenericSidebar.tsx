@@ -67,9 +67,16 @@ export default function GenericSidebar({
     }
   }, [location.pathname, config.submenuPathPrefix, config.items]);
 
-  // Fetch upcoming assignments if enabled
+  // Fetch upcoming assignments if enabled (but skip on course list page to avoid unnecessary API calls)
   useEffect(() => {
     if (!config.showUpcomingDeadlines) return;
+    
+    // Don't fetch assignments on course list page - it causes too many API calls
+    // (classes → meetings → assignments for each meeting)
+    if (location.pathname === '/courses' || location.pathname.startsWith('/course/')) {
+      setUpcomingAssignments([]);
+      return;
+    }
 
     const fetchUpcomingAssignments = async () => {
       const studentId = getStudentId();
@@ -92,7 +99,7 @@ export default function GenericSidebar({
     // Refresh every 5 minutes
     const interval = setInterval(fetchUpcomingAssignments, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [config.showUpcomingDeadlines]);
+  }, [config.showUpcomingDeadlines, location.pathname]);
 
   const isActive = (path?: string) => path && location.pathname.startsWith(path);
 
