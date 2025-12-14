@@ -820,7 +820,16 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                         {sessions.length === 0 ? (
                           <div className="text-center py-8">
                             <Clock className="w-12 h-12 text-accent-400 mx-auto mb-2" />
-                            <p className="text-accent-600">No sessions available</p>
+                            <p className="text-accent-600">
+                              {(() => {
+                                const enrollmentStatusLower = enrollmentStatus?.toLowerCase() || '';
+                                const isWaitingForClass = 
+                                  enrollmentStatusLower === 'pending' ||
+                                  enrollmentStatusLower === 'waiting for class' ||
+                                  enrollmentStatusLower === 'waitingforclass';
+                                return isWaitingForClass ? 'Waiting for class' : 'No sessions available';
+                              })()}
+                            </p>
                           </div>
                         ) : (
                           <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">

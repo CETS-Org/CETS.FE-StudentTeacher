@@ -67,12 +67,10 @@ const TechnicalIssueReportDetail: React.FC = () => {
 
   const handleDownload = (fileName: string) => {
     // In real app, implement file download
-    console.log(`Downloading ${fileName}`);
   };
 
   const handleView = (fileName: string) => {
     // In real app, implement file view
-    console.log(`Viewing ${fileName}`);
   };
 
   const getStatusColor = (status: string) => {

@@ -76,12 +76,10 @@ export default function PaymentHistoryItem({ payment, className = "" }: PaymentH
 
   const handleDownloadInvoice = () => {
     // TODO: Implement invoice download
-    console.log("Download invoice:", payment.invoiceId);
   };
 
   const handleViewDetails = () => {
     // TODO: Implement view payment details
-    console.log("View payment details:", payment.id);
   };
 
   return (

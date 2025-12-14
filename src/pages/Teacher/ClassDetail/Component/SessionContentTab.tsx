@@ -45,7 +45,6 @@ export default function SessionContentTab({ content }: Props) {
   const [isUploadOpen, setUploadOpen] = useState(false);
 
   const handleAssignmentSubmit = (assignmentData: any) => {
-    console.log("Assignment submitted from Session Content:", assignmentData);
     alert(`Assignment "${assignmentData.title}" submitted!`);
     // Logic xử lý upload file sẽ được đặt ở đây
   };

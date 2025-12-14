@@ -104,7 +104,6 @@ export default function ReadingGradingView({
         try {
           const { updateSubmissionScore } = await import('@/api/assignments.api');
           await updateSubmissionScore(selectedSubmission.id, calculatedScore);
-          console.log(`✅ Updated score for submission ${selectedSubmission.id}: ${calculatedScore}`);
           
           // Update local submission object
           selectedSubmission.score = calculatedScore;
@@ -174,8 +173,6 @@ export default function ReadingGradingView({
       const questionUrlResponse = await getQuestionDataUrl(assignment!.assignmentId);
       const presignedUrl = questionUrlResponse.data.questionDataUrl;
       
-      console.log("Loading question data from URL:", presignedUrl);
-      
       // Fetch question data
       const response = await fetch(presignedUrl);
       if (!response.ok) {
@@ -183,7 +180,6 @@ export default function ReadingGradingView({
       }
       
       const questionData = await response.json();
-      console.log("Loaded question data:", questionData);
       
       // Combine submission answers with question data
       const combinedData: ReadingSubmissionData = {

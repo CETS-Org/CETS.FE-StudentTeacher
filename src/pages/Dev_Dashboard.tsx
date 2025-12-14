@@ -139,7 +139,6 @@ export default function Dev_Dashboard() {
 
   function handleCreate(data: QuickRequestForm) {
     // Replace with your create action
-    console.log("Quick request submitted:", data);
     setIsLoading(true);
     setTimeout(() => setIsLoading(false), 2000);
   }

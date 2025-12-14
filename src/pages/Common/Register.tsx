@@ -122,8 +122,6 @@ export default function Register() {
         password: data.password,
       });     
       
-      console.log("Registration successful:", response.data);
-      
       // Reset registration attempts on successful registration
       setRegistrationAttempts(0);
       localStorage.removeItem('registerAttempts');

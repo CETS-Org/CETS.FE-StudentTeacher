@@ -44,7 +44,6 @@ export default function ClassReservationPaymentDialog({
       // If this is a second payment (1stPaid status), force OneTime payment
       if (firstItem.invoiceStatusCode === '1stPaid' && firstItem.secondPayment) {
         setPaymentPlan('OneTime');
-        console.log('Second payment detected - OneTime payment only');
         return;
       }
       
@@ -61,8 +60,6 @@ export default function ClassReservationPaymentDialog({
                  firstItemPlanType === 'TwoTime' || firstItemPlanType === 'two_time') {
         setPaymentPlan('TwoTime');
       }
-      
-      console.log('Preselected payment plan from API planType:', firstItemPlanType);
     } else if (!open) {
       // Reset form state when dialog closes
       setPaymentPlan('OneTime');
@@ -85,16 +82,6 @@ export default function ClassReservationPaymentDialog({
         setStudentName(userInfo.fullName || "");
         setStudentEmail(userInfo.email || "");
         setStudentPhone(phoneNumber);
-        
-        console.log("Loaded user profile:", {
-          name: userInfo.fullName,
-          email: userInfo.email,
-          phone: phoneNumber,
-          phoneNumberField: (userInfo as any).PhoneNumber,
-          phoneNumberCamel: userInfo.phoneNumber,
-          allFields: Object.keys(userInfo)
-        });
-       
       } else {
         // If no user info found, user might not be logged in
         console.warn("No user info found in localStorage. User might not be logged in.");
@@ -226,7 +213,6 @@ export default function ClassReservationPaymentDialog({
       
       if (reservationItems.length > 0) {
         reservationItemId = reservationItems[0].id;
-        console.log('Processing payment for reservation item ID:', reservationItemId);
       } else {
         throw new Error('No reservation items available');
       }
@@ -259,22 +245,18 @@ export default function ClassReservationPaymentDialog({
       // Determine payment type
       const isSecondInstallment = isSecondPayment;
       const paymentType = isSecondInstallment ? '2nd Installment' : paymentPlan === 'OneTime' ? 'Full Payment' : '1st Installment';
-      console.log(`${paymentType} payment data:`, paymentData);
 
       // Call the appropriate payment API based on payment scenario
       let paymentResponse;
       
       if (isSecondInstallment) {
         // Second installment payment - always use monthly payment API
-        console.log('Calling monthly payment API for 2nd installment');
         paymentResponse = await paymentService.createMonthlyPayment(paymentData);
       } else if (paymentPlan === 'OneTime') {
         // Full one-time payment
-        console.log('Calling full payment API');
         paymentResponse = await paymentService.createFullPayment(paymentData as FullPaymentRequest);
       } else {
         // First installment of two-time payment
-        console.log('Calling monthly payment API for 1st installment');
         paymentResponse = await paymentService.createMonthlyPayment(paymentData);
       }
       
@@ -298,9 +280,6 @@ export default function ClassReservationPaymentDialog({
         
         // Close the dialog
         onOpenChange(false);
-        
-        // Show success message (optional)
-        console.log(`${paymentType} initiated successfully:`, paymentResponse);
       } else {
         throw new Error('Failed to create payment session');
       }

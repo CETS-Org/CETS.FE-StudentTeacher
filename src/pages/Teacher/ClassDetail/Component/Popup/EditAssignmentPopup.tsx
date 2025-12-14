@@ -277,10 +277,6 @@ export default function EditAssignmentPopup({
             setFileProgress([percent]);
             setOverallProgress(percent);
           });
-        } else {
-          // If no uploadUrl returned, backend might handle it differently
-          // Just proceed with the update
-          console.log('No uploadUrl returned, file upload may be handled by backend');
         }
       } else {
         // If no new file is uploaded, keep existing file (don't send null, keep storeUrl if exists)

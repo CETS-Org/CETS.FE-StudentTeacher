@@ -34,8 +34,6 @@ async function callGroqAPI(prompt: string): Promise<FormattedReadingTest> {
   }
   lastRequestTime = Date.now();
 
-  console.log("Calling Groq API...");
-
   const response = await fetch(GROQ_API_URL, {
     method: "POST",
     headers: {
@@ -124,7 +122,6 @@ async function callGroqAPI(prompt: string): Promise<FormattedReadingTest> {
     throw new Error("No valid questions found after validation");
   }
 
-  console.log("✓ Successfully formatted with Groq");
   return formatted;
 }
 
@@ -136,7 +133,6 @@ export async function formatReadingTestWithGemini(
   const cacheKey = `${topic}-${rawContent.substring(0, 100)}`;
   const cached = formatCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    console.log("✓ Using cached result");
     return cached.data;
   }
 

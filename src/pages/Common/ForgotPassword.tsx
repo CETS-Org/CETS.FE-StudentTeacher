@@ -92,11 +92,8 @@ export default function ForgotPassword() {
     setSuccessMessage("");
     
     try {
-      console.log("Forgot password data:", data);
-      
       // Call the forgot password API
       const response = await api.forgotPassword(data.email);
-      console.log("Forgot password response:", response.data);
       
       // Reset attempts on successful request - TEMPORARILY DISABLED
       // setResetAttempts(0);

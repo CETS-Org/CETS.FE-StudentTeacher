@@ -267,17 +267,6 @@ export default function CourseSchedule({ schedules, className = "", compact = fa
                     </div>
                   </div>
                 </div>
-                
-                <div className="mt-3 flex items-center gap-4 text-sm opacity-80">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>In-person class</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>Classroom TBA</span>
-                  </div>
-                </div>
               </div>
             );
           })}

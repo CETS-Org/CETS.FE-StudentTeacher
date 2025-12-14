@@ -20,6 +20,12 @@ export function useNotificationSocket(onNotification: NotificationHandler) {
     });
 
     socket.on('notification', (notification: UserNotification) => {
+      // Double-check user is still logged in before processing notification
+      const currentUserInfo = getUserInfo();
+      if (!currentUserInfo?.id) {
+        socket.disconnect();
+        return;
+      }
       onNotification(notification);
     });
 
@@ -27,7 +33,15 @@ export function useNotificationSocket(onNotification: NotificationHandler) {
       console.error('Notification socket connection error', err);
     });
 
+    // Listen for logout event and disconnect socket
+    const handleLogout = () => {
+      socket.disconnect();
+    };
+
+    window.addEventListener('auth:logout', handleLogout);
+
     return () => {
+      window.removeEventListener('auth:logout', handleLogout);
       socket.disconnect();
     };
   }, [onNotification]);

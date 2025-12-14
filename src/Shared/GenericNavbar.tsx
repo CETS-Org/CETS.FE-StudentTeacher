@@ -24,7 +24,7 @@ import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import NotificationDialog from "@/components/ui/NotificationDialog";
 import type { GenericNavbarProps } from "@/types/navbar";
 import type { UserNotification } from "@/types/notification";
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, clearAuthData } from "@/lib/utils";
 import { getNotificationsByUser, markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notification.api";
 import { useNotificationSocket } from "@/hooks/useNotificationSocket";
 import { triggerChatWidget } from "@/Shared/Chat/components/ChatWidget";
@@ -68,6 +68,18 @@ export default function GenericNavbar({
 
         loadNotifications();
     }, []);
+
+    // Listen for logout event and clear notifications
+    useEffect(() => {
+        const handleLogout = () => {
+            setNotifications([]);
+        };
+
+        window.addEventListener('auth:logout', handleLogout);
+        return () => {
+            window.removeEventListener('auth:logout', handleLogout);
+        };
+    }, []);
     
     const handleLogoutClick = () => {
         setIsLogoutDialogOpen(true);
@@ -75,7 +87,8 @@ export default function GenericNavbar({
 
     const handleLogoutConfirm = () => {
         // Clear any authentication tokens/data here
-        localStorage.removeItem('authToken');
+        clearAuthData();
+        // Legacy key cleanup
         localStorage.removeItem('userData');
 
         // Clear in-memory notifications so previous account state is not shown
@@ -126,6 +139,12 @@ export default function GenericNavbar({
     };
 
     const handleSocketNotification = useCallback((notification: UserNotification) => {
+        // Check if user is still logged in before processing notification
+        const userInfo = getUserInfo();
+        if (!userInfo?.id) {
+            return;
+        }
+        
         setNotifications(prev => {
             const existing = prev.find(n => n.id === notification.id);
             if (existing) {
@@ -273,16 +292,20 @@ export default function GenericNavbar({
                                         <>
                                             <DropdownMenuSeparator className="bg-neutral-200 my-2" />
                                             
-                                            {/* Settings & Help */}
-                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
-                                                <Settings className="w-4 h-4" />
-                                                <span>Settings</span>
-                                            </DropdownMenuItem>
-                                            
-                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
-                                                <HelpCircle className="w-4 h-4" />
-                                                <span>Help & Support</span>
-                                            </DropdownMenuItem>
+                                            {/* Settings & Help - Hidden for Students and Teachers */}
+                                            {config.userInfo.role !== "Student" && config.userInfo.role !== "Teacher" && (
+                                                <>
+                                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                        <Settings className="w-4 h-4" />
+                                                        <span>Settings</span>
+                                                    </DropdownMenuItem>
+                                                    
+                                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                        <HelpCircle className="w-4 h-4" />
+                                                        <span>Help & Support</span>
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
 
                                             <DropdownMenuItem 
                                                 onClick={handleChangePassword} 

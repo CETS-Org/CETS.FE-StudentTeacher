@@ -50,8 +50,6 @@ export default function ClassReservationDetails() {
           const reservationsResponse = await api.getClassReservations(studentId);
           const reservations = reservationsResponse.data;
           
-          console.log('Class Reservations API Response:', reservations);
-          
           // Find the specific reservation by ID
           const foundReservation = reservations.find((res: any) => res.id === reservationId);
           
@@ -76,8 +74,6 @@ export default function ClassReservationDetails() {
             // Call API to get reservation items
             const itemsResponse = await api.getReservationItems(reservationId);
             const apiItems = itemsResponse.data;
-            
-            console.log('Reservation Items API Response:', apiItems);
             
             // Transform API response to ReservationItem format
             const transformedItems: ReservationItem[] = apiItems.map((item: any) => ({

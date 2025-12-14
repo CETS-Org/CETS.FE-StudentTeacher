@@ -218,7 +218,8 @@ export default function AdvancedAssignmentPopup({
   const [showProgress, setShowProgress] = useState(true);
   const [showQuestionNumbers, setShowQuestionNumbers] = useState(true);
   const [autoSubmit, setAutoSubmit] = useState(false);
-  const [allowMultipleRecordings, setAllowMultipleRecordings] = useState(false);
+  // Always allow multiple recordings, default to 3
+  const allowMultipleRecordings = true;
   const [maxRecordings, setMaxRecordings] = useState(3);
   
   // Files
@@ -226,6 +227,10 @@ export default function AdvancedAssignmentPopup({
   const [error, setError] = useState<string | null>(null);
   const [originalQuestionJson, setOriginalQuestionJson] = useState<string | null>(null);
   const [initialQuestionUrl, setInitialQuestionUrl] = useState<string | null>(null);
+  
+  // Draft dialog state
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [pendingDraftData, setPendingDraftData] = useState<any>(null);
   
   // Find the selected skill object
   const selectedSkill = skills.find(s => s.lookUpId === selectedSkillId);
@@ -263,7 +268,6 @@ export default function AdvancedAssignmentPopup({
           const questionUrlResponse = await getQuestionDataUrl(editAssignment.assignmentId);
           const presignedUrl = questionUrlResponse.data.questionDataUrl;
           
-          console.log("Loading question data from URL:", presignedUrl);
           const questionResponse = await fetch(presignedUrl);
           
           if (!questionResponse.ok) {
@@ -271,7 +275,6 @@ export default function AdvancedAssignmentPopup({
           }
           
           const questionData = await questionResponse.json();
-          console.log("Loaded question data:", questionData);
           
           let formattedQuestions: Question[] = [];
           
@@ -286,7 +289,6 @@ export default function AdvancedAssignmentPopup({
               question: q.question || "",
               points: q.points || 0,
             }));
-            console.log("Setting questions:", formattedQuestions);
             setQuestions(formattedQuestions);
           } else {
             console.warn("No questions found in question data:", questionData);
@@ -315,9 +317,6 @@ export default function AdvancedAssignmentPopup({
             if (questionData.settings.showQuestionNumbers !== undefined) {
               setShowQuestionNumbers(questionData.settings.showQuestionNumbers);
             }
-            if (questionData.settings.allowMultipleRecordings !== undefined) {
-              setAllowMultipleRecordings(questionData.settings.allowMultipleRecordings);
-            }
             if (questionData.settings.maxRecordings !== undefined) {
               setMaxRecordings(questionData.settings.maxRecordings);
             }
@@ -342,8 +341,6 @@ export default function AdvancedAssignmentPopup({
           console.error("Error loading question data:", err);
           showError(`Failed to load assignment questions: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
-      } else {
-        console.log("Not loading question data - type:", type, "questionUrl:", editAssignment.questionUrl);
       }
     } catch (err) {
       console.error("Error loading assignment for edit:", err);
@@ -351,6 +348,48 @@ export default function AdvancedAssignmentPopup({
     }
   }, [editAssignment, showError]);
   
+  // Load draft from localStorage
+  const loadDraftFromLocalStorage = useCallback(() => {
+    try {
+      const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+      const savedDraft = localStorage.getItem(draftKey);
+      
+      if (savedDraft) {
+        const draftData = JSON.parse(savedDraft);
+        
+        // Show dialog instead of alert
+        setPendingDraftData(draftData);
+        setShowDraftDialog(true);
+        return true;
+      }
+    } catch (error) {
+      console.error("Error loading draft:", error);
+    }
+    return false;
+  }, [classMeetingId]);
+
+  // Load draft data into form
+  const loadDraftData = useCallback((draftData: any) => {
+    setTitle(draftData.title || "");
+    setDescription(draftData.description || "");
+    setDueDate(draftData.dueDate || "");
+    setSelectedSkillId(draftData.selectedSkillId || null);
+    setAssignmentType(draftData.assignmentType || "Homework");
+    setQuestions(draftData.questions || []);
+    setTotalPoints(draftData.totalPoints || 10);
+    setTimeLimitMinutes(draftData.timeLimitMinutes);
+    setMaxAttempts(draftData.maxAttempts || 1);
+    setIsAutoGradable(draftData.isAutoGradable !== undefined ? draftData.isAutoGradable : true);
+    setAnswerVisibility(draftData.answerVisibility || "after_due_date");
+    setAllowBackNavigation(draftData.allowBackNavigation !== undefined ? draftData.allowBackNavigation : true);
+    setShowProgress(draftData.showProgress !== undefined ? draftData.showProgress : true);
+    setShowQuestionNumbers(draftData.showQuestionNumbers !== undefined ? draftData.showQuestionNumbers : true);
+    setAutoSubmit(draftData.autoSubmit || false);
+    setMaxRecordings(draftData.maxRecordings || 3);
+    
+    success("Draft loaded successfully!");
+  }, [success]);
+
   // Load skills and assignment data on mount
   useEffect(() => {
     if (open) {
@@ -359,10 +398,14 @@ export default function AdvancedAssignmentPopup({
         // Load assignment data for editing
         loadAssignmentForEdit();
       } else {
-        resetForm();
+        // Try to load draft first, if not found or declined, reset form
+        const draftLoaded = loadDraftFromLocalStorage();
+        if (!draftLoaded) {
+          resetForm();
+        }
       }
     }
-  }, [open, editAssignment, loadAssignmentForEdit]);
+  }, [open, editAssignment, loadAssignmentForEdit, loadDraftFromLocalStorage]);
 
   // Calculate total points from questions (only for Quiz assignments)
   useEffect(() => {
@@ -402,7 +445,6 @@ export default function AdvancedAssignmentPopup({
     setShowProgress(true);
     setShowQuestionNumbers(true);
     setAutoSubmit(false);
-    setAllowMultipleRecordings(false);
     setMaxRecordings(3);
     setFiles([]);
     setError(null);
@@ -788,6 +830,11 @@ export default function AdvancedAssignmentPopup({
           }
           
           success("Homework assignment updated successfully!");
+          
+          // Clear draft from localStorage on successful submission
+          const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+          localStorage.removeItem(draftKey);
+          
           onOpenChange(false);
           if (onSubmit) {
             onSubmit({
@@ -845,6 +892,11 @@ export default function AdvancedAssignmentPopup({
           }
 
           success("Homework assignment created successfully!");
+          
+          // Clear draft from localStorage on successful submission
+          const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+          localStorage.removeItem(draftKey);
+          
           onOpenChange(false);
           // Trigger refresh by calling onSubmit callback
           if (onSubmit) {
@@ -985,6 +1037,11 @@ export default function AdvancedAssignmentPopup({
           await updateAssignment(editAssignment.assignmentId, updateData);
           
           success("Quiz assignment updated successfully!");
+          
+          // Clear draft from localStorage on successful submission
+          const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+          localStorage.removeItem(draftKey);
+          
           onOpenChange(false);
           if (onSubmit) {
             onSubmit({
@@ -1034,6 +1091,11 @@ export default function AdvancedAssignmentPopup({
           }
 
           success("Quiz assignment created successfully!");
+          
+          // Clear draft from localStorage on successful submission
+          const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+          localStorage.removeItem(draftKey);
+          
           onOpenChange(false);
           // Trigger refresh by calling onSubmit callback
           if (onSubmit) {
@@ -1109,6 +1171,11 @@ export default function AdvancedAssignmentPopup({
           // For now, we'll just update the basic info
           // TODO: Implement question JSON update when backend supports it
           success("Speaking assignment updated successfully! (Note: Question data update requires backend support)");
+          
+          // Clear draft from localStorage on successful submission
+          const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+          localStorage.removeItem(draftKey);
+          
           onOpenChange(false);
           if (onSubmit) {
             onSubmit({
@@ -1187,6 +1254,11 @@ export default function AdvancedAssignmentPopup({
             }
             
             success("Speaking assignment created successfully!");
+            
+            // Clear draft from localStorage on successful submission
+            const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+            localStorage.removeItem(draftKey);
+            
             onOpenChange(false);
             // Trigger refresh by calling onSubmit callback
             if (onSubmit) {
@@ -1221,7 +1293,51 @@ export default function AdvancedAssignmentPopup({
     resetForm();
   };
 
+  // Auto-save draft function (used by both manual and auto-save)
+  const saveDraftToLocalStorage = useCallback(() => {
+    try {
+      // Save all assignment data to localStorage
+      const draftData = {
+        title,
+        description,
+        dueDate,
+        selectedSkillId,
+        assignmentType,
+        questions,
+        totalPoints,
+        timeLimitMinutes,
+        maxAttempts,
+        isAutoGradable,
+        answerVisibility,
+        allowBackNavigation,
+        showProgress,
+        showQuestionNumbers,
+        autoSubmit,
+        allowMultipleRecordings,
+        maxRecordings,
+        classMeetingId,
+        savedAt: new Date().toISOString(),
+      };
+
+      // Save to localStorage with a unique key
+      const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+      localStorage.setItem(draftKey, JSON.stringify(draftData));
+      return true;
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      return false;
+    }
+  }, [title, description, dueDate, selectedSkillId, assignmentType, questions, totalPoints, timeLimitMinutes, maxAttempts, isAutoGradable, answerVisibility, allowBackNavigation, showProgress, showQuestionNumbers, autoSubmit, maxRecordings, classMeetingId]);
+
   const handleSaveDraft = async () => {
+    const saved = saveDraftToLocalStorage();
+    if (saved) {
+      success("Assignment saved as draft!");
+    } else {
+      showError("Failed to save draft. Please try again.");
+    }
+    
+    // Original speaking assignment handling (keeping for reference, but draft is already saved above)
     const questionData = generateQuestionData();
     
     // Check if this is a speaking assignment
@@ -1296,7 +1412,6 @@ export default function AdvancedAssignmentPopup({
               throw new Error(`JSON upload failed with status: ${jsonUploadResponse.status}`);
             }
             
-            success("Speaking assignment saved as draft!");
           } catch (error) {
             console.error("Error saving speaking assignment draft:", error);
             showError("Failed to save speaking assignment draft");
@@ -1325,7 +1440,6 @@ export default function AdvancedAssignmentPopup({
         files,
       });
       
-      success("Assignment saved as draft!");
     }
     
     onOpenChange(false);
@@ -1473,8 +1587,6 @@ export default function AdvancedAssignmentPopup({
               autoSubmit={autoSubmit}
               onAutoSubmitChange={setAutoSubmit}
               isSpeakingAssignment={selectedSkill?.name === "Speaking"}
-              allowMultipleRecordings={allowMultipleRecordings}
-              onAllowMultipleRecordingsChange={setAllowMultipleRecordings}
               maxRecordings={maxRecordings}
               onMaxRecordingsChange={setMaxRecordings}
             />
@@ -1533,7 +1645,60 @@ export default function AdvancedAssignmentPopup({
           </div>
         </DialogFooter>
       </DialogContent>
+    </Dialog>
 
+    {/* Draft Confirmation Dialog */}
+    <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Load Saved Draft?</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          {pendingDraftData && (
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                Found a saved draft from <strong>{new Date(pendingDraftData.savedAt).toLocaleString()}</strong>.
+              </p>
+              <p className="text-sm text-gray-600">
+                Would you like to continue from where you left off?
+              </p>
+              {pendingDraftData.title && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs font-medium text-blue-900 mb-1">Draft Title:</p>
+                  <p className="text-sm text-blue-700">{pendingDraftData.title}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              // User declined to load draft, clear it
+              if (pendingDraftData) {
+                const draftKey = `assignment_draft_${classMeetingId || 'new'}`;
+                localStorage.removeItem(draftKey);
+              }
+              setShowDraftDialog(false);
+              setPendingDraftData(null);
+            }}
+          >
+            Start Fresh
+          </Button>
+          <Button
+            onClick={() => {
+              if (pendingDraftData) {
+                loadDraftData(pendingDraftData);
+                setShowDraftDialog(false);
+                setPendingDraftData(null);
+              }
+            }}
+          >
+            Continue Editing
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
 
     {/* Toast Notifications - Rendered outside Dialog to appear above it */}

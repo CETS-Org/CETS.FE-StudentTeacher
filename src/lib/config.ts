@@ -106,8 +106,6 @@ export const api = {
         throw new Error('Session expired. Please login again.');
       }
 
-      console.log('Making change password request with JWT authorization...');
-      
       // The apiClient automatically adds JWT token via interceptor
       const response = await apiClient.post('/api/IDN_Account/change-password', changePasswordData, {
         ...config,
@@ -118,7 +116,6 @@ export const api = {
         }
       });
       
-      console.log('Change password response:', response.data);
       return response;
     } catch (error: any) {
       console.error('Change password API error:', error);

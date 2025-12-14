@@ -450,7 +450,6 @@ const MyClassCard: React.FC<{ classItem: MyClass }> = ({ classItem }) => {
         {/* Next Meeting Section */}
         {(() => {
           const nextMeeting = classItem.nextMeeting;
-          console.log(classItem)
           const hasValidMeeting =
             nextMeeting &&
             nextMeeting.date &&
@@ -597,8 +596,6 @@ export default function MyClasses() {
           await studentLearningClassesService.getStudentLearningClassesSafe(
             studentId
           );
-        console.log("session data", data);
-        console.log("fetchError", fetchError);
         if (fetchError) {
           setError(fetchError);
           // Fallback to mock data if API fails
@@ -637,7 +634,6 @@ export default function MyClasses() {
           await studentLearningClassesService.getStudentLearningClassesSafe(
             studentId
           );
-        console.log("next session", data);
         if (fetchError) {
           setError(fetchError);
           setMyClasses(mockMyClasses);

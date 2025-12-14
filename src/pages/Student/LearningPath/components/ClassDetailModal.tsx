@@ -13,6 +13,7 @@ interface ClassDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   classItem: MyClass;
+  enrollmentStatus?: string; // Enrollment status (e.g., "waiting for class", "pending", "enrolled")
 }
 
 interface SessionWithAssignments extends ClassMeeting {
@@ -24,7 +25,8 @@ interface SessionWithAssignments extends ClassMeeting {
 const ClassDetailModal: React.FC<ClassDetailModalProps> = ({ 
   isOpen, 
   onClose, 
-  classItem
+  classItem,
+  enrollmentStatus
 }) => {
   const [sessions, setSessions] = useState<SessionWithAssignments[]>([]);
   const [loading, setLoading] = useState(false);
@@ -464,7 +466,29 @@ const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
                       {sessions.length === 0 ? (
                         <div className="text-center py-8 bg-gradient-to-r from-accent-50 to-accent-100 rounded-lg border border-accent-200">
                           <FileText className="w-12 h-12 text-accent-400 mx-auto mb-2" />
-                          <p className="text-accent-600">No sessions available</p>
+                          <p className="text-accent-600">
+                            {(() => {
+                              const statusLower = classItem.status?.toLowerCase() || '';
+                              const classStatusLower = classItem.classStatus?.toLowerCase() || '';
+                              const classNameLower = classItem.className?.toLowerCase() || '';
+                              const enrollmentStatusLower = enrollmentStatus?.toLowerCase() || '';
+                              
+                              const isWaitingForClass = 
+                                enrollmentStatusLower === 'pending' ||
+                                enrollmentStatusLower === 'waiting for class' ||
+                                enrollmentStatusLower === 'waitingforclass' ||
+                                statusLower === 'pending' || 
+                                statusLower === 'waiting for class' || 
+                                statusLower === 'waitingforclass' ||
+                                classStatusLower === 'pending' ||
+                                classStatusLower === 'waiting for class' ||
+                                classStatusLower === 'waitingforclass' ||
+                                classNameLower.includes('waiting for class') ||
+                                classNameLower.includes('waitingforclass');
+                              
+                              return isWaitingForClass ? 'Waiting for class' : 'No sessions available';
+                            })()}
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-4">

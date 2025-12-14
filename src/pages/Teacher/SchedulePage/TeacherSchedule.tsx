@@ -95,7 +95,6 @@ export default function SchedulePage() {
           return;
         }
 
-        console.log("Fetching schedule for teacher ID:", teacherId);
         const response = await getTeacherSchedule(teacherId);
         
         const transformedSessions = transformScheduleToSessions(response.data);
@@ -220,22 +219,22 @@ export default function SchedulePage() {
           title="My Teaching Schedule"
           description="View and manage your weekly teaching schedule"
           icon={<Calendar className="w-5 h-5 text-white" />}
-          controls={[
-            {
-              type: 'button',
-              label: 'Register for Schedule',
-              variant: 'primary',
-              icon: <Plus className="w-4 h-4" />,
-              onClick: handleRegisterClick
-            },
+          // controls={[
+          //   {
+          //     type: 'button',
+          //     label: 'Register for Schedule',
+          //     variant: 'primary',
+          //     icon: <Plus className="w-4 h-4" />,
+          //     onClick: handleRegisterClick
+          //   },
            
-            {
-              type: 'button',
-              label: 'View All Classes',
-              variant: 'secondary',
-              icon: <BookOpen className="w-4 h-4" />
-            }
-          ]}
+          //   {
+          //     type: 'button',
+          //     label: 'View All Classes',
+          //     variant: 'secondary',
+          //     icon: <BookOpen className="w-4 h-4" />
+          //   }
+          // ]}
         />
 
         {/* Schedule Grid */}

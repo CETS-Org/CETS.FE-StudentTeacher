@@ -119,7 +119,6 @@ export default function OtpVerification() {
         otp: data.otp,
         token: token
       });
-      console.log("OTP verification response:", response.data);
       
       // Store the new token from response for password reset
       const newToken = response.data.token;
@@ -178,11 +177,8 @@ export default function OtpVerification() {
     setSuccessMessage("");
     
     try {
-      console.log("Resending OTP to:", email);
-      
       // Call the forgot password API again to resend OTP
       const response = await api.forgotPassword(email);
-      console.log("Resend OTP response:", response.data);
       
       // Update token for future verification
       // const newToken = response.data; // Token updated but not used in this scope

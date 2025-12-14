@@ -177,8 +177,6 @@ export default function CoursePackageDetail() {
           planTypeID: planTypeID
         }))
       });
-
-      console.log("Package reservation created successfully:", response.data);
       
       setIsSubmitting(false);
       
@@ -646,7 +644,6 @@ export default function CoursePackageDetail() {
               variant="secondary"
               onClick={() => {
                 // TODO: Implement wishlist logic
-                console.log("Add to wishlist:", packageDetail.id);
               }}
               className="w-full"
             >

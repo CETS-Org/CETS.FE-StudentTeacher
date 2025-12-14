@@ -22,8 +22,6 @@ interface SettingsStepProps {
   autoSubmit: boolean;
   onAutoSubmitChange: (value: boolean) => void;
   isSpeakingAssignment?: boolean;
-  allowMultipleRecordings: boolean;
-  onAllowMultipleRecordingsChange: (value: boolean) => void;
   maxRecordings: number;
   onMaxRecordingsChange: (value: number) => void;
 }
@@ -49,8 +47,6 @@ export default function SettingsStep({
   autoSubmit,
   onAutoSubmitChange,
   isSpeakingAssignment = false,
-  allowMultipleRecordings,
-  onAllowMultipleRecordingsChange,
   maxRecordings,
   onMaxRecordingsChange,
 }: SettingsStepProps) {
@@ -194,37 +190,17 @@ export default function SettingsStep({
             <h4 className="font-semibold text-neutral-900">Speaking Recording Settings</h4>
           </div>
           <div className="space-y-4">
-            <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-neutral-200">
-              <input
-                type="checkbox"
-                id="allowMultipleRecordings"
-                checked={allowMultipleRecordings}
-                onChange={(e) => onAllowMultipleRecordingsChange(e.target.checked)}
-                className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500 mt-0.5"
+            <div>
+              <Input
+                label="Maximum Recordings"
+                type="number"
+                value={maxRecordings}
+                onChange={(e) => onMaxRecordingsChange(parseInt(e.target.value) || 3)}
+                min={1}
+                max={10}
+                hint="Maximum number of recordings students can make (default: 3)"
               />
-              <div className="flex-1">
-                <label htmlFor="allowMultipleRecordings" className="text-sm font-medium text-neutral-900 cursor-pointer">
-                  Allow multiple recordings
-                </label>
-                <p className="text-xs text-neutral-500 mt-1">
-                  Students can record multiple times and select their best recording
-                </p>
-              </div>
             </div>
-
-            {allowMultipleRecordings && (
-              <div>
-                <Input
-                  label="Maximum Recordings"
-                  type="number"
-                  value={maxRecordings}
-                  onChange={(e) => onMaxRecordingsChange(parseInt(e.target.value) || 1)}
-                  min={1}
-                  max={10}
-                  hint="Maximum number of recordings students can make (1-10)"
-                />
-              </div>
-            )}
           </div>
         </div>
       )}
