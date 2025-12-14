@@ -205,12 +205,12 @@ export default function CoursesSection() {
     if (priceMin > MIN_PRICE) s.set("PriceMin", String(priceMin));
     if (priceMax < MAX_PRICE) s.set("PriceMax", String(priceMax));
     
-    // Arrays - only add if not empty
-    if (levelIds.length) s.set("LevelIds", levelIds.join(","));
-    if (categoryIds.length) s.set("CategoryIds", categoryIds.join(","));
-    if (skillIds.length) s.set("SkillIds", skillIds.join(","));
-    if (requirementIds.length) s.set("RequirementIds", requirementIds.join(","));
-    if (benefitIds.length) s.set("BenefitIds", benefitIds.join(","));
+    // Arrays - use append to send multiple values (backend expects array, not comma-separated string)
+    levelIds.forEach(id => s.append("LevelIds", id));
+    categoryIds.forEach(id => s.append("CategoryIds", id));
+    skillIds.forEach(id => s.append("SkillIds", id));
+    requirementIds.forEach(id => s.append("RequirementIds", id));
+    benefitIds.forEach(id => s.append("BenefitIds", id));
     
     selectedDays.forEach(day => s.append("DaysOfWeek", day));
     selectedTimeSlots.forEach(slot => s.append("TimeSlotNames", slot));
