@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 import { UploadCloud, File, X, Info, Send } from "lucide-react";
+import { toast } from "@/components/ui/Toast";
 
 export type FileWithTitle = {
   file: File;
@@ -15,9 +16,10 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpload: (filesWithTitles: FileWithTitle[]) => void;
+  uploading?: boolean;
 };
 
-export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: Props) {
+export default function UploadMaterialsPopup({ open, onOpenChange, onUpload, uploading = false }: Props) {
   // State để lưu trữ danh sách các file người dùng đã chọn với title
   const [filesWithTitles, setFilesWithTitles] = useState<FileWithTitle[]>([]);
   // State để theo dõi khi người dùng kéo file vào vùng dropzone
@@ -83,13 +85,13 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
   // Xử lý khi nhấn nút Upload
   const handleUpload = () => {
     if (filesWithTitles.length === 0) {
-      alert("Please select at least one file to upload.");
+      toast.warning("Please select at least one file to upload.");
       return;
     }
     // Validate that all files have titles
     const emptyTitles = filesWithTitles.filter(f => !f.title.trim());
     if (emptyTitles.length > 0) {
-      alert("Please provide a title for all files.");
+      toast.warning("Please provide a title for all files.");
       return;
     }
     onUpload(filesWithTitles);
@@ -116,7 +118,7 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
             <UploadCloud className="text-gray-400 mb-4" size={48} />
             <p className="text-gray-600 font-semibold text-base">Drag & drop your files here</p>
             <p className="text-gray-500 text-sm mb-4">or click to browse from your computer</p>
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
               Choose File
             </Button>
             <input
@@ -125,6 +127,7 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
               multiple
               className="hidden"
               onChange={handleFileSelect}
+              disabled={uploading}
             />
           </div>
 
@@ -155,8 +158,9 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
                         value={item.title}
                         onChange={(e) => updateTitle(index, e.target.value)}
                         placeholder="Enter material title"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                         maxLength={255}
+                        disabled={uploading}
                       />
                       <p className="text-xs text-gray-500">
                         {item.title.length}/255 characters
@@ -177,9 +181,9 @@ export default function UploadMaterialsPopup({ open, onOpenChange, onUpload }: P
           </div>
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleUpload} iconLeft={<Send size={16}/>} className="hover:bg-green-600">
-            Upload {filesWithTitles.length > 0 ? `(${filesWithTitles.length})` : ''}
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={uploading}>Cancel</Button>
+          <Button onClick={handleUpload} iconLeft={<Send size={16}/>} className="hover:bg-green-600" disabled={uploading}>
+            {uploading ? 'Uploading...' : `Upload ${filesWithTitles.length > 0 ? `(${filesWithTitles.length})` : ''}`}
           </Button>
         </DialogFooter>
       </DialogContent>

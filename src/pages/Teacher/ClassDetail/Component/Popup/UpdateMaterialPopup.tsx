@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFoo
 import Button from "@/components/ui/Button";
 import { UploadCloud, File, X, Info, Save, Eye } from "lucide-react";
 import { config } from "@/lib/config";
+import { toast } from "@/components/ui/Toast";
 
 // Define the material type
 type Material = {
@@ -21,9 +22,10 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   onUpdate: (materialId: string, title: string, file?: File) => void;
   material: Material | null;
+  updating?: boolean;
 };
 
-export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, material }: Props) {
+export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, material, updating = false }: Props) {
   // State for title input
   const [title, setTitle] = useState("");
   // State for optional file replacement
@@ -81,7 +83,7 @@ export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, mate
   // Handle update submission
   const handleUpdate = () => {
     if (!material || !title.trim()) {
-      alert("Please enter a title for the material.");
+      toast.warning("Please enter a title for the material.");
       return;
     }
     
@@ -102,7 +104,7 @@ export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, mate
       
       window.open(fullUrl, '_blank', 'noopener,noreferrer');
     } else {
-      alert('File URL is not available.');
+      toast.error('File URL is not available.');
     }
   };
 
@@ -124,8 +126,9 @@ export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, mate
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter material title"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               maxLength={255}
+              disabled={updating}
             />
             <p className="text-xs text-gray-500">
               {title.length}/255 characters
@@ -148,7 +151,7 @@ export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, mate
               <UploadCloud className="text-gray-400 mb-2" size={32} />
               <p className="text-gray-600 font-medium text-sm">Drag & drop a new file here</p>
               <p className="text-gray-500 text-xs mb-3">or click to browse from your computer</p>
-              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} disabled={updating}>
                 Choose New File
               </Button>
               <input
@@ -156,6 +159,7 @@ export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, mate
                 ref={fileInputRef}
                 className="hidden"
                 onChange={handleFileSelect}
+                disabled={updating}
               />
             </div>
           </div>
@@ -212,11 +216,11 @@ export default function UpdateMaterialPopup({ open, onOpenChange, onUpdate, mate
           )}
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary" onClick={handleCancel}>
+          <Button variant="secondary" onClick={handleCancel} disabled={updating}>
             Cancel
           </Button>
-          <Button onClick={handleUpdate} iconLeft={<Save size={16}/>} className="hover:bg-green-600">
-            Update Material
+          <Button onClick={handleUpdate} iconLeft={<Save size={16}/>} className="hover:bg-green-600" disabled={updating}>
+            {updating ? 'Updating...' : 'Update Material'}
           </Button>
         </DialogFooter>
       </DialogContent>
