@@ -652,8 +652,8 @@ export default function TakePlacementTestPage() {
     });
 
     if (totalPoints > 0) {
-      const percentageScore = (totalScore / totalPoints) * 10;
-      const finalScore = Math.round(percentageScore * 100) / 100;
+      // Return actual score (0-900) instead of converting to 10-point scale
+      const finalScore = Math.round(totalScore * 100) / 100;
 
       return {
         score: finalScore,
@@ -1475,6 +1475,7 @@ export default function TakePlacementTestPage() {
         onRecommendPackages={() => navigate("/courses#packages-content")}
         recommendCoursesLabel="Courses for you"
         recommendPackagesLabel="Learning path for you"
+        maxScore={900}
       />
     </div>
   );

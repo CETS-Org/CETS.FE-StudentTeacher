@@ -847,7 +847,7 @@ export default function StudentDetailPage() {
                   </label>
                   <p className="text-sm text-gray-900 font-medium">
                     {student.studentInfo?.placementTestGrade !== null && student.studentInfo?.placementTestGrade !== undefined
-                      ? `${student.studentInfo.placementTestGrade.toFixed(2)} / 10`
+                      ? `${student.studentInfo.placementTestGrade.toFixed(2)} / 900`
                       : "N/A"}
                   </p>
                 </div>
