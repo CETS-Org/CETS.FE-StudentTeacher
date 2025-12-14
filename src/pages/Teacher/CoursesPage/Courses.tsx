@@ -80,7 +80,18 @@ export default function Courses() {
         setCourses(teacherCourses);
       } catch (err: any) {
         console.error("Error fetching courses:", err);
-        setError(err.response?.data?.message || err.message || "Failed to fetch courses");
+        // Check if it's a 404 with the "no courses assigned" message - treat as empty state, not error
+        const errorMessage = err.response?.data?.message || err.message || "";
+        const isNoCoursesMessage = errorMessage.includes("not been assigned to teach any courses");
+        
+        if (err.response?.status === 404 && isNoCoursesMessage) {
+          // This is not an error, just no courses assigned yet
+          setCourses([]);
+          setError(null);
+        } else {
+          // This is a real error
+          setError(errorMessage || "Failed to fetch courses");
+        }
       } finally {
         setLoading(false);
       }
@@ -249,7 +260,7 @@ export default function Courses() {
             <p className="text-neutral-600 mb-6">
               {searchQuery || levelFilter !== "All" || formatFilter !== "All" || classStatusFilter !== "All"
                 ? "No courses match your current filters."
-                : "You don't have any courses yet."}
+                : "You haven't been assigned to teach any courses yet."}
             </p>
           </div>
         )}
