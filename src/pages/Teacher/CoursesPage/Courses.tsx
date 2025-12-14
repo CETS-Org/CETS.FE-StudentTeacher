@@ -59,7 +59,6 @@ export default function Courses() {
           return;
         }
 
-        console.log("Fetching courses for teacher ID:", teacherId);
         const response = await api.getTeachingCourses(teacherId);
 
         // Convert API response to TeacherCourse format

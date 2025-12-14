@@ -95,7 +95,6 @@ export default function SchedulePage() {
           return;
         }
 
-        console.log("Fetching schedule for teacher ID:", teacherId);
         const response = await getTeacherSchedule(teacherId);
         
         const transformedSessions = transformScheduleToSessions(response.data);

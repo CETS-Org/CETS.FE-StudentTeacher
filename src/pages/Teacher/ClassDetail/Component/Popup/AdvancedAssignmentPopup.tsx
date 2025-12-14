@@ -268,7 +268,6 @@ export default function AdvancedAssignmentPopup({
           const questionUrlResponse = await getQuestionDataUrl(editAssignment.assignmentId);
           const presignedUrl = questionUrlResponse.data.questionDataUrl;
           
-          console.log("Loading question data from URL:", presignedUrl);
           const questionResponse = await fetch(presignedUrl);
           
           if (!questionResponse.ok) {
@@ -276,7 +275,6 @@ export default function AdvancedAssignmentPopup({
           }
           
           const questionData = await questionResponse.json();
-          console.log("Loaded question data:", questionData);
           
           let formattedQuestions: Question[] = [];
           
@@ -291,7 +289,6 @@ export default function AdvancedAssignmentPopup({
               question: q.question || "",
               points: q.points || 0,
             }));
-            console.log("Setting questions:", formattedQuestions);
             setQuestions(formattedQuestions);
           } else {
             console.warn("No questions found in question data:", questionData);
@@ -344,8 +341,6 @@ export default function AdvancedAssignmentPopup({
           console.error("Error loading question data:", err);
           showError(`Failed to load assignment questions: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
-      } else {
-        console.log("Not loading question data - type:", type, "questionUrl:", editAssignment.questionUrl);
       }
     } catch (err) {
       console.error("Error loading assignment for edit:", err);

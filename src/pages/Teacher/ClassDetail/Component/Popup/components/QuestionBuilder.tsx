@@ -268,7 +268,6 @@ export default function QuestionBuilder({
       audioPlayerRef.current = audio;
       
       audio.onloadeddata = () => {
-        console.log("Audio loaded successfully");
       };
       
       audio.onended = () => {

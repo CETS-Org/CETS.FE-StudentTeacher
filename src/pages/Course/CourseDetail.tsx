@@ -295,8 +295,6 @@ export default function CourseDetail({ course }: CourseDetailProps) {
           }
         ]
       });
-
-      console.log("Reservation created successfully:", response.data);
       
       setIsLoading(false);
       

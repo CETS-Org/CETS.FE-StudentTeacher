@@ -62,15 +62,12 @@ export default function ResetPassword() {
     setSuccessMessage("");
     
     try {
-      console.log("Reset password data:", { email, token, password: data.password });
-      
       // Call the reset password API
       const response = await api.resetPassword({
         email: email,
         newPassword: data.password,
         token: token
       });
-      console.log("Reset password response:", response.data);
       
       // Show success message briefly before navigation
       setSuccessMessage("Password reset successful!");

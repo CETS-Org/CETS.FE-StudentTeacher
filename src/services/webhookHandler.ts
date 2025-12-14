@@ -86,13 +86,6 @@ export class WebhookHandler {
       // Process the webhook
       const result = await this.processWebhookData(webhookData);
 
-      // Log webhook processing
-      console.log('Webhook processed successfully:', {
-        orderCode: webhookData.orderCode,
-        amount: webhookData.amount,
-        status: webhookData.code === '00' ? 'success' : 'failed'
-      });
-
       return {
         success: true,
         message: result.message,
@@ -114,9 +107,6 @@ export class WebhookHandler {
   private async processWebhookData(webhookData: PaymentWebhookData): Promise<{ success: boolean; message: string }> {
     try {
       // This would typically be handled by your backend
-      // For now, we'll just log the webhook data
-      console.log('Payment webhook received:', webhookData);
-      
       // In a real implementation, you would:
       // 1. Verify the webhook signature
       // 2. Update payment status in your database
@@ -141,13 +131,6 @@ export class WebhookHandler {
       // Update payment status in database
       // Send confirmation email
       // Update user subscription/access
-      // Log payment success
-      
-      console.log('Payment success handled:', {
-        orderCode: webhookData.orderCode,
-        amount: webhookData.amount,
-        transactionDateTime: webhookData.transactionDateTime
-      });
 
       // Store in localStorage for frontend reference
       if (typeof window !== 'undefined') {
@@ -172,11 +155,6 @@ export class WebhookHandler {
     try {
       // Update payment status in database
       // Send failure notification
-      // Log payment failure
-      
-      console.log('Payment failure handled:', {
-        orderCode: webhookData.orderCode,
-        amount: webhookData.amount,
         error: webhookData.desc
       });
 

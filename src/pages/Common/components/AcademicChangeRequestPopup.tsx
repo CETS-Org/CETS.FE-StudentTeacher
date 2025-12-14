@@ -201,19 +201,12 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
       
       let filteredEnrollments = enrollmentsData;
       
-      console.log('All enrollments:', enrollmentsData.map((e: any) => ({ 
-        name: e.courseName, 
-        status: e.enrollmentStatus 
-      })));
-      
       // For Resume from Suspension: Only show "Suspended" or "AwaitingReturn" status (check FIRST!)
       if (isResumeFromSuspension()) {
         filteredEnrollments = enrollmentsData.filter((e: any) => {
           const status = (e.enrollmentStatus || '').toLowerCase();
-          console.log('Checking enrollment:', e.courseName, 'Status:', status);
           return status === 'suspended' || status === 'awaiting return' || status === 'awaitingreturn';
         });
-        console.log('Filtered for resume (Suspended/AwaitingReturn only):', filteredEnrollments.length);
       }
       // For Suspension and Dropout: Only show "Enrolled" status
       else if (isSuspension() || isDropout()) {
@@ -221,7 +214,6 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           const status = (e.enrollmentStatus || '').toLowerCase();
           return status === 'enrolled';
         });
-        console.log('Filtered for suspension/dropout (Enrolled only):', filteredEnrollments.length);
       }
       // For Enrollment Cancellation: Only show "Pending" status
       else if (isEnrollmentCancellation()) {
@@ -229,7 +221,6 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
           const status = (e.enrollmentStatus || '').toLowerCase();
           return status === 'pending' || status === 'pending confirmation';
         });
-        console.log('Filtered for cancellation (Pending only):', filteredEnrollments.length);
       }
       // Default: Show all active enrollments (not dropped/suspended/completed)
       else {

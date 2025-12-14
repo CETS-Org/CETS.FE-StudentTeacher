@@ -38,8 +38,6 @@ export default function ClassReservationsList({
         const response = await api.getClassReservations(studentId);
         const apiReservations = response.data;
         
-        console.log('Class Reservations API Response:', apiReservations);
-        
         // Transform API response to ClassReservationResponse format
         const transformedReservations: ClassReservationResponse[] = apiReservations.map((res: any) => ({
           id: res.id,

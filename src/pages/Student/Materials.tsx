@@ -253,8 +253,6 @@ export default function Materials() {
   });
 
   const handleDownload = (material: PublicMaterial) => {
-    // Simulate download
-    console.log("Downloading:", material.fileName);
     // In real app, this would trigger actual download
     const link = document.createElement('a');
     link.href = material.downloadUrl;

@@ -53,9 +53,6 @@ export default function ChangePassword() {
       const userData = localStorage.getItem('userInfo');
       const authToken = localStorage.getItem('authToken');
       
-      console.log("Auth token exists:", !!authToken); // Debug log
-      console.log("User data exists:", !!userData); // Debug log
-      
       if (!userData) {
         alert("User information not found. Please login again.");
         navigate("/login");
@@ -69,8 +66,6 @@ export default function ChangePassword() {
       }
 
       const email = JSON.parse(userData).email;
-      console.log("Using email for change password:", email); // Debug log
-      console.log("JWT Token will be automatically attached to the request via axios interceptor");
 
       // Call the change password API (JWT token will be automatically attached by interceptor)
       const response = await api.changePassword({
@@ -78,8 +73,6 @@ export default function ChangePassword() {
         oldPassword: data.oldPassword,
         newPassword: data.newPassword
       });
-      
-      console.log("Change password response:", response);
       
       // Show success message and redirect
       alert("Password changed successfully!");

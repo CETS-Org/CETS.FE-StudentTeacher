@@ -143,8 +143,6 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
           feedbackList = (fbRes as any).data as WeeklyFeedbackView[];
         }
 
-        console.log("Weekly feedback list:", feedbackList);
-
         // 2) Init form per student
         const initForm: Record<string, PerStudentForm> = {};
         const readOnlyFlags: Record<string, boolean> = {};

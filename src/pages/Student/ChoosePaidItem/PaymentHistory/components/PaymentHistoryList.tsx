@@ -38,8 +38,6 @@ export default function PaymentHistoryList({
         // Call API to get payment history
         const response = await api.getPaymentHistory(studentId);
         
-        console.log('Payment History API Response:', response.data);
-        
         // Backend returns: { success, message, data: [...] }
         if (response.data.success && response.data.data) {
           setPayments(response.data.data);

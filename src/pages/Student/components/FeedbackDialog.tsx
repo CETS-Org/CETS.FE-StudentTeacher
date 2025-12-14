@@ -145,7 +145,6 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
 
   const handleCourseFeedbackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Course feedback:", courseFeedbackData);
     setStep("teacher");
   };
 

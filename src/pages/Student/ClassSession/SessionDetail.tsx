@@ -225,10 +225,8 @@ export default function SessionDetail() {
     }
     
     try {
-      console.log('Loading assignments for session:', sessionId);
       const data = await getAssignmentsByMeetingAndStudent(sessionId, studentId);
       setAssignments(data);
-      console.log('Assignments loaded:', data);
     } catch (e: any) {
       setErrorAssignments(e?.message || "Failed to load assignments");
       console.error('Error loading assignments:', e);
@@ -453,9 +451,7 @@ export default function SessionDetail() {
     // This handles both successful submissions and cancellations
     setTimeout(async () => {
       try {
-        console.log('Refreshing assignments after closing writing view...');
         await loadAssignments();
-        console.log('Assignments refreshed after closing view');
         
         // If submission was successful, try one more refresh after a delay
         // to ensure backend has fully processed the submission
@@ -463,9 +459,7 @@ export default function SessionDetail() {
           setWritingSubmissionSuccess(false);
           setTimeout(async () => {
             try {
-              console.log('Second refresh to ensure submission is processed...');
               await loadAssignments();
-              console.log('Second refresh completed');
             } catch (error) {
               console.warn('Second refresh failed:', error);
             }
@@ -505,21 +499,7 @@ export default function SessionDetail() {
       formData.append("FileName", fileNameWithoutExtension);
       formData.append("ContentType", contentType);
 
-      console.log('Submitting writing assignment:', {
-        originalFileName: file.name,
-        fileName: fileNameWithoutExtension,
-        contentType: contentType,
-        fileSize: file.size,
-        assignmentId: writingAssignment.id,
-        studentId: studentId
-      });
-
       const response = await submitWritingAssignment(formData);
-
-      console.log('Writing assignment submission response:', {
-        status: response.status,
-        data: response.data
-      });
 
       // Handle nested response structure: { success, data: { submissionId, score, feedback, uploadUrl, storeUrl, submittedAt, isAiScore } } or direct data
       let responseData = response.data;
@@ -527,15 +507,11 @@ export default function SessionDetail() {
         responseData = responseData.data;
       }
 
-      console.log('Parsed response data:', responseData);
-
       // Extract uploadUrl and other data
       const { uploadUrl, storeUrl, submissionId, score, feedback, submittedAt, isAiScore } = responseData;
 
       // Step 2: Upload file to Cloudflare using uploadUrl
       if (uploadUrl) {
-        console.log('Uploading file to Cloudflare:', uploadUrl);
-        
         const putResp = await fetch(uploadUrl, {
           method: 'PUT',
           headers: {
@@ -547,8 +523,6 @@ export default function SessionDetail() {
         if (!putResp.ok) {
           throw new Error(`File upload to Cloudflare failed: ${putResp.status} ${putResp.statusText}`);
         }
-
-        console.log('File uploaded to Cloudflare successfully');
       } else {
         console.warn('No uploadUrl received from server, skipping file upload');
       }
@@ -574,17 +548,12 @@ export default function SessionDetail() {
       // This ensures the API returns the updated submission status
       setTimeout(async () => {
         try {
-          console.log('Refreshing assignments after submission...');
           await loadAssignments();
-          console.log('Assignments refreshed successfully');
         } catch (refreshError) {
-          console.warn('Failed to refresh assignments after submission:', refreshError);
           // Try one more time after a longer delay
           setTimeout(async () => {
             try {
-              console.log('Retrying assignments refresh...');
               await loadAssignments();
-              console.log('Assignments refreshed on retry');
             } catch (retryError) {
               console.error('Retry refresh also failed:', retryError);
             }
@@ -713,16 +682,6 @@ export default function SessionDetail() {
         formData.append('studentID', studentId);
         formData.append('FileName', fileNameWithoutExt);
         formData.append('ContentType', contentType);
-
-        console.log('Submitting writing assignment (file upload):', {
-          originalFileName: file.name,
-          fileName: fileNameWithoutExt,
-          contentType: contentType,
-          fileExtension: fileExtension,
-          fileSize: file.size,
-          assignmentId: assignmentId,
-          studentId: studentId
-        });
 
         const writingResponse = await submitWritingAssignment(formData);
         
@@ -1588,9 +1547,7 @@ export default function SessionDetail() {
             if (!open) {
               setTimeout(async () => {
                 try {
-                  console.log('Refreshing assignments after closing AI score dialog...');
                   await loadAssignments();
-                  console.log('Assignments refreshed after closing AI dialog');
                 } catch (error) {
                   console.error('Failed to refresh assignments after closing AI dialog:', error);
                 }
@@ -1670,9 +1627,7 @@ export default function SessionDetail() {
                   // Refresh assignments when closing dialog
                   setTimeout(async () => {
                     try {
-                      console.log('Refreshing assignments after clicking "Got it" button...');
                       await loadAssignments();
-                      console.log('Assignments refreshed after button click');
                     } catch (error) {
                       console.error('Failed to refresh assignments:', error);
                     }

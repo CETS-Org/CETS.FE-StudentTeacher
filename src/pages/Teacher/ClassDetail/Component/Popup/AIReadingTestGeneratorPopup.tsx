@@ -318,14 +318,6 @@ export default function AIReadingTestGeneratorPopup({
         },
       };
 
-      // Debug log to verify data
-      console.log("=== AI Reading Test Assignment Data ===");
-      console.log("Reading Passage Length:", readingPassage.length);
-      console.log("Questions Count:", quizQuestions.length);
-      console.log("Total Points:", totalPoints);
-      console.log("Question Data:", questionData);
-      console.log("=======================================");
-
       // Serialize question data to JSON string
       const questionJson = JSON.stringify(questionData);
 

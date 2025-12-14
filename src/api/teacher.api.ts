@@ -14,12 +14,8 @@ export const getTeachingClasses = (
 export const getTeacherById = async (id: string): Promise<Teacher> => {
   try {
     const url = `${endpoint.account}/${id}`;
-    console.log("API URL:", url);
-    console.log("Base URL:", api.defaults.baseURL);
-    console.log("Full URL:", `${api.defaults.baseURL}${url}`);
     
     const response = await api.get<Teacher>(url);
-    console.log("API Response:", response);
     return response.data;
   } catch (error) {
     console.error(`Error fetching teacher ${id}:`, error);

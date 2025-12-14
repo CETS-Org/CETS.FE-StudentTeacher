@@ -48,7 +48,6 @@ export const useWishlist = ({ studentId, autoFetch = true }: UseWishlistOptions)
     try {
       const response = await addToWishlist({ studentId, courseId });
       setWishlistItems(prev => [...prev, response.data]);
-      console.log('Course added to wishlist');
       return true;
     } catch (err: any) {
       const errorMessage = err.response?.data || 'Failed to add course to wishlist';
@@ -67,7 +66,6 @@ export const useWishlist = ({ studentId, autoFetch = true }: UseWishlistOptions)
     try {
       await removeFromWishlist({ studentId, courseId });
       setWishlistItems(prev => prev.filter(item => item.courseId !== courseId));
-      console.log('Course removed from wishlist');
       return true;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to remove course from wishlist';

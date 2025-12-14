@@ -177,12 +177,9 @@ export const getCourseAttendanceSummary = async (
   
   for (const url of endpoints) {
     try {
-      console.log('Trying endpoint:', url, { courseId, studentId });
       const response = await api.get(url);
-      console.log('✅ Success with endpoint:', url);
       return response.data;
     } catch (error: any) {
-      console.log(`❌ Endpoint failed (${error?.response?.status}):`, url);
       lastError = error;
       
       // If not 404, don't try other endpoints

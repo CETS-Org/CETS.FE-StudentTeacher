@@ -50,14 +50,6 @@ export default function WritingGradingView({
   // Load score and feedback when submission changes
   useEffect(() => {
     if (selectedSubmission) {
-      console.log('Selected submission changed:', {
-        studentName: selectedSubmission.studentName,
-        score: selectedSubmission.score,
-        IsAiScore: selectedSubmission.IsAiScore,
-        feedback: selectedSubmission.feedback,
-        fileUrl: selectedSubmission.file
-      });
-      
       setScore(selectedSubmission.score?.toString() || "");
       setFeedback(selectedSubmission.feedback || "");
       setDocumentError(false);
@@ -65,19 +57,15 @@ export default function WritingGradingView({
       // Only reset loading state if the file URL actually changed (new submission)
       const newFileUrl = selectedSubmission.file || "";
       if (newFileUrl !== currentFileUrl) {
-        console.log('File URL changed, resetting loading state');
         setCurrentFileUrl(newFileUrl);
         setDocumentLoading(true);
         
         // Fallback timeout: hide loading after 10 seconds if iframe doesn't trigger onLoad
         const loadingTimeout = setTimeout(() => {
-          console.log('Document loading timeout - hiding spinner');
           setDocumentLoading(false);
         }, 10000);
         
         return () => clearTimeout(loadingTimeout);
-      } else {
-        console.log('Same file URL, keeping current loading state');
       }
     }
   }, [selectedSubmission, currentFileUrl]);
@@ -196,22 +184,14 @@ export default function WritingGradingView({
     const hasExtension = fileUrl.includes('.') && fileUrl.lastIndexOf('.') > fileUrl.lastIndexOf('/');
     const fileExtension = hasExtension ? fileUrl.split('.').pop()?.toLowerCase() : null;
 
-    console.log('Getting viewer URL:', {
-      fileUrl,
-      fullUrl,
-      hasExtension,
-      fileExtension
-    });
 
     // For PDF files, use direct iframe
     if (fileExtension === 'pdf') {
-      console.log('Using direct PDF viewer');
       return fullUrl;
     }
 
     // For DOCX and other Office files, use Microsoft Office Online Viewer
     if (fileExtension === 'docx' || fileExtension === 'doc' || fileExtension === 'xlsx' || fileExtension === 'pptx') {
-      console.log('Using Office Online Viewer for Office files');
       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
     }
 
@@ -220,19 +200,16 @@ export default function WritingGradingView({
     // - For assignments (teacher uploaded), use Office viewer as they're likely Word docs
     if (!fileExtension) {
       if (fileUrl.includes('submissions/')) {
-        console.log('No extension but is submission - using Google Docs Viewer (supports PDF and DOC)');
         // Submissions can be PDF (from text editor) or DOC/DOCX (from file upload)
         // Google Docs Viewer supports both formats
         return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
       } else if (fileUrl.includes('assignments/')) {
-        console.log('No extension but is assignment - using Office Online Viewer');
         // Assignments are likely Word docs from teacher
         return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`;
       }
     }
 
     // For other files, use Google Docs Viewer as fallback
-    console.log('Using Google Docs Viewer as fallback');
     return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
   };
 
@@ -256,11 +233,6 @@ export default function WritingGradingView({
     }
 
     const viewerUrl = getDocumentViewerUrl(selectedSubmission.file);
-    console.log('Rendering document viewer:', {
-      studentName: selectedSubmission.studentName,
-      fileUrl: selectedSubmission.file,
-      viewerUrl: viewerUrl
-    });
 
     return (
       <div className="h-full w-full bg-neutral-50 relative">
@@ -283,7 +255,6 @@ export default function WritingGradingView({
               className="w-full h-full border-0"
               title="Document Viewer"
               onLoad={() => {
-                console.log('Iframe onLoad triggered for:', selectedSubmission.studentName);
                 setDocumentLoading(false);
               }}
               onError={() => {

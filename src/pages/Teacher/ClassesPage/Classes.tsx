@@ -347,9 +347,7 @@ export default function Classes() {
           return;
         }
 
-        console.log('Fetching teaching classes for:', { teacherId, courseId });
         const classes = await teachingClassesService.getTeachingClasses(teacherId, courseId);
-        console.log('Fetched classes:', classes);
         setTeacherClasses(classes);
       } catch (err) {
         console.error('Error fetching teaching classes:', err);
