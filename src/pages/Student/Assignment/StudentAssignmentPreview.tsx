@@ -85,6 +85,7 @@ export default function StudentAssignmentPreview() {
         let questionDataShowAnswersAfterSubmission: boolean | undefined = undefined;
         let questionDataShowAnswersAfterDueDate: boolean | undefined = undefined;
         let questionDataIsAutoGradable: boolean | undefined = undefined;
+        let questionDataTotalPoints: number | undefined = undefined;
         
         if (assignmentData.questionUrl) {
           try {
@@ -110,6 +111,16 @@ export default function StudentAssignmentPreview() {
               if (questionData.settings.isAutoGradable !== undefined) {
                 questionDataIsAutoGradable = questionData.settings.isAutoGradable;
               }
+              if (questionData.settings.totalPoints !== undefined) {
+                questionDataTotalPoints = questionData.settings.totalPoints;
+              }
+            }
+            
+            // Calculate totalPoints from questions if not in settings
+            if (questionDataTotalPoints === undefined && questionData.questions && Array.isArray(questionData.questions)) {
+              questionDataTotalPoints = questionData.questions.reduce((sum, q) => {
+                return sum + (q.points || 0);
+              }, 0);
             }
           } catch (err) {
             console.error("Failed to load question data:", err);
@@ -122,22 +133,9 @@ export default function StudentAssignmentPreview() {
         const showAnswersAfterSubmissionToUse = questionDataShowAnswersAfterSubmission ?? assignmentData.showAnswersAfterSubmission ?? false;
         const showAnswersAfterDueDateToUse = questionDataShowAnswersAfterDueDate ?? assignmentData.showAnswersAfterDueDate ?? false;
         const isAutoGradableToUse = questionDataIsAutoGradable ?? assignmentData.isAutoGradable ?? false;
-        
-        setAssignment({
-          id: assignmentData.id,
-          title: assignmentData.title,
-          description: assignmentData.description || "",
-          dueAt: assignmentData.dueAt,
-          skillID: assignmentData.skillID,
-          skillName: assignmentData.skillName,
-          totalPoints: assignmentData.totalPoints || 0,
-          timeLimitMinutes: timeLimitToUse,
-          maxAttempts: assignmentData.maxAttempts || 1,
-          isAutoGradable: isAutoGradableToUse,
-          showAnswersAfterSubmission: showAnswersAfterSubmissionToUse,
-          showAnswersAfterDueDate: showAnswersAfterDueDateToUse,
-          assignmentType: assignmentData.assignmentType || "homework"
-        });
+        // Priority: questionData totalPoints > assignmentData totalPoints > 0
+        let totalPointsToUse = questionDataTotalPoints ?? assignmentData.totalPoints ?? 0;
+          
 
         // Fetch submission history to determine attempts
         try {
@@ -154,6 +152,20 @@ export default function StudentAssignmentPreview() {
           // Only one attempt allowed - if they have any submission, they can't retake
           const canRetake = attemptCount === 0;
 
+          // For writing/speaking assignments (no questionUrl), if totalPoints seems wrong (<= 1),
+          // try to infer from submission scores
+          if (!assignmentData.questionUrl && totalPointsToUse <= 1 && allSubmissions.length > 0) {
+            const scores = allSubmissions.map((sub: any) => sub.score || 0).filter((score: number) => score > 0);
+            if (scores.length > 0) {
+              const maxScore = Math.max(...scores);
+              // If max score is significantly higher than totalPoints, use it as inferred total
+              // This handles cases where assignment.totalPoints is incorrectly set to 1 but actual grading is out of 10
+              if (maxScore > totalPointsToUse * 2) {
+                totalPointsToUse = maxScore;
+              }
+            }
+          }
+
           setSubmissions({
             attemptCount,
             hasSubmitted,
@@ -168,6 +180,23 @@ export default function StudentAssignmentPreview() {
             canRetake: true
           });
         }
+        
+        // Set assignment with the final totalPoints value (may have been updated from submissions)
+        setAssignment({
+          id: assignmentData.id,
+          title: assignmentData.title,
+          description: assignmentData.description || "",
+          dueAt: assignmentData.dueAt,
+          skillID: assignmentData.skillID,
+          skillName: assignmentData.skillName,
+          totalPoints: totalPointsToUse,
+          timeLimitMinutes: timeLimitToUse,
+          maxAttempts: assignmentData.maxAttempts || 1,
+          isAutoGradable: isAutoGradableToUse,
+          showAnswersAfterSubmission: showAnswersAfterSubmissionToUse,
+          showAnswersAfterDueDate: showAnswersAfterDueDateToUse,
+          assignmentType: assignmentData.assignmentType || "homework"
+        });
 
       } catch (err: unknown) {
         console.error("Failed to load assignment:", err);
