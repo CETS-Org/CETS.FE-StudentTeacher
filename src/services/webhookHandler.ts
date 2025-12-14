@@ -155,8 +155,6 @@ export class WebhookHandler {
     try {
       // Update payment status in database
       // Send failure notification
-        error: webhookData.desc
-      });
 
       // Store in localStorage for frontend reference
       if (typeof window !== 'undefined') {

@@ -25,11 +25,11 @@ export default defineConfig(() => {
           changeOrigin: true,
           secure: false, // Allow self-signed certificates
           configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
+            proxy.on('error', (_err, _req, _res) => {
             });
-            proxy.on('proxyReq', (_proxyReq, req, _res) => {
+            proxy.on('proxyReq', (_proxyReq, _req, _res) => {
             });
-            proxy.on('proxyRes', (proxyRes, req, _res) => {
+            proxy.on('proxyRes', (_proxyRes, _req, _res) => {
             });
           },
         }
