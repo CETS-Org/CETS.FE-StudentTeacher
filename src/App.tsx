@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Footer from './components/layout/Footer'
 import Requests from './pages/Requests'
 import Reports from './pages/Reports'
@@ -57,7 +57,15 @@ import ChatWidget from './Shared/Chat/components/ChatWidget';
 import PostponeConfirmationPage from './Shared/Verification/PostponeConfirmationPage';
 
 
-export default function App() {
+// Component to conditionally render Footer and ChatWidget
+function LayoutContent() {
+  const location = useLocation();
+  
+  // Pages that should hide footer and chat widget (test pages)
+  const shouldHideFooterAndChat = 
+    location.pathname === '/student/placement-test' ||
+    (location.pathname.startsWith('/student/assignment/') && location.pathname.endsWith('/take'));
+  
   return (
     <>
       <ScrollToTop />
@@ -129,11 +137,15 @@ export default function App() {
             <Route path="/teacher/request-issue/:category" element={<TeacherReport />} />
             </Routes>
           </div>
-          <ChatWidget />
-          <Footer />
+          {!shouldHideFooterAndChat && <ChatWidget />}
+          {!shouldHideFooterAndChat && <Footer />}
         </UniversalLayout>
       } />
     </Routes>
     </>
-  )
+  );
+}
+
+export default function App() {
+  return <LayoutContent />;
 }

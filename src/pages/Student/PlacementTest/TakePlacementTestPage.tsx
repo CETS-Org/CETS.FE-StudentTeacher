@@ -29,6 +29,7 @@ import {
 import { config } from "@/lib/config";
 import { getStudentId } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
+import { useAntiCheat } from "@/hooks/useAntiCheat";
 import type { Question } from "@/pages/Teacher/ClassDetail/Component/Popup/AdvancedAssignmentPopup";
 import QuestionRenderer from "../Assignment/components/QuestionRenderer";
 import AssignmentHeader from "../Assignment/components/AssignmentHeader";
@@ -95,9 +96,73 @@ export default function TakePlacementTestPage() {
   const questionAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const passageRef = useRef<HTMLDivElement>(null);
   
   // Maximum play count for listening questions (2 times)
   const MAX_AUDIO_PLAY_COUNT = 2;
+
+  // Anti-cheat protection: activate when test is loaded and not submitted
+  const isTestActive = !loading && !error && placementTest !== null && !submitting && !showScoreDialog;
+  useAntiCheat(isTestActive);
+
+  // Add extra protection for passage element
+  useEffect(() => {
+    if (!passageRef.current || !isTestActive) return;
+
+    const passageElement = passageRef.current;
+
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault();
+      if (window.getSelection) {
+        window.getSelection()?.removeAllRanges();
+      }
+      return false;
+    };
+
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.clipboardData?.setData("text/plain", "");
+      return false;
+    };
+
+    const handleCut = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.clipboardData?.setData("text/plain", "");
+      return false;
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.clipboardData?.setData("text/plain", "");
+      return false;
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const handleDragStart = (e: DragEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    passageElement.addEventListener("selectstart", handleSelectStart);
+    passageElement.addEventListener("copy", handleCopy);
+    passageElement.addEventListener("cut", handleCut);
+    passageElement.addEventListener("paste", handlePaste);
+    passageElement.addEventListener("mousedown", handleMouseDown);
+    passageElement.addEventListener("dragstart", handleDragStart);
+
+    return () => {
+      passageElement.removeEventListener("selectstart", handleSelectStart);
+      passageElement.removeEventListener("copy", handleCopy);
+      passageElement.removeEventListener("cut", handleCut);
+      passageElement.removeEventListener("paste", handlePaste);
+      passageElement.removeEventListener("mousedown", handleMouseDown);
+      passageElement.removeEventListener("dragstart", handleDragStart);
+    };
+  }, [isTestActive]);
 
   // Load placement test data
   useEffect(() => {
@@ -1083,7 +1148,21 @@ export default function TakePlacementTestPage() {
                     </div>
                     {showReadingPassage && (
                       <div className="bg-white border border-neutral-200 rounded-lg p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                        <div className="whitespace-pre-wrap text-neutral-700 leading-relaxed text-sm">
+                        <div 
+                          ref={passageRef}
+                          className="whitespace-pre-wrap text-neutral-700 leading-relaxed text-sm select-none"
+                          style={{
+                            userSelect: 'none',
+                            WebkitUserSelect: 'none',
+                            MozUserSelect: 'none',
+                            msUserSelect: 'none',
+                            pointerEvents: 'auto',
+                          }}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            return false;
+                          }}
+                        >
                           {currentPassage}
                         </div>
                       </div>
