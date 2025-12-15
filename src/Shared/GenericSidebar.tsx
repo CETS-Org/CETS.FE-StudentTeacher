@@ -1,12 +1,13 @@
 // src/Shared/GenericSidebar.tsx
 import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, X, ChevronDown, Clock, AlertCircle
 } from "lucide-react";
 import { cn, getStudentId } from "@/lib/utils";
 import { getUpcomingAssignmentsForStudent } from "@/api/assignments.api";
 import type { UpcomingAssignment } from "@/types/assignment";
+import PlacementTestConfirmationDialog from "@/components/ui/PlacementTestConfirmationDialog";
 
 export interface SubItem {
   id: string;
@@ -49,9 +50,11 @@ export default function GenericSidebar({
   config,
 }: Props) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
   const [upcomingAssignments, setUpcomingAssignments] = useState<UpcomingAssignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [showPlacementTestDialog, setShowPlacementTestDialog] = useState(false);
 
   useEffect(() => {
     if (config.submenuPathPrefix) {
@@ -64,9 +67,16 @@ export default function GenericSidebar({
     }
   }, [location.pathname, config.submenuPathPrefix, config.items]);
 
-  // Fetch upcoming assignments if enabled
+  // Fetch upcoming assignments if enabled (but skip on course list page to avoid unnecessary API calls)
   useEffect(() => {
     if (!config.showUpcomingDeadlines) return;
+    
+    // Don't fetch assignments on course list page - it causes too many API calls
+    // (classes → meetings → assignments for each meeting)
+    if (location.pathname === '/courses' || location.pathname.startsWith('/course/')) {
+      setUpcomingAssignments([]);
+      return;
+    }
 
     const fetchUpcomingAssignments = async () => {
       const studentId = getStudentId();
@@ -89,7 +99,7 @@ export default function GenericSidebar({
     // Refresh every 5 minutes
     const interval = setInterval(fetchUpcomingAssignments, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [config.showUpcomingDeadlines]);
+  }, [config.showUpcomingDeadlines, location.pathname]);
 
   const isActive = (path?: string) => path && location.pathname.startsWith(path);
 
@@ -97,8 +107,26 @@ export default function GenericSidebar({
     setOpenSubmenu(prev => (prev === id ? null : id));
   };
 
+  const handlePlacementTestClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowPlacementTestDialog(true);
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
+
+  const handleConfirmPlacementTest = () => {
+    setShowPlacementTestDialog(false);
+    navigate('/student/placement-test');
+  };
+
   return (
     <>
+      <PlacementTestConfirmationDialog
+        isOpen={showPlacementTestDialog}
+        onClose={() => setShowPlacementTestDialog(false)}
+        onConfirm={handleConfirmPlacementTest}
+      />
       {mobileOpen && (
         <button
           className="fixed inset-0 z-40 bg-black/30 lg:hidden"
@@ -195,18 +223,19 @@ export default function GenericSidebar({
                 }
                 
                 const active = isActive(item.path);
+                const isPlacementTest = item.path === '/student/placement-test';
+                
                 return (
                   <li key={item.id}>
-                    <NavLink
-                      to={item.path!}
-                      onClick={onNavigate}
-                      className={({ isActive: isNavItemActive }) =>
-                        cn(
+                    {isPlacementTest ? (
+                      <button
+                        onClick={handlePlacementTestClick}
+                        className={cn(
                           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sidebar-hover",
-                          (active || isNavItemActive) && "bg-sidebar-active font-semibold shadow-md",
+                          active && "bg-sidebar-active font-semibold shadow-md",
                           collapsed && "lg:justify-center lg:px-2"
                         )}
-                    >
+                      >
                         <div className="flex items-center gap-3 w-full">
                           <item.icon className="h-4 w-4 shrink-0 text-white" />
                           <span className={cn("truncate flex-1", collapsed && "lg:hidden")}>{item.label}</span>
@@ -219,7 +248,32 @@ export default function GenericSidebar({
                             </span>
                           )}
                         </div>
-                    </NavLink>
+                      </button>
+                    ) : (
+                      <NavLink
+                        to={item.path!}
+                        onClick={onNavigate}
+                        className={({ isActive: isNavItemActive }) =>
+                          cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sidebar-hover",
+                            (active || isNavItemActive) && "bg-sidebar-active font-semibold shadow-md",
+                            collapsed && "lg:justify-center lg:px-2"
+                          )}
+                      >
+                          <div className="flex items-center gap-3 w-full">
+                            <item.icon className="h-4 w-4 shrink-0 text-white" />
+                            <span className={cn("truncate flex-1", collapsed && "lg:hidden")}>{item.label}</span>
+                            {item.badge && item.badge > 0 && !collapsed && (
+                              <span className={cn(
+                                "text-xs font-semibold px-2 py-1 rounded-full min-w-[20px] text-center",
+                                active ? "bg-white text-primary" : "bg-white/20 text-white"
+                              )}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                      </NavLink>
+                    )}
                   </li>
                 );
               })}

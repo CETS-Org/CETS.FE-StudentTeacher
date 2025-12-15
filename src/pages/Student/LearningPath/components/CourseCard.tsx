@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { BookOpen, User, TrendingUp, GraduationCap, Calendar } from "lucide-react";
 import type { MyClass } from "@/types/class";
 import Spinner from "@/components/ui/Spinner";
-import { mockClassesByCourseCode } from "@/pages/Student/LearningPath/data/mockLearningPathData";
+import { getStudentLearningClasses } from "@/api/classes.api";
+import { getStudentId } from "@/lib/utils";
 
 export interface CourseItem {
   courseId: string;
@@ -45,14 +46,17 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
   const fetchClass = async () => {
     try {
       setLoadingClass(true);
-      // Use mock data directly - 1 course = 1 class (fallback)
-      const mockClasses = mockClassesByCourseCode[course.courseCode] || [];
-      const firstClass = mockClasses[0] || null;
-      setClassItem(firstClass);
+      const studentId = getStudentId();
+      if (!studentId) throw new Error('Student ID not found');
+      
+      // Fetch classes for this student from API
+      const response = await getStudentLearningClasses(studentId);
+      const classes = response.data || [];
+      const courseClass = classes.find((c: MyClass) => c.courseCode === course.courseCode);
+      setClassItem(courseClass || null);
     } catch (err) {
       console.error('Error fetching class:', err);
-      const mockClasses = mockClassesByCourseCode[course.courseCode] || [];
-      setClassItem(mockClasses[0] || null);
+      setClassItem(null);
     } finally {
       setLoadingClass(false);
     }
@@ -105,13 +109,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
         return "bg-red-100 text-red-800 border-red-200";
       case "enrolled":
       case "in-progress":
-        // Check if course has started (if classItem has startDate)
-        const hasStarted = classItem?.startDate 
-          ? new Date(classItem.startDate) <= new Date()
-          : false;
-        return hasStarted
-          ? "bg-blue-600 text-white border-blue-700"  // Xanh dương đậm khi đã bắt đầu
-          : "bg-blue-100 text-blue-800 border-blue-200";  // Xanh nhạt khi chưa bắt đầu
+        // Tất cả course "Enrolled" dùng cùng một màu
+        return "bg-blue-100 text-blue-800 border-blue-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -168,7 +167,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
     if (!classItem || isPending) {
       const minimalClassItem: MyClass = {
         id: `temp-${course.courseId}`,
-        className: `${course.courseName} - No Class Assigned`,
+        className: `${course.courseName} - Waiting for class`,
         classNum: 0,
         description: '',
         instructor: course.instructor,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { 
@@ -50,8 +50,6 @@ export default function ClassReservationDetails() {
           const reservationsResponse = await api.getClassReservations(studentId);
           const reservations = reservationsResponse.data;
           
-          console.log('Class Reservations API Response:', reservations);
-          
           // Find the specific reservation by ID
           const foundReservation = reservations.find((res: any) => res.id === reservationId);
           
@@ -76,8 +74,6 @@ export default function ClassReservationDetails() {
             // Call API to get reservation items
             const itemsResponse = await api.getReservationItems(reservationId);
             const apiItems = itemsResponse.data;
-            
-            console.log('Reservation Items API Response:', apiItems);
             
             // Transform API response to ReservationItem format
             const transformedItems: ReservationItem[] = apiItems.map((item: any) => ({
@@ -271,10 +267,6 @@ export default function ClassReservationDetails() {
 
             {/* Dates and Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <span className="text-blue-700 font-medium">Reserved: <span className="text-blue-900">{formatDate(reservation.createdAt)}</span></span>
-              </div>
               <div className="flex items-center gap-2 text-sm">
                 <Clock className={`w-4 h-4 ${isExpired() ? 'text-red-600' : isExpiringSoon() ? 'text-orange-600' : 'text-red-600'}`} />
                 <span className={isExpired() ? 'text-red-600 font-medium' : isExpiringSoon() ? 'text-orange-600 font-medium' : 'text-red-700 font-medium'}>

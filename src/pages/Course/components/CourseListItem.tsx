@@ -45,7 +45,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
                 </span>
                 )}
               </div>
-              {isRecommended && (
+              {isRecommended && !isEnrolled && (
                 <span className="bg-gradient-to-r from-primary-500 to-accent-500 text-white px-2 py-0.5 rounded text-xs font-bold shadow-md animate-pulse">
                     ⭐ Recommended for you
                 </span>

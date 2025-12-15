@@ -84,9 +84,6 @@ export const paymentService = {
   handlePaymentWebhook: async (webhookData: PaymentWebhookData): Promise<{ success: boolean; message: string }> => {
     try {
       // This would typically be handled by your backend
-      // For now, we'll just log the webhook data
-      console.log('Payment webhook received:', webhookData);
-      
       // In a real implementation, you would:
       // 1. Verify the webhook signature
       // 2. Update payment status in your database
@@ -127,7 +124,6 @@ export const handlePaymentSuccess = (orderCode: number, invoiceId: string): void
   // - Show success notification
   // - Update UI state
   // - Redirect to success page
-  console.log('Payment successful:', { orderCode, invoiceId });
 };
 
 // Utility function to handle payment failure callback

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Loader from "@/components/ui/Loader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
@@ -96,7 +96,60 @@ export default function TakePlacementTestPage() {
   const questionAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const passageRef = useRef<HTMLDivElement>(null);
+  const [attemptLimitReached, setAttemptLimitReached] = useState(false);
+  const [showLimitScoreDialog, setShowLimitScoreDialog] = useState(false);
+
+  const TODAY_KEY = new Date().toISOString().split("T")[0];
+
+  type AttemptRecord = {
+    date: string;
+    count: number;
+    lastScore?: {
+      score: number;
+      totalPoints: number;
+      earnedPoints: number;
+      totalQuestions: number;
+      correctAnswers: number;
+      answeredQuestions: number;
+    };
+  };
+
+  const getAttemptKey = (id: string | null) => `placement_attempts_${id || "guest"}`;
+
+  const loadAttemptRecord = (): AttemptRecord | null => {
+    if (!studentId) return null;
+    try {
+      const raw = localStorage.getItem(getAttemptKey(studentId));
+      return raw ? (JSON.parse(raw) as AttemptRecord) : null;
+    } catch (err) {
+      console.error("Failed to parse placement attempt record", err);
+      return null;
+    }
+  };
+
+  const saveAttemptRecord = (scoreData: AttemptRecord["lastScore"]) => {
+    if (!studentId) return;
+    const key = getAttemptKey(studentId);
+    const existing = loadAttemptRecord();
+    let next: AttemptRecord;
+    if (existing && existing.date === TODAY_KEY) {
+      next = { ...existing, count: existing.count + 1, lastScore: scoreData || existing.lastScore };
+    } else {
+      next = { date: TODAY_KEY, count: 1, lastScore: scoreData };
+    }
+    localStorage.setItem(key, JSON.stringify(next));
+  };
+
+  const ensureAttemptLimit = useCallback(() => {
+    const record = loadAttemptRecord();
+    if (record && record.date === TODAY_KEY && record.count >= 3) {
+      setAttemptLimitReached(true);
+      if (record.lastScore) {
+        setSubmissionScore(record.lastScore);
+        setShowScoreDialog(true);
+      }
+    }
+  }, [studentId]);
   
   // Maximum play count for listening questions (2 times)
   const MAX_AUDIO_PLAY_COUNT = 2;
@@ -325,8 +378,74 @@ export default function TakePlacementTestPage() {
         if (test.durationMinutes) {
           const timeInSeconds = test.durationMinutes * 60;
           setInitialTimeLimit(timeInSeconds);
-          setTimeRemaining(timeInSeconds);
-          setIsTimerRunning(true);
+          
+          // Load saved progress if available
+          const savedProgressKey = `placement_test_${test.id}_answers`;
+          const savedProgressStr = localStorage.getItem(savedProgressKey);
+          const savedStartTime = localStorage.getItem(`placement_test_${test.id}_startTime`);
+          
+          if (savedProgressStr && savedStartTime) {
+            try {
+              const progressData = JSON.parse(savedProgressStr);
+              
+              // Restore answers
+              if (progressData.answers) {
+                setAnswers(progressData.answers);
+              }
+              
+              // Restore current question index
+              if (progressData.currentQuestionIndex !== undefined) {
+                setCurrentQuestionIndex(progressData.currentQuestionIndex);
+              }
+              
+              // Calculate elapsed time and restore remaining time
+              const startTime = new Date(savedStartTime).getTime();
+              const currentTime = new Date().getTime();
+              const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+              const remainingTime = Math.max(0, timeInSeconds - elapsedSeconds);
+              
+              setTimeRemaining(remainingTime);
+              
+              // Only start timer if there's still time remaining
+              if (remainingTime > 0) {
+                setIsTimerRunning(true);
+              } else {
+                // Time is up, auto-submit
+                setIsTimerRunning(false);
+                // Note: We can't auto-submit here because answers aren't loaded yet
+                // The timer will handle this once answers are set
+              }
+            } catch (err) {
+              console.error("Failed to load saved progress:", err);
+              // Fallback to starting fresh
+              setTimeRemaining(timeInSeconds);
+              setIsTimerRunning(true);
+            }
+          } else {
+            // No saved progress, start fresh
+            const startTime = new Date().toISOString();
+            localStorage.setItem(`placement_test_${test.id}_startTime`, startTime);
+            setTimeRemaining(timeInSeconds);
+            setIsTimerRunning(true);
+          }
+        } else {
+          // Load saved progress even if no timer (for answers and question index)
+          const savedProgressKey = `placement_test_${test.id}_answers`;
+          const savedProgressStr = localStorage.getItem(savedProgressKey);
+          
+          if (savedProgressStr) {
+            try {
+              const progressData = JSON.parse(savedProgressStr);
+              if (progressData.answers) {
+                setAnswers(progressData.answers);
+              }
+              if (progressData.currentQuestionIndex !== undefined) {
+                setCurrentQuestionIndex(progressData.currentQuestionIndex);
+              }
+            } catch (err) {
+              console.error("Failed to load saved progress:", err);
+            }
+          }
         }
       } catch (err: any) {
         console.error("Failed to load placement test:", err);
@@ -338,6 +457,20 @@ export default function TakePlacementTestPage() {
 
     loadPlacementTest();
   }, [studentId]);
+
+  // Enforce per-day attempt limit (3 per day)
+  useEffect(() => {
+    if (!placementTest || !studentId) return;
+    ensureAttemptLimit();
+  }, [placementTest, studentId, ensureAttemptLimit]);
+
+  // Check if time expired when loading (after answers are loaded)
+  useEffect(() => {
+    if (!loading && timeRemaining !== null && timeRemaining <= 0 && !submitting && questions.length > 0) {
+      // Time has expired, auto-submit
+      handleSubmit(true);
+    }
+  }, [loading, timeRemaining, submitting, questions.length]);
 
   // Timer countdown
   useEffect(() => {
@@ -455,7 +588,18 @@ export default function TakePlacementTestPage() {
       setIsSaving(true);
       // Save answers to localStorage as backup
       if (placementTest) {
-        localStorage.setItem(`placement_test_${placementTest.id}_answers`, JSON.stringify(answers));
+        const progressData = {
+          answers,
+          currentQuestionIndex,
+          timeRemaining,
+          startTime: localStorage.getItem(`placement_test_${placementTest.id}_startTime`) || new Date().toISOString(),
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem(`placement_test_${placementTest.id}_answers`, JSON.stringify(progressData));
+        // Also save start time separately if not already saved
+        if (!localStorage.getItem(`placement_test_${placementTest.id}_startTime`)) {
+          localStorage.setItem(`placement_test_${placementTest.id}_startTime`, progressData.startTime);
+        }
       }
       setLastSaved(new Date());
     } catch (err) {
@@ -589,6 +733,7 @@ export default function TakePlacementTestPage() {
   };
 
   const handleSubmit = async (autoSubmit: boolean = false) => {
+    if (attemptLimitReached) return;
     if (!autoSubmit) {
       setShowSubmitDialog(true);
       return;
@@ -614,25 +759,32 @@ export default function TakePlacementTestPage() {
       });
 
       // Hiển thị popup điểm sau khi submit
-      if (detailedScore) {
-        setSubmissionScore(detailedScore);
-        setShowScoreDialog(true);
-      } else {
-        // Nếu không tính được điểm chi tiết, vẫn hiển thị dialog với thông tin cơ bản
-        const basicScore = {
-          score: 0,
-          totalPoints: questions.reduce((sum, q) => sum + (q.points || 0), 0),
-          earnedPoints: 0,
-          totalQuestions: questions.length,
-          correctAnswers: 0,
-          answeredQuestions: Object.keys(answers).length,
-        };
-        setSubmissionScore(basicScore);
-        setShowScoreDialog(true);
-      }
+      const basicScore = {
+        score: 0,
+        totalPoints: questions.reduce((sum, q) => sum + (q.points || 0), 0),
+        earnedPoints: 0,
+        totalQuestions: questions.length,
+        correctAnswers: 0,
+        answeredQuestions: Object.keys(answers).length,
+      };
+
+      const scoreToStore = detailedScore || basicScore;
+      setSubmissionScore(scoreToStore);
+      setShowScoreDialog(true);
+      saveAttemptRecord(scoreToStore);
     } catch (err: any) {
       console.error("Failed to submit placement test:", err);
-      showError(err.response?.data || err.message || "Failed to submit placement test");
+      
+      // Handle rate limiting (429 Too Many Requests)
+      if (err.response?.status === 429) {
+        const retryAfter = err.response?.headers?.['retry-after'] || 60;
+        showError(
+          `Too many requests. Please wait ${retryAfter} seconds before submitting again. ` +
+          `If you're testing, try waiting a bit longer between submissions.`
+        );
+      } else {
+        showError(err.response?.data || err.message || "Failed to submit placement test");
+      }
     } finally {
       setSubmitting(false);
       setShowSubmitDialog(false);
@@ -645,11 +797,16 @@ export default function TakePlacementTestPage() {
   };
 
   const handleExit = () => {
+    // If daily limit is reached, no need to show confirmation dialog
+    if (attemptLimitReached) {
+      navigate(-1);
+      return;
+    }
     setShowExitDialog(true);
   };
 
-  const confirmExit = () => {
-    saveAnswers();
+  const confirmExit = async () => {
+    await saveAnswers();
     navigate(-1);
   };
 
@@ -1008,6 +1165,63 @@ export default function TakePlacementTestPage() {
   const hasPassageOrAudio = currentPassage || currentAudioUrl;
   const shouldCenterQuestion = isReadingQuestion && !hasPassageOrAudio;
 
+  if (attemptLimitReached) {
+    const latestScore =
+      submissionScore ||
+      {
+        score: 0,
+        totalPoints: 0,
+        earnedPoints: 0,
+        totalQuestions: 0,
+        correctAnswers: 0,
+        answeredQuestions: 0,
+      };
+
+    return (
+      <div className="min-h-screen bg-neutral-50">
+        <AssignmentHeader
+          title={placementTest?.title || "Placement Test"}
+          skillName={placementTest?.questions?.[0]?.skillType || ""}
+          lastSaved={lastSaved}
+          isSaving={false}
+          onBack={handleExit}
+          onSubmit={() => {}}
+          canSubmit={false}
+          timeRemaining={timeRemaining}
+          timeLimitSeconds={initialTimeLimit}
+          formatTime={formatTime}
+          submitText="Submit"
+        />
+
+        <div className="px-4 py-6 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto">
+            <Card className="p-6 border-amber-200 bg-amber-50">
+              <h2 className="text-xl font-semibold text-amber-800 mb-2">Daily attempt limit reached</h2>
+              <p className="text-amber-700">
+                You have reached the maximum of <strong>3 placement test attempts</strong> for today. You can try again tomorrow.
+              </p>
+              <div className="mt-4 flex justify-center">
+                <Button variant="secondary" onClick={() => setShowLimitScoreDialog(true)}>
+                  View latest score
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        <ScoreResultDialog
+          isOpen={showLimitScoreDialog}
+          onClose={() => setShowLimitScoreDialog(false)}
+          submissionScore={latestScore}
+          onRecommendCourses={() => navigate("/courses#courses-content")}
+          onRecommendPackages={() => navigate("/courses#packages-content")}
+          recommendCoursesLabel="Courses for you"
+          recommendPackagesLabel="Learning paths for you"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
@@ -1017,8 +1231,11 @@ export default function TakePlacementTestPage() {
         lastSaved={lastSaved}
         isSaving={isSaving}
         onBack={handleExit}
-        onSubmit={() => handleSubmit(false)}
-        canSubmit={!submitting}
+        onSubmit={() => {
+          if (attemptLimitReached || (timeRemaining !== null && timeRemaining <= 0)) return;
+          handleSubmit(false);
+        }}
+        canSubmit={!attemptLimitReached && !submitting && timeRemaining !== null && timeRemaining > 0}
         timeRemaining={timeRemaining}
         timeLimitSeconds={initialTimeLimit}
         formatTime={formatTime}
@@ -1089,7 +1306,12 @@ export default function TakePlacementTestPage() {
                       {currentQuestionIndex < questions.length - 1 ? (
                         <Button onClick={handleNext}>Next</Button>
                       ) : (
-                        <Button onClick={() => handleSubmit(false)} disabled={submitting}>
+                        <Button
+                          onClick={() => handleSubmit(false)}
+                          disabled={
+                            submitting || attemptLimitReached || (timeRemaining !== null && timeRemaining <= 0)
+                          }
+                        >
                           {submitting ? "Submitting..." : "Submit Test"}
                         </Button>
                       )}
@@ -1323,10 +1545,14 @@ export default function TakePlacementTestPage() {
       />
 
       {/* Score Result Dialog */}
-      <ScoreResultDialog 
-        isOpen={showScoreDialog} 
-        onClose={() => navigate(-1)} 
+      <ScoreResultDialog
+        isOpen={showScoreDialog}
+        onClose={() => navigate(-1)}
         submissionScore={submissionScore}
+        onRecommendCourses={() => navigate("/courses#courses-content")}
+        onRecommendPackages={() => navigate("/courses#packages-content")}
+        recommendCoursesLabel="Courses for you"
+        recommendPackagesLabel="Learning path for you"
         maxScore={900}
       />
     </div>

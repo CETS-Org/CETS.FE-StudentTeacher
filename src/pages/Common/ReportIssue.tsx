@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "@/components/ui/PageHeader";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import TechnicalIssueReportPopup from "@/pages/Common/components/TechnicalIssueReportPopup";
 import AcademicChangeRequestPopup from "@/pages/Common/components/AcademicChangeRequestPopup";

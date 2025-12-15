@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
-import Input from "@/components/ui/Input";
+import Card from "@/components/ui/card";
+import Input from "@/components/ui/input";
 import Select from "@/components/ui/Select";
 import CourseCard, { type Course } from "@/components/ui/CourseCard";
 import Pagination from "@/Shared/Pagination";
@@ -262,13 +262,9 @@ export default function Wishlist() {
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     className="min-w-[200px] border-neutral-200 rounded-lg shadow-sm focus:!ring-1 focus:!ring-primary-500"
-                  >
-                    {sortOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
+                    options={sortOptions}
+                    placeholder="Sort by..."
+                  />
 
                   {/* Clear Filters Button */}
                   {activeFiltersCount > 0 && (

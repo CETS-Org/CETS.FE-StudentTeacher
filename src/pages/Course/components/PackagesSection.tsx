@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, Package, Filter } from "lucide-react";
 
 import CoursePackageListItem from "@/pages/CoursePackage/components/CoursePackageListItem";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
@@ -229,7 +229,7 @@ export default function PackagesSection() {
         </div>
 
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto relative mb-12">
+        <div id="packages-content" className="max-w-2xl mx-auto relative mb-12 scroll-mt-24">
           <div className="relative">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 w-6 h-6" />
             <Input
@@ -289,14 +289,9 @@ export default function PackagesSection() {
                 <Select
                   value={sort}
                   onChange={(e) => setSort(e.target.value)}
+                  options={sortOptions}
                   className="min-w-[220px] border-neutral-200 rounded-xl shadow-sm focus:!ring-1 focus:!ring-accent-500 focus:!border-transparent hover:shadow-md transition-all"
-                >
-                  {sortOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
 
               {/* Clear Filters Button */}

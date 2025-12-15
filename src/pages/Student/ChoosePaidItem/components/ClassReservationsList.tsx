@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import ClassReservationItem from "./ClassReservationItem";
 import { Package, Search } from "lucide-react";
 import { api } from "@/api";
@@ -37,8 +37,6 @@ export default function ClassReservationsList({
         // Call API to get class reservations
         const response = await api.getClassReservations(studentId);
         const apiReservations = response.data;
-        
-        console.log('Class Reservations API Response:', apiReservations);
         
         // Transform API response to ClassReservationResponse format
         const transformedReservations: ClassReservationResponse[] = apiReservations.map((res: any) => ({

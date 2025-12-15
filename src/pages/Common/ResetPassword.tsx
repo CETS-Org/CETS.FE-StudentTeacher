@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import Card from "../../components/ui/card";
 import { ArrowLeft, Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield, KeyRound } from "lucide-react";
 import { api } from "@/api";
 import "../../styles/login-animations.css";
@@ -62,15 +62,12 @@ export default function ResetPassword() {
     setSuccessMessage("");
     
     try {
-      console.log("Reset password data:", { email, token, password: data.password });
-      
       // Call the reset password API
       const response = await api.resetPassword({
         email: email,
         newPassword: data.password,
         token: token
       });
-      console.log("Reset password response:", response.data);
       
       // Show success message briefly before navigation
       setSuccessMessage("Password reset successful!");

@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { getTeacherId } from "@/lib/utils";
@@ -318,14 +318,6 @@ export default function AIReadingTestGeneratorPopup({
         },
       };
 
-      // Debug log to verify data
-      console.log("=== AI Reading Test Assignment Data ===");
-      console.log("Reading Passage Length:", readingPassage.length);
-      console.log("Questions Count:", quizQuestions.length);
-      console.log("Total Points:", totalPoints);
-      console.log("Question Data:", questionData);
-      console.log("=======================================");
-
       // Serialize question data to JSON string
       const questionJson = JSON.stringify(questionData);
 
@@ -406,40 +398,69 @@ export default function AIReadingTestGeneratorPopup({
 
           <DialogBody className="flex-1 overflow-y-auto">
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                {error}
+              <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-800 text-sm flex items-start gap-3">
+                <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold mb-1">Error</p>
+                  <p>{error}</p>
+                </div>
               </div>
             )}
 
             {/* Step 1: Input Topic */}
             {currentStep === "input" && (
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Enter a topic for the reading test
-                  </h3>
+                <div className="bg-gradient-to-br from-secondary-100 to-blue-50 border-2 border-secondary-200 rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Generate Reading Test
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Let AI create a reading passage and questions for you
+                      </p>
+                    </div>
+                  </div>
+                  
                   <Input
                     label="Topic"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="e.g., technology, environment, education..."
+                    placeholder="e.g., technology, environment, education, history..."
                     disabled={loading}
-                    className="w-full"
+                    className="w-full bg-white"
                   />
-                  <p className="mt-2 text-sm text-gray-500">
-                    The AI will generate a reading passage and comprehension questions
-                    based on this topic.
+                  <p className="mt-3 text-sm text-gray-600">
+                    Enter a topic and our AI will generate a comprehensive reading passage with comprehension questions.
                   </p>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
-                  <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
-                    <li>Enter a topic you want to create a reading test about</li>
-                    <li>AI will generate a reading passage and questions</li>
-                    <li>Preview and edit the generated content</li>
-                    <li>Download as Word document or create assignment directly</li>
-                  </ul>
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-5">
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-indigo-600" />
+                    How it works
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-indigo-600 font-bold">1.</span>
+                      <p className="text-sm text-gray-700">Enter a topic for your reading test</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-indigo-600 font-bold">2.</span>
+                      <p className="text-sm text-gray-700">AI generates passage and questions</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-indigo-600 font-bold">3.</span>
+                      <p className="text-sm text-gray-700">Preview and edit the content</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-indigo-600 font-bold">4.</span>
+                      <p className="text-sm text-gray-700">Download or create assignment</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -447,82 +468,110 @@ export default function AIReadingTestGeneratorPopup({
             {/* Step 2: Preview Generated Content */}
             {currentStep === "preview" && formattedTest && (
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Preview Generated Test</h3>
-                  <p className="text-sm text-gray-600">
-                    This will be created as a <span className="font-semibold text-primary-600">Reading Quiz</span> assignment. 
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Preview Generated Test</h3>
+                  <p className="text-sm text-gray-700">
+                    This will be created as a <span className="font-semibold text-green-700">Reading Quiz</span> assignment. 
                     Answers are hidden from students and will be used for auto-grading.
                   </p>
                 </div>
 
                 {/* Reading Passage - Editable */}
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
+                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                      <FileText className="w-4 h-4 text-white" />
+                    </div>
                     Reading Passage (Editable)
                   </h4>
                   <textarea
                     value={editablePassage}
                     onChange={(e) => setEditablePassage(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                    rows={10}
+                    className="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white shadow-sm resize-none"
+                    rows={18}
                     placeholder="Enter reading passage..."
                   />
+                  <p className="text-xs text-gray-500 mt-2">
+                    {editablePassage.length} characters
+                  </p>
                 </div>
 
                 {/* Questions - Editable */}
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    Questions ({editableQuestions.length}) - {editableQuestions.reduce((sum, q) => sum + (q.points || 0), 0)} points total (Editable)
-                  </h4>
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                      <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">{editableQuestions.length}</span>
+                      </div>
+                      Questions ({editableQuestions.length}) - {editableQuestions.reduce((sum, q) => sum + (q.points || 0), 0).toFixed(2)} points total
+                    </h4>
+                    <span className="text-xs font-medium text-purple-700 bg-purple-100 px-3 py-1 rounded-full">
+                      Editable
+                    </span>
+                  </div>
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                     {editableQuestions.map((q, idx) => (
-                      <div key={q.id || idx} className="bg-white border rounded-lg p-4">
+                      <div key={q.id || idx} className="bg-white border-2 border-purple-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                        {/* Question Header */}
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <span className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                              {idx + 1}
+                            </span>
+                            <span className="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                              {q.type?.replace(/_/g, ' ').toUpperCase() || 'MULTIPLE CHOICE'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-gray-600">Points:</label>
+                            <input
+                              type="number"
+                              value={q.points}
+                              onChange={(e) => {
+                                const updated = [...editableQuestions];
+                                updated[idx] = { ...updated[idx], points: parseInt(e.target.value) || 1 };
+                                setEditableQuestions(updated);
+                              }}
+                              min="1"
+                              className="w-16 px-2 py-1 border-2 border-purple-200 rounded-lg text-sm font-semibold text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+
                         {/* Question Text */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Question {idx + 1}
+                        <div className="mb-4">
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Question Text
                           </label>
-                          <input
-                            type="text"
+                          <textarea
                             value={q.question}
                             onChange={(e) => {
                               const updated = [...editableQuestions];
                               updated[idx] = { ...updated[idx], question: e.target.value };
                               setEditableQuestions(updated);
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                            rows={2}
                           />
                         </div>
-
-                        {/* Points */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Points
-                          </label>
-                          <input
-                            type="number"
-                            value={q.points}
-                            onChange={(e) => {
-                              const updated = [...editableQuestions];
-                              updated[idx] = { ...updated[idx], points: parseInt(e.target.value) || 1 };
-                              setEditableQuestions(updated);
-                            }}
-                            min="1"
-                            className="w-20 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          />
-                        </div>
-
-                        {/* Type Display */}
-                        <p className="text-xs text-gray-500 mb-2">Type: {q.type?.replace(/_/g, ' ')}</p>
 
                         {/* Options for Multiple Choice / True False */}
                         {q.options && q.options.length > 0 && (
-                          <div className="space-y-2">
-                            <label className="block text-xs font-medium text-gray-700">Options:</label>
+                          <div className="space-y-3">
+                            <label className="block text-sm font-semibold text-gray-900">Answer Options:</label>
                             {q.options.map((opt: any, optIdx: number) => (
-                              <div key={opt.id || optIdx} className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-600 w-6">{opt.label}.</span>
+                              <div key={opt.id || optIdx} className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                q.correctAnswer === opt.id 
+                                  ? 'bg-green-50 border-green-300' 
+                                  : 'bg-gray-50 border-gray-200 hover:border-purple-200'
+                              }`}>
+                                <span className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-lg ${
+                                  q.correctAnswer === opt.id 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-gray-300 text-gray-700'
+                                }`}>
+                                  {opt.label}
+                                </span>
                                 <input
                                   type="text"
                                   value={opt.text}
@@ -533,20 +582,26 @@ export default function AIReadingTestGeneratorPopup({
                                     updated[idx] = { ...updated[idx], options: newOptions };
                                     setEditableQuestions(updated);
                                   }}
-                                  className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                  className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                                 />
-                                <input
-                                  type="radio"
-                                  name={`correct-${idx}`}
-                                  checked={q.correctAnswer === opt.id}
-                                  onChange={() => {
+                                <button
+                                  type="button"
+                                  onClick={() => {
                                     const updated = [...editableQuestions];
                                     updated[idx] = { ...updated[idx], correctAnswer: opt.id };
                                     setEditableQuestions(updated);
                                   }}
-                                  className="h-4 w-4 text-primary-600"
-                                  title="Mark as correct"
-                                />
+                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    q.correctAnswer === opt.id
+                                      ? 'bg-green-500 border-green-600'
+                                      : 'bg-white border-gray-300 hover:border-green-400'
+                                  }`}
+                                  title="Mark as correct answer"
+                                >
+                                  {q.correctAnswer === opt.id && (
+                                    <CheckCircle className="w-4 h-4 text-white" />
+                                  )}
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -554,8 +609,8 @@ export default function AIReadingTestGeneratorPopup({
 
                         {/* Fill in the Blank */}
                         {q.type === 'fill_in_the_blank' && (
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Correct Answer:</label>
+                          <div className="mt-3">
+                            <label className="block text-sm font-semibold text-gray-900 mb-2">Correct Answer:</label>
                             <input
                               type="text"
                               value={q.correctAnswer || ''}
@@ -564,16 +619,16 @@ export default function AIReadingTestGeneratorPopup({
                                 updated[idx] = { ...updated[idx], correctAnswer: e.target.value };
                                 setEditableQuestions(updated);
                               }}
-                              placeholder="Correct answer"
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              placeholder="Enter the correct answer"
+                              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                             />
                           </div>
                         )}
 
                         {/* Short Answer */}
                         {q.type === 'short_answer' && (
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Expected Answer:</label>
+                          <div className="mt-3">
+                            <label className="block text-sm font-semibold text-gray-900 mb-2">Expected Answer:</label>
                             <textarea
                               value={q.correctAnswer || ''}
                               onChange={(e) => {
@@ -581,67 +636,81 @@ export default function AIReadingTestGeneratorPopup({
                                 updated[idx] = { ...updated[idx], correctAnswer: e.target.value };
                                 setEditableQuestions(updated);
                               }}
-                              rows={2}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              rows={3}
+                              placeholder="Enter expected answer or keywords"
+                              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white resize-none"
                             />
                           </div>
                         )}
 
                         {/* Delete Button */}
-                        <button
-                          onClick={() => {
-                            const updated = editableQuestions.filter((_, i) => i !== idx);
-                            setEditableQuestions(updated);
-                          }}
-                          className="mt-3 text-xs text-red-600 hover:text-red-800"
-                        >
-                          🗑️ Delete Question
-                        </button>
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <button
+                            onClick={() => {
+                              const updated = editableQuestions.filter((_, i) => i !== idx);
+                              setEditableQuestions(updated);
+                            }}
+                            className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                            Delete Question
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Options Section */}
-                <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-semibold text-gray-900">What would you like to do?</h4>
-                  
-                  {/* Download Options */}
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-500 mb-2">
-                      📄 Download Word documents (includes answers for teacher reference)
+                <div className="space-y-6 border-t-2 border-gray-200 pt-6">
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4">
+                    <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                      <Download className="w-5 h-5 text-amber-600" />
+                      Download Options
+                    </h4>
+                    <p className="text-sm text-gray-700 mb-4">
+                      Download Word documents with answers included for teacher reference
                     </p>
-                    <Button
-                      variant="secondary"
-                      onClick={handleDownloadCombined}
-                      disabled={loading}
-                      iconLeft={<Download className="w-4 h-4" />}
-                      className="w-full justify-start"
-                    >
-                      Download as Single Document (Passage + Questions)
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={handleDownloadSeparate}
-                      disabled={loading}
-                      iconLeft={<Download className="w-4 h-4" />}
-                      className="w-full justify-start"
-                    >
-                      Download as Separate Documents (2 files)
-                    </Button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Button
+                        variant="secondary"
+                        onClick={handleDownloadCombined}
+                        disabled={loading}
+                        iconLeft={<Download className="w-4 h-4" />}
+                        className="w-full justify-center bg-white hover:bg-amber-50 border-2 border-amber-200 !text-black"
+                      >
+                        Single Document
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleDownloadSeparate}
+                        disabled={loading}
+                        iconLeft={<Download className="w-4 h-4" />}
+                        className="w-full justify-center bg-white hover:bg-amber-50 border-2 border-amber-200 !text-black"
+                      >
+                        Separate Files
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Create Assignment */}
                   {classMeetingId && (
-                    <div className="border-t pt-4 mt-4">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                        <p className="text-xs text-blue-800">
-                          🎯 <span className="font-semibold">Creating Reading Quiz Assignment:</span> This will create a quiz with the reading passage and questions. 
-                          Answers are automatically saved for grading but hidden from students.
-                        </p>
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-5 shadow-sm">
+                      <div className="bg-green-100 border-2 border-green-300 rounded-lg p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-green-900 mb-1">
+                              Creating Reading Quiz Assignment
+                            </p>
+                            <p className="text-xs text-green-700">
+                              This will create a quiz with the reading passage and questions. Answers are automatically saved for grading but hidden from students.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <h4 className="font-medium text-gray-900 mb-3">
-                        Create Quiz Assignment:
+                      <h4 className="font-bold text-gray-900 mb-4 text-lg">
+                        Assignment Details
                       </h4>
                       <div className="space-y-3">
                         <Input
@@ -650,18 +719,19 @@ export default function AIReadingTestGeneratorPopup({
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder="Enter assignment title"
                           disabled={loading}
+                          className="bg-white"
                         />
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description (Optional)
+                          <label className="block text-sm font-semibold text-gray-900 mb-2">
+                            Description <span className="text-gray-500 font-normal">(Optional)</span>
                           </label>
                           <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Enter assignment description"
                             disabled={loading}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            rows={2}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white resize-none"
+                            rows={3}
                           />
                         </div>
                         <Input
@@ -671,14 +741,17 @@ export default function AIReadingTestGeneratorPopup({
                           onChange={(e) => setDueDate(e.target.value)}
                           min={getMinDateTime()}
                           disabled={loading}
+                          className="bg-white"
                         />
                         
                         {/* Scoring & Timing */}
-                        <div className="border-t pt-3 mt-3">
-                          <h5 className="font-medium text-gray-900 mb-2">⏱️ Scoring & Timing</h5>
+                        <div className="border-t-2 border-gray-200 pt-4 mt-4">
+                          <h5 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            Scoring & Timing
+                          </h5>
                           <div className="space-y-3">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-semibold text-gray-900 mb-2">
                                 Time Limit (minutes)
                               </label>
                               <input
@@ -688,14 +761,14 @@ export default function AIReadingTestGeneratorPopup({
                                 placeholder="No time limit"
                                 min="1"
                                 disabled={loading}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
                               />
-                              <p className="mt-1 text-xs text-gray-500">
+                              <p className="mt-2 text-xs text-gray-600">
                                 Leave empty for no time limit. Students will auto-submit when time expires.
                               </p>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-semibold text-gray-900 mb-2">
                                 Maximum Attempts
                               </label>
                               <input
@@ -705,9 +778,9 @@ export default function AIReadingTestGeneratorPopup({
                                 min="1"
                                 max="10"
                                 disabled={loading}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
                               />
-                              <p className="mt-1 text-xs text-gray-500">
+                              <p className="mt-2 text-xs text-gray-600">
                                 Number of times students can attempt this assignment.
                               </p>
                             </div>
@@ -715,10 +788,16 @@ export default function AIReadingTestGeneratorPopup({
                         </div>
 
                         {/* Answer Visibility */}
-                        <div className="border-t pt-3 mt-3">
-                          <h5 className="font-medium text-gray-900 mb-2">👁️ Answer Visibility</h5>
-                          <div className="space-y-2">
-                            <label className="flex items-center">
+                        <div className="border-t-2 border-gray-200 pt-4 mt-4">
+                          <h5 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            Answer Visibility
+                          </h5>
+                          <div className="space-y-3">
+                            <label className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                              answerVisibility === "immediately" 
+                                ? 'bg-green-50 border-green-300' 
+                                : 'bg-white border-gray-200 hover:border-green-200'
+                            }`}>
                               <input
                                 type="radio"
                                 name="answerVisibility"
@@ -726,13 +805,17 @@ export default function AIReadingTestGeneratorPopup({
                                 checked={answerVisibility === "immediately"}
                                 onChange={(e) => setAnswerVisibility(e.target.value as any)}
                                 disabled={loading}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                                className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300"
                               />
-                              <span className="ml-2 text-sm text-gray-700">
+                              <span className="ml-3 text-sm font-medium text-gray-900">
                                 Show answers immediately after submission
                               </span>
                             </label>
-                            <label className="flex items-center">
+                            <label className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                              answerVisibility === "after_due_date" 
+                                ? 'bg-green-50 border-green-300' 
+                                : 'bg-white border-gray-200 hover:border-green-200'
+                            }`}>
                               <input
                                 type="radio"
                                 name="answerVisibility"
@@ -740,13 +823,17 @@ export default function AIReadingTestGeneratorPopup({
                                 checked={answerVisibility === "after_due_date"}
                                 onChange={(e) => setAnswerVisibility(e.target.value as any)}
                                 disabled={loading}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                                className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300"
                               />
-                              <span className="ml-2 text-sm text-gray-700">
+                              <span className="ml-3 text-sm font-medium text-gray-900">
                                 Show answers after due date
                               </span>
                             </label>
-                            <label className="flex items-center">
+                            <label className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                              answerVisibility === "never" 
+                                ? 'bg-green-50 border-green-300' 
+                                : 'bg-white border-gray-200 hover:border-green-200'
+                            }`}>
                               <input
                                 type="radio"
                                 name="answerVisibility"
@@ -754,9 +841,9 @@ export default function AIReadingTestGeneratorPopup({
                                 checked={answerVisibility === "never"}
                                 onChange={(e) => setAnswerVisibility(e.target.value as any)}
                                 disabled={loading}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                                className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300"
                               />
-                              <span className="ml-2 text-sm text-gray-700">
+                              <span className="ml-3 text-sm font-medium text-gray-900">
                                 Never show answers
                               </span>
                             </label>
@@ -773,7 +860,7 @@ export default function AIReadingTestGeneratorPopup({
                               <CheckCircle className="w-4 h-4" />
                             )
                           }
-                          className="w-full"
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow-lg"
                         >
                           {loading ? "Creating Assignment..." : "Create Assignment"}
                         </Button>
@@ -796,9 +883,7 @@ export default function AIReadingTestGeneratorPopup({
               </Button>
             )}
             <div className="flex gap-2 ml-auto">
-              <Button variant="secondary" onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
+             
               {currentStep === "input" && (
                 <Button
                   onClick={handleGenerate}

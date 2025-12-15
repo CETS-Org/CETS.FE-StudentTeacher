@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import Loader from "@/components/ui/Loader";

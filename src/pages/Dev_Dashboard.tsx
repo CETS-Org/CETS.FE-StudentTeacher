@@ -1,5 +1,5 @@
 import PageHeader from "../components/ui/PageHeader";
-import Card from "../components/ui/Card";
+import Card from "../components/ui/card";
 import Button from "../components/ui/Button";
 import Table from "../components/ui/Table";
 import Form, { FormInput, FormSelect } from "../components/ui/Form";
@@ -139,7 +139,6 @@ export default function Dev_Dashboard() {
 
   function handleCreate(data: QuickRequestForm) {
     // Replace with your create action
-    console.log("Quick request submitted:", data);
     setIsLoading(true);
     setTimeout(() => setIsLoading(false), 2000);
   }

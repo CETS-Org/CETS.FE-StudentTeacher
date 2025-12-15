@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Loader from "@/components/ui/Loader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
@@ -137,7 +137,6 @@ export default function StudentAssignmentTaking() {
     intervalMs: 30000,
     onSave: async () => {
       // Auto-save logic will be implemented here
-      console.log("Auto-saving progress...");
     }
   });
 
@@ -189,41 +188,11 @@ export default function StudentAssignmentTaking() {
             const questionData: AssignmentQuestionData = await questionResponse.json();
             setQuestionData(questionData);
             
-            // Debug: log question data structure
-            console.log("📋 Question Data loaded:", {
-              skillName: assignmentData.skillName,
-              hasMedia: !!questionData.media,
-              mediaAudioUrl: questionData.media?.audioUrl,
-              questionsCount: questionData.questions?.length || 0,
-              firstQuestion: questionData.questions?.[0] ? {
-                id: questionData.questions[0].id,
-                _audioUrl: (questionData.questions[0] as any)._audioUrl,
-                audioUrl: (questionData.questions[0] as any).audioUrl,
-                reference: questionData.questions[0].reference
-              } : null
-            });
-            
             // Process questions: assign passage and audio to questions
             // Priority for passage: 1) question._passage, 2) question.readingPassage, 3) questionData.readingPassage
             // Priority for audio: 1) question._audioUrl (from JSON), 2) question.audioUrl, 3) question.reference, 4) questionData.media?.audioUrl
             const processedQuestions = (questionData.questions || []).map((q: any) => {
               const processedQ: any = { ...q };
-              
-              // Debug: log ALL questions (not just listening) to see data structure
-              console.log("🔊 Processing question:", {
-                questionId: q.id,
-                skillName: assignmentData.skillName,
-                isListening: assignmentData.skillName?.toLowerCase().includes("listening"),
-                has_audioUrl: !!q._audioUrl,
-                _audioUrl: q._audioUrl,
-                has_audioUrl_field: !!q.audioUrl,
-                audioUrl: q.audioUrl,
-                has_reference: !!q.reference,
-                reference: q.reference,
-                has_media_audioUrl: !!questionData.media?.audioUrl,
-                media_audioUrl: questionData.media?.audioUrl,
-                allKeys: Object.keys(q)
-              });
               
               // Process passage
               // If question already has _passage, keep it (for multiple passages)
@@ -255,14 +224,7 @@ export default function StudentAssignmentTaking() {
                   processedQ._audioUrl = questionData.media.audioUrl;
                 }
               }
-              
-              // Debug: log final processed question
-              console.log("🔊 Processed question result:", {
-                questionId: processedQ.id,
-                skillName: assignmentData.skillName,
-                final_audioUrl: processedQ._audioUrl,
-                final_reference: processedQ.reference
-              });
+            
               
               return processedQ;
             });
@@ -446,7 +408,6 @@ export default function StudentAssignmentTaking() {
       totalPoints += questionPoints;
 
       if (studentAnswer === undefined || studentAnswer === null || studentAnswer === "") {
-        console.log(`Question ${question.id} has no answer from student, skipping`);
         return;
       }
 
@@ -518,7 +479,6 @@ export default function StudentAssignmentTaking() {
           }
           break;
         default:
-          console.log(`Question ${question.id} has unsupported type: ${question.type}, skipping`);
           return;
       }
 
@@ -553,7 +513,6 @@ export default function StudentAssignmentTaking() {
   const calculateScore = (forceCalculate: boolean = false): number | null => {
    
     if (questions.length === 0) {
-      console.log('No questions found, cannot calculate score');
       return null;
     }
 
@@ -662,7 +621,6 @@ export default function StudentAssignmentTaking() {
       const percentageScore = (totalScore / totalPoints) * 10;
       finalScore = Math.round(percentageScore * 100) / 100; // Round to 2 decimal places
     } else {
-      console.log('No points available, returning 0');
       finalScore = 0;
     }
 
@@ -811,7 +769,6 @@ export default function StudentAssignmentTaking() {
       }
 
       // Log final payload before sending
-      console.log('📤 Final submission payload:', JSON.stringify(submissionData, null, 2));
 
       // Handle speaking assignment submission separately
       if (isSpeakingAssignment) {
@@ -947,16 +904,6 @@ export default function StudentAssignmentTaking() {
     const reference = question.reference;
     const audioUrl = _audioUrl || reference;
     
-    // Debug log - always log to see what's happening
-    console.log("🔊 getQuestionAudioUrl called:", {
-      questionId: question.id,
-      skillName: assignment?.skillName,
-      _audioUrl,
-      reference,
-      finalAudioUrl: audioUrl,
-      questionKeys: Object.keys(question)
-    });
-    
     if (!audioUrl) return null;
     
     // If already a full URL (http:// or https://), return as is
@@ -989,22 +936,7 @@ export default function StudentAssignmentTaking() {
     const audioPlayCount = normalizedAudioUrl ? (questionAudioPlayCount[normalizedAudioUrl] || 0) : 0;
     const remainingPlays = normalizedAudioUrl ? Math.max(0, MAX_AUDIO_PLAY_COUNT - audioPlayCount) : 0;
     const isAudioDisabled = normalizedAudioUrl ? audioPlayCount >= MAX_AUDIO_PLAY_COUNT : false;
-    
-    // Debug: log ALL questions to see what's happening
-    console.log("🔊 renderQuestion called:", {
-      questionId: question.id,
-      skillName: assignment?.skillName,
-      isListening: assignment?.skillName?.toLowerCase().includes("listening"),
-      questionAudioUrl,
-      _audioUrl: (question as any)._audioUrl,
-      reference: question.reference,
-      hasToggleAudio: !!toggleQuestionAudio,
-      hasAudioPlaying: !!questionAudioPlaying,
-      hasNormalizeUrl: !!normalizeAudioUrl,
-      audioPlayCount,
-      remainingPlays,
-      isAudioDisabled
-    });
+
 
     return (
       <QuestionRenderer

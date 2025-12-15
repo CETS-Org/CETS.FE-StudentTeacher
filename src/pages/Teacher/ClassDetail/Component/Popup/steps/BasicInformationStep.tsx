@@ -1,5 +1,5 @@
 import { X, Upload } from "lucide-react";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Select from "@/components/ui/Select";
 import type { Skill } from "../AdvancedAssignmentPopup";
 

@@ -21,7 +21,7 @@ function getVariantClasses(variant: ButtonVariant): string {
       return "bg-transparent text-neutral-700 hover:bg-neutral-100";
     case "primary":
     default:
-      return "bg-primary-600 text-white hover:bg-accent-300";
+      return "bg-primary-600 text-white hover:bg-accent2-500";
   }
 }
 

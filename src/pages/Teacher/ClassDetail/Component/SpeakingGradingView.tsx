@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ChevronLeft, ChevronRight, Save, MessageSquare, Award, Bot, Play, Pause, Volume2, Download } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
@@ -472,7 +472,6 @@ export default function SpeakingGradingView({
   const getFullAudioUrl = (audioUrl: string): string => {
     // Handle different URL formats
     if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
-      console.log('Using full URL:', audioUrl);
       return audioUrl; // Already a full URL
     }
     
@@ -530,20 +529,11 @@ export default function SpeakingGradingView({
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       const audioDuration = audioRef.current.duration;
-      console.log('Audio metadata loaded:', {
-        duration: audioDuration,
-        readyState: audioRef.current.readyState,
-        networkState: audioRef.current.networkState,
-        src: audioRef.current.src,
-        currentSrc: audioRef.current.currentSrc
-      });
       
       // Validate duration before setting
       if (isFinite(audioDuration) && audioDuration > 0) {
         setDuration(audioDuration);
-        console.log('Duration set successfully:', audioDuration);
       } else {
-        console.warn('Invalid audio duration:', audioDuration);
         setDuration(0);
       }
       setAudioLoading(false);
@@ -922,7 +912,6 @@ export default function SpeakingGradingView({
                       console.error('Native audio player error:', e);
                     }}
                     onLoadStart={() => {
-                      console.log('Native audio player load started');
                     }}
                   >
                     <source src={audioUrl} type="audio/mpeg" />

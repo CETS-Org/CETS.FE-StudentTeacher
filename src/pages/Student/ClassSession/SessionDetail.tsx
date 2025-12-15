@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Tabs from "@/components/ui/Tabs";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import Loader from "@/components/ui/Loader";
@@ -225,10 +225,8 @@ export default function SessionDetail() {
     }
     
     try {
-      console.log('Loading assignments for session:', sessionId);
       const data = await getAssignmentsByMeetingAndStudent(sessionId, studentId);
       setAssignments(data);
-      console.log('Assignments loaded:', data);
     } catch (e: any) {
       setErrorAssignments(e?.message || "Failed to load assignments");
       console.error('Error loading assignments:', e);
@@ -453,9 +451,7 @@ export default function SessionDetail() {
     // This handles both successful submissions and cancellations
     setTimeout(async () => {
       try {
-        console.log('Refreshing assignments after closing writing view...');
         await loadAssignments();
-        console.log('Assignments refreshed after closing view');
         
         // If submission was successful, try one more refresh after a delay
         // to ensure backend has fully processed the submission
@@ -463,9 +459,7 @@ export default function SessionDetail() {
           setWritingSubmissionSuccess(false);
           setTimeout(async () => {
             try {
-              console.log('Second refresh to ensure submission is processed...');
               await loadAssignments();
-              console.log('Second refresh completed');
             } catch (error) {
               console.warn('Second refresh failed:', error);
             }
@@ -505,21 +499,7 @@ export default function SessionDetail() {
       formData.append("FileName", fileNameWithoutExtension);
       formData.append("ContentType", contentType);
 
-      console.log('Submitting writing assignment:', {
-        originalFileName: file.name,
-        fileName: fileNameWithoutExtension,
-        contentType: contentType,
-        fileSize: file.size,
-        assignmentId: writingAssignment.id,
-        studentId: studentId
-      });
-
       const response = await submitWritingAssignment(formData);
-
-      console.log('Writing assignment submission response:', {
-        status: response.status,
-        data: response.data
-      });
 
       // Handle nested response structure: { success, data: { submissionId, score, feedback, uploadUrl, storeUrl, submittedAt, isAiScore } } or direct data
       let responseData = response.data;
@@ -527,15 +507,11 @@ export default function SessionDetail() {
         responseData = responseData.data;
       }
 
-      console.log('Parsed response data:', responseData);
-
       // Extract uploadUrl and other data
       const { uploadUrl, storeUrl, submissionId, score, feedback, submittedAt, isAiScore } = responseData;
 
       // Step 2: Upload file to Cloudflare using uploadUrl
       if (uploadUrl) {
-        console.log('Uploading file to Cloudflare:', uploadUrl);
-        
         const putResp = await fetch(uploadUrl, {
           method: 'PUT',
           headers: {
@@ -547,8 +523,6 @@ export default function SessionDetail() {
         if (!putResp.ok) {
           throw new Error(`File upload to Cloudflare failed: ${putResp.status} ${putResp.statusText}`);
         }
-
-        console.log('File uploaded to Cloudflare successfully');
       } else {
         console.warn('No uploadUrl received from server, skipping file upload');
       }
@@ -574,17 +548,12 @@ export default function SessionDetail() {
       // This ensures the API returns the updated submission status
       setTimeout(async () => {
         try {
-          console.log('Refreshing assignments after submission...');
           await loadAssignments();
-          console.log('Assignments refreshed successfully');
         } catch (refreshError) {
-          console.warn('Failed to refresh assignments after submission:', refreshError);
           // Try one more time after a longer delay
           setTimeout(async () => {
             try {
-              console.log('Retrying assignments refresh...');
               await loadAssignments();
-              console.log('Assignments refreshed on retry');
             } catch (retryError) {
               console.error('Retry refresh also failed:', retryError);
             }
@@ -713,16 +682,6 @@ export default function SessionDetail() {
         formData.append('studentID', studentId);
         formData.append('FileName', fileNameWithoutExt);
         formData.append('ContentType', contentType);
-
-        console.log('Submitting writing assignment (file upload):', {
-          originalFileName: file.name,
-          fileName: fileNameWithoutExt,
-          contentType: contentType,
-          fileExtension: fileExtension,
-          fileSize: file.size,
-          assignmentId: assignmentId,
-          studentId: studentId
-        });
 
         const writingResponse = await submitWritingAssignment(formData);
         
@@ -920,73 +879,65 @@ export default function SessionDetail() {
               )}
               {!loadingContext && !errorContext && context && (
                 <>
-                  {/* Session Overview Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-gradient-to-br from-secondary-200 to-secondary-300 border border-primary-200 rounded-xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-                          <BookOpen className="w-4 h-4 text-white" />
-                        </div>
-                        <h4 className="font-semibold text-primary-800">Topic Title</h4>
-                      </div>
-                      <p className="text-primary-700 font-medium">{context.topicTitle}</p>
-                    </div>
-                    
-                    <div className="p-4 bg-gradient-to-br from-accent-50 to-accent-100 border border-accent-200 rounded-xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center">
-                          <Clock className="w-4 h-4 text-white" />
-                        </div>
-                        <h4 className="font-semibold text-accent-800">Duration</h4>
-                      </div>
-                      <p className="text-accent-700 font-medium">{context.totalSlots} minutes</p>
-                    </div>
-                    
-                    <div className="p-4 bg-gradient-to-br from-warning-50 to-warning-100 border border-warning-200 rounded-xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 bg-warning-500 rounded-lg flex items-center justify-center">
-                          <CheckCircle className="w-4 h-4 text-white" />
-                        </div>
-                        <h4 className="font-semibold text-warning-800">Required</h4>
-                      </div>
-                      <p className="text-warning-700 font-medium">{context.required ? 'Yes' : 'No'}</p>
-                    </div>
-                  </div>
-
-                  {/* Learning Objectives */}
-                  <div className="p-6 bg-gradient-to-br from-success-50 to-success-100 border border-success-200 rounded-xl">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-success-500 rounded-xl flex items-center justify-center">
-                        <Target className="w-5 h-5 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-success-800">Learning Objectives</h3>
-                    </div>
-                    {(!context.objectives || !Array.isArray(context.objectives) || context.objectives.length === 0) ? (
-                      <div className="text-success-700">No objectives provided.</div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {context.objectives.map((objective, index) => (
-                          <div key={index} className="flex items-start gap-3 p-4 bg-white border border-success-200 rounded-lg shadow-sm">
-                            <div className="w-6 h-6 bg-success-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-white text-xs font-bold">{index + 1}</span>
-                            </div>
-                            <p className="text-success-800 font-medium">{objective}</p>
+                  {/* Main Content Area with 2-column layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left Column - Topic and Content Summary */}
+                    <div className="lg:col-span-2 space-y-6">
+                      {/* Session Topic */}
+                      <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                            <BookOpen className="w-6 h-6 text-white" />
                           </div>
-                        ))}
+                          <div className="flex-1">
+                            <h3 className="text-sm font-medium text-blue-600 mb-1">Session Topic</h3>
+                            <p className="text-xl font-bold text-gray-900">{context.topicTitle}</p>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  {/* Content Summary */}
-                  <div className="p-6 bg-gradient-to-br from-info-50 to-info-100 border border-info-200 rounded-xl">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-info-500 rounded-xl flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-white" />
+
+                      {/* Content Summary */}
+                      <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl shadow-sm">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                            <FileText className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900">Content Summary</h3>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-white rounded-lg border border-blue-100">
+                          <p className="text-gray-700 leading-relaxed">{context.contentSummary || 'No content summary provided.'}</p>
+                        </div>
                       </div>
-                      <h3 className="text-xl font-bold text-info-800">Content Summary</h3>
                     </div>
-                    <div className="p-4 bg-white border border-info-200 rounded-lg">
-                      <p className="text-info-700 leading-relaxed text-base">{context.contentSummary || '—'}</p>
+
+                    {/* Right Column - Learning Objectives */}
+                    <div className="lg:col-span-1">
+                      <div className="p-6 bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 rounded-xl shadow-sm h-full">
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                            <Target className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900">Learning Objectives</h3>
+                          </div>
+                        </div>
+                        {(!context.objectives || !Array.isArray(context.objectives) || context.objectives.length === 0) ? (
+                          <div className="text-gray-600 text-sm">No objectives provided.</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {context.objectives.map((objective, index) => (
+                              <div key={index} className="flex items-start gap-3 p-3 bg-white border border-emerald-200 rounded-lg shadow-sm">
+                                <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <span className="text-white text-xs font-bold">{index + 1}</span>
+                                </div>
+                                <p className="text-gray-800 text-sm leading-relaxed">{objective}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
@@ -1596,9 +1547,7 @@ export default function SessionDetail() {
             if (!open) {
               setTimeout(async () => {
                 try {
-                  console.log('Refreshing assignments after closing AI score dialog...');
                   await loadAssignments();
-                  console.log('Assignments refreshed after closing AI dialog');
                 } catch (error) {
                   console.error('Failed to refresh assignments after closing AI dialog:', error);
                 }
@@ -1606,7 +1555,7 @@ export default function SessionDetail() {
             }
           }}
         >
-          <DialogContent size="lg">
+          <DialogContent size="md" className="max-h-[75vh] overflow-visible">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-primary-800">
                 <CheckCircle className="w-6 h-6 text-success-600" />
@@ -1614,9 +1563,9 @@ export default function SessionDetail() {
               </DialogTitle>
             </DialogHeader>
             <DialogBody>
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {/* Success Message */}
-                <div className="bg-success-50 border-l-4 border-success-500 p-4 rounded">
+                <div className="bg-success-50 border-l-4 border-success-500 p-3 rounded">
                   <p className="text-success-800 font-medium">
                     Your writing assignment has been submitted successfully!
                   </p>
@@ -1625,18 +1574,18 @@ export default function SessionDetail() {
                 {/* Score Section */}
                 {aiScoreData && (
                   <>
-                    <div className="bg-gradient-to-br from-accent-50 to-accent-100 border border-accent-200 rounded-xl p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0 w-16 h-16 bg-accent-500 rounded-full flex items-center justify-center">
-                          <span className="text-2xl font-bold text-white">{aiScoreData.score}</span>
+                    <div className="bg-gradient-to-br from-accent-50 to-accent-100 border border-accent-200 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-14 h-14 bg-accent-500 rounded-full flex items-center justify-center">
+                          <span className="text-xl font-bold text-white">{aiScoreData.score}</span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-lg font-bold text-primary-800 mb-2">
+                          <h3 className="text-base font-bold text-primary-800 mb-2">
                             {aiScoreData.isAiScore === true ? 'AI-Generated Score' : 'Score'}
                           </h3>
                           {aiScoreData.isAiScore === true && (
                             <div className="bg-warning-50 border-l-4 border-warning-500 p-3 rounded">
-                              <p className="text-sm text-warning-800 font-medium">
+                              <p className="text-xs text-warning-800 font-medium leading-relaxed">
                                 ⚠️ <strong>Important Note:</strong> The score you see is generated by AI for reference only. 
                                 This is NOT your final grade. Your instructor will review your submission and provide the official grade.
                               </p>
@@ -1648,18 +1597,18 @@ export default function SessionDetail() {
 
                     {/* Feedback Section */}
                     {aiScoreData.feedback && (
-                      <div className="bg-white border border-accent-200 rounded-xl p-6">
-                        <h4 className="text-md font-bold text-primary-800 mb-3 flex items-center gap-2">
+                      <div className="bg-white border border-accent-200 rounded-xl p-4">
+                        <h4 className="text-sm font-bold text-primary-800 mb-2 flex items-center gap-2">
                           <MessageSquare className="w-5 h-5 text-accent-500" />
                           {aiScoreData.isAiScore === true ? 'AI Feedback' : 'Feedback'}
                         </h4>
-                        <div className="bg-accent-25 rounded-lg p-4">
+                        <div className="bg-accent-25 rounded-lg p-3">
                           <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
                             {aiScoreData.feedback}
                           </p>
                         </div>
                         {aiScoreData.isAiScore === true && (
-                          <p className="text-xs text-neutral-500 mt-3 italic">
+                          <p className="text-xs text-neutral-500 mt-2 italic">
                             This feedback is automatically generated to help you understand your writing. 
                             Your instructor may provide additional feedback.
                           </p>
@@ -1678,9 +1627,7 @@ export default function SessionDetail() {
                   // Refresh assignments when closing dialog
                   setTimeout(async () => {
                     try {
-                      console.log('Refreshing assignments after clicking "Got it" button...');
                       await loadAssignments();
-                      console.log('Assignments refreshed after button click');
                     } catch (error) {
                       console.error('Failed to refresh assignments:', error);
                     }

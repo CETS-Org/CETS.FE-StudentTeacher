@@ -83,13 +83,6 @@ export const submitSpeakingAssignment = async ({
     // Handle both camelCase and PascalCase response formats
     const audioUploadUrls = uploadUrls.audioUploadUrls || uploadUrls.AudioUploadUrls || {};
 
-    console.log("Upload URLs response:", {
-      audioQuestionIds,
-      uploadUrls,
-      audioUploadUrls,
-      responseKeys: Object.keys(uploadUrls)
-    });
-
     // Step 3: Prepare answers JSON
     const answersData = Object.entries(answers).map(([questionId, answer]) => ({
       questionId,
@@ -117,8 +110,6 @@ export const submitSpeakingAssignment = async ({
         });
       }
     }
-
-    console.log("Final audioUrls:", audioUrls);
 
     // Include question details for better teacher grading experience
     const questionDetails = questions.map(q => ({

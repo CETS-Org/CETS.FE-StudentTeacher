@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import Card from "../../components/ui/card";
 import { ArrowLeft, Send, CheckCircle, AlertCircle, Shield, KeyRound } from "lucide-react";
 import { api } from "@/api";
 import "../../styles/login-animations.css";
@@ -92,11 +92,8 @@ export default function ForgotPassword() {
     setSuccessMessage("");
     
     try {
-      console.log("Forgot password data:", data);
-      
       // Call the forgot password API
       const response = await api.forgotPassword(data.email);
-      console.log("Forgot password response:", response.data);
       
       // Reset attempts on successful request - TEMPORARILY DISABLED
       // setResetAttempts(0);

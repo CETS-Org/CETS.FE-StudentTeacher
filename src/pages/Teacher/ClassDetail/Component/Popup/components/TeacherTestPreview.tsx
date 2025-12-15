@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Loader from "@/components/ui/Loader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import { 
@@ -54,12 +54,7 @@ export default function TeacherTestPreview({
 
   useEffect(() => {
     if (open && questionData) {
-      console.log("TeacherTestPreview - Received questionData:", questionData);
-      console.log("TeacherTestPreview - Questions:", questionData.questions);
-      console.log("TeacherTestPreview - Questions count:", questionData.questions?.length || 0);
-      
       const validQuestions = (questionData.questions || []).filter(q => q && q.id && q.question);
-      console.log("TeacherTestPreview - Valid questions count:", validQuestions.length);
       
       setQuestions(validQuestions);
       setAnswers({});

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Tabs, { TabContent } from "@/components/ui/Tabs";
 import Pagination from "@/Shared/Pagination";
 import PageHeader from "@/components/ui/PageHeader";
@@ -347,9 +347,7 @@ export default function Classes() {
           return;
         }
 
-        console.log('Fetching teaching classes for:', { teacherId, courseId });
         const classes = await teachingClassesService.getTeachingClasses(teacherId, courseId);
-        console.log('Fetched classes:', classes);
         setTeacherClasses(classes);
       } catch (err) {
         console.error('Error fetching teaching classes:', err);

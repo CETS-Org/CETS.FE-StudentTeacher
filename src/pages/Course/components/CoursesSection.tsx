@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Search, Filter, BookOpen } from "lucide-react";
 
 import CourseListItem from "@/pages/Course/components/CourseListItem";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
-import { api } from "@/api"
+import { api, endpoint } from "@/api"
 import { CategoryFilter, LevelFilter, PriceFilter, StandardScoreFilter, SkillsFilter, RequirementsFilter, BenefitsFilter, ScheduleFilter, EnrollmentStatusFilter, type FacetItem, type EnrollmentStatus } from "./filters";
 import { useWishlist } from "@/hooks/useWishlist";
 import { getStudentById } from "@/api/student.api";
@@ -193,52 +193,67 @@ export default function CoursesSection() {
     loadEnrollments();
   }, []);
 
-  // Build querystring - always include all params to prevent re-fetches
+  // Build search params object for API call
   const buildSearchParams = () => {
-    const s = new URLSearchParams();
-    s.set("Sort", uiSortToServer[uiSort] ?? "Relevance");
-    s.set("Page", String(page));
-    s.set("PageSize", String(100)); // Fetch more results to handle enrollment sorting client-side
+    const params: Record<string, any> = {
+      Sort: uiSortToServer[uiSort] ?? "Relevance",
+      Page: page,
+      PageSize: 100, // Fetch more results to handle enrollment sorting client-side
+    };
     
-    // Always set these to avoid conditional logic causing re-renders
-    if (qDebounced) s.set("Q", qDebounced);
-    if (priceMin > MIN_PRICE) s.set("PriceMin", String(priceMin));
-    if (priceMax < MAX_PRICE) s.set("PriceMax", String(priceMax));
+    // Add optional params
+    if (qDebounced) params.Q = qDebounced;
+    if (priceMin > MIN_PRICE) params.PriceMin = priceMin;
+    if (priceMax < MAX_PRICE) params.PriceMax = priceMax;
     
-    // Arrays - only add if not empty
-    if (levelIds.length) s.set("LevelIds", levelIds.join(","));
-    if (categoryIds.length) s.set("CategoryIds", categoryIds.join(","));
-    if (skillIds.length) s.set("SkillIds", skillIds.join(","));
-    if (requirementIds.length) s.set("RequirementIds", requirementIds.join(","));
-    if (benefitIds.length) s.set("BenefitIds", benefitIds.join(","));
+    // Add array params - axios will serialize them correctly
+    if (levelIds.length > 0) params.LevelIds = levelIds;
+    if (categoryIds.length > 0) params.CategoryIds = categoryIds;
+    if (skillIds.length > 0) params.SkillIds = skillIds;
+    if (requirementIds.length > 0) params.RequirementIds = requirementIds;
+    if (benefitIds.length > 0) params.BenefitIds = benefitIds;
+    if (selectedDays.length > 0) params.DaysOfWeek = selectedDays;
+    if (selectedTimeSlots.length > 0) params.TimeSlotNames = selectedTimeSlots;
     
-    selectedDays.forEach(day => s.append("DaysOfWeek", day));
-    selectedTimeSlots.forEach(slot => s.append("TimeSlotNames", slot));
-    
-    return s;
+    return params;
   };
 
   // Fetch handler
   const fetchCourses = async (signal?: AbortSignal) => {
     setLoading(true);
     setErr(null);
+    // Reset items immediately to prevent showing stale data
+    setItems([]);
     try {
       const searchParams = buildSearchParams();
-      const paramsObject = Object.fromEntries(searchParams.entries());
 
-      const response = await api.searchCourses(paramsObject, { signal });
-      const data: CourseSearchResult = response.data;
+      // Use searchCourses API function which handles params correctly
+      const response = await api.searchCourses(searchParams, { signal });
+      const data: any = response.data;
 
-      const arr = Array.isArray((data as any).items) ? (data.items as Course[]) : [];
-      setItems(arr);
+      // Backend trả về camelCase (items), fallback to PascalCase (Items) if needed
+      let items: Course[] = [];
+      if (Array.isArray(data.items)) {
+        items = data.items;
+      } else if (Array.isArray(data.Items)) {
+        items = data.Items;
+      } else if (Array.isArray(data)) {
+        // In case response.data is directly the array
+        items = data;
+      }
+      setItems(items);
 
-      setTotal((data as any).total ?? 0);
-      setPageSize((data as any).pageSize ?? pageSize);
+      setTotal(data.Total ?? data.total ?? 0);
+      setPageSize(data.PageSize ?? data.pageSize ?? pageSize);
 
-      const facets = (data as any).facets || {};
+      // Map facets từ PascalCase hoặc camelCase
+      const facets = data.Facets || data.facets || {};
+  
       setLevelsFacet((facets.levels as FacetItem[]) ?? []);
       setCategoriesFacet((facets.categories as FacetItem[]) ?? []);
       setSkillsFacet((facets.skills as FacetItem[]) ?? []);
+      // Note: API response only includes: levels, categories, skills, daysOfWeek, timeSlots
+      // requirements and benefits are not in the facets response
       setRequirementsFacet((facets.requirements as FacetItem[]) ?? []);
       setBenefitsFacet((facets.benefits as FacetItem[]) ?? []);
       setDaysOfWeekFacet((facets.daysOfWeek as FacetItem[]) ?? []);
@@ -483,7 +498,7 @@ export default function CoursesSection() {
         </div>
 
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto relative mb-12">
+        <div id="courses-content" className="max-w-2xl mx-auto relative mb-12 scroll-mt-24">
           <div className="relative">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 w-6 h-6" />
             <Input

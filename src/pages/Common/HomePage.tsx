@@ -1,7 +1,7 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import Card from "../../components/ui/card";
 import HeroImage from "../../assets/Gateway1.png";
 import { useState, useEffect } from "react";
 import { isTokenValid, getUserInfo } from "@/lib/utils";

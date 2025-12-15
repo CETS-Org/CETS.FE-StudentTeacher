@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import { 
   FileText,
@@ -253,8 +253,6 @@ export default function Materials() {
   });
 
   const handleDownload = (material: PublicMaterial) => {
-    // Simulate download
-    console.log("Downloading:", material.fileName);
     // In real app, this would trigger actual download
     const link = document.createElement('a');
     link.href = material.downloadUrl;

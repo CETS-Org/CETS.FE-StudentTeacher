@@ -2,7 +2,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { forwardRef } from "react";
 
 export type SelectOption = {
-  value: string;
+  value: string | number;
   label: string;
 };
 

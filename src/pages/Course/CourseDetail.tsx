@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Star, Clock, Users, BookOpen, CheckCircle, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp, CalendarCheck, UserCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import ClassReservationDialog from "./components/ClassReservationDialog";
 import RelatedCourses from "./components/RelatedCourses";
 import CourseSchedule from "@/components/ui/CourseSchedule";
@@ -168,6 +168,13 @@ export default function CourseDetail({ course }: CourseDetailProps) {
 
   const calculatedStartDate = getCalculatedStartDate();
 
+  // Use course.rating (from AverageRating column) if available and valid, otherwise calculate from feedbacks as fallback
+  const averageRating = course.rating != null && course.rating > 0
+    ? course.rating.toFixed(1)
+    : (course.feedbacks && course.feedbacks.length > 0
+      ? (course.feedbacks.reduce((sum, feedback) => sum + feedback.rating, 0) / course.feedbacks.length).toFixed(1)
+      : '0.0');
+
   // Function to get appropriate icon for benefit content
   const getBenefitIcon = (benefitName: string) => {
     const benefit = benefitName.toLowerCase();
@@ -288,8 +295,6 @@ export default function CourseDetail({ course }: CourseDetailProps) {
           }
         ]
       });
-
-      console.log("Reservation created successfully:", response.data);
       
       setIsLoading(false);
       
@@ -355,8 +360,8 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="font-medium">{course.rating}</span>
-                    <span>({course.studentsCount.toLocaleString()} reviews)</span>
+                    <span className="font-medium">{averageRating}</span>
+                    <span>({course.feedbacks?.length || 0} reviews)</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Clock className="w-4 h-4" />
@@ -384,13 +389,6 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                     <span>
                       <span className="font-medium">Enrolled: </span>
                       {(course.enrolledCount ?? 0).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <UserCheck className="w-4 h-4 text-green-600" />
-                    <span>
-                      <span className="font-medium">Students: </span>
-                      {(course.studentsCount ?? 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -429,7 +427,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                       {hasStructuredSyllabus
                         ? `${structuredSyllabi.length} sections`
                         : `${fallbackSyllabusItems.length} sessions`
-                      } • {totalSyllabusSlots} slots total
+                      } • {totalSyllabusSlots} sessions total
                     </p>
                   )}
                 </div>
@@ -493,7 +491,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                                   <div className="flex items-center gap-4 text-sm text-gray-500">
                                     <div className="flex items-center gap-1">
                                       <Clock className="w-4 h-4" />
-                                      <span>{item.totalSlots ? `${item.totalSlots} slot${item.totalSlots > 1 ? 's' : ''}` : 'N/A'}</span>
+                                      <span>{item.totalSlots ? `${item.totalSlots} session${item.totalSlots > 1 ? 's' : ''}` : 'N/A'}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -595,7 +593,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <div className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
-                              <span>{item.totalSlots ? `${item.totalSlots} slot${item.totalSlots > 1 ? 's' : ''}` : 'N/A'}</span>
+                              <span>{item.totalSlots ? `${item.totalSlots} session${item.totalSlots > 1 ? 's' : ''}` : 'N/A'}</span>
                             </div>
                           </div>
                         </div>
@@ -736,8 +734,8 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                        <span className="text-2xl font-bold text-gray-900">{course.rating}</span>
-                        <span className="text-gray-600">({course.studentsCount} reviews)</span>
+                        <span className="text-2xl font-bold text-gray-900">{averageRating}</span>
+                        <span className="text-gray-600">({course.feedbacks.length} reviews)</span>
                       </div>
                     </div>
                   </div>
@@ -763,11 +761,6 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <h4 className="font-semibold text-gray-900">{feedback.studentName}</h4>
-                              {feedback.isVerified && (
-                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                  Verified Purchase
-                                </span>
-                              )}
                             </div>
                             
                             <div className="flex items-center gap-2 mb-3">
@@ -884,55 +877,6 @@ export default function CourseDetail({ course }: CourseDetailProps) {
               )}
             </Card>
 
-            {/* Course Stats */}
-            <Card title="Course Statistics">
-              <div className="space-y-4">
-                {calculatedStartDate && (
-                  <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                    <span className="text-gray-600 flex items-center gap-2">
-                      <CalendarCheck className="w-4 h-4 text-primary-600" />
-                      Start Date
-                    </span>
-                    <span className="font-semibold text-primary-700">
-                      {calculatedStartDate.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-blue-600" />
-                    Enrolled
-                  </span>
-                  <span className="font-semibold text-blue-700">{(course.enrolledCount ?? 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-green-600" />
-                    Students
-                  </span>
-                  <span className="font-semibold text-green-700">{(course.studentsCount ?? 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Average rating</span>
-                  <span className="font-semibold flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    {course.rating}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Course duration</span>
-                  <span className="font-semibold">{course.duration}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Level</span>
-                  <span className="font-semibold">{course.courseLevel}</span>
-                </div>
-              </div>
-            </Card>
 
             {/* Related Courses */}
             <RelatedCourses currentCourse={course} />

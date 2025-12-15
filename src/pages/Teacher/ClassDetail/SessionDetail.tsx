@@ -7,7 +7,7 @@ import type { ClassDetail } from "@/types/class";
 import type { SessionContent } from "@/types/session";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Tabs from "@/components/ui/Tabs";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import PageHeader from "@/components/ui/PageHeader";
 import Loader from "@/components/ui/Loader";
 import { getClassMeetingCoveredTopic, getClassMeetingsByClassId, type ClassMeeting } from "@/api/classMeetings.api";

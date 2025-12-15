@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet, Bot, Edit2, Trash2 } from "lucide-react";
 import JSZip from 'jszip';
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Pagination from "@/Shared/Pagination";
 import Loader from "@/components/ui/Loader";
 import Toast from "@/components/ui/Toast";
@@ -855,14 +855,6 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
             <div className="flex gap-2">
               <Button 
                 variant="secondary"
-                onClick={() => setCreateOpen(true)} 
-                iconLeft={<PlusCircle size={16} />}
-                className="btn-secondary"
-              >
-                Create Assignment
-              </Button>
-              <Button 
-                variant="secondary"
                 onClick={() => setAIReadingTestOpen(true)} 
                 iconLeft={<Bot size={16} />}
                 className="btn-secondary"
@@ -875,7 +867,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                 iconLeft={<PlusCircle size={16} />}
                 className="btn-primary"
               >
-                Create Advanced Assignment
+                Create Assignment
               </Button>
             </div>
           </div>

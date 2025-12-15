@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import { getUserInfo } from "@/lib/utils";
 import { Package, BookOpen, ChevronDown, ChevronUp, Users, Star } from "lucide-react";
 import type { CoursePackageDetail } from "@/types/coursePackage";

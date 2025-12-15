@@ -1,7 +1,7 @@
 // src/pages/teacher/classes/[classId]/SessionsTab.tsx
 import { useState, useMemo, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import {
   NotebookPen,
   Calendar,

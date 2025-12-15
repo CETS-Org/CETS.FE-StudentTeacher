@@ -4,11 +4,12 @@ import { Search, FileCheck, X, Sparkles } from "lucide-react";
 import CoursesSection from "./components/CoursesSection";
 import PackagesSection from "./components/PackagesSection";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import courseBgImage from "@/assets/course-bg.png";
 import { isTokenValid, getUserInfo, getUserRole } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import VerificationDialog from "@/components/ui/VerificationDialog";
+import PlacementTestConfirmationDialog from "@/components/ui/PlacementTestConfirmationDialog";
 import { api } from "@/api";
 import { getStudentById } from "@/api/student.api";
 
@@ -18,6 +19,7 @@ export default function CourseAll() {
   const { error: showError, success: showSuccess } = useToast();
   const [showPlacementTestMessage, setShowPlacementTestMessage] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showPlacementTestDialog, setShowPlacementTestDialog] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
 
   // Check placement test grade and show message if student hasn't taken the test
@@ -60,12 +62,39 @@ export default function CourseAll() {
   useEffect(() => {
     // Handle hash navigation
     if (location.hash) {
-      const element = document.getElementById(location.hash.substring(1));
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
+      const hash = location.hash.substring(1);
+      const scrollToElement = () => {
+        const element = document.getElementById(hash);
+        if (element) {
+          // Use requestAnimationFrame to ensure DOM is ready
+          requestAnimationFrame(() => {
+            // Account for fixed header/navbar and spacing (approximately 100px)
+            const headerOffset = 100;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+          });
+        }
+      };
+
+      // Try immediately after a small delay to let React render
+      const immediateId = setTimeout(scrollToElement, 50);
+      
+      // Also try after a delay to ensure content is loaded
+      const timeoutId = setTimeout(scrollToElement, 300);
+      
+      // And try after images/content might have loaded
+      const longTimeoutId = setTimeout(scrollToElement, 800);
+
+      return () => {
+        clearTimeout(immediateId);
+        clearTimeout(timeoutId);
+        clearTimeout(longTimeoutId);
+      };
     }
 
     // Check if user is logged in and not verified
@@ -85,7 +114,7 @@ export default function CourseAll() {
         }
       }
     }
-  }, [location.hash]);
+  }, [location]);
 
   const handleDismissMessage = () => {
     // Only dismiss for current session, will show again on next F5 if still no grade
@@ -113,6 +142,11 @@ export default function CourseAll() {
     }
   };
 
+  const handleConfirmPlacementTest = () => {
+    setShowPlacementTestDialog(false);
+    navigate('/student/placement-test');
+  };
+
   return (
     <>
       {/* Verification Dialog */}
@@ -121,6 +155,13 @@ export default function CourseAll() {
         onClose={handleCloseVerificationDialog}
         onResendVerification={handleResendVerification}
         userEmail={userEmail}
+      />
+      
+      {/* Placement Test Confirmation Dialog */}
+      <PlacementTestConfirmationDialog
+        isOpen={showPlacementTestDialog}
+        onClose={() => setShowPlacementTestDialog(false)}
+        onConfirm={handleConfirmPlacementTest}
       />
 
     <div className="min-h-screen bg-neutral-50">
@@ -219,7 +260,7 @@ export default function CourseAll() {
               navigate('/login');
               return;
             }
-            navigate('/student/placement-test');
+            setShowPlacementTestDialog(true);
             handleDismissMessage(); // Auto-dismiss message when clicked
           }}
           className="relative w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-full shadow-2xl hover:shadow-primary-500/50 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group animate-bounce"

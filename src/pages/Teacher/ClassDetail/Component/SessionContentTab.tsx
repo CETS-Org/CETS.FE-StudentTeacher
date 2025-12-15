@@ -1,7 +1,7 @@
 // src/components/teacher/SessionContentTab.tsx
 
 import { useState } from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import { CheckCircle, Link as LinkIcon, BookText, Target, ExternalLink, Upload } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import UploadAssignmentPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UploadAssignmentPopup";
@@ -45,7 +45,6 @@ export default function SessionContentTab({ content }: Props) {
   const [isUploadOpen, setUploadOpen] = useState(false);
 
   const handleAssignmentSubmit = (assignmentData: any) => {
-    console.log("Assignment submitted from Session Content:", assignmentData);
     alert(`Assignment "${assignmentData.title}" submitted!`);
     // Logic xử lý upload file sẽ được đặt ở đây
   };

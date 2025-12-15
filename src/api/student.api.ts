@@ -9,17 +9,12 @@ import { api, endpoint } from "./api";
 export const getStudents = async (): Promise<Student[]> => {
   try {
     const url = `${endpoint.account}`;
-    console.log("API URL:", url);
-    console.log("Base URL:", api.defaults.baseURL);
-    console.log("Full URL:", `${api.defaults.baseURL}${url}`);
     
     const response = await api.get<Student[]>(url, {
       params: {   
         RoleName: 'Student',     
       },
     });
-    console.log("API Response:", response);
-    console.log("Students data:", response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching students:', error);
@@ -39,12 +34,8 @@ export const getStudents = async (): Promise<Student[]> => {
 export const getStudentById = async (id: string): Promise<Student> => {
   try {
     const url = `${endpoint.account}/${id}`;
-    console.log("API URL:", url);
-    console.log("Base URL:", api.defaults.baseURL);
-    console.log("Full URL:", `${api.defaults.baseURL}${url}`);
     
     const response = await api.get<Student>(url);
-    console.log("API Response:", response);
     return response.data;
   } catch (error) {
     console.error(`Error fetching student ${id}:`, error);

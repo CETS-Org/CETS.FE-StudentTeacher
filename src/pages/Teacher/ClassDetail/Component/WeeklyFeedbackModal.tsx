@@ -1,6 +1,6 @@
 // src/pages/Teacher/ClassDetail/Component/WeeklyFeedbackModal.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import { X, Loader2, User, Sparkles, Lightbulb } from "lucide-react";
 import { getStudentsInClass, type StudentInClass } from "@/api/attendance.api";
@@ -142,8 +142,6 @@ const WeeklyFeedbackModal: React.FC<Props> = ({
         } else if (fbRes && Array.isArray((fbRes as any).data)) {
           feedbackList = (fbRes as any).data as WeeklyFeedbackView[];
         }
-
-        console.log("Weekly feedback list:", feedbackList);
 
         // 2) Init form per student
         const initForm: Record<string, PerStudentForm> = {};

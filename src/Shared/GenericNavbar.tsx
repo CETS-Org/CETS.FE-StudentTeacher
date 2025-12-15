@@ -6,11 +6,12 @@ import {
   BookOpen, 
   ChevronDown,
   Settings, 
-  HelpCircle
+  HelpCircle,
+  MessageCircle
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,14 +19,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/Dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import NotificationDialog from "@/components/ui/NotificationDialog";
 import type { GenericNavbarProps } from "@/types/navbar";
 import type { UserNotification } from "@/types/notification";
-import { getUserInfo } from "@/lib/utils";
+import { getUserInfo, clearAuthData } from "@/lib/utils";
 import { getNotificationsByUser, markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notification.api";
 import { useNotificationSocket } from "@/hooks/useNotificationSocket";
+import { triggerChatWidget } from "@/Shared/Chat/components/ChatWidget";
 
 // Re-export types for backward compatibility
 export type { NavbarConfig } from "@/types/navbar";
@@ -66,6 +68,18 @@ export default function GenericNavbar({
 
         loadNotifications();
     }, []);
+
+    // Listen for logout event and clear notifications
+    useEffect(() => {
+        const handleLogout = () => {
+            setNotifications([]);
+        };
+
+        window.addEventListener('auth:logout', handleLogout);
+        return () => {
+            window.removeEventListener('auth:logout', handleLogout);
+        };
+    }, []);
     
     const handleLogoutClick = () => {
         setIsLogoutDialogOpen(true);
@@ -73,7 +87,8 @@ export default function GenericNavbar({
 
     const handleLogoutConfirm = () => {
         // Clear any authentication tokens/data here
-        localStorage.removeItem('authToken');
+        clearAuthData();
+        // Legacy key cleanup
         localStorage.removeItem('userData');
 
         // Clear in-memory notifications so previous account state is not shown
@@ -124,6 +139,12 @@ export default function GenericNavbar({
     };
 
     const handleSocketNotification = useCallback((notification: UserNotification) => {
+        // Check if user is still logged in before processing notification
+        const userInfo = getUserInfo();
+        if (!userInfo?.id) {
+            return;
+        }
+        
         setNotifications(prev => {
             const existing = prev.find(n => n.id === notification.id);
             if (existing) {
@@ -182,7 +203,16 @@ export default function GenericNavbar({
                         </div>
 
                         {/* Right Side Actions */}
-                        <div className="flex items-center space-x-6">
+                        <div className="flex items-center space-x-4">
+
+                            {/* Chat Icon */}
+                            <button 
+                                onClick={triggerChatWidget}
+                                className="relative p-2 text-neutral-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                                aria-label="Chat"
+                            >
+                                <MessageCircle className="w-5 h-5" />
+                            </button>
 
                             {/* Notifications */}
                             <NotificationDialog 
@@ -262,16 +292,20 @@ export default function GenericNavbar({
                                         <>
                                             <DropdownMenuSeparator className="bg-neutral-200 my-2" />
                                             
-                                            {/* Settings & Help */}
-                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
-                                                <Settings className="w-4 h-4" />
-                                                <span>Settings</span>
-                                            </DropdownMenuItem>
-                                            
-                                            <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
-                                                <HelpCircle className="w-4 h-4" />
-                                                <span>Help & Support</span>
-                                            </DropdownMenuItem>
+                                            {/* Settings & Help - Hidden for Students and Teachers */}
+                                            {config.userInfo.role !== "Student" && config.userInfo.role !== "Teacher" && (
+                                                <>
+                                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                        <Settings className="w-4 h-4" />
+                                                        <span>Settings</span>
+                                                    </DropdownMenuItem>
+                                                    
+                                                    <DropdownMenuItem className="flex items-center space-x-3 px-3 py-2 text-neutral-700 hover:bg-primary-50 hover:text-white rounded-lg cursor-pointer transition-all">
+                                                        <HelpCircle className="w-4 h-4" />
+                                                        <span>Help & Support</span>
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
 
                                             <DropdownMenuItem 
                                                 onClick={handleChangePassword} 

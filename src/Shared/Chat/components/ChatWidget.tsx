@@ -15,6 +15,15 @@ import MessageItem from '@/Shared/Chat/components/MessageItem';
 const envSocketUrl = import.meta.env.VITE_NOTIFICATION_SOCKET_URL;
 const SOCKET_URL = envSocketUrl || "http://localhost:5001";
 
+// Export để có thể control từ bên ngoài
+let openChatWidget: (() => void) | null = null;
+
+export const triggerChatWidget = () => {
+  if (openChatWidget) {
+    openChatWidget();
+  }
+};
+
 const ChatWidget: React.FC = () => {
   // --- USER INFO ---
   const userInfo = getUserInfo();
@@ -22,6 +31,15 @@ const ChatWidget: React.FC = () => {
 
   // --- STATE ---
   const [isOpen, setIsOpen] = useState(false);
+
+  // Expose setIsOpen để có thể gọi từ bên ngoài
+  useEffect(() => {
+    openChatWidget = () => setIsOpen(true);
+    return () => {
+      openChatWidget = null;
+    };
+  }, []);
+
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [currentRoom, setCurrentRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -341,18 +359,6 @@ const ChatWidget: React.FC = () => {
              {renderMainChat()}
           </div>
         </div>
-      )}
-
-      {/* BUBBLE BUTTON */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="w-16 h-16 rounded-full shadow-2xl shadow-blue-600/40 bg-blue-600 hover:bg-blue-700 flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 group relative"
-        >
-          <MessageCircle className="text-white group-hover:rotate-12 transition-transform" size={32} />
-          {/* Mock notification badge */}
-          <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
-        </button>
       )}
     </div>
   );

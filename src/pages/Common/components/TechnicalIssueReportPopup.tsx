@@ -130,8 +130,6 @@ const TechnicalIssueReportPopup: React.FC<TechnicalIssueReportPopupProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Submit clicked', { userId, formData, selectedFile });
-    
     if (!userId) {
       showError('User ID not found. Please login again.');
       return;

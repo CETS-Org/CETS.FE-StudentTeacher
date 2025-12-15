@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Loader from "@/components/ui/Loader";
 import PageHeader from "@/components/ui/PageHeader";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
@@ -34,14 +34,15 @@ import ShortAnswerQuestion from "./components/ShortAnswerQuestion";
 import EssayQuestion from "./components/EssayQuestion";
 import MatchingQuestion from "./components/MatchingQuestion";
 import SpeakingQuestion from "./components/SpeakingQuestion";
-import {
-  mockAssignmentDetails,
-  mockQuestions,
-  mockAssignmentQuestionData,
-  mockListeningAssignment,
-  mockWritingAssignment,
-  mockSpeakingAssignment
-} from "./mockData";
+// Mock data removed - using real APIs now
+// import {
+//   mockAssignmentDetails,
+//   mockQuestions,
+//   mockAssignmentQuestionData,
+//   mockListeningAssignment,
+//   mockWritingAssignment,
+//   mockSpeakingAssignment
+// } from "./mockData";
 
 interface AssignmentDetails {
   id: string;
@@ -103,45 +104,25 @@ export default function StudentAssignmentTakingTest() {
       setError(null);
 
       try {
-        let assignmentData;
-        let questionData: AssignmentQuestionData;
-
-        // Select appropriate mock data based on test mode
-        switch (testMode) {
-          case "listening":
-            assignmentData = mockListeningAssignment;
-            questionData = { ...mockAssignmentQuestionData, questions: mockQuestions.slice(0, 4) }; // Use fewer questions for listening
-            break;
-          case "writing":
-            assignmentData = mockWritingAssignment;
-            questionData = { ...mockAssignmentQuestionData, questions: [mockQuestions[3], mockQuestions[4]] }; // Only writing questions
-            break;
-          case "speaking":
-            assignmentData = mockSpeakingAssignment;
-            questionData = { ...mockAssignmentQuestionData, questions: [mockQuestions[3]] }; // One short answer for speaking
-            break;
-          default: // reading
-            assignmentData = mockAssignmentDetails;
-            questionData = mockAssignmentQuestionData;
-        }
+        // TODO: Replace with real API call to fetch assignment data
+        // For now, this will show an error message
+        throw new Error("Mock data removed. Please integrate with real API.");
         
-        setAssignment({
-          ...assignmentData,
-          questionDataUrl: assignmentData.questionDataUrl || undefined
-        });
-        setQuestionData(questionData);
-        setQuestions(questionData.questions || []);
-
-        // Initialize timer if time limit exists
-        if (assignmentData.timeLimitMinutes) {
-          const timeInSeconds = assignmentData.timeLimitMinutes * 60;
-          setTimeRemaining(timeInSeconds);
-          setIsTimerRunning(true);
-        }
+        // Example API integration:
+        // const assignmentData = await fetchAssignmentById(assignmentId);
+        // const questionData = await fetchAssignmentQuestions(assignmentId);
+        // setAssignment(assignmentData);
+        // setQuestionData(questionData);
+        // setQuestions(questionData.questions || []);
+        // if (assignmentData.timeLimitMinutes) {
+        //   const timeInSeconds = assignmentData.timeLimitMinutes * 60;
+        //   setTimeRemaining(timeInSeconds);
+        //   setIsTimerRunning(true);
+        // }
 
       } catch (err: any) {
-        console.error("Failed to load mock assignment:", err);
-        setError("Failed to load assignment questions");
+        console.error("Failed to load assignment:", err);
+        setError("Failed to load assignment. Mock data has been removed. Please integrate with real API.");
       } finally {
         setLoading(false);
       }

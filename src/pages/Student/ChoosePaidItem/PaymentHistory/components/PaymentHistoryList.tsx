@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import PaymentHistoryItem from "./PaymentHistoryItem";
 import { Receipt, Search, Filter } from "lucide-react";
 import { api } from "@/api";
@@ -37,8 +37,6 @@ export default function PaymentHistoryList({
 
         // Call API to get payment history
         const response = await api.getPaymentHistory(studentId);
-        
-        console.log('Payment History API Response:', response.data);
         
         // Backend returns: { success, message, data: [...] }
         if (response.data.success && response.data.data) {

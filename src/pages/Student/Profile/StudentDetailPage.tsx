@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import Button from "@/components/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Table, { type TableColumn } from "@/components/ui/Table";
-import Input from "@/components/ui/Input";
+import Input from "@/components/ui/input";
 import { Edit, UserX, User, Eye, Settings, Calendar, BookOpen, Award,Mail,Phone,MapPin,IdCard,Clock,MessageSquare,Plus,GraduationCap,Activity,ExternalLink,Copy, Save, X, Upload, Camera, FileCheck} from "lucide-react";
 import { formatDate, getStatusColor, getStatusDisplay } from "@/helper/helper.service";
 import Loader from "@/components/ui/Loader";

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Package, BookOpen, Star, CheckCircle, Users, ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import RelatedPackages from "./components/RelatedPackages";
 import PackageEnrollmentDialog from "./components/PackageEnrollmentDialog";
 import Toast from "@/components/ui/Toast";
@@ -177,8 +177,6 @@ export default function CoursePackageDetail() {
           planTypeID: planTypeID
         }))
       });
-
-      console.log("Package reservation created successfully:", response.data);
       
       setIsSubmitting(false);
       
@@ -646,7 +644,6 @@ export default function CoursePackageDetail() {
               variant="secondary"
               onClick={() => {
                 // TODO: Implement wishlist logic
-                console.log("Add to wishlist:", packageDetail.id);
               }}
               className="w-full"
             >

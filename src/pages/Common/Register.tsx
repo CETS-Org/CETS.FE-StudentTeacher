@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Link } from "react-router-dom";
 import { Form, FormInput } from "@/components/ui/Form";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import Card from "../../components/ui/card";
 import { Eye, EyeOff, UserPlus, AlertCircle, GraduationCap } from "lucide-react";
 import { api } from "@/api";
 import "../../styles/login-animations.css";
@@ -121,8 +121,6 @@ export default function Register() {
         email: data.email,
         password: data.password,
       });     
-      
-      console.log("Registration successful:", response.data);
       
       // Reset registration attempts on successful registration
       setRegistrationAttempts(0);
