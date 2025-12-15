@@ -96,6 +96,7 @@ export default function TakePlacementTestPage() {
   const questionAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const passageRef = useRef<HTMLDivElement>(null);
   const [attemptLimitReached, setAttemptLimitReached] = useState(false);
   const [showLimitScoreDialog, setShowLimitScoreDialog] = useState(false);
 
