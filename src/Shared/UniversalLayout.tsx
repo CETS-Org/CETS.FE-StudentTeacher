@@ -28,6 +28,12 @@ const PUBLIC_PAGES = [
   '/google-callback'
 ];
 
+// Pages that should hide navbar/sidebar (like test pages)
+const NO_NAVBAR_PAGES = [
+  '/student/placement-test',
+  '/student/assignment/:assignmentId/take'
+];
+
 export default function UniversalLayout({ 
   children, 
   className = "", 
@@ -70,11 +76,25 @@ const userInfo = getUserInfo();
     return () => window.removeEventListener('userInfoUpdated', handler as EventListener);
   }, []);
 
+  // Check if current page should hide navbar/sidebar (test pages)
+  const shouldHideNavbar = NO_NAVBAR_PAGES.some(page => {
+    if (page.includes(':')) {
+      // Handle dynamic routes - check if pathname matches pattern
+      // Example: /student/assignment/:assignmentId/take
+      // Should match: /student/assignment/123/take
+      const pattern = page.replace(/:[^/]+/g, '[^/]+');
+      const regex = new RegExp(`^${pattern.replace(/\//g, '\\/')}$`);
+      return regex.test(location.pathname);
+    }
+    // Exact match or starts with the page path
+    return location.pathname === page || location.pathname.startsWith(page + '/');
+  });
+
   // Determine if we should show layout
   const shouldShowLayout = !forceNoLayout && !PUBLIC_PAGES.includes(location.pathname);
   
-  // Determine if we should show sidebar (only for authenticated users)
-  const shouldShowSidebar = shouldShowLayout && isAuthenticated && userRole;
+  // Determine if we should show sidebar (only for authenticated users, and not on test pages)
+  const shouldShowSidebar = shouldShowLayout && isAuthenticated && userRole && !shouldHideNavbar;
 
   // If no layout should be shown, render children directly
   if (!shouldShowLayout) {
@@ -139,6 +159,15 @@ const userInfo = getUserInfo();
         return <StudentSidebar {...sidebarProps} />; // Fallback
     }
   };
+
+  // If on test page, render without navbar/sidebar
+  if (shouldHideNavbar) {
+    return (
+      <div className="min-h-screen flex flex-col bg-neutral-50">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
