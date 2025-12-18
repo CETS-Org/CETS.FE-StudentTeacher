@@ -363,18 +363,11 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
 
                 {/* Footer Buttons */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-accent-200">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handleClose}
-                    className="border-neutral-300 hover:bg-neutral-100"
-                  >
-                    Cancel
-                  </Button>
+                
                   <Button
                     type="submit"
                     variant="primary"
-                    className="btn-primary px-8"
+                    className="px-8"
                   >
                     Next Step →
                   </Button>
@@ -521,7 +514,7 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
                     variant="secondary"
                     onClick={() => setStep("course")}
                     disabled={isSubmitting}
-                    className="border-neutral-300 hover:bg-neutral-100"
+                    className="border-neutral-300 hover:bg-accent2-400"
                   >
                     ← Back
                   </Button>
@@ -529,19 +522,11 @@ export default function FeedbackDialog({ open, onOpenChange, course, onComplete 
                     type="submit"
                     variant="primary"
                     disabled={isSubmitting}
-                    className="btn-secondary px-8 flex items-center gap-2"
+                    loading={isSubmitting}
+                    iconLeft={!isSubmitting ? <CheckCircle2 className="w-4 h-4" /> : undefined}
+                    className="px-8"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        Submit Feedback
-                      </>
-                    )}
+                    {isSubmitting ? "Submitting..." : "Submit Feedback"}
                   </Button>
                 </div>
               </form>

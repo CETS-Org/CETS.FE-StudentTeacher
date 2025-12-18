@@ -1209,7 +1209,7 @@ export default function SessionDetail() {
                                         <Button 
                                           variant="primary"
                                           size="sm"
-                                          className="btn-primary"
+                                          className=""
                                           iconLeft={<BookOpen className="w-4 h-4" />}
                                           onClick={(e) => { 
                                             e.preventDefault(); 

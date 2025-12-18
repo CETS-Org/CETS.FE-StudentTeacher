@@ -54,7 +54,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       clearAuthData();
-      // Optionally redirect to login page here if desired
+      // Redirect to login page on session timeout
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

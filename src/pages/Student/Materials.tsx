@@ -171,7 +171,7 @@ const MaterialCard: React.FC<{
               size="sm"
               onClick={() => onDownload(material)}
               iconLeft={<Download className="w-4 h-4" />}
-              className="btn-primary"
+              className=""
             >
               <span className="hidden sm:inline">Download</span>
             </Button>

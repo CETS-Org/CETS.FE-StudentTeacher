@@ -24,7 +24,7 @@ import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 import NotificationDialog from "@/components/ui/NotificationDialog";
 import type { GenericNavbarProps } from "@/types/navbar";
 import type { UserNotification } from "@/types/notification";
-import { getUserInfo, clearAuthData } from "@/lib/utils";
+import { getUserInfo, clearAuthData, isTokenValid } from "@/lib/utils";
 import { getNotificationsByUser, markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notification.api";
 import { useNotificationSocket } from "@/hooks/useNotificationSocket";
 import { triggerChatWidget } from "@/Shared/Chat/components/ChatWidget";
@@ -49,7 +49,8 @@ export default function GenericNavbar({
 
     useEffect(() => {
         const userInfo = getUserInfo();
-        if (!userInfo) {
+        // Check both userInfo exists AND token is still valid
+        if (!userInfo || !isTokenValid()) {
             setNotifications([]);
             return;
         }
@@ -61,6 +62,7 @@ export default function GenericNavbar({
                 setNotifications(response.data || []);
             } catch (error) {
                 console.error("Failed to load notifications", error);
+                setNotifications([]);
             } finally {
                 setIsLoadingNotifications(false);
             }
