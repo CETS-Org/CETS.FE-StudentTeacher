@@ -6,8 +6,6 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Spinner from "@/components/ui/Spinner";
 import {
   BookOpen,
-  AlertCircle,
-  RefreshCw,
   Search,
   X,
   ChevronDown,
@@ -404,18 +402,15 @@ export default function LearningPath() {
           {error && !loading && !learningPathData && (
             <Card className="shadow-lg border border-accent-100">
               <div className="flex flex-col items-center justify-center py-12">
-                <AlertCircle className="w-12 h-12 text-error-500 mb-4" />
-                <h3 className="text-lg font-semibold text-neutral-900 mb-2">Failed to Load Data</h3>
-                <p className="text-neutral-600 text-center mb-4">
-                  {error}
+                <div className="w-24 h-24 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <BookOpen className="w-12 h-12 text-accent-600" />
+                </div>
+                <h3 className="text-xl font-bold text-primary-800 mb-3">
+                  You haven't enrolled in any course yet
+                </h3>
+                <p className="text-neutral-600 mb-8 max-w-md mx-auto text-center">
+                  Start your learning journey by enrolling in a course.
                 </p>
-                <Button
-                  onClick={handleRetry}
-                  iconLeft={<RefreshCw className="w-4 h-4" />}
-                  className="bg-primary-500 hover:bg-primary-600 text-white"
-                >
-                  Retry
-                </Button>
               </div>
             </Card>
           )}
@@ -532,10 +527,14 @@ export default function LearningPath() {
                       <BookOpen className="w-12 h-12 text-accent-600" />
                     </div>
                     <h3 className="text-xl font-bold text-primary-800 mb-3">
-                      No courses found
+                      {allCourseList.length === 0 && !searchQuery && statusFilter === "all"
+                        ? "You haven't enrolled in any course yet"
+                        : "No courses found"}
                     </h3>
                     <p className="text-neutral-600 mb-8 max-w-md mx-auto">
-                      {searchQuery || statusFilter !== "all" 
+                      {allCourseList.length === 0 && !searchQuery && statusFilter === "all"
+                        ? "Start your learning journey by enrolling in a course."
+                        : searchQuery || statusFilter !== "all" 
                         ? "No courses match your search or filter criteria."
                         : "No courses available at this time."}
                     </p>
