@@ -67,16 +67,8 @@ export default function GenericSidebar({
     }
   }, [location.pathname, config.submenuPathPrefix, config.items]);
 
-  // Fetch upcoming assignments if enabled (but skip on course list page to avoid unnecessary API calls)
   useEffect(() => {
     if (!config.showUpcomingDeadlines) return;
-    
-    // Don't fetch assignments on course list page - it causes too many API calls
-    // (classes → meetings → assignments for each meeting)
-    if (location.pathname === '/courses' || location.pathname.startsWith('/course/')) {
-      setUpcomingAssignments([]);
-      return;
-    }
 
     const fetchUpcomingAssignments = async () => {
       const studentId = getStudentId();
@@ -84,7 +76,7 @@ export default function GenericSidebar({
 
       try {
         setLoadingAssignments(true);
-        const assignments = await getUpcomingAssignmentsForStudent(studentId, 3);
+        const assignments = await getUpcomingAssignmentsForStudent(studentId, 5);
         setUpcomingAssignments(assignments);
       } catch (error) {
         console.error('Error fetching upcoming assignments:', error);
@@ -99,7 +91,7 @@ export default function GenericSidebar({
     // Refresh every 5 minutes
     const interval = setInterval(fetchUpcomingAssignments, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [config.showUpcomingDeadlines, location.pathname]);
+  }, [config.showUpcomingDeadlines]);
 
   const isActive = (path?: string) => path && location.pathname.startsWith(path);
 
@@ -300,7 +292,7 @@ export default function GenericSidebar({
                   {upcomingAssignments.map((assignment) => (
                     <NavLink
                       key={assignment.id}
-                      to={`/student/my-classes/${assignment.classId}/session/${assignment.classMeetingId}`}
+                      to={`/student/class/${assignment.classId}/session/${assignment.classMeetingId}`}
                       onClick={onNavigate}
                       className={cn(
                         "rounded-lg p-2 transition-all duration-200 hover:bg-white/30",
@@ -315,8 +307,8 @@ export default function GenericSidebar({
                           <h3 className="text-xs font-semibold text-white truncate" title={assignment.title}>
                             {assignment.title}
                           </h3>
-                          <p className="text-[10px] text-white/70 truncate" title={assignment.className}>
-                            {assignment.className}
+                          <p className="text-[10px] text-white/70 truncate" title={`${assignment.className} - Session ${assignment.sessionNumber}`}>
+                            {assignment.className} • Session {assignment.sessionNumber}
                           </p>
                           <div className="flex items-center gap-1 mt-1">
                             <Clock className="w-2.5 h-2.5 text-white/50" />
