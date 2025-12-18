@@ -264,6 +264,44 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
         return;
       }
 
+      // Try using attendanceService.getStudentAttendanceReport first (same API as attendance report page)
+      // This ensures consistency with the attendance report page
+      try {
+        const attendanceReport = await attendanceService.getStudentAttendanceReport(studentId);
+        const courseSummary = attendanceReport.classSummaries.find(
+          (cs: any) =>
+            cs.classId === courseId ||
+            cs.courseCode === classItem.courseCode ||
+            cs.className === classItem.className
+        );
+        
+        if (courseSummary) {
+          // Transform to CourseAttendanceSummaryResponse format
+          const transformedSummary: CourseAttendanceSummaryResponse = {
+            studentId: studentId,
+            courseId: courseSummary.classId,
+            courseName: courseSummary.courseName,
+            className: courseSummary.className,
+            teacherName: courseSummary.instructor,
+            totalClasses: 1,
+            totalSessions: courseSummary.totalSessions, // Lấy từ API response
+            totalPresent: courseSummary.attendedSessions,
+            totalAbsent: courseSummary.absentSessions,
+            attended: courseSummary.attendedSessions,
+            absent: courseSummary.absentSessions,
+            attendanceRate: courseSummary.attendanceRate,
+            isWarning: false,
+            warningMessage: null,
+            sessionRecords: courseSummary.records || []
+          };
+          setCourseAttendanceSummary(transformedSummary);
+          return;
+        }
+      } catch (attendanceServiceError) {
+        console.warn('Error using attendanceService, falling back to getCourseAttendanceSummary:', attendanceServiceError);
+      }
+
+      // Fallback to getCourseAttendanceSummary if attendanceService doesn't have the data
       const summary = await getCourseAttendanceSummary(courseId, studentId);
       setCourseAttendanceSummary(summary);
     } catch (err: any) {

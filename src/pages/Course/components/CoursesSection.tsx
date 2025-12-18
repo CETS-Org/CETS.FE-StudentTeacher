@@ -28,7 +28,7 @@ function useDebounce<T>(value: T, delay = 450) {
 const MIN_PRICE = 0;
 const MAX_PRICE = 20000000; // 20M VND
 const MIN_SCORE = 0;
-const MAX_SCORE = 10;
+const MAX_SCORE = 900;
 
 const sortOptions = [
   { value: "popular", label: "Most Popular" },
@@ -716,7 +716,7 @@ export default function CoursesSection() {
                       </div>
                       <div className="flex-1 h-px bg-gradient-to-r from-primary-200 to-transparent"></div>
                       <span className="text-sm text-gray-600 font-medium">
-                        Placement Test Grade: <span className="font-bold text-primary-600">{placementTestGrade.toFixed(2)} / 10</span>
+                        Placement Test Grade: <span className="font-bold text-primary-600">{placementTestGrade.toFixed(2)} / 900</span>
                       </span>
                     </div>
                     <div className="space-y-4">

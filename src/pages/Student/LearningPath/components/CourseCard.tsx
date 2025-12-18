@@ -109,13 +109,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
         return "bg-red-100 text-red-800 border-red-200";
       case "enrolled":
       case "in-progress":
-        // Check if course has started (if classItem has startDate)
-        const hasStarted = classItem?.startDate 
-          ? new Date(classItem.startDate) <= new Date()
-          : false;
-        return hasStarted
-          ? "bg-blue-600 text-white border-blue-700"  // Xanh dương đậm khi đã bắt đầu
-          : "bg-blue-100 text-blue-800 border-blue-200";  // Xanh nhạt khi chưa bắt đầu
+        // Tất cả course "Enrolled" dùng cùng một màu
+        return "bg-blue-100 text-blue-800 border-blue-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }

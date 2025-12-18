@@ -2,7 +2,7 @@ import { Award } from 'lucide-react';
 import CollapsibleFilter from './CollapsibleFilter';
 
 const MIN_SCORE = 0;
-const MAX_SCORE = 10;
+const MAX_SCORE = 900;
 
 interface StandardScoreFilterProps {
   scoreMin: number;
@@ -47,7 +47,7 @@ export default function StandardScoreFilter({
   );
 
   const subtitle = hasCustomRange 
-    ? `${scoreMin.toFixed(1)} - ${scoreMax >= MAX_SCORE ? `${MAX_SCORE.toFixed(1)}+` : scoreMax.toFixed(1)} / 10`
+    ? `${scoreMin.toFixed(1)} - ${scoreMax >= MAX_SCORE ? `${MAX_SCORE.toFixed(1)}+` : scoreMax.toFixed(1)} / 900`
     : "Set required score range";
 
   return (
@@ -59,8 +59,8 @@ export default function StandardScoreFilter({
       <div className="space-y-3">
         {/* Score Display */}
         <div className="flex justify-between text-xs text-neutral-600">
-          <span>{scoreMin.toFixed(1)} / 10</span>
-          <span>{scoreMax >= MAX_SCORE ? `${MAX_SCORE.toFixed(1)}+ / 10` : `${scoreMax.toFixed(1)} / 10`}</span>
+          <span>{scoreMin.toFixed(1)} / 900</span>
+          <span>{scoreMax >= MAX_SCORE ? `${MAX_SCORE.toFixed(1)}+ / 900` : `${scoreMax.toFixed(1)} / 900`}</span>
         </div>
         
         {/* Dual Range Slider */}
@@ -102,44 +102,44 @@ export default function StandardScoreFilter({
         {/* Quick Preset Buttons */}
         <div className="grid grid-cols-2 gap-1">
           <button
-            onClick={() => setPresetRange(MIN_SCORE, 3)}
+            onClick={() => setPresetRange(MIN_SCORE, 270)}
             className={`text-xs px-2 py-1 rounded transition-all ${
-              scoreMin === MIN_SCORE && scoreMax === 3
+              scoreMin === MIN_SCORE && scoreMax === 270
                 ? 'bg-purple-500 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >
-            0-3
+            0-270
           </button>
           <button
-            onClick={() => setPresetRange(3, 5)}
+            onClick={() => setPresetRange(270, 450)}
             className={`text-xs px-2 py-1 rounded transition-all ${
-              scoreMin === 3 && scoreMax === 5
+              scoreMin === 270 && scoreMax === 450
                 ? 'bg-purple-500 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >
-            3-5
+            270-450
           </button>
           <button
-            onClick={() => setPresetRange(5, 7)}
+            onClick={() => setPresetRange(450, 630)}
             className={`text-xs px-2 py-1 rounded transition-all ${
-              scoreMin === 5 && scoreMax === 7
+              scoreMin === 450 && scoreMax === 630
                 ? 'bg-purple-500 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >
-            5-7
+            450-630
           </button>
           <button
-            onClick={() => setPresetRange(7, MAX_SCORE)}
+            onClick={() => setPresetRange(630, MAX_SCORE)}
             className={`text-xs px-2 py-1 rounded transition-all ${
-              scoreMin === 7 && scoreMax === MAX_SCORE
+              scoreMin === 630 && scoreMax === MAX_SCORE
                 ? 'bg-purple-500 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >
-            7-10
+            630-900
           </button>
         </div>
       </div>
