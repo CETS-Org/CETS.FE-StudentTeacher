@@ -52,8 +52,8 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
               )}
             </div>
 
-            {/* Wishlist Heart Icon */}
-            {onToggleWishlist && (
+            {/* Wishlist Heart Icon - Hidden for enrolled courses */}
+            {onToggleWishlist && !isEnrolled && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();

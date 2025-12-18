@@ -35,6 +35,7 @@ export default function Wishlist() {
   const [sortBy, setSortBy] = useState("newest");
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState<number>(0);
   const [priceMax, setPriceMax] = useState<number>(20000000);
   const [showFilters, setShowFilters] = useState(false);
@@ -69,6 +70,7 @@ export default function Wishlist() {
       image: item.courseImageUrl || '',
       level: (item.courseLevel as "Beginner" | "Intermediate" | "Advanced") || "Beginner",
       format: (item.courseFormat as "Online" | "In-person" | "Hybrid") || "Online",
+      category: item.categoryName || '',
       price: item.standardPrice,
       duration: item.duration,
       rating: item.rating,
@@ -93,6 +95,10 @@ export default function Wishlist() {
     return Array.from(new Set(courses.map(c => c.format))).filter(Boolean);
   }, [courses]);
 
+  const availableCategories = useMemo(() => {
+    return Array.from(new Set(courses.map(c => c.category))).filter(Boolean) as string[];
+  }, [courses]);
+
   // Filter and sort courses
   const filteredAndSortedCourses = useMemo(() => {
     let filtered = [...courses];
@@ -115,6 +121,11 @@ export default function Wishlist() {
     // Format filter
     if (selectedFormats.length > 0) {
       filtered = filtered.filter(course => selectedFormats.includes(course.format));
+    }
+
+    // Category filter
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(course => course.category && selectedCategories.includes(course.category));
     }
 
     // Price filter
@@ -144,7 +155,7 @@ export default function Wishlist() {
     });
 
     return filtered;
-  }, [courses, searchQuery, selectedLevels, selectedFormats, priceMin, priceMax, sortBy]);
+  }, [courses, searchQuery, selectedLevels, selectedFormats, selectedCategories, priceMin, priceMax, sortBy]);
 
   // Active filters count
   const activeFiltersCount = useMemo(() => {
@@ -152,14 +163,16 @@ export default function Wishlist() {
     if (searchQuery.trim()) count++;
     if (selectedLevels.length > 0) count++;
     if (selectedFormats.length > 0) count++;
+    if (selectedCategories.length > 0) count++;
     if (priceMin > 0 || priceMax < 20000000) count++;
     return count;
-  }, [searchQuery, selectedLevels, selectedFormats, priceMin, priceMax]);
+  }, [searchQuery, selectedLevels, selectedFormats, selectedCategories, priceMin, priceMax]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
     setSelectedLevels([]);
     setSelectedFormats([]);
+    setSelectedCategories([]);
     setPriceMin(0);
     setPriceMax(20000000);
     setSortBy("newest");
@@ -188,7 +201,7 @@ export default function Wishlist() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedLevels, selectedFormats, priceMin, priceMax, sortBy]);
+  }, [searchQuery, selectedLevels, selectedFormats, selectedCategories, priceMin, priceMax, sortBy]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -212,15 +225,7 @@ export default function Wishlist() {
           title="My Wishlist"
           description="Save and manage courses you're interested in taking. Keep track of your favorite courses and enroll when you're ready"
           icon={<Heart className="w-5 h-5 text-white" />}
-          controls={[
-            {
-              type: 'button',
-              label: `${courses.length} Course${courses.length !== 1 ? 's' : ''} Saved`,
-              variant: 'secondary',
-              icon: <BookOpen className="w-4 h-4" />,
-              className: 'bg-accent-50 text-accent-700 border-accent-200'
-            }
-          ]}
+         
         />
 
         {/* Search and Filters */}
@@ -265,8 +270,15 @@ export default function Wishlist() {
                     options={sortOptions}
                     placeholder="Sort by..."
                   />
+                </div>
 
-                  {/* Clear Filters Button */}
+                <div className="flex items-center gap-4">
+                  {/* Results Info */}
+                  <div className="text-sm text-neutral-600">
+                    Showing <span className="font-semibold text-primary-600">{filteredAndSortedCourses.length}</span> of <span className="font-semibold text-primary-600">{courses.length}</span> course{courses.length !== 1 ? 's' : ''}
+                  </div>
+
+                  {/* Clear Filters Button - moved to right */}
                   {activeFiltersCount > 0 && (
                     <Button
                       variant="secondary"
@@ -277,98 +289,164 @@ export default function Wishlist() {
                     </Button>
                   )}
                 </div>
-
-                {/* Results Info */}
-                <div className="text-sm text-neutral-600">
-                  Showing <span className="font-semibold text-primary-600">{filteredAndSortedCourses.length}</span> of <span className="font-semibold text-primary-600">{courses.length}</span> course{courses.length !== 1 ? 's' : ''}
-                </div>
               </div>
 
               {/* Desktop Filters */}
               <div className={`mt-4 pt-4 border-t border-neutral-100 ${showFilters ? 'block' : 'hidden lg:block'}`}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Level Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <div className="bg-neutral-50 rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-neutral-800 mb-3">
                       Level
                     </label>
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                       {availableLevels.map((level) => (
-                        <label key={level} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedLevels.includes(level)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedLevels([...selectedLevels, level]);
-                              } else {
-                                setSelectedLevels(selectedLevels.filter(l => l !== level));
-                              }
-                            }}
-                            className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                          />
-                          <span className="text-sm text-neutral-700">{level}</span>
-                        </label>
+                        <button
+                          key={level}
+                          onClick={() => {
+                            if (selectedLevels.includes(level)) {
+                              setSelectedLevels(selectedLevels.filter(l => l !== level));
+                            } else {
+                              setSelectedLevels([...selectedLevels, level]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 ${
+                            selectedLevels.includes(level)
+                              ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                              : 'bg-white text-neutral-700 border-neutral-300 hover:border-primary-400 hover:bg-primary-50'
+                          }`}
+                        >
+                          {level}
+                        </button>
                       ))}
                     </div>
                   </div>
 
                   {/* Format Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <div className="bg-neutral-50 rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-neutral-800 mb-3">
                       Format
                     </label>
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                       {availableFormats.map((format) => (
-                        <label key={format} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedFormats.includes(format)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedFormats([...selectedFormats, format]);
-                              } else {
-                                setSelectedFormats(selectedFormats.filter(f => f !== format));
-                              }
-                            }}
-                            className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                          />
-                          <span className="text-sm text-neutral-700">{format}</span>
-                        </label>
+                        <button
+                          key={format}
+                          onClick={() => {
+                            if (selectedFormats.includes(format)) {
+                              setSelectedFormats(selectedFormats.filter(f => f !== format));
+                            } else {
+                              setSelectedFormats([...selectedFormats, format]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 ${
+                            selectedFormats.includes(format)
+                              ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                              : 'bg-white text-neutral-700 border-neutral-300 hover:border-primary-400 hover:bg-primary-50'
+                          }`}
+                        >
+                          {format}
+                        </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Price Range */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  {/* Category Filter */}
+                  <div className="bg-neutral-50 rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-neutral-800 mb-3">
+                      Category
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {availableCategories.map((category) => (
+                        <button
+                          key={category}
+                          onClick={() => {
+                            if (selectedCategories.includes(category)) {
+                              setSelectedCategories(selectedCategories.filter(c => c !== category));
+                            } else {
+                              setSelectedCategories([...selectedCategories, category]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 ${
+                            selectedCategories.includes(category)
+                              ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                              : 'bg-white text-neutral-700 border-neutral-300 hover:border-primary-400 hover:bg-primary-50'
+                          }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Price Range with Dual Slider */}
+                  <div className="bg-neutral-50 rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-neutral-800 mb-3">
                       Price Range
                     </label>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <Input
-                          type="number"
-                          placeholder="Min"
+                    <div className="space-y-3">
+                      {/* Price Display */}
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-neutral-200">
+                        <span className="text-sm font-medium text-primary-600">{priceMin.toLocaleString('vi-VN')} ₫</span>
+                        <span className="text-neutral-400">—</span>
+                        <span className="text-sm font-medium text-primary-600">{priceMax.toLocaleString('vi-VN')} ₫</span>
+                      </div>
+                      {/* Dual Range Slider */}
+                      <div className="relative pt-1">
+                        <div className="h-2 bg-neutral-200 rounded-full">
+                          <div 
+                            className="absolute h-2 bg-primary-500 rounded-full"
+                            style={{
+                              left: `${(priceMin / 20000000) * 100}%`,
+                              right: `${100 - (priceMax / 20000000) * 100}%`
+                            }}
+                          />
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={20000000}
+                          step={100000}
                           value={priceMin}
-                          onChange={(e) => setPriceMin(Number(e.target.value))}
-                          className="w-full"
-                          min={0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            if (val <= priceMax) setPriceMin(val);
+                          }}
+                          className="absolute w-full h-2 top-1 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-primary-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-primary-600 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white"
                         />
-                      </div>
-                      <span className="text-neutral-500">-</span>
-                      <div className="flex-1">
-                        <Input
-                          type="number"
-                          placeholder="Max"
+                        <input
+                          type="range"
+                          min={0}
+                          max={20000000}
+                          step={100000}
                           value={priceMax}
-                          onChange={(e) => setPriceMax(Number(e.target.value))}
-                          className="w-full"
-                          min={0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            if (val >= priceMin) setPriceMax(val);
+                          }}
+                          className="absolute w-full h-2 top-1 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-primary-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-primary-600 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white"
                         />
                       </div>
-                    </div>
-                    <div className="mt-1 text-xs text-neutral-500">
-                      {priceMin.toLocaleString('vi-VN')} ₫ - {priceMax.toLocaleString('vi-VN')} ₫
+                      {/* Quick Price Presets */}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => { setPriceMin(0); setPriceMax(5000000); }}
+                          className="flex-1 text-xs py-1.5 rounded bg-white border border-neutral-200 hover:border-primary-400 hover:bg-primary-50 transition-colors"
+                        >
+                          &lt; 5M
+                        </button>
+                        <button
+                          onClick={() => { setPriceMin(5000000); setPriceMax(10000000); }}
+                          className="flex-1 text-xs py-1.5 rounded bg-white border border-neutral-200 hover:border-primary-400 hover:bg-primary-50 transition-colors"
+                        >
+                          5-10M
+                        </button>
+                        <button
+                          onClick={() => { setPriceMin(10000000); setPriceMax(20000000); }}
+                          className="flex-1 text-xs py-1.5 rounded bg-white border border-neutral-200 hover:border-primary-400 hover:bg-primary-50 transition-colors"
+                        >
+                          &gt; 10M
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
