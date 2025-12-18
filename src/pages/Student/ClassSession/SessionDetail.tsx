@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import StudentLayout from "@/Shared/StudentLayout";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/card";
 import Tabs from "@/components/ui/Tabs";
@@ -828,23 +827,19 @@ export default function SessionDetail() {
 
   if (loading) {
     return (
-      <StudentLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader />
-        </div>
-      </StudentLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
     );
   }
 
   if (error || !classDetail || !sessionId) {
     return (
-      <StudentLayout>
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="text-center text-red-600">
-            {error || 'Session not found'}
-          </div>
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
+        <div className="text-center text-red-600">
+          {error || 'Session not found'}
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
@@ -1209,7 +1204,7 @@ export default function SessionDetail() {
                                         <Button 
                                           variant="primary"
                                           size="sm"
-                                          className="btn-primary"
+                                          className=""
                                           iconLeft={<BookOpen className="w-4 h-4" />}
                                           onClick={(e) => { 
                                             e.preventDefault(); 

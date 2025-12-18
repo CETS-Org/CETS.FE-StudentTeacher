@@ -181,7 +181,7 @@ export default function CourseAll() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-36">
           <div className="text-center">
             <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
-              <span className="text-white drop-shadow-2xl whitespace-nowrap">
+              <span className="text-white drop-shadow-2xl">
                 Learn Without Limits
               </span>
             </h1>

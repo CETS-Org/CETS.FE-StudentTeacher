@@ -35,6 +35,7 @@ export interface UpcomingAssignment {
   className: string;
   classId: string;
   classMeetingId: string;
+  sessionNumber: number;
   hasSubmission: boolean;
   isOverdue: boolean;
 }

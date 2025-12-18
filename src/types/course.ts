@@ -132,6 +132,7 @@ export interface SimpleCourse {
   image: string;
   level: "Beginner" | "Intermediate" | "Advanced";
   format: "Online" | "In-person" | "Hybrid";
+  category?: string;
   timeOfDay?: "Morning" | "Evening" | "Weekend";
   price: number;
   originalPrice?: number;

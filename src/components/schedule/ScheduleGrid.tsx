@@ -93,43 +93,47 @@ export default function ScheduleGrid<T extends BaseSession>({
 
   return (
     <div className="border-t border-accent-200">
-      <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))] text-sm">
-        <div className="p-3 border-b border-accent-400 font-bold text-primary-800 bg-accent-200 text-center">Time</div>
+      <div className="grid grid-cols-[120px_repeat(7,minmax(0,1fr))] text-sm">
+        <div className="p-2 border-b border-accent-400 font-bold text-primary-800 bg-accent-200 text-center flex items-center justify-center text-xs">Time / Slot</div>
         {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d, i) => (
           <div
             key={d.toISOString()}
             className={
-              "p-3 border-b border-accent-200 text-center border-l " +
+              "py-2 px-1 border-b border-accent-200 text-center border-l " +
               (i === todayIdx ? "bg-accent-50" : "bg-white")
             }
           >
-            <div className="font-bold text-center text-primary-800">
-              {d.toLocaleDateString(undefined, { weekday: "long" })}
+            <div className="font-bold text-center text-primary-800 text-sm">
+              {d.toLocaleDateString(undefined, { weekday: "short" })}
             </div>
-            <div className="text-xs text-accent-600 font-medium mt-1">
+            <div className="text-xs text-accent-600 font-medium">
               {d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
             </div>
             {i === todayIdx && (
-              <div className="mt-2">
-                <span className="text-[10px] px-2 py-1 rounded-full bg-accent-500 text-white font-semibold">
-                  Today
-                </span>
-              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent-500 text-white font-semibold inline-block mt-1">
+                Today
+              </span>
             )}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-[140px_repeat(7,minmax(0,1fr))]">
+      <div className="grid grid-cols-[120px_repeat(7,minmax(0,1fr))]">
         {slotTimes.map(([h, m], row) => (
           <React.Fragment key={row}>
-            <div className="border-t border-accent-400 p-2 text-sm font-semibold text-primary-700 bg-accent-200 text-center">
+            {/* --- Time / Slot Column (Staff Style) --- */}
+            <div className="border-t border-r border-accent-400 p-2 text-xs bg-gray-50 flex flex-col justify-center items-center text-center h-24">
               {timeSlots && timeSlots[row] ? (
-                <div>
-                  <div>{timeSlots[row].start}</div>
-                  <span className="opacity-70">–</span>
-                  <div>{timeSlots[row].end}</div>
-                </div>
+                <>
+                  {/* Slot Name (e.g., Slot 1) */}
+                  <span className="font-bold text-blue-700 mb-1 text-sm block">
+                    Slot {row + 1}
+                  </span>
+                  {/* Time (e.g., 09:00 - 10:30) */}
+                  <div className="text-gray-500 font-medium bg-white px-2 py-1 rounded border border-gray-200 shadow-sm inline-block whitespace-nowrap">
+                    {timeSlots[row].start} - {timeSlots[row].end}
+                  </div>
+                </>
               ) : (
                 fmtTime(h, m)
               )}
@@ -149,7 +153,7 @@ export default function ScheduleGrid<T extends BaseSession>({
               return (
                 <div
                   key={key}
-                  className={`border-t border-l border-accent-200 p-2 min-h-[60px] ${colBase} ${slotHighlight} hover:bg-accent-25 transition-colors`}
+                  className={`border-t border-l border-accent-200 p-2 h-24 ${colBase} ${slotHighlight} hover:bg-accent-25 transition-colors`}
                 >
                   <div
                     className={

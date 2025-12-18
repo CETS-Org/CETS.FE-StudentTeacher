@@ -865,7 +865,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                 variant="primary"
                 onClick={() => setAdvancedCreateOpen(true)} 
                 iconLeft={<PlusCircle size={16} />}
-                className="btn-primary"
+                className=""
               >
                 Create Assignment
               </Button>
@@ -956,7 +956,7 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
                   <Button 
                     variant="primary"
                     onClick={() => handleViewSubmissions(asm)}
-                    className="btn-primary"
+                    className=""
                   >
                     View Submissions
                   </Button>

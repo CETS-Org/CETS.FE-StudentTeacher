@@ -543,7 +543,7 @@ const ReportIssue: React.FC = () => {
             </div>
             <Button 
               onClick={handleReportClick}
-              className="btn-primary"
+              className=""
             >
               Create Request
             </Button>
