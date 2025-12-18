@@ -55,6 +55,7 @@ export default function GenericSidebar({
   const [upcomingAssignments, setUpcomingAssignments] = useState<UpcomingAssignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [showPlacementTestDialog, setShowPlacementTestDialog] = useState(false);
+  const [deadlinesExpanded, setDeadlinesExpanded] = useState(true);
 
   useEffect(() => {
     if (config.submenuPathPrefix) {
@@ -274,16 +275,30 @@ export default function GenericSidebar({
           <div className="sticky bottom-0 z-10 bg-sidebar-primary">
             {config.showUpcomingDeadlines && (!collapsed || mobileOpen) && (
               <div className="p-3 border-t border-white/10">
-                <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setDeadlinesExpanded(prev => !prev)}
+                  className="w-full flex items-center justify-between mb-2 hover:bg-white/10 rounded-lg p-1 -m-1 transition-colors"
+                >
                   <h2 className="font-semibold text-white text-sm flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     Upcoming Deadlines
+                    {upcomingAssignments.length > 0 && (
+                      <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                        {upcomingAssignments.length}
+                      </span>
+                    )}
                   </h2>
-                  {loadingAssignments && (
-                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  )}
-                </div>
-                <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto sidebar-scrollbar">
+                  <div className="flex items-center gap-2">
+                    {loadingAssignments && (
+                      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    )}
+                    <ChevronDown className={cn("w-4 h-4 text-white/70 transition-transform", deadlinesExpanded && "rotate-180")} />
+                  </div>
+                </button>
+                <div className={cn(
+                  "flex flex-col gap-2 max-h-[200px] overflow-y-auto sidebar-scrollbar transition-all duration-200",
+                  deadlinesExpanded ? "opacity-100" : "opacity-0 max-h-0 overflow-hidden"
+                )}>
                   {!loadingAssignments && upcomingAssignments.length === 0 && (
                     <div className="rounded-lg p-3 bg-white/10 text-center">
                       <p className="text-xs text-white/70">No upcoming deadlines</p>

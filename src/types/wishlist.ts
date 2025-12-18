@@ -22,6 +22,7 @@ export interface WishlistItem {
   standardPrice: number;
   courseLevel: string;
   courseFormat: string;
+  categoryName: string;
   duration: string;
   rating: number;
   studentsCount: number;

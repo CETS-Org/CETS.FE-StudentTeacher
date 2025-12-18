@@ -1,5 +1,5 @@
 // src/components/schedule/SessionCard.tsx
-import { getAttendanceStyles, getTeachingSessionStyles } from "./scheduleUtils";
+import { MapPin, Clock, CheckCircle2, XCircle } from "lucide-react";
 import type { BaseSession, StudentSession } from "./scheduleUtils";
 
 type SessionCardProps<T extends BaseSession> = {
@@ -17,40 +17,70 @@ export default function SessionCard<T extends BaseSession>({
   onSessionClick,
   isStudent = false,
 }: SessionCardProps<T>) {
-  const hasAttendance = (session as any).attendanceStatus !== undefined;
-  const styles = (isStudent || hasAttendance)
-    ? getAttendanceStyles((session as StudentSession).attendanceStatus)
-    : getTeachingSessionStyles();
+  const attendanceStatus = (session as StudentSession).attendanceStatus;
+
+  // --- STATUS & STYLE LOGIC ---
+  let containerStyle = "";
+  let titleColor = "";
+  let statusLabel = "";
+  let statusStyle = "";
+  let statusIcon = null;
+
+  if (attendanceStatus === "attended") {
+    // ATTENDED
+    containerStyle = "bg-white border-l-4 border-green-500 hover:bg-green-50 transition-colors";
+    titleColor = "text-green-900";
+    statusLabel = "Attended";
+    statusStyle = "text-green-600 bg-green-50 border-green-200";
+    statusIcon = <CheckCircle2 className="w-3 h-3" />;
+  } else if (attendanceStatus === "absent") {
+    // ABSENT
+    containerStyle = "bg-gray-50/80 border-l-4 border-red-400 hover:bg-gray-100 transition-colors";
+    titleColor = "text-gray-500";
+    statusLabel = "Absent";
+    statusStyle = "text-red-500 bg-red-50 border-red-200";
+    statusIcon = <XCircle className="w-3 h-3" />;
+  } else {
+    // UPCOMING (default)
+    containerStyle = "bg-white border-l-4 border-blue-600 hover:bg-blue-50 transition-colors";
+    titleColor = "text-blue-900";
+    statusLabel = "Up Coming";
+    statusStyle = "text-blue-600 bg-blue-50 border-blue-200";
+    statusIcon = <Clock className="w-3 h-3" />;
+  }
 
   return (
-    <button
-      onClick={() => onSessionClick(session, startLabel, endLabel)}
-      className={`group w-full text-left rounded-lg shadow-md p-2 transition-all duration-200
-                 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400
-                 ${styles.border} ${styles.bg} ${styles.hover}`}
-      title={`${session.title} • ${startLabel} – ${endLabel}`}
-    >
-      <div className={`text-sm font-bold leading-4 group-hover:opacity-90 mb-1 ${styles.text}`}>
-        {session.title}
-      </div>
-      <div className={`text-xs font-medium mb-1 ${styles.text} opacity-80`}>
-        {session.classCode}
-        {session.room && (
-          <span>
-            {" • "}{session.room}
-          </span>
-        )}
-      </div>
-      {isStudent && (session as StudentSession).instructor && (
-        <div className={`text-xs mb-1 ${styles.text} opacity-70`}>
-          {(session as StudentSession).instructor}
+    <div className="relative h-full group w-full">
+      <button
+        onClick={() => onSessionClick(session, startLabel, endLabel)}
+        className={`w-full h-full text-left rounded-r-md shadow-sm p-2 
+                   focus:outline-none focus:ring-2 focus:ring-offset-1
+                   flex flex-col gap-1 overflow-hidden ${containerStyle}`}
+        title={`${session.title} • ${startLabel} – ${endLabel}`}
+      >
+        {/* --- HEADER: Title --- */}
+        <div className={`font-bold text-xs leading-tight truncate ${titleColor}`}>
+          {session.title}
         </div>
-      )}
-      <div className={`text-xs font-medium px-1 py-0.5 rounded ${styles.badge}`}>
-        {startLabel} – {endLabel}
-      </div>
-    </button>
+
+        {/* --- STATUS BADGE --- */}
+        <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold w-fit ${statusStyle}`}>
+          {statusIcon}
+          <span className="uppercase tracking-wide">{statusLabel}</span>
+        </div>
+
+        {/* --- BODY --- */}
+        <div className="flex flex-col gap-1 mt-auto pt-1">
+          {/* Class Code & Room */}
+          <div className="flex items-center gap-1.5 text-[10px] font-medium text-gray-600">
+            <MapPin className="w-3 h-3 opacity-70" />
+            <span className="truncate">
+              {session.classCode}
+              {session.room && ` • ${session.room}`}
+            </span>
+          </div>
+        </div>
+      </button>
+    </div>
   );
 }
-
-
