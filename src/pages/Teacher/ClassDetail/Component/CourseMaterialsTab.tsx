@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
+import Loader from "@/components/ui/Loader";
 import { FileText, Upload, Edit, Trash2, Eye } from "lucide-react";
 import UploadMaterialsPopup, { type FileWithTitle } from "@/pages/Teacher/ClassDetail/Component/Popup/UploadMaterialsPopup"; 
 import UpdateMaterialPopup from "@/pages/Teacher/ClassDetail/Component/Popup/UpdateMaterialPopup";
@@ -9,6 +10,7 @@ import { api } from "@/api";
 import type { LearningMaterial } from "@/types/learningMaterial";
 import { updateLearningMaterial } from "@/api/learningMaterial.api";
 import { config } from "@/lib/config";
+import { toast } from "@/components/ui/Toast";
 
 // Cache for materials data to avoid reloading when switching tabs
 const materialsCache = new Map<string, { data: LearningMaterial[]; timestamp: number }>();
@@ -33,6 +35,8 @@ export default function CourseMaterialsTab() {
   const [selectedMaterial, setSelectedMaterial] = useState<LearningMaterial | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -127,7 +131,7 @@ export default function CourseMaterialsTab() {
 
   const handleUpload = async (filesWithTitles: FileWithTitle[]) => {
     if (!resolvedMeetingId) {
-      alert('Please select a session before uploading materials.');
+      toast.warning('Please select a session before uploading materials.');
       return;
     }
 
@@ -175,17 +179,17 @@ export default function CourseMaterialsTab() {
       
       setMaterials(materialsData);
       if (failCount === 0) {
-        alert(`${successCount} file(s) uploaded successfully!`);
+        toast.success(`${successCount} file(s) uploaded successfully!`);
       } else if (successCount === 0) {
-        alert(`Upload failed for ${failCount} file(s). No materials were saved.`);
+        toast.error(`Upload failed for ${failCount} file(s). No materials were saved.`);
       } else {
-        alert(`Uploaded ${successCount} file(s). ${failCount} failed and were rolled back.`);
+        toast.warning(`Uploaded ${successCount} file(s). ${failCount} failed and were rolled back.`);
       }
       setPopupOpen(false);
       setCurrentPage(1);
     } catch (error) {
       console.error('Upload error:', error);
-      alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploading(false);
     }
@@ -200,7 +204,7 @@ export default function CourseMaterialsTab() {
       
       window.open(fullUrl, '_blank', 'noopener,noreferrer');
     } else {
-      alert('File URL is not available.');
+      toast.error('File URL is not available.');
     }
   };
 
@@ -210,18 +214,68 @@ export default function CourseMaterialsTab() {
   };
 
   const handleUpdateSubmit = async (materialId: string, title: string, file?: File) => {
+    if (!resolvedMeetingId) {
+      toast.error('Please select a session before updating materials.');
+      return;
+    }
+
+    setUpdating(true);
     try {
-      setMaterials(prevMaterials => 
-        prevMaterials.map(material => 
-          material.id === materialId.toString() ? { ...material, title } : material
-        )
-      );
-      alert('Material updated successfully!');
+      // If a new file is provided, we need to handle file upload
+      if (file) {
+        const contentType = file.type || 'application/octet-stream';
+        
+        // Step 1: Get presigned URL for update
+        const createResponse = await api.createLearningMaterial({
+          classMeetingID: resolvedMeetingId,
+          title: title.trim(),
+          contentType: contentType,
+          fileName: file.name
+        });
+
+        const createdId = createResponse.data?.id || createResponse.data?.Id;
+        const { uploadUrl } = createResponse.data;
+
+        // Step 2: Upload new file
+        const uploadResponse = await api.uploadToPresignedUrl(uploadUrl, file, contentType);
+        if (!uploadResponse.ok) {
+          if (createdId) {
+            try { await api.deleteLearningMaterial(createdId); } catch {}
+          }
+          toast.error('Failed to upload new file.');
+          return;
+        }
+
+        // Step 3: Delete old material
+        try {
+          await api.deleteLearningMaterial(materialId);
+        } catch (error) {
+          console.error('Failed to delete old material:', error);
+        }
+      } else {
+        // Just update the title
+        await updateLearningMaterial(materialId, { title: title.trim() });
+      }
+
+      // Clear cache and reload
+      materialsCache.delete(resolvedMeetingId);
+      const response = await api.getLearningMaterialsByClassMeeting(resolvedMeetingId);
+      const materialsData = response.data || [];
+      
+      materialsCache.set(resolvedMeetingId, {
+        data: materialsData,
+        timestamp: Date.now()
+      });
+      
+      setMaterials(materialsData);
+      toast.success('Material updated successfully!');
       setUpdatePopupOpen(false);
       setSelectedMaterial(null);
     } catch (error) {
       console.error('Update error:', error);
-      alert('Failed to update material');
+      toast.error('Failed to update material');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -232,6 +286,7 @@ export default function CourseMaterialsTab() {
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
 
+    setDeleting(true);
     try {
       await api.deleteLearningMaterial(deleteConfirmId);
       setMaterials(prevMaterials => 
@@ -254,12 +309,14 @@ export default function CourseMaterialsTab() {
       if (currentPage > newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages);
       }
-      alert('Material deleted successfully!');
+      toast.success('Material deleted successfully!');
       setDeleteConfirmId(null);
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete material');
+      toast.error('Failed to delete material');
       setDeleteConfirmId(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -284,14 +341,17 @@ export default function CourseMaterialsTab() {
   }
 
   return (
-    <div>
+    <div className="relative">
+      {(uploading || updating || deleting) && (
+        <Loader label={uploading ? 'Uploading materials...' : updating ? 'Updating material...' : 'Deleting material...'} />
+      )}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Course Materials</h2>
         <Button
           variant="primary"
           onClick={() => setPopupOpen(true)}
           iconLeft={<Upload size={16} />}
-          disabled={uploading}
+          disabled={uploading || updating || deleting}
            className="btn-secondary"
         >
           {uploading ? 'Uploading...' : 'Upload Materials'}
@@ -382,6 +442,7 @@ export default function CourseMaterialsTab() {
         open={isPopupOpen}
         onOpenChange={setPopupOpen}
         onUpload={handleUpload}
+        uploading={uploading}
       />
 
       {selectedMaterial && (
@@ -396,6 +457,7 @@ export default function CourseMaterialsTab() {
             date: formatDate(selectedMaterial.createdAt)
           }}
           onUpdate={handleUpdateSubmit}
+          updating={updating}
         />
       )}
 
@@ -409,11 +471,11 @@ export default function CourseMaterialsTab() {
               Are you sure you want to delete this learning material? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-3">
-              <Button variant="secondary" onClick={cancelDelete}>
+              <Button variant="secondary" onClick={cancelDelete} disabled={deleting}>
                 Cancel
               </Button>
-              <Button variant="danger" onClick={confirmDelete}>
-                Delete
+              <Button variant="danger" onClick={confirmDelete} disabled={deleting}>
+                {deleting ? 'Deleting...' : 'Delete'}
               </Button>
             </div>
           </div>

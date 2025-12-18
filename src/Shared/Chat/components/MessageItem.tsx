@@ -1,15 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { FileText, ExternalLink } from 'lucide-react';
-import type { ChatMessage } from '@/Shared/Chat/api/chat.types';
+import { FileText, ExternalLink, User } from 'lucide-react';
+import  type { ChatMessage } from '@/Shared/Chat/api/chat.types';
 
 interface MessageItemProps {
   message: ChatMessage;
   isOwnMessage: boolean;
+  senderName: string;   // [NEW] Tên người gửi
+  senderAvatar?: string; // [NEW] Avatar (nếu có)
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, isOwnMessage }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ 
+  message, 
+  isOwnMessage, 
+  senderName, 
+  senderAvatar 
+}) => {
   const navigate = useNavigate();
 
   const handleAssignmentClick = () => {
@@ -53,20 +60,49 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isOwnMessage }) => {
   };
 
   return (
-    <div className={`flex w-full mt-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex w-full mt-3 gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+      
+      {/* 1. AVATAR (Chỉ hiện cho người khác) */}
+      {!isOwnMessage && (
+        <div className="shrink-0 flex flex-col justify-end">
+           {senderAvatar ? (
+             <img 
+               src={senderAvatar} 
+               alt={senderName} 
+               className="w-8 h-8 rounded-full object-cover border border-gray-100 shadow-sm" 
+             />
+           ) : (
+             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                {senderName.charAt(0).toUpperCase()}
+             </div>
+           )}
+        </div>
+      )}
+
+      {/* 2. MESSAGE CONTENT */}
       <div className={`max-w-[75%] flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+        
+        {/* Tên người gửi (Chỉ hiện cho người khác) */}
+        {!isOwnMessage && (
+            <span className="text-[11px] text-gray-500 ml-1 mb-1 truncate max-w-[150px]">
+                {senderName}
+            </span>
+        )}
+
         <div 
-          className={`px-3 py-2 rounded-2xl shadow-sm ${
+          className={`px-3 py-2 shadow-sm ${
             message.type === 'assignment_link' 
               ? 'bg-transparent p-0 shadow-none' 
               : isOwnMessage 
-                ? 'bg-blue-600 text-white rounded-br-sm' 
-                : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
+                ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' 
+                : 'bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-none'
           }`}
         >
           {renderContent()}
         </div>
-        <span className="text-[10px] text-gray-400 mt-1 px-1">
+        
+        {/* Time */}
+        <span className={`text-[10px] text-gray-400 mt-1 px-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
           {format(new Date(message.createdAt), 'HH:mm')}
         </span>
       </div>

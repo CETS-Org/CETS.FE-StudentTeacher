@@ -18,6 +18,8 @@ import {
   MessageCircle,
   User as UserIcon,
   ChevronDown, // Thêm ChevronDown
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import type { ClassMeeting } from "@/api/classMeetings.api";
@@ -109,6 +111,8 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSessionIndex, setCurrentSessionIndex] = useState<number>(-1);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const sessionsPerPage = 4;
   const [completionRate, setCompletionRate] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [overdueCount, setOverdueCount] = useState<number>(0);
@@ -576,6 +580,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
 
       setCurrentSessionIndex(currentSessionIdx);
       setSessions(sessionsWithAssignments);
+      setCurrentPage(1); // Reset to first page when sessions change
 
       computeMetrics(sessionsWithAssignments, filterMode);
     } catch (err) {
@@ -870,79 +875,130 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                             </p>
                           </div>
                         ) : (
-                          <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4">
-                            {sessions.map((session, index) => {
-                              const sessionIndex = index;
-                              const isCurrent =
-                                sessionIndex === currentSessionIndex;
-
-                              // Format date short (e.g., "01 Sep")
-                              const formatShortDate = (dateString: string) => {
-                                try {
-                                  const date = new Date(dateString);
-                                  return date.toLocaleDateString("en-US", {
-                                    day: "2-digit",
-                                    month: "short",
-                                  });
-                                } catch {
-                                  return formatDate(dateString);
-                                }
-                              };
-
-                              const handleSessionClick = () => {
-                                // Navigate to session detail page with Session Context tab
-                                navigate(
-                                  `/student/class/${classItem.id}/session/${session.id}?tab=context`
-                                );
-                              };
+                          <>
+                            {/* Calculate pagination */}
+                            {(() => {
+                              const totalPages = Math.ceil(sessions.length / sessionsPerPage);
+                              const startIndex = (currentPage - 1) * sessionsPerPage;
+                              const endIndex = startIndex + sessionsPerPage;
+                              const paginatedSessions = sessions.slice(startIndex, endIndex);
 
                               return (
-                                <div
-                                  key={session.id}
-                                  onClick={handleSessionClick}
-                                  className={`p-3 rounded-lg border transition-all duration-200 shadow-sm cursor-pointer ${
-                                    isCurrent
-                                      ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 hover:bg-blue-100 hover:border-blue-500 hover:shadow-md"
-                                      : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200 hover:bg-accent-25 hover:shadow"
-                                  }`}
-                                >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex items-start gap-3 flex-1">
-                                      {isCurrent ? (
-                                        <PlayCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                      ) : session.isCompleted ? (
-                                        <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
-                                      ) : (
-                                        <Clock className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                                      )}
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <h5 className="font-semibold text-primary-800 text-sm">
-                                            Session {session.sessionNumber}
-                                          </h5>
-                                          {isCurrent && (
-                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent2-500 text-white shadow-sm">
-                                              Current
-                                            </span>
-                                          )}
+                                <>
+                                  <div className="space-y-4">
+                                    {paginatedSessions.map((session) => {
+                                      const sessionIndex = sessions.indexOf(session);
+                                      const isCurrent =
+                                        sessionIndex === currentSessionIndex;
+
+                                      // Format date short (e.g., "01 Sep")
+                                      const formatShortDate = (dateString: string) => {
+                                        try {
+                                          const date = new Date(dateString);
+                                          return date.toLocaleDateString("en-US", {
+                                            day: "2-digit",
+                                            month: "short",
+                                          });
+                                        } catch {
+                                          return formatDate(dateString);
+                                        }
+                                      };
+
+                                      const handleSessionClick = () => {
+                                        // Navigate to session detail page with Session Context tab
+                                        navigate(
+                                          `/student/class/${classItem.id}/session/${session.id}?tab=context`
+                                        );
+                                      };
+
+                                      return (
+                                        <div
+                                          key={session.id}
+                                          onClick={handleSessionClick}
+                                          className={`p-3 rounded-lg border transition-all duration-200 shadow-sm cursor-pointer ${
+                                            isCurrent
+                                              ? "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-400 border-2 hover:bg-blue-100 hover:border-blue-500 hover:shadow-md"
+                                              : "bg-gradient-to-br from-white to-accent-50/30 border-accent-200 hover:bg-accent-25 hover:shadow"
+                                          }`}
+                                        >
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex items-start gap-3 flex-1">
+                                              {isCurrent ? (
+                                                <PlayCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                              ) : session.isCompleted ? (
+                                                <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
+                                              ) : (
+                                                <Clock className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                                              )}
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <h5 className="font-semibold text-primary-800 text-sm">
+                                                    Session {session.sessionNumber}
+                                                  </h5>
+                                                  {isCurrent && (
+                                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent2-500 text-white shadow-sm">
+                                                      Current
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <p className="text-accent-600 text-xs mb-2">
+                                                  {session.coveredTopic ||
+                                                    "No topic available"}
+                                                </p>
+                                                <div className="flex items-center gap-2 text-xs text-accent-500">
+                                                  <Calendar className="w-3 h-3" />
+                                                  <span>
+                                                    {formatDate(session.date)}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
                                         </div>
-                                        <p className="text-accent-600 text-xs mb-2">
-                                          {session.coveredTopic ||
-                                            "No topic available"}
-                                        </p>
-                                        <div className="flex items-center gap-2 text-xs text-accent-500">
-                                          <Calendar className="w-3 h-3" />
-                                          <span>
-                                            {formatDate(session.date)}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
+                                      );
+                                    })}
                                   </div>
-                                </div>
+
+                                  {/* Pagination Controls */}
+                                  {totalPages > 1 && (
+                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                                      <button
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        disabled={currentPage === 1}
+                                        className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                          currentPage === 1
+                                            ? "text-gray-400 cursor-not-allowed"
+                                            : "text-gray-700 hover:bg-gray-100"
+                                        }`}
+                                      >
+                                        <ChevronLeft className="w-4 h-4" />
+                                        Previous
+                                      </button>
+                                      
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm text-gray-600">
+                                          Page {currentPage} of {totalPages}
+                                        </span>
+                                      </div>
+                                      
+                                      <button
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                          currentPage === totalPages
+                                            ? "text-gray-400 cursor-not-allowed"
+                                            : "text-gray-700 hover:bg-gray-100"
+                                        }`}
+                                      >
+                                        Next
+                                        <ChevronRight className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
                               );
-                            })}
-                          </div>
+                            })()}
+                          </>
                         )}
                       </div>
                     </Card>

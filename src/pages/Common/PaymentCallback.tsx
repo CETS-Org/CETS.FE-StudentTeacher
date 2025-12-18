@@ -160,9 +160,9 @@ export default function PaymentCallback() {
     navigate('/');
   };
 
-  const handleViewOrders = () => {
-    // Navigate to orders/payment history page
-    navigate('/student/payments');
+  const handleViewLearningPath = () => {
+    // Navigate to learning path page
+    navigate('/student/learning-path');
   };
 
   if (paymentStatus === 'loading') {
@@ -213,10 +213,10 @@ export default function PaymentCallback() {
             <div className="space-y-3">
               <Button
                 variant="primary"
-                onClick={handleViewOrders}
+                onClick={handleViewLearningPath}
                 className="w-full"
               >
-                View Payment History
+                Go Learning Path
               </Button>
               <Button
                 variant="secondary"
