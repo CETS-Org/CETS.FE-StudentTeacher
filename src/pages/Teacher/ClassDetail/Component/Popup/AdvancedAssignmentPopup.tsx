@@ -235,6 +235,30 @@ export default function AdvancedAssignmentPopup({
   // Find the selected skill object
   const selectedSkill = skills.find(s => s.lookUpId === selectedSkillId);
 
+  // Automatically derive assignment type from selected skill:
+  // - Writing  -> Homework
+  // - Listening, Speaking, Reading -> Quiz
+  // - Others / no skill -> Homework (default)
+  useEffect(() => {
+    if (!selectedSkill) {
+      setAssignmentType("Homework");
+      return;
+    }
+
+    const skillName = selectedSkill.name;
+    if (skillName === "Writing") {
+      setAssignmentType("Homework");
+    } else if (
+      skillName === "Listening" ||
+      skillName === "Speaking" ||
+      skillName === "Reading"
+    ) {
+      setAssignmentType("Quiz");
+    } else {
+      setAssignmentType("Homework");
+    }
+  }, [selectedSkill]);
+
   // Load assignment data for editing
   const loadAssignmentForEdit = useCallback(async () => {
     if (!editAssignment) return;
@@ -1540,8 +1564,6 @@ export default function AdvancedAssignmentPopup({
               onDueDateChange={setDueDate}
               selectedSkillId={selectedSkillId}
               onSkillChange={setSelectedSkillId}
-              assignmentType={assignmentType}
-              onAssignmentTypeChange={setAssignmentType}
               skills={skills}
               loadingSkills={loadingSkills}
               files={files}

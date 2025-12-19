@@ -12,8 +12,6 @@ interface BasicInformationStepProps {
   onDueDateChange: (value: string) => void;
   selectedSkillId: string | null;
   onSkillChange: (value: string | null) => void;
-  assignmentType: string;
-  onAssignmentTypeChange: (value: string) => void;
   skills: Skill[];
   loadingSkills: boolean;
   files: File[];
@@ -30,17 +28,16 @@ export default function BasicInformationStep({
   onDueDateChange,
   selectedSkillId,
   onSkillChange,
-  assignmentType,
-  onAssignmentTypeChange,
   skills,
   loadingSkills,
   files,
   onFilesChange,
   getMinDateTime,
 }: BasicInformationStepProps) {
-  
-  // Check if this is a speaking assignment
-  const isSpeakingAssignment = skills.find(s => s.lookUpId === selectedSkillId)?.name === "Speaking";
+  const selectedSkill = skills.find((s) => s.lookUpId === selectedSkillId);
+  const isHomeworkAssignment =
+    !selectedSkill || selectedSkill.name === "Writing";
+
   return (
     <div className="space-y-6 min-h-full">
       <div>
@@ -78,26 +75,6 @@ export default function BasicInformationStep({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
-          Assignment Type <span className="text-red-500">*</span>
-        </label>
-        <Select
-          value={assignmentType}
-          onChange={(e) => onAssignmentTypeChange(e.target.value)}
-          options={[
-            { value: "Homework", label: "Homework" },
-            { value: "Quiz", label: "Quiz" },
-          ]}
-          required
-        />
-        <p className="text-xs text-neutral-500 mt-1">
-          {assignmentType === "Homework" 
-            ? "Students will submit files for this assignment" 
-            : "Students will take a test with questions for this assignment"}
-        </p>
-      </div>
-
-      <div>
         <Input
           label={
             <>
@@ -124,8 +101,8 @@ export default function BasicInformationStep({
         />
       </div>
 
-      {/* File Upload - Required for Homework, Hidden for Quiz */}
-      {assignmentType === "Homework" && (
+      {/* File Upload - Required for Homework (Writing), Hidden for Quiz skills */}
+      {isHomeworkAssignment && (
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-2">
             Attachments <span className="text-red-500">*</span>
