@@ -22,17 +22,17 @@ export default function RelatedCourses({ currentCourse }: RelatedCoursesProps) {
         setLoading(true);
         setError(null);
         
-        // Calculate price range (±20% of current course price)
-        const priceRange = currentCourse.standardPrice * 0.2;
-        const minPrice = currentCourse.standardPrice - priceRange;
-        const maxPrice = currentCourse.standardPrice + priceRange;
+        // Calculate price range (±30% of current course price)
+        const priceRange = currentCourse.standardPrice * 0.3;
+        const minPrice = Math.max(0, Math.floor(currentCourse.standardPrice - priceRange));
+        const maxPrice = Math.ceil(currentCourse.standardPrice + priceRange);
         
-        // Search for courses with similar category and price range
-        const searchParams = {
-          categoryIds: [currentCourse.categoryName], // Use categoryIds instead of categories
-          priceMin: Math.max(0, Math.floor(minPrice)), // Ensure non-negative integer
-          priceMax: Math.ceil(maxPrice),
-          pageSize: 8, // Get more courses to have better filtering options
+        // Search for courses with similar category (using keyword search) and price range
+        const searchParams: Record<string, any> = {
+          Q: currentCourse.categoryName, // Use keyword search for category name
+          PriceMin: minPrice,
+          PriceMax: maxPrice,
+          PageSize: 12, // Get more courses to have better filtering options
         };
         
         const response = await api.searchCourses(searchParams);
@@ -41,17 +41,20 @@ export default function RelatedCourses({ currentCourse }: RelatedCoursesProps) {
         const responseData = response.data;
         const coursesArray = responseData?.items || responseData || [];
         
-        // Filter out the current course and limit to 4 courses
+        // Filter out the current course, match by category name, and limit to 4 courses
         let filteredCourses = coursesArray
-          .filter((course: Course) => course.id !== currentCourse.id)
+          .filter((course: Course) => 
+            course.id !== currentCourse.id && 
+            course.categoryName === currentCourse.categoryName
+          )
           .slice(0, 4);
         
-        // If we don't have enough related courses with price filter, search by category only
+        // If we don't have enough related courses with price filter, search by category only (no price filter)
         if (filteredCourses.length < 2) {
           try {
-            const fallbackParams = {
-              categoryIds: [currentCourse.categoryName],
-              pageSize: 8,
+            const fallbackParams: Record<string, any> = {
+              Q: currentCourse.categoryName,
+              PageSize: 12,
             };
             
             const fallbackResponse = await api.searchCourses(fallbackParams);
@@ -59,10 +62,33 @@ export default function RelatedCourses({ currentCourse }: RelatedCoursesProps) {
             const fallbackArray = fallbackData?.items || fallbackData || [];
             
             filteredCourses = fallbackArray
-              .filter((course: Course) => course.id !== currentCourse.id)
+              .filter((course: Course) => 
+                course.id !== currentCourse.id && 
+                course.categoryName === currentCourse.categoryName
+              )
               .slice(0, 4);
           } catch (fallbackErr) {
             console.warn("Fallback search also failed:", fallbackErr);
+          }
+        }
+        
+        // If still not enough, just get any courses from the same category
+        if (filteredCourses.length < 2) {
+          try {
+            const finalParams: Record<string, any> = {
+              Q: currentCourse.categoryName,
+              PageSize: 20,
+            };
+            
+            const finalResponse = await api.searchCourses(finalParams);
+            const finalData = finalResponse.data;
+            const finalArray = finalData?.items || finalData || [];
+            
+            filteredCourses = finalArray
+              .filter((course: Course) => course.id !== currentCourse.id)
+              .slice(0, 4);
+          } catch (finalErr) {
+            console.warn("Final fallback search also failed:", finalErr);
           }
         }
         

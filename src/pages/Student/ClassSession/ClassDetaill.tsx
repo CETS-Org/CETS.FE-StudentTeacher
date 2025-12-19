@@ -321,17 +321,7 @@ export default function ClassSession() {
         }
         description={"Manage class sessions and materials"}
         icon={<Calendar className="w-5 h-5 text-white" />}
-        controls={[
-          {
-            type: "button",
-            label: `${total} Session${total === 1 ? "" : "s"}`,
-            variant: "secondary",
-            icon: <Clock className="w-4 h-4" />,
-            className:
-              "bg-gradient-to-br from-primary-500 to-primary-600 text-white border-0",
-          },
-        ]}
-      />
+        />
 
       {/* Progress completed / total */}
       <Card className="border border-accent-100 bg-white p-4">
