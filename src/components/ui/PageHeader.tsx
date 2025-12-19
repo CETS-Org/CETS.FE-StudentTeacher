@@ -20,7 +20,14 @@ export interface PageHeaderSelect {
   className?: string;
 }
 
-export type PageHeaderControl = PageHeaderAction | PageHeaderSelect;
+export interface PageHeaderBadge {
+  type: 'badge';
+  label: string;
+  icon?: ReactNode;
+  className?: string;
+}
+
+export type PageHeaderControl = PageHeaderAction | PageHeaderSelect | PageHeaderBadge;
 
 export interface PageHeaderProps {
   title: string;
@@ -85,6 +92,16 @@ export default function PageHeader({
                   >
                     {control.label}
                   </Button>
+                );
+              } else if (control.type === 'badge') {
+                return (
+                  <div
+                    key={index}
+                    className={`inline-flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 ${control.className || ''}`}
+                  >
+                    {control.icon && <span className="flex-shrink-0">{control.icon}</span>}
+                    <span>{control.label}</span>
+                  </div>
                 );
               }
               return null;

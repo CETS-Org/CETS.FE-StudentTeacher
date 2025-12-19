@@ -1131,46 +1131,63 @@ export default function SessionDetail() {
                           const status = submission?.score != null ? "graded" : hasSubmittedFile ? "submitted" : pastDue ? "not_submitted" : "pending";
                         const canSubmit = status === "pending" || (status === "submitted" && !pastDue);
                         return (
-                            <Card key={assignment.id} className="p-6 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
-                              <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1">
-                                  <h3 className="text-xl font-bold text-primary-800 mb-3">
-                                    {assignment.title}
-                                  </h3>
-                                  <div className="flex flex-wrap items-center gap-3">
+                            <Card key={assignment.id} className="p-4 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
+                              <div className="flex justify-between items-start gap-4 mb-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <h3 className="text-lg font-bold text-primary-800 truncate">
+                                      {assignment.title}
+                                    </h3>
                                     {assignment.skillName && (
-                                      <div className="flex items-center gap-2 bg-accent2-200 px-3 py-2 rounded-lg">
-                                        <span className="text-sm font-medium text-primary-800">{assignment.skillName}</span>
-                                      </div>
-                                    )}
-                                    {assignment.fileUrl && (
-                                      <div className="flex items-center gap-2 bg-blue-100 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-200 transition-colors">
-                                        <FileText className="w-4 h-4 text-blue-600" />
-                                        <span 
-                                          className="text-sm font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer"
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleDownloadAssignment(assignment.id, `${assignment.title}.pdf`);
-                                          }}
-                                        >
-                                          Download Assignment File
-                                        </span>
+                                      <div className="flex items-center gap-1.5 bg-accent2-200 px-2 py-1 rounded-md flex-shrink-0">
+                                        <span className="text-xs font-medium text-primary-800">{assignment.skillName}</span>
                                       </div>
                                     )}
                                   </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${
+                                      status === "graded" ? "bg-success-500 text-white" :
+                                      status === "submitted" ? "bg-accent-500 text-white" :
+                                      status === "pending" ? "bg-warning-400 text-white" :
+                                      status === "not_submitted" ? "bg-red-500 text-white" :
+                                      "bg-neutral-400 text-white"
+                                    }`}>
+                                      {status === "graded" ? "Graded" :
+                                       status === "submitted" ? "Submitted" :
+                                       status === "pending" ? "Pending" :
+                                       status === "not_submitted" ? "Not Submitted" : status}
+                                    </span>
+                                    {status === "not_submitted" && (
+                                      <span className="text-xs text-red-600 font-medium">Assignment is past due date</span>
+                                    )}
+                                  </div>
+                                  {assignment.fileUrl && (
+                                    <div className="flex items-center gap-1.5 bg-blue-100 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-blue-200 transition-colors mt-3 w-fit">
+                                      <FileText className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                                      <span 
+                                        className="text-xs font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer whitespace-nowrap"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleDownloadAssignment(assignment.id, `${assignment.title}.pdf`);
+                                        }}
+                                      >
+                                        Download File
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                                <div className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg flex-shrink-0 ${
                                   pastDue 
                                     ? 'bg-red-100 border border-red-300' 
                                     : 'bg-green-100'
                                 }`}>
-                                  <Calendar className={`w-4 h-4 ${
+                                  <Calendar className={`w-3.5 h-3.5 ${
                                     pastDue 
                                       ? 'text-red-600' 
                                       : 'text-green-600'
                                   }`} />
-                                  <span className={`text-sm font-medium ${
+                                  <span className={`text-xs font-medium ${
                                     pastDue 
                                       ? 'text-red-600' 
                                      : 'text-green-600'
@@ -1179,24 +1196,7 @@ export default function SessionDetail() {
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex justify-between items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
-                                    status === "graded" ? "bg-success-500 text-white" :
-                                    status === "submitted" ? "bg-accent-500 text-white" :
-                                    status === "pending" ? "bg-warning-500 text-white" :
-                                    status === "not_submitted" ? "bg-red-500 text-white" :
-                                    "bg-neutral-400 text-white"
-                                  }`}>
-                                    {status === "graded" ? "Graded" :
-                                     status === "submitted" ? "Submitted" :
-                                     status === "pending" ? "Pending" :
-                                     status === "not_submitted" ? "Not Submitted" : status}
-                                  </span>
-                                  {status === "not_submitted" && (
-                                    <span className="text-sm text-red-600 font-medium">Assignment is past due date</span>
-                                  )}
-                                </div>
+                              <div className="flex justify-end items-center gap-3 mt-2">
                                 <div className="flex gap-2">
                                   {status === "pending" && !pastDue && (
                                     <>
@@ -1204,8 +1204,7 @@ export default function SessionDetail() {
                                         <Button 
                                           variant="primary"
                                           size="sm"
-                                          className=""
-                                          iconLeft={<BookOpen className="w-4 h-4" />}
+                                          iconLeft={<BookOpen className="w-3.5 h-3.5" />}
                                           onClick={(e) => { 
                                             e.preventDefault(); 
                                             e.stopPropagation(); 
@@ -1217,10 +1216,9 @@ export default function SessionDetail() {
                                       )}
                                       {!assignment.questionUrl && (
                                         <Button 
-                                          variant="secondary"
+                                          variant="primary"
                                           size="sm"
-                                          className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-600 hover:to-yellow-700 shadow-lg shadow-yellow-500/25 hover:shadow-yellow-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
-                                          iconLeft={assignment.skillName?.toLowerCase() === 'writing' ? <PenTool className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                                          iconLeft={assignment.skillName?.toLowerCase() === 'writing' ? <PenTool className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
                                   onClick={(e) => { 
                                     e.preventDefault();
                                             e.stopPropagation(); 
@@ -1232,7 +1230,7 @@ export default function SessionDetail() {
                                             }
                                           }}
                                         >
-                                          {assignment.skillName?.toLowerCase() === 'writing' ? 'Write Answer' : 'Submit Assignment'}
+                                          {assignment.skillName?.toLowerCase() === 'writing' ? 'Write Answer' : 'Submit'}
                                         </Button>
                                       )}
                                     </>
@@ -1241,7 +1239,7 @@ export default function SessionDetail() {
                                     variant="secondary"
                                     size="sm"
                                     onClick={() => setOpenAssignmentId(openAssignmentId === assignment.id ? null : assignment.id)}
-                                    className="btn-secondary"
+                                    className="text-sm py-1.5 px-4"
                                   >
                                     {openAssignmentId === assignment.id ? "Hide Details" : "View Details"}
                                   </Button>

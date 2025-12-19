@@ -185,7 +185,7 @@ export default function ClassDetailPage() {
               </div>
             </div>
           ) : (
-            <StudentsTab classId={classId} classMeetingId={classMeetingId} />
+            <StudentsTab classId={classId} classMeetingId={classMeetingId} className={classDetail?.className} />
           )}
         </div>
       </>
