@@ -199,7 +199,7 @@ export default function PaymentCallback() {
                   <div className="flex justify-between">
                     <span>Amount:</span>
                     <span className="font-medium">
-                      {new Intl.NumberFormat('vi-VN').format(paymentData.amount)} VND
+                      {new Intl.NumberFormat('vi-VN').format(paymentData.amount)} ₫
                     </span>
                   </div>
                   <div className="flex justify-between">

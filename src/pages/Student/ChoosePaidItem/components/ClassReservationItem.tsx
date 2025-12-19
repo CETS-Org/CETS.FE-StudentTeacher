@@ -30,7 +30,7 @@ export default function ClassReservationItem({ reservation, className = "" }: Cl
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price) + ' VND';
+    return new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
   };
 
   const formatDate = (dateString: string) => {
