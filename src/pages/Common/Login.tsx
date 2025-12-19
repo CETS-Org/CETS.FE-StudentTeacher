@@ -605,13 +605,13 @@ export default function Login() {
           
           <p className="text-xs text-neutral-500 max-w-sm mx-auto">
           By signing in, you agree to our{" "}
-            <a href="#" className="text-primary-600 hover:underline font-medium">
+            <Link to="/terms-of-service" className="text-primary-600 hover:underline font-medium">
             Terms of Service
-          </a>{" "}
+          </Link>{" "}
           and{" "}
-            <a href="#" className="text-primary-600 hover:underline font-medium">
+            <Link to="/privacy-policy" className="text-primary-600 hover:underline font-medium">
             Privacy Policy
-          </a>
+          </Link>
         </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 // src/components/teacher/SessionAssignmentsTab.tsx
 
-import { useState, useMemo, useEffect } from "react";
-import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet, Bot, Edit2, Trash2 } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { PlusCircle, Calendar, Users, Eye, MessageSquare, FilePenLine, ArrowLeft, Download, FileSpreadsheet, Bot, Edit2, Trash2, MoreVertical } from "lucide-react";
 import JSZip from 'jszip';
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/card";
@@ -83,6 +83,96 @@ interface SessionAssignmentsTabProps {
 // Cache for assignments data to avoid reloading when switching tabs
 const assignmentsCache = new Map<string, { data: Assignment[]; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Assignment Actions Menu Component
+interface AssignmentActionsMenuProps {
+  assignment: Assignment;
+  onEdit: () => void;
+  onDownload: () => void;
+  onDelete: () => void;
+}
+
+const AssignmentActionsMenu: React.FC<AssignmentActionsMenuProps> = ({
+  assignment,
+  onEdit,
+  onDownload,
+  onDelete,
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  // Close menu when clicking outside or pressing ESC
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        aria-label="More actions"
+      >
+        <MoreVertical className="w-5 h-5 text-gray-600" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1"
+        >
+          <button
+            role="menuitem"
+            className="flex items-center gap-2 px-4 py-2 w-full hover:bg-yellow-50 text-sm text-gray-700 outline-none transition-colors"
+            onClick={() => {
+              onEdit();
+              setOpen(false);
+            }}
+          >
+            <FilePenLine className="w-4 h-4 text-yellow-600" />
+            Edit
+          </button>
+          {assignment.storeUrl && (
+            <button
+              role="menuitem"
+              className="flex items-center gap-2 px-4 py-2 w-full hover:bg-green-50 text-sm text-gray-700 outline-none transition-colors"
+              onClick={() => {
+                onDownload();
+                setOpen(false);
+              }}
+            >
+              <Download className="w-4 h-4 text-green-600" />
+              Download
+            </button>
+          )}
+          <button
+            role="menuitem"
+            className="flex items-center gap-2 px-4 py-2 w-full hover:bg-red-50 text-sm text-red-600 outline-none transition-colors"
+            onClick={() => {
+              onDelete();
+              setOpen(false);
+            }}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignmentsTabProps) {
   // Toast notifications
@@ -915,79 +1005,61 @@ export default function SessionAssignmentsTab({ classMeetingId }: SessionAssignm
           ) : (
             <div className="space-y-4">
               {filteredAssignments.map(asm => (
-              <Card key={asm.id} className="p-6 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-primary-800 mb-3">
-                      {asm.title}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-3">
+              <Card key={asm.id} className="p-4 border border-accent-200 bg-white hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-accent-25/30 transition-all duration-300">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-bold text-primary-800 truncate">
+                        {asm.title}
+                      </h3>
                       {asm.skillName && (
-                        <div className="flex items-center gap-2 bg-accent2-200 px-3 py-2 rounded-lg">
-                          <span className="text-sm font-medium text-primary-800">{asm.skillName}</span>
+                        <div className="flex items-center gap-1.5 bg-accent2-200 px-2 py-1 rounded-md flex-shrink-0">
+                          <span className="text-xs font-medium text-primary-800">{asm.skillName}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 bg-warning-200 px-3 py-2 rounded-lg">
-                        <Users className="w-4 h-4 text-primary-600" />
-                        <span className="text-sm font-medium text-primary-700">{asm.submissionCount} Submissions</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 bg-warning-200 px-3 py-2 rounded-lg">
+                        <Users className="w-3.5 h-3.5 text-primary-600" />
+                        <span className="text-xs font-medium text-primary-700">{asm.submissionCount} Submissions</span>
                       </div>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-                    isPastDue(asm.dueDate) 
-                      ? 'bg-red-100 border border-red-300' 
-                      : 'bg-green-100'
-                  }`}>
-                    <Calendar className={`w-4 h-4 ${
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${
                       isPastDue(asm.dueDate) 
-                        ? 'text-red-600' 
-                        : 'text-green-600'
-                    }`} />
-                    <span className={`text-sm font-medium ${
-                      isPastDue(asm.dueDate) 
-                        ? 'text-red-600' 
-                       : 'text-green-600'
+                        ? 'bg-red-100 border border-red-300' 
+                        : 'bg-green-100'
                     }`}>
-                      Due: {formatDueDate(asm.dueDate)}
-                    </span>
+                      <Calendar className={`w-3.5 h-3.5 ${
+                        isPastDue(asm.dueDate) 
+                          ? 'text-red-600' 
+                          : 'text-green-600'
+                      }`} />
+                      <span className={`text-xs font-medium ${
+                        isPastDue(asm.dueDate) 
+                          ? 'text-red-600' 
+                         : 'text-green-600'
+                      }`}>
+                        Due: {formatDueDate(asm.dueDate)}
+                      </span>
+                    </div>
+                    <AssignmentActionsMenu
+                      assignment={asm}
+                      onEdit={() => handleEditAssignment(asm)}
+                      onDownload={() => handleDownloadAssignment(asm)}
+                      onDelete={() => handleDeleteAssignment(asm)}
+                    />
                   </div>
                 </div>
-                <div className="flex justify-between items-center gap-3">
+                <div className="flex justify-start items-center gap-3 mt-3">
                   <Button 
-                    variant="primary"
+                    variant="secondary"
                     onClick={() => handleViewSubmissions(asm)}
-                    className=""
+                    className="text-sm py-1.5 px-4"
                   >
-                    View Submissions
+                    Submissions
                   </Button>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="secondary"
-                      onClick={() => handleEditAssignment(asm)}
-                      iconLeft={<FilePenLine size={16} />}
-                      className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-600 hover:to-yellow-700 shadow-lg shadow-yellow-500/25 hover:shadow-yellow-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
-                    >
-                      Edit
-                    </Button>
-                    {asm.storeUrl && (
-                    <Button 
-                      variant="secondary"
-                        onClick={() => handleDownloadAssignment(asm)}
-                        iconLeft={<Download size={16} />}
-                        className="bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/25 hover:shadow-green-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
-                    >
-                        Download
-                    </Button>
-                    )}
-                    <Button 
-                      variant="secondary"
-                      onClick={() => handleDeleteAssignment(asm)}
-                      iconLeft={<Trash2 size={16} />}
-                      className="bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25 hover:shadow-red-600/30 transition-all duration-200 text-white font-medium px-4 py-2 rounded-lg"
-                    >
-                      Delete
-                    </Button>
-                  </div>
                 </div>
               </Card>
               ))}

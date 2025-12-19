@@ -224,7 +224,7 @@ export default function GenericSidebar({
                       <button
                         onClick={handlePlacementTestClick}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sidebar-hover",
+                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sidebar-hover w-full text-left",
                           active && "bg-sidebar-active font-semibold shadow-md",
                           collapsed && "lg:justify-center lg:px-2"
                         )}

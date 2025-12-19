@@ -38,7 +38,7 @@ export default function PaymentSuccess() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price) + ' VND';
+    return new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
   };
 
   if (loading) {

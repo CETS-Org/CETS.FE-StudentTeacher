@@ -1,7 +1,7 @@
 // src/pages/teacher/classes/[classId]/StudentsTab.tsx
 import { useState, useMemo, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { Search, Users, UserCheck, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Users, UserCheck, CheckCircle2, XCircle, CheckSquare } from "lucide-react";
 import { getStudentsInClass, bulkMarkAttendance } from "@/api/attendance.api";
 import type { StudentInClass } from "@/api/attendance.api";
 import Loader from "@/components/ui/Loader";
@@ -21,7 +21,7 @@ interface StudentsTabProps {
 export default function StudentsTab({ 
   classId, 
   classMeetingId,
-  className = "SE17D05" 
+  className 
 }: StudentsTabProps) {
   const [students, setStudents] = useState<StudentInClass[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +88,31 @@ export default function StudentsTab({
 
   const togglePresent = (id: string, checked: boolean) => {
     setPresent((prev) => ({ ...prev, [id]: checked }));
+  };
+
+  // Check if all filtered students are marked as present
+  const allSelected = useMemo(() => {
+    if (filtered.length === 0) return false;
+    return filtered.every((s) => present[s.studentId] === true);
+  }, [filtered, present]);
+
+  // Toggle select all/deselect all
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      // Deselect all - mark all as absent
+      const allAbsent: Record<string, boolean> = {};
+      filtered.forEach((s) => {
+        allAbsent[s.studentId] = false;
+      });
+      setPresent((prev) => ({ ...prev, ...allAbsent }));
+    } else {
+      // Select all - mark all as present
+      const allPresent: Record<string, boolean> = {};
+      filtered.forEach((s) => {
+        allPresent[s.studentId] = true;
+      });
+      setPresent((prev) => ({ ...prev, ...allPresent }));
+    }
   };
 
   const startTaking = () => {
@@ -198,7 +223,7 @@ export default function StudentsTab({
             <Users className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-primary-800">Class: {className}</h2>
+            <h2 className="text-xl font-bold text-primary-800">Class: {className || "Loading..."}</h2>
             <p className="text-sm text-neutral-600">{filtered.length} students enrolled</p>
           </div>
         </div>
@@ -257,7 +282,19 @@ export default function StudentsTab({
               Email
             </th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
-              {isTaking ? "Mark Absent" : "Status"}
+              <div className="flex items-center justify-between gap-2">
+                <span>{isTaking ? "Status" : "Status"}</span>
+                {isTaking && filtered.length > 0 && (
+                  <button
+                    onClick={toggleSelectAll}
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-white bg-white/20 hover:bg-white/30 rounded-md transition-colors duration-200"
+                    title={allSelected ? "Deselect All" : "Select All"}
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>{allSelected ? "Deselect All" : "Select All"}</span>
+                  </button>
+                )}
+              </div>
             </th>
           </tr>
         </thead>
@@ -352,14 +389,12 @@ export default function StudentsTab({
             <Button 
               variant="primary" 
               onClick={saveAttendance}
-              className="btn-secondary"
             >
               Save Attendance
             </Button>
             <Button 
               variant="secondary" 
               onClick={cancelTaking}
-              className="border-neutral-300 bg-secondary-600 text-white hover:bg-secondary-600"
             >
               Cancel
             </Button>

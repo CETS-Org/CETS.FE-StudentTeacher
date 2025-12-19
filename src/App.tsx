@@ -32,6 +32,8 @@ import GoogleCallback from './pages/Common/GoogleCallback'
 import VerificationSuccess from './pages/Common/VerificationSuccess'
 import VerificationError from './pages/Common/VerificationError'
 import ChangePassword from './pages/Common/ChangePassword'
+import TermsOfService from './pages/Common/TermsOfService'
+import PrivacyPolicy from './pages/Common/PrivacyPolicy'
 import MyClasses from './pages/Student/MyClasses'
 import ClassSession from './pages/Student/ClassSession/ClassDetaill'
 import StudentSessionDetail from './pages/Student/ClassSession/SessionDetail'
@@ -97,6 +99,8 @@ function LayoutContent() {
             <Route path="/dev" element={<Dev_Home />} />
             <Route path="/dev/dashboard" element={<Dev_Dashboard />} />
             <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             
             {/* Student routes */}
             <Route path="/student/wishlist" element={<Wishlist />} /> 

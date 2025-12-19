@@ -121,7 +121,7 @@ export default function CourseListItem({ course, onEnroll, onToggleWishlist, isI
             </div>
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3 text-blue-500 flex-shrink-0" />
-              <span className="truncate">{course.duration}</span>
+              <span className="truncate">{course.duration.replace(/slots?/gi, 'sessions')}</span>
             </div>
             <div className="flex items-center gap-1">
               <BookOpen className="w-3 h-3 text-purple-500 flex-shrink-0" />

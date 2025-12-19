@@ -105,11 +105,9 @@ export default function ClassDetailPage() {
         icon={<Users className="w-5 h-5 text-white" />}
         controls={[
           {
-            type: 'button',
+            type: 'badge',
             label: `${classDetail.enrolledCount} Students`,
-            variant: 'secondary',
             icon: <Users className="w-4 h-4" />,
-            className: 'bg-gradient-to-br from-primary-500 to-primary-600 text-white border-0'
           },
          ]}
       />

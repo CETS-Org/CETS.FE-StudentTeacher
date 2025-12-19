@@ -1,12 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import Button from "@/components/ui/Button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { 
-  X, 
   CreditCard, 
   Package,
   User,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  Phone,
+  FileText,
+  CheckCircle2,
+  BookOpen
 } from "lucide-react";
 
 import { getUserInfo, getStudentId, setUserInfo } from "@/lib/utils";
@@ -107,7 +112,7 @@ export default function ClassReservationPaymentDialog({
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price) + ' VND';
+    return new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
   };
 
   const formatDate = (dateString: string) => {
@@ -296,45 +301,23 @@ export default function ClassReservationPaymentDialog({
 
   if (!open) return null;
 
-  const handleBackgroundClick = (e: React.MouseEvent) => {
-    // Only close if clicking on the background, not the dialog content
-    if (e.target === e.currentTarget) {
-      onOpenChange(false);
-    }
-  };
-
   return (
-    <div 
-      className="fixed inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={handleBackgroundClick}
-    >
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-accent-100 rounded-lg">
-              <CreditCard className="w-5 h-5 text-primary-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Payment Confirmation</h2>
-              <p className="text-sm text-gray-600">Complete your reservation payment</p>
-            </div>
-          </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="xl" className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <CreditCard className="w-6 h-6 text-primary-600" />
+            Payment Confirmation
+          </DialogTitle>
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+        <DialogBody className="overflow-y-auto">
+          <div className="space-y-6">
           {/* Payment Item Summary */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-3 mb-3">
+          <div className=" border border-primary-200 rounded-xl shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
               <Package className="w-5 h-5 text-primary-600" />
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-900">
                 {isSecondPayment ? 'Second Payment Details' : isSingleItem ? 'Item Details' : 'Package Summary'}
               </h3>
             </div>
@@ -342,16 +325,16 @@ export default function ClassReservationPaymentDialog({
             <div className="space-y-3">
               {/* Show second payment notice */}
               {isSecondPayment && reservationItems[0].secondPayment && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
-                  <div className="flex items-center gap-2 text-orange-700 mb-1">
-                    <AlertCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">Second Installment Payment</span>
+                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 mb-4">
+                  <div className="flex items-center gap-2 text-orange-700 mb-2">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="text-sm font-semibold">Second Installment Payment</span>
                   </div>
-                  <p className="text-xs text-orange-600">
+                  <p className="text-sm text-orange-600 mb-2">
                     You have already paid the first installment. This is your second and final payment.
                   </p>
                   {reservationItems[0].secondPayment.dueDate && (
-                    <p className="text-xs text-orange-600 mt-1">
+                    <p className="text-sm text-orange-700 font-medium">
                       Due Date: {new Date(reservationItems[0].secondPayment.dueDate).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
@@ -444,29 +427,29 @@ export default function ClassReservationPaymentDialog({
                 <span className="font-medium">{formatDate(reservation.expiresAt)}</span>
               </div>
               
-              <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+              <div className="flex items-center justify-between pt-3 border-t border-primary-200 mt-3">
                 <span className="text-lg font-semibold text-gray-900">
                   {isSecondPayment ? '2nd Installment Amount:' : 'Payment Amount:'}
                 </span>
-                <span className="text-xl font-bold text-primary-600">
+                <span className="text-2xl font-bold text-primary-600">
                   {paymentPlan === 'TwoTime' ? formatPrice(perPaymentAmount) : formatPrice(totalAmount)}
                 </span>
               </div>
               {/* Show fee breakdown for first installment */}
               {paymentPlan === 'TwoTime' && !isSecondPayment && (
                 <>
-                  <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="flex items-center justify-between text-sm text-gray-600 pt-2">
                     <span>Total (with 10% fee):</span>
-                    <span className="font-medium">{formatPrice(totalWithFee)}</span>
+                    <span className="font-semibold text-gray-900">{formatPrice(totalWithFee)}</span>
                   </div>
-                  <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                  <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 p-3 rounded-lg mt-2">
                     <strong>Note:</strong> Two-time payment includes 10% processing fee. Each installment is half of the total with fee.
                   </div>
                 </>
               )}
               {/* Show info for second installment */}
               {isSecondPayment && (
-                <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 p-3 rounded-lg mt-2">
                   <strong>Info:</strong> This is your final payment. After this, you'll have full access to the course.
                 </div>
               )}
@@ -474,119 +457,142 @@ export default function ClassReservationPaymentDialog({
           </div>
 
           {/* Payment Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Payment Plan */}
             {!isSecondPayment && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Plan
-                </label>
-                <div className="space-y-3">
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard className="w-5 h-5 text-primary-600" />
+                  <h4 className="text-lg font-semibold text-gray-900">Payment Plan</h4>
+                </div>
+                <div className="space-y-4">
                   {/* Full Payment */}
-                  <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    paymentPlan === 'OneTime' ? 'border-primary-50 bg-secondary-200 shadow-md' : 'border-gray-100 hover:border-gray-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="paymentPlan"
-                      value="OneTime"
-                      checked={paymentPlan === 'OneTime'}
-                      onChange={(e) => setPaymentPlan(e.target.value as 'OneTime')}
-                      className="sr-only"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className={`w-5 h-5 ${paymentPlan === 'OneTime' ? 'text-primary-600' : 'text-gray-500'}`} />
-                          <span className="text-base font-semibold text-gray-900">One-time Payment</span>
-                        </div>
-                        <span className="text-xl font-bold text-primary-600">{formatPrice(totalAmount)}</span>
+                  <div 
+                    className={`relative p-5 border-2 rounded-xl cursor-pointer transition-all ${
+                      paymentPlan === 'OneTime' 
+                        ? 'border-accent-200 bg-accent-100 shadow-md' 
+                        : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setPaymentPlan('OneTime')}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        paymentPlan === 'OneTime' 
+                          ? 'border-primary-600 bg-primary-600' 
+                          : 'border-gray-300'
+                      }`}>
+                        {paymentPlan === 'OneTime' && (
+                          <div className="w-2 h-2 rounded-full bg-white"></div>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600">Pay the entire amount at once</p>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="w-5 h-5 text-primary-600" />
+                            <span className="font-bold text-gray-900">One-time Payment</span>
+                          </div>
+                          <span className="text-2xl font-bold text-primary-600">{formatPrice(totalAmount)}</span>
+                        </div>
+                        <p className="text-sm text-gray-600">Pay the entire amount at once</p>
+                      </div>
                     </div>
-                  </label>
+                  </div>
 
                   {/* Two-time Payment */}
-                  <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    paymentPlan === 'TwoTime' ? 'border-primary-50 bg-secondary-200 shadow-md' : 'border-gray-300 hover:border-gray-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="paymentPlan"
-                      value="TwoTime"
-                      checked={paymentPlan === 'TwoTime'}
-                      onChange={(e) => setPaymentPlan(e.target.value as 'TwoTime')}
-                      className="sr-only"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <Package className={`w-5 h-5 ${paymentPlan === 'TwoTime' ? 'text-primary-600' : 'text-gray-500'}`} />
-                          <span className="text-base font-semibold text-gray-900">Two-time Payment</span>
-                        </div>
-                        <span className="text-xl font-bold text-primary-600">{formatPrice(Math.round((totalAmount * 1.1) / 2))}</span>
+                  <div 
+                    className={`relative p-5 border-2 rounded-xl cursor-pointer transition-all ${
+                      paymentPlan === 'TwoTime' 
+                        ? 'border-accent-200 bg-accent-100 shadow-md' 
+                        : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setPaymentPlan('TwoTime')}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        paymentPlan === 'TwoTime' 
+                          ? 'border-primary-600 bg-primary-600' 
+                          : 'border-gray-300'
+                      }`}>
+                        {paymentPlan === 'TwoTime' && (
+                          <div className="w-2 h-2 rounded-full bg-white"></div>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600">First installment payment</p>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Total amount: {formatPrice(Math.round(totalAmount * 1.1))} (includes 10% fee)
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-5 h-5 text-primary-600" />
+                            <span className="font-bold text-gray-900">Two-time Payment</span>
+                          </div>
+                          <span className="text-2xl font-bold text-primary-600">{formatPrice(Math.round((totalAmount * 1.1) / 2))}</span>
+                        </div>
+                        <p className="text-sm text-gray-600">First installment payment</p>
+                        <div className="text-xs text-orange-600 font-medium mt-2">
+                          Total amount: {formatPrice(Math.round(totalAmount * 1.1))} (includes 10% fee)
+                        </div>
                       </div>
                     </div>
-                  </label>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Student Information */}
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Student Information
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <User className="w-5 h-5 text-primary-600" />
+                <h4 className="text-lg font-semibold text-gray-900">Student Information</h4>
                 {isLoadingProfile && (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 ml-2"></div>
                 )}
-              </h4>
+              </div>
               
-              <p className="text-sm text-gray-600">Your profile information has been automatically filled. You can edit if needed.</p>
+              <p className="text-sm text-gray-500 mb-5 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Your profile information has been automatically filled and cannot be edited here.
+              </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                    <User className="w-4 h-4 text-gray-500" />
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                     placeholder="Enter your full name"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                    <Mail className="w-4 h-4 text-gray-500" />
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
                     value={studentEmail}
-                    onChange={(e) => setStudentEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                     placeholder="Enter your email"
                     required
                   />
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="mt-4">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Phone className="w-4 h-4 text-gray-500" />
                   Phone Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   value={studentPhone}
-                  onChange={(e) => setStudentPhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                   placeholder="Enter your phone number"
                   required
                 />
@@ -594,49 +600,67 @@ export default function ClassReservationPaymentDialog({
             </div>
 
             {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <FileText className="w-4 h-4 text-gray-500" />
                 Additional Notes (Optional)
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none transition-all"
                 placeholder="Any special instructions or notes..."
               />
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => onOpenChange(false)}
-                className="flex-1"
-                disabled={isProcessing}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                className="flex-1"
-                disabled={isProcessing}
-                iconLeft={isProcessing ? undefined : <CreditCard className="w-4 h-4" />}
-              >
-                {isProcessing ? "Processing..." : 
-                  isSecondPayment 
-                    ? `Pay 2nd Installment ${formatPrice(totalAmount)}`
-                    : paymentPlan === 'OneTime' 
-                      ? `Pay ${formatPrice(totalAmount)}` 
-                      : `Pay First Installment ${formatPrice(perPaymentAmount)}`
-                }
-              </Button>
-            </div>
           </form>
-        </div>
-      </div>
-    </div>
+          </div>
+        </DialogBody>
+
+        <DialogFooter className="border-t border-gray-200 pt-4 mt-4">
+          <div className="bg-gradient-to-r from-secondary-100 to-accent-100 border border-primary-200 rounded-xl shadow-sm p-5 w-full">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex-1">
+                <div className="text-sm text-gray-600 mb-1">Total Amount:</div>
+                <div className="text-3xl font-bold text-primary-600">
+                  {isSecondPayment 
+                    ? formatPrice(totalAmount)
+                    : paymentPlan === 'OneTime' 
+                      ? formatPrice(totalAmount) 
+                      : formatPrice(perPaymentAmount)
+                  }
+                </div>
+                {paymentPlan === 'TwoTime' && !isSecondPayment && (
+                  <div className="text-sm text-gray-600 pt-2 border-t border-primary-200 mt-2">
+                    Total: <span className="font-semibold text-gray-900">{formatPrice(totalWithFee)}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="flex-1 sm:flex-initial"
+                  disabled={isProcessing}
+                  iconLeft={isProcessing ? undefined : <CheckCircle2 className="w-4 h-4" />}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }}
+                >
+                  {isProcessing ? "Processing..." : 
+                    isSecondPayment 
+                      ? `Pay 2nd Installment`
+                      : paymentPlan === 'OneTime' 
+                        ? `Pay Now` 
+                        : `Pay First Installment`
+                  }
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
