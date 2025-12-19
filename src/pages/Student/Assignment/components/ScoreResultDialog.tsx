@@ -25,6 +25,9 @@ interface ScoreResultDialogProps {
  * Dialog component to display assignment submission score results
  * Shows score, correct answers, points earned, and progress visualization
  */
+const isTakingAssignment =
+  location.pathname.includes("/student/assignment") ;
+
 export default function ScoreResultDialog({
   isOpen,
   onClose,
@@ -33,7 +36,7 @@ export default function ScoreResultDialog({
   onRecommendPackages,
   recommendCoursesLabel = "Courses for you",
   recommendPackagesLabel = "Learning path for you",
-  maxScore = 900, // Default to 10 for assignments
+  maxScore = isTakingAssignment ? 10 : 900, // Default to 10 for assignments, 900 for placement test
 }: ScoreResultDialogProps) {
   if (!submissionScore) return null;
 

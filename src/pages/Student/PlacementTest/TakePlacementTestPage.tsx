@@ -633,6 +633,10 @@ export default function TakePlacementTestPage() {
     setCurrentQuestionIndex(index);
   };
 
+  const answeredQuestions = Object.keys(answers).length;
+  const totalQuestions = questions.length;
+  const unansweredQuestions = totalQuestions - answeredQuestions;
+
   // Calculate score
   const calculateDetailedScore = (): {
     score: number;
@@ -732,6 +736,8 @@ export default function TakePlacementTestPage() {
 
     return null;
   };
+
+  
 
   const handleSubmit = async (autoSubmit: boolean = false) => {
     if (attemptLimitReached) return;
@@ -1223,6 +1229,14 @@ export default function TakePlacementTestPage() {
     );
   }
 
+  function handleClearAnswer(): void {
+    setAnswers((prev) => {
+      const newAnswers = { ...prev };
+      delete newAnswers[currentQuestion.id];
+      return newAnswers;
+    });
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
@@ -1296,6 +1310,11 @@ export default function TakePlacementTestPage() {
             <div className="flex justify-center">
               <div className="w-full max-w-3xl">
                 <Card className="p-6">
+                <div className="flex justify-end mb-3">                
+                    <Button variant="secondary" onClick={handleClearAnswer} disabled={!answers[currentQuestion?.id]}>
+                      Clear Answer
+                    </Button>
+                  </div>
                   {currentQuestion && renderQuestion(currentQuestion)}
 
                   {/* Navigation */}
@@ -1340,7 +1359,7 @@ export default function TakePlacementTestPage() {
                           }`}
                         >
                           <div className="text-sm font-medium">{index + 1}</div>
-                          {isAnswered && <CheckCircle className="w-4 h-4 text-green-600 mx-auto mt-1" />}
+                          {/* {isAnswered && <CheckCircle className="w-4 h-4 text-green-600 mx-auto mt-1" />} */}
                         </button>
                       );
                     })}
@@ -1470,6 +1489,11 @@ export default function TakePlacementTestPage() {
               {/* Right - Question Area */}
               <div>
                 <Card className="p-6">
+                  <div className="flex justify-end mb-3">                
+                    <Button variant="secondary" onClick={handleClearAnswer} disabled={!answers[currentQuestion?.id]}>
+                      Clear Answer
+                    </Button>
+                  </div>
                   {currentQuestion && renderQuestion(currentQuestion)}
 
                   {/* Navigation */}
@@ -1477,6 +1501,7 @@ export default function TakePlacementTestPage() {
                     <Button variant="secondary" onClick={handlePrevious} disabled={currentQuestionIndex === 0}>
                       Previous
                     </Button>
+                    
                     <div className="flex gap-2">
                       {currentQuestionIndex < questions.length - 1 ? (
                         <Button onClick={handleNext}>Next</Button>
@@ -1500,7 +1525,7 @@ export default function TakePlacementTestPage() {
                         <button
                           key={q.id}
                           onClick={() => handleQuestionClick(index)}
-                          className={`p-3 rounded-lg border-2 transition-colors ${
+                          className={`p-3 rounded-lg border-2 transition-colors  ${
                             isCurrent
                               ? "border-primary-600 bg-primary-50"
                               : isAnswered
@@ -1509,7 +1534,7 @@ export default function TakePlacementTestPage() {
                           }`}
                         >
                           <div className="text-sm font-medium">{index + 1}</div>
-                          {isAnswered && <CheckCircle className="w-4 h-4 text-green-600 mx-auto mt-1" />}
+                          {/* {isAnswered && <CheckCircle className="w-4 h-4 text-green-600 mx-auto mt-1" />} */}
                         </button>
                       );
                     })}
@@ -1527,7 +1552,15 @@ export default function TakePlacementTestPage() {
         onClose={() => setShowSubmitDialog(false)}
         onConfirm={confirmSubmit}
         title="Submit Placement Test?"
-        message="Are you sure you want to submit your placement test? This action cannot be undone."
+        message={
+          unansweredQuestions > 0
+            ? `You have answered ${answeredQuestions}/${totalQuestions} questions.
+        ⚠ There are still ${unansweredQuestions} unanswered questions.
+        Are you sure you want to submit?`
+            : `You have answered all ${totalQuestions} questions.
+        Are you sure you want to submit?`
+        }
+        
         confirmText="Submit"
         cancelText="Cancel"
         type="info"
