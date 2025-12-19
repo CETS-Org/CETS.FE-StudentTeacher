@@ -154,7 +154,7 @@ const ChatWidget: React.FC = () => {
   const getRoomName = (room: ChatRoom) => {
     if (room.type === 'group') return room.name;
     const otherMember = room.members?.find(m => m.id.toString().toLowerCase() !== (currentUserId || "").toString().toLowerCase());
-    return otherMember ? otherMember.fullName : "Người dùng ẩn danh";
+    return otherMember ? otherMember.fullName : "Anonymous Users";
   };
 
   const getAvatarChar = (room: ChatRoom) => {
@@ -179,7 +179,7 @@ const ChatWidget: React.FC = () => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {filteredRooms.length === 0 && <div className="text-center text-gray-400 text-sm mt-10">Không tìm thấy phòng chat</div>}
+          {filteredRooms.length === 0 && <div className="text-center text-gray-400 text-sm mt-10">Chat Room Not Found</div>}
           {filteredRooms.map((room) => {
             const hasUnread = unreadRoomIds.includes(room.id.toString().toLowerCase());
             return (
@@ -200,7 +200,7 @@ const ChatWidget: React.FC = () => {
                       {getRoomName(room)}
                   </h4>
                   <p className={`text-xs truncate mt-0.5 ${hasUnread ? 'text-gray-900 font-semibold' : (currentRoom?.id === room.id ? 'text-blue-500 font-medium' : 'text-gray-500')}`}>
-                     {hasUnread ? 'Tin nhắn mới' : 'Nhấn để xem tin nhắn'}
+                     {hasUnread ? 'New Message' : 'View Message'}
                   </p>
                 </div>
               </div>
@@ -219,8 +219,8 @@ const ChatWidget: React.FC = () => {
           <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
             <MessageCircle className="w-12 h-12 text-blue-500" />
           </div>
-          <h3 className="text-xl font-bold text-gray-700">Chào mừng đến với CETS Chat</h3>
-          <p className="text-gray-500 mt-2 max-w-xs">Chọn một cuộc hội thoại để bắt đầu.</p>
+          <h3 className="text-xl font-bold text-gray-700">Welcome to CETS Chat</h3>
+          <p className="text-gray-500 mt-2 max-w-xs">Select a conversation to start</p>
         </div>
       );
     }
@@ -262,14 +262,14 @@ const ChatWidget: React.FC = () => {
             messages.map((msg) => {
               const isMe = !!currentUserId && (msg.senderId || "").toString().toLowerCase() === currentUserId.toString().toLowerCase();
               const sender = currentRoom.members?.find(m => m.id.toString().toLowerCase() === (msg.senderId || "").toString().toLowerCase());
-              return <MessageItem key={msg.id} message={msg} isOwnMessage={isMe} senderName={isMe ? "Bạn" : (sender?.fullName || "Người dùng")} senderAvatar={sender?.avatarUrl} />;
+              return <MessageItem key={msg.id} message={msg} isOwnMessage={isMe} senderName={isMe ? "You" : (sender?.fullName || "User")} senderAvatar={sender?.avatarUrl} />;
             })
           )}
           <div ref={messagesEndRef} />
         </div>
         <div className="p-4 bg-white border-t border-gray-100">
           <form onSubmit={handleSendMessage} className="flex gap-3 items-center bg-gray-50 p-2 rounded-2xl border border-gray-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-inner">
-            <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Nhập tin nhắn..." className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm px-2 text-gray-700 placeholder-gray-400" />
+            <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Enter message..." className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm px-2 text-gray-700 placeholder-gray-400" />
             <button type="submit" disabled={!inputText.trim()} className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-200 transform active:scale-95"><Send size={18} /></button>
           </form>
         </div>
