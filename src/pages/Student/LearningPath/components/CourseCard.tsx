@@ -20,6 +20,7 @@ export interface CourseItem {
   };
   classItem?: MyClass | null;
   className?: string; // Class name from enrollment data
+  expectedStartDate?: string; // Expected start date for pending courses
 }
 
 interface CourseCardProps {
@@ -111,6 +112,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
       case "in-progress":
         // Tất cả course "Enrolled" dùng cùng một màu
         return "bg-blue-100 text-blue-800 border-blue-200";
+      case "pending":
+      case "waiting for class":
+      case "waitingforclass":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -228,8 +233,16 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onCourseClick }) => {
               <span>{course.instructor}</span>
             </div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(course.status)}`}>
-            {formatStatus(course.status)}
+          <div className="flex flex-col items-end gap-2">
+            <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(course.status)}`}>
+              {formatStatus(course.status)}
+            </div>
+            {isPending && !classItem && course.expectedStartDate && (
+              <div className="flex items-center gap-1 text-xs text-accent-600">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Expected: {formatDate(course.expectedStartDate)}</span>
+              </div>
+            )}
           </div>
         </div>
 
