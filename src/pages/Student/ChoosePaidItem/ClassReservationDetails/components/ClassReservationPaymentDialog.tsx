@@ -8,7 +8,6 @@ import {
   DollarSign,
   AlertCircle,
   Mail,
-  Phone,
   FileText,
   CheckCircle2,
   BookOpen
@@ -197,7 +196,7 @@ export default function ClassReservationPaymentDialog({
 
     try {
       // Validate required fields
-      if (!studentName.trim() || !studentEmail.trim() || !studentPhone.trim()) {
+      if (!studentName.trim() || !studentEmail.trim()) {
         alert('Please fill in all required student information fields.');
         setIsProcessing(false);
         return;
@@ -242,7 +241,7 @@ export default function ClassReservationPaymentDialog({
         studentId: studentId,
         fullName: studentName.trim(),
         email: studentEmail.trim(),
-        phoneNumber: studentPhone.trim(),
+        phoneNumber: studentPhone.trim() || "",
         note: notes || "",
         amount: amount
       };
@@ -581,21 +580,6 @@ export default function ClassReservationPaymentDialog({
                     required
                   />
                 </div>
-              </div>
-              
-              <div className="mt-4">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <Phone className="w-4 h-4 text-gray-500" />
-                  Phone Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={studentPhone}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                  placeholder="Enter your phone number"
-                  required
-                />
               </div>
             </div>
 

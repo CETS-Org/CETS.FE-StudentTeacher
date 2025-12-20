@@ -41,41 +41,14 @@ export default function PlacementTestConfirmationDialog({
         const test = response.data;
         setTestDetails(test);
 
-        // Calculate total questions by loading question data
-        if (test.questions && test.questions.length > 0) {
-          let questionCount = 0;
-          
-          // Load question data to count actual questions
-          const questionDataPromises = test.questions.map(async (question) => {
-            if (!question.questionUrl) {
-              return null;
-            }
-
-            try {
-              const questionUrl = question.questionUrl.startsWith("/")
-                ? question.questionUrl
-                : `/${question.questionUrl}`;
-              const directUrl = `${config.storagePublicUrl}${questionUrl}`;
-
-              const questionResponse = await fetch(directUrl);
-              if (!questionResponse.ok) {
-                return null;
-              }
-
-              const data = await questionResponse.json();
-              return data.questions?.length || 0;
-            } catch (err) {
-              console.error(`Error loading question ${question.id}:`, err);
-              return 0;
-            }
-          });
-
-          const results = await Promise.all(questionDataPromises);
-          questionCount = results.reduce((sum, count) => sum + (count || 0), 0);
-          setTotalQuestions(questionCount);
-        } else {
-          setTotalQuestions(0);
-        }
+        // ========================================
+        // SIMPLIFIED: Chỉ count từ response API random-test
+        // ========================================
+        // Không cần fetch gì thêm, chỉ đếm số questions từ response
+        // ========================================
+        const questionCount = test.questions?.length || 0;
+        setTotalQuestions(questionCount);
+        console.log(`📊 [Confirmation Dialog] Total question groups: ${questionCount}`);
       } catch (err: any) {
         console.error("Failed to load placement test details:", err);
         setError(err.response?.data || err.message || "Failed to load test details");
@@ -166,9 +139,12 @@ export default function PlacementTestConfirmationDialog({
                 <div className="flex items-start gap-3">
                   <HelpCircle className="h-5 w-5 text-primary-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 mb-1">Number of Questions</p>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Number of Question Sets</p>
                     <p className="text-sm font-semibold text-gray-900">
-                      {loading ? 'Calculating...' : `${totalQuestions} question${totalQuestions !== 1 ? 's' : ''}`}
+                      {totalQuestions} question set{totalQuestions !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      (May contain multiple questions per set)
                     </p>
                   </div>
                 </div>
