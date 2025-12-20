@@ -56,6 +56,91 @@ interface PlacementQuestionData {
   readingPassage?: string;
 }
 
+interface PlacementTestJsonQuestion {
+  questionId: string;
+  title: string;
+  questionType: string;
+  difficulty: number;
+  data: PlacementQuestionData;
+}
+
+// Helper type để phân loại câu hỏi
+type QuestionCategory = "single_mcq" | "passage" | "audio";
+
+interface ProcessedQuestion {
+  category: QuestionCategory;
+  placementQuestion: PlacementQuestion;
+  jsonQuestion: PlacementTestJsonQuestion;
+  questions: any[]; // Danh sách câu hỏi con
+  hasPassage: boolean;
+  hasAudio: boolean;
+}
+
+// Helper functions để phân loại và xử lý câu hỏi
+const categorizeQuestion = (jsonQuestion: PlacementTestJsonQuestion): QuestionCategory => {
+  const questionType = jsonQuestion.questionType.toLowerCase();
+  const hasReadingPassage = jsonQuestion.data.readingPassage && jsonQuestion.data.readingPassage.trim().length > 0;
+  const hasMediaAudio = jsonQuestion.data.media?.audioUrl && jsonQuestion.data.media.audioUrl.trim().length > 0;
+  
+  // Kiểm tra _audioUrl trong questions
+  const firstQuestion = jsonQuestion.data.questions[0] as any;
+  const hasQuestionAudio = firstQuestion?._audioUrl || firstQuestion?.reference;
+
+  if (questionType.includes("audio") || hasMediaAudio || hasQuestionAudio) {
+    return "audio";
+  }
+  
+  if (questionType.includes("passage") || hasReadingPassage) {
+    return "passage";
+  }
+  
+  // MCQ đơn: có 1 câu hỏi, không có passage, không có audio
+  if (questionType.includes("multiple choice") && 
+      jsonQuestion.data.questions.length === 1 &&
+      !hasReadingPassage && 
+      !hasMediaAudio &&
+      !hasQuestionAudio) {
+    return "single_mcq";
+  }
+  
+  return "single_mcq"; // Default
+};
+
+const processPlacementQuestion = (
+  jsonQuestion: PlacementTestJsonQuestion, 
+  placementQuestion: PlacementQuestion
+): ProcessedQuestion => {
+  const category = categorizeQuestion(jsonQuestion);
+  const questionData = jsonQuestion.data;
+  
+  // Process questions - giữ nguyên _passage và _audioUrl từ JSON
+  const questionsList: any[] = (questionData.questions || []).map((q: any) => ({
+    ...q,
+    id: q.id || `q-${Date.now()}-${q.order}`,
+    type: q.type || "multiple_choice",
+    order: q.order || 0,
+    question: q.question || "",
+    points: q.points || 0,
+    // Giữ nguyên _passage và _audioUrl nếu có trong JSON
+    _passage: q._passage,
+    _audioUrl: q._audioUrl || q.reference, // reference có thể là audioUrl
+  }));
+
+  // Lấy passage và audioUrl từ question đầu tiên (nếu có) để dùng cho sorting
+  const firstQuestion = questionsList[0] as any;
+  const hasPassage = firstQuestion?._passage && typeof firstQuestion._passage === 'string' && firstQuestion._passage.trim().length > 0;
+  const hasAudio = firstQuestion?._audioUrl && typeof firstQuestion._audioUrl === 'string' && firstQuestion._audioUrl.trim().length > 0;
+
+  return {
+    category,
+    placementQuestion,
+    jsonQuestion,
+    questions: questionsList,
+    hasPassage,
+    hasAudio,
+  };
+};
+
 export default function TakePlacementTestPage() {
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
@@ -76,6 +161,7 @@ export default function TakePlacementTestPage() {
   const [initialTimeLimit, setInitialTimeLimit] = useState<number | null>(null);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track first load to prevent premature auto-submit
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showScoreDialog, setShowScoreDialog] = useState(false);
   const [submissionScore, setSubmissionScore] = useState<{
@@ -237,142 +323,187 @@ export default function TakePlacementTestPage() {
 
         setPlacementTest(test);
 
-        // Load all question data
-        if (test.questions && test.questions.length > 0) {
-          const questionDataPromises = test.questions.map(async (question) => {
-            if (!question.questionUrl) {
-              return null;
+        // ========================================
+        // NEW FLOW: Load từ storeUrl (JSON tổng chứa tất cả questions)
+        // ========================================
+        // Thay vì load từng question URL riêng lẻ, giờ chỉ cần:
+        // 1. Fetch 1 lần từ test.storeUrl
+        // 2. Parse JSON để lấy tất cả questions
+        // 3. Build UI từ JSON này
+        // ========================================
+        if (test.storeUrl) {
+          try {
+            console.log("📥 Loading placement test from storeUrl:", test.storeUrl);
+            
+            // Build direct URL to cloud storage
+            const storeUrl = test.storeUrl.startsWith("/")
+              ? test.storeUrl
+              : `/${test.storeUrl}`;
+            const directUrl = `${config.storagePublicUrl}${storeUrl}`;
+
+            const testJsonResponse = await fetch(directUrl);
+            if (!testJsonResponse.ok) {
+              throw new Error(`Failed to fetch placement test JSON: ${testJsonResponse.status}`);
             }
 
-            try {
-              // Build direct URL to cloud storage
-              const questionUrl = question.questionUrl.startsWith("/")
-                ? question.questionUrl
-                : `/${question.questionUrl}`;
-              const directUrl = `${config.storagePublicUrl}${questionUrl}`;
-
-              const questionResponse = await fetch(directUrl);
-              if (!questionResponse.ok) {
-                throw new Error(`Failed to fetch question data: ${questionResponse.status}`);
+            const testJson = await testJsonResponse.json();
+            console.log("✅ Loaded placement test JSON:", {
+              title: testJson.title,
+              durationMinutes: testJson.durationMinutes,
+              totalQuestions: testJson.questions?.length || 0,
+            });
+            
+            // Parse questions from test JSON
+            const testJsonQuestions: PlacementTestJsonQuestion[] = testJson.questions || [];
+            console.log("📝 Processing questions from JSON...");
+            
+            // Process từng question theo category (single_mcq, passage, audio)
+            const validResults = testJsonQuestions.map((jsonQuestion, index) => {
+              // Find corresponding PlacementQuestion metadata from test.questions
+              const placementQuestion = test.questions.find(q => q.id === jsonQuestion.questionId);
+              if (!placementQuestion) {
+                console.warn(`⚠️ PlacementQuestion not found for questionId: ${jsonQuestion.questionId}`);
+                return null;
               }
 
-              const data: PlacementQuestionData = await questionResponse.json();
-              const questionsList: Question[] = (data.questions || []).map((q: any) => ({
-                ...q,
-                id: q.id || `q-${Date.now()}-${q.order}`,
-                type: q.type || "multiple_choice",
-                order: q.order || 0,
-                question: q.question || "",
-                points: q.points || 0,
-              }));
+              // Process question theo category
+              const processed = processPlacementQuestion(jsonQuestion, placementQuestion);
+              
+              // Log để debug và theo dõi
+              console.log(`  ${index + 1}. [${processed.category.toUpperCase()}] ${jsonQuestion.title.substring(0, 50)}...`, {
+                questionType: jsonQuestion.questionType,
+                difficulty: jsonQuestion.difficulty,
+                subQuestions: processed.questions.length,
+                hasPassage: processed.hasPassage,
+                hasAudio: processed.hasAudio,
+              });
 
               return {
-                question,
-                data,
-                questions: questionsList,
+                question: processed.placementQuestion,
+                data: processed.jsonQuestion.data,
+                questions: processed.questions,
+                hasPassage: processed.hasPassage,
+                hasAudio: processed.hasAudio,
+                category: processed.category, // Để dễ filter và debug
               };
-            } catch (err) {
-              console.error(`Error loading question ${question.id}:`, err);
-              return null;
-            }
-          });
+            }).filter((r): r is NonNullable<typeof r> => r !== null);
+            
+            console.log(`✅ Processed ${validResults.length} question groups`);
 
-          const results = await Promise.all(questionDataPromises);
-          const validResults = results.filter(
-            (r): r is NonNullable<typeof r> => r !== null
-          );
+            // Sắp xếp: ưu tiên những câu hỏi không có passage lên đầu
+            // Thứ tự: Reading không passage -> Reading có passage -> Listening không audio -> Listening có audio
+            const sortedResults = validResults.sort((a, b) => {
+              const getSortOrder = (
+                result: { question: PlacementQuestion; data: PlacementQuestionData; questions: Question[]; hasPassage: boolean; hasAudio: boolean }
+              ): number => {
+                const skillType = result.question.skillType?.toLowerCase() || "";
+                const questionType = result.question.questionType.toLowerCase();
+                const difficulty = result.question.difficulty;
+                const isReading = skillType.includes("reading");
+                const isListening = skillType.includes("listening");
+                
+                // Normalize questionType: "multiple choice question" -> "mcq", "passage" -> "passage", "audio" -> "audio"
+                const normalizedType = questionType.includes("multiple choice") || questionType.includes("mcq") 
+                  ? "mcq" 
+                  : questionType.includes("passage") 
+                  ? "passage" 
+                  : questionType.includes("audio") 
+                  ? "audio" 
+                  : questionType;
+                
+                // Sử dụng hasPassage và hasAudio đã tính sẵn
+                const hasPassage = result.hasPassage;
 
-          // Sắp xếp: ưu tiên những câu hỏi không có passage lên đầu
-          // Thứ tự: Reading không passage -> Reading có passage -> Listening không audio -> Listening có audio
-          const sortedResults = validResults.sort((a, b) => {
-            const getSortOrder = (
-              result: { question: PlacementQuestion; data: PlacementQuestionData; questions: Question[] }
-            ): number => {
-              const skillType = result.question.skillType?.toLowerCase() || "";
-              const questionType = result.question.questionType.toLowerCase();
-              const difficulty = result.question.difficulty;
-              const isReading = skillType.includes("reading");
-              const isListening = skillType.includes("listening");
-              
-              // Kiểm tra xem có passage hay không
-              const hasPassage = result.data.readingPassage && result.data.readingPassage.trim().length > 0;
-
-              // Reading questions
-              if (isReading) {
-                // 1. Reading không có passage (ưu tiên lên đầu)
-                if (!hasPassage) {
-                  return 1;
-                }
-                // 2. Passage ngắn (difficulty = 2)
-                if (questionType === "passage" && difficulty === 2) {
-                  return 2;
-                }
-                // 3. Passage dài (difficulty = 3)
-                if (questionType === "passage" && difficulty === 3) {
-                  return 3;
-                }
-                return 4;
-              }
-
-              // Listening questions
-              if (isListening) {
-                // 4. Listening multiple_choice (không phải audio)
-                if (questionType !== "audio") {
+                // Reading questions
+                if (isReading) {
+                  // 1. Reading không có passage (ưu tiên lên đầu)
+                  if (!hasPassage) {
+                    return 1;
+                  }
+                  // 2. Passage ngắn (difficulty = 2)
+                  if (normalizedType === "passage" && difficulty === 2) {
+                    return 2;
+                  }
+                  // 3. Passage dài (difficulty = 3)
+                  if (normalizedType === "passage" && difficulty === 3) {
+                    return 3;
+                  }
                   return 4;
                 }
-                // 5. Audio ngắn (difficulty = 2)
-                if (questionType === "audio" && difficulty === 2) {
-                  return 5;
+
+                // Listening questions
+                if (isListening) {
+                  // 4. Listening multiple_choice (không phải audio)
+                  if (normalizedType !== "audio" && !result.hasAudio) {
+                    return 4;
+                  }
+                  // 5. Audio ngắn (difficulty = 2)
+                  if (normalizedType === "audio" && difficulty === 2 && result.hasAudio) {
+                    return 5;
+                  }
+                  // 6. Audio dài (difficulty = 3)
+                  if (normalizedType === "audio" && difficulty === 3 && result.hasAudio) {
+                    return 6;
+                  }
+                  return 7;
                 }
-                // 6. Audio dài (difficulty = 3)
-                if (questionType === "audio" && difficulty === 3) {
-                  return 6;
-                }
-                return 7;
-              }
 
-              return 50;
-            };
-
-            const orderA = getSortOrder(a);
-            const orderB = getSortOrder(b);
-            
-            // Nếu cùng order, giữ nguyên thứ tự từ test.questions
-            if (orderA === orderB) {
-              const indexA = test.questions.findIndex((q) => q.id === a.question.id);
-              const indexB = test.questions.findIndex((q) => q.id === b.question.id);
-              if (indexA !== -1 && indexB !== -1) {
-                return indexA - indexB;
-              }
-            }
-            
-            return orderA - orderB;
-          });
-
-          setQuestionDataList(sortedResults);
-
-          // Flatten all questions from all question sets
-          // Giữ nguyên thứ tự từ sortedResults (đã sắp xếp đúng theo yêu cầu)
-          // Chỉ sắp xếp questions trong mỗi placement question group theo order
-          const allQuestions: Question[] = [];
-          sortedResults.forEach((result) => {
-            // Sắp xếp questions trong mỗi group theo order để đảm bảo thứ tự đúng trong group
-            const sortedGroupQuestions = [...result.questions].sort((a, b) => a.order - b.order);
-
-            sortedGroupQuestions.forEach((q) => {
-              // Attach passage or audio to question if available
-              const questionWithContext = {
-                ...q,
-                _passage: result.data.readingPassage,
-                _audioUrl: result.data.media?.audioUrl || result.question.questionUrl,
-                _questionDataResult: result, // Store reference to questionData result for context
+                return 50;
               };
-              allQuestions.push(questionWithContext);
-            });
-          });
 
-          // KHÔNG sắp xếp lại allQuestions vì thứ tự đã đúng từ sortedResults
-          setQuestions(allQuestions);
+              const orderA = getSortOrder(a);
+              const orderB = getSortOrder(b);
+              
+              // Nếu cùng order, giữ nguyên thứ tự từ test.questions
+              if (orderA === orderB) {
+                const indexA = test.questions.findIndex((q) => q.id === a.question.id);
+                const indexB = test.questions.findIndex((q) => q.id === b.question.id);
+                if (indexA !== -1 && indexB !== -1) {
+                  return indexA - indexB;
+                }
+              }
+              
+              return orderA - orderB;
+            });
+
+            setQuestionDataList(sortedResults);
+
+            // Flatten all questions from all question sets
+            // Giữ nguyên thứ tự từ sortedResults (đã sắp xếp đúng theo yêu cầu)
+            // Chỉ sắp xếp questions trong mỗi placement question group theo order
+            const allQuestions: Question[] = [];
+            sortedResults.forEach((result) => {
+              // Sắp xếp questions trong mỗi group theo order để đảm bảo thứ tự đúng trong group
+              const sortedGroupQuestions = [...result.questions].sort((a, b) => a.order - b.order);
+
+              sortedGroupQuestions.forEach((q) => {
+                // Passage và audioUrl đã có sẵn trong question object từ JSON
+                // Chỉ cần attach context reference
+                const questionWithContext = {
+                  ...q,
+                  // _passage và _audioUrl đã có trong q từ khi map questions
+                  _questionDataResult: result, // Store reference to questionData result for context
+                };
+                allQuestions.push(questionWithContext);
+              });
+            });
+
+            // KHÔNG sắp xếp lại allQuestions vì thứ tự đã đúng từ sortedResults
+            setQuestions(allQuestions);
+            
+            console.log(`🎯 Final result: ${allQuestions.length} individual questions ready for test`);
+            console.log("Question breakdown by category:", {
+              single_mcq: validResults.filter(r => r.category === "single_mcq").length,
+              passage: validResults.filter(r => r.category === "passage").length,
+              audio: validResults.filter(r => r.category === "audio").length,
+            });
+          } catch (err) {
+            console.error("❌ Error loading placement test JSON from storeUrl:", err);
+            throw err;
+          }
+        } else {
+          console.error("❌ Placement test does not have storeUrl - cannot load questions");
+          throw new Error("Placement test is missing storeUrl. Please contact administrator.");
         }
 
         // Initialize timer if duration exists
@@ -411,10 +542,9 @@ export default function TakePlacementTestPage() {
               if (remainingTime > 0) {
                 setIsTimerRunning(true);
               } else {
-                // Time is up, auto-submit
+                // Time is up - show expired state, auto-submit will be handled by useEffect after initial load
                 setIsTimerRunning(false);
-                // Note: We can't auto-submit here because answers aren't loaded yet
-                // The timer will handle this once answers are set
+                console.warn("⏰ Loaded test with expired time - will auto-submit after questions load");
               }
             } catch (err) {
               console.error("Failed to load saved progress:", err);
@@ -465,13 +595,25 @@ export default function TakePlacementTestPage() {
     ensureAttemptLimit();
   }, [placementTest, studentId, ensureAttemptLimit]);
 
-  // Check if time expired when loading (after answers are loaded)
+  // Mark initial load as complete after questions are loaded
   useEffect(() => {
-    if (!loading && timeRemaining !== null && timeRemaining <= 0 && !submitting && questions.length > 0) {
+    if (!loading && questions.length > 0 && isInitialLoad) {
+      // Give a small delay to ensure everything is initialized
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, questions.length, isInitialLoad]);
+
+  // Check if time expired (ONLY after initial load is complete)
+  useEffect(() => {
+    if (!loading && !isInitialLoad && timeRemaining !== null && timeRemaining <= 0 && !submitting && questions.length > 0) {
       // Time has expired, auto-submit
+      console.warn("⏰ Time expired - auto-submitting test");
       handleSubmit(true);
     }
-  }, [loading, timeRemaining, submitting, questions.length]);
+  }, [loading, isInitialLoad, timeRemaining, submitting, questions.length]);
 
   // Timer countdown
   useEffect(() => {
