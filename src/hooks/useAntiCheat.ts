@@ -204,7 +204,7 @@ export function useAntiCheat(isActive: boolean = true) {
       let devtools = { open: false, orientation: null as string | null };
       const threshold = 160;
 
-      setInterval(() => {
+      const intervalId = setInterval(() => {
         if (
           window.outerHeight - window.innerHeight > threshold ||
           window.outerWidth - window.innerWidth > threshold
@@ -219,6 +219,8 @@ export function useAntiCheat(isActive: boolean = true) {
           devtools.open = false;
         }
       }, 500);
+
+      return intervalId; // Return interval ID for cleanup
     };
 
     // Add event listeners
@@ -250,7 +252,7 @@ export function useAntiCheat(isActive: boolean = true) {
     }, 100);
 
     // Start DevTools detection
-    detectDevTools();
+    const devToolsIntervalId = detectDevTools();
 
     // Disable console methods (basic protection)
     if (process.env.NODE_ENV === "production") {
@@ -272,8 +274,9 @@ export function useAntiCheat(isActive: boolean = true) {
       document.removeEventListener("dragstart", handleDragStart);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      // Clear interval
+      // Clear intervals
       clearInterval(clearSelectionInterval);
+      clearInterval(devToolsIntervalId); // Clear DevTools detection interval
       // Remove style
       const existingStyle = document.getElementById("anti-cheat-style");
       if (existingStyle) {
