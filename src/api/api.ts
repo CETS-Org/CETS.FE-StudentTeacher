@@ -36,12 +36,17 @@ export const endpoint = {
   chat:'/api/COM_Chat',
 };
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token dynamically
+// This ensures the token is always read fresh from localStorage on each request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Explicitly remove Authorization header if no token exists
+      // This prevents sending empty/invalid Bearer tokens
+      delete config.headers.Authorization;
     }
     return config;
   },
