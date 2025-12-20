@@ -28,7 +28,6 @@ export default function ClassReservationPaymentDialog({
   const [paymentPlan, setPaymentPlan] = useState<'OneTime' | 'TwoTime'>('OneTime');
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
-  const [studentPhone, setStudentPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -78,14 +77,9 @@ export default function ClassReservationPaymentDialog({
       const userInfo = getUserInfo();
       
       if (userInfo) {
-        // Use actual user data from authentication
-        // Support both camelCase and PascalCase field names from backend
-        const phoneNumber = (userInfo as any).PhoneNumber || userInfo.phoneNumber || "";
-        
         // First, set data from localStorage (fast)
         setStudentName(userInfo.fullName || "");
         setStudentEmail(userInfo.email || "");
-        setStudentPhone(phoneNumber);
       } else {
         // If no user info found, user might not be logged in
         console.warn("No user info found in localStorage. User might not be logged in.");
@@ -93,7 +87,6 @@ export default function ClassReservationPaymentDialog({
         // Set fallback values
         setStudentName("");
         setStudentEmail("");
-        setStudentPhone("");
       }
       
       // Small delay to show loading state (optional)
@@ -104,7 +97,6 @@ export default function ClassReservationPaymentDialog({
       // Set fallback values if there's an error
       setStudentName("");
       setStudentEmail("");
-      setStudentPhone("");
     } finally {
       setIsLoadingProfile(false);
     }
@@ -241,7 +233,7 @@ export default function ClassReservationPaymentDialog({
         studentId: studentId,
         fullName: studentName.trim(),
         email: studentEmail.trim(),
-        phoneNumber: studentPhone.trim() || "",
+        phoneNumber: "123456789",
         note: notes || "",
         amount: amount
       };

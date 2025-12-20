@@ -39,7 +39,9 @@ export default function StudentDetailPage() {
       if (!value) return;
       if (student && value === (student.email || "")) return;
       const exists = await checkEmailExist(value);
-      setErrors((prev) => ({ ...prev, email: exists ?  "" : "Email already exists" }));
+      // exists=true means unique/available → no error
+      // exists=false means already taken → show error
+      setErrors((prev) => ({ ...prev, email: exists ? "" : "Email already exists" }));
     } catch {
       // ignore network errors for inline validation
     }
@@ -50,7 +52,9 @@ export default function StudentDetailPage() {
       if (!value) return;
       if (student && value === (student.cid || "")) return;
       const exists = await checkCIDExist(value);
-      setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
+      // exists=true means unique/available → no error
+      // exists=false means already taken → show error
+      setErrors((prev) => ({ ...prev, cid: exists ? "" : "CID already exists" }));
 
     } catch {
       // ignore
@@ -323,7 +327,9 @@ export default function StudentDetailPage() {
       }
       if (editData.cid && editData.cid !== (student?.cid || "")) {
         const exists = await checkCIDExist(editData.cid);
-        if (exists) {
+        // exists=true means unique/available → OK to save
+        // exists=false means already taken → show error and stop
+        if (!exists) {
           setErrors((prev) => ({ ...prev, cid: "CID already exists" }));
           return;
         }
@@ -416,7 +422,9 @@ export default function StudentDetailPage() {
           const t = window.setTimeout(async () => {
             try {
               const exists = await checkCIDExist(v);
-              setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
+              // exists=true means unique/available → no error
+              // exists=false means already taken → show error
+              setErrors((prev) => ({ ...prev, cid: exists ? "" : "CID already exists" }));
             } catch {}
           }, 500);
           setCidCheckTimer(t as unknown as number);

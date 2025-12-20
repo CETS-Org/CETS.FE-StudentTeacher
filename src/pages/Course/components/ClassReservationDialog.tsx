@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/input";
 import { getUserInfo, getStudentId } from "@/lib/utils";
 import { getStudentById } from "@/api/student.api";
-import { User, Mail, Phone, CreditCard, FileText, CheckCircle2, AlertCircle, BookOpen, DollarSign } from "lucide-react";
+import { User, Mail, CreditCard, FileText, CheckCircle2, AlertCircle, BookOpen, DollarSign } from "lucide-react";
 import type { Course } from "@/types/course";
 
 interface ClassReservationData {
@@ -48,7 +48,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
             phone: userInfo.phoneNumber || "",
           }));
 
-          // Then, try to fetch complete student data to get phone number
+          // Then, try to fetch complete student data
           const studentId = getStudentId();
           if (studentId) {
             try {
@@ -165,7 +165,7 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
                 <AlertCircle className="w-4 h-4" />
                 Your profile information has been automatically filled and cannot be edited here.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                     <User className="w-4 h-4 text-gray-500" />
@@ -190,19 +190,6 @@ export default function ClassReservationDialog({ open, onOpenChange, course, onS
                     readOnly
                     className="bg-gray-50 cursor-not-allowed border-gray-200"
                     placeholder="Enter your email"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                    <Phone className="w-4 h-4 text-gray-500" />
-                    Phone Number
-                  </label>
-                  <Input
-                    type="tel"
-                    value={reservationData.phone}
-                    readOnly
-                    className="bg-gray-50 cursor-not-allowed border-gray-200"
-                    placeholder="Enter your phone number"
                   />
                 </div>
               </div>

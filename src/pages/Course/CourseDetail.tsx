@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Star, Clock, Users, BookOpen, CheckCircle, Download, Award, Shield, Headphones, Video, FileText, Globe, Smartphone, Wifi, Calendar, MessageCircle, ChevronDown, ChevronUp, CalendarCheck, UserCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/card";
+import ClassReservationDialog from "./components/ClassReservationDialog";
 import RelatedCourses from "./components/RelatedCourses";
 import CourseSchedule from "@/components/ui/CourseSchedule";
 import Toast from "@/components/ui/Toast";
@@ -263,8 +264,8 @@ export default function CourseDetail({ course }: CourseDetailProps) {
       return;
     }
     
-    // User is logged in, show enrollment dialog - removed per requirements
-    // setShowEnrollmentDialog(true);
+    // User is logged in, show enrollment dialog
+    setShowEnrollmentDialog(true);
   };
 
   const handleEnrollmentSubmit = async (enrollmentData: any) => {
@@ -981,6 +982,13 @@ export default function CourseDetail({ course }: CourseDetailProps) {
           </div>
         </div>
 
+      {/* Enrollment Dialog */}
+      <ClassReservationDialog
+        open={showEnrollmentDialog}
+        onOpenChange={setShowEnrollmentDialog}
+        course={course}
+        onSubmit={handleEnrollmentSubmit}
+      />
 
       {/* Loading Overlay */}
       {isLoading && <LoadingOverlay message="Creating reservation..." />}

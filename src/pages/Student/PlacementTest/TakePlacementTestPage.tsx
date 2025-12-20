@@ -333,8 +333,6 @@ export default function TakePlacementTestPage() {
         // ========================================
         if (test.storeUrl) {
           try {
-            console.log("📥 Loading placement test from storeUrl:", test.storeUrl);
-            
             // Build direct URL to cloud storage
             const storeUrl = test.storeUrl.startsWith("/")
               ? test.storeUrl
@@ -347,15 +345,9 @@ export default function TakePlacementTestPage() {
             }
 
             const testJson = await testJsonResponse.json();
-            console.log("✅ Loaded placement test JSON:", {
-              title: testJson.title,
-              durationMinutes: testJson.durationMinutes,
-              totalQuestions: testJson.questions?.length || 0,
-            });
             
             // Parse questions from test JSON
             const testJsonQuestions: PlacementTestJsonQuestion[] = testJson.questions || [];
-            console.log("📝 Processing questions from JSON...");
             
             // Process từng question theo category (single_mcq, passage, audio)
             const validResults = testJsonQuestions.map((jsonQuestion, index) => {
@@ -368,15 +360,6 @@ export default function TakePlacementTestPage() {
 
               // Process question theo category
               const processed = processPlacementQuestion(jsonQuestion, placementQuestion);
-              
-              // Log để debug và theo dõi
-              console.log(`  ${index + 1}. [${processed.category.toUpperCase()}] ${jsonQuestion.title.substring(0, 50)}...`, {
-                questionType: jsonQuestion.questionType,
-                difficulty: jsonQuestion.difficulty,
-                subQuestions: processed.questions.length,
-                hasPassage: processed.hasPassage,
-                hasAudio: processed.hasAudio,
-              });
 
               return {
                 question: processed.placementQuestion,
@@ -387,8 +370,6 @@ export default function TakePlacementTestPage() {
                 category: processed.category, // Để dễ filter và debug
               };
             }).filter((r): r is NonNullable<typeof r> => r !== null);
-            
-            console.log(`✅ Processed ${validResults.length} question groups`);
 
             // Sắp xếp: ưu tiên những câu hỏi không có passage lên đầu
             // Thứ tự: Reading không passage -> Reading có passage -> Listening không audio -> Listening có audio
@@ -490,19 +471,11 @@ export default function TakePlacementTestPage() {
 
             // KHÔNG sắp xếp lại allQuestions vì thứ tự đã đúng từ sortedResults
             setQuestions(allQuestions);
-            
-            console.log(`🎯 Final result: ${allQuestions.length} individual questions ready for test`);
-            console.log("Question breakdown by category:", {
-              single_mcq: validResults.filter(r => r.category === "single_mcq").length,
-              passage: validResults.filter(r => r.category === "passage").length,
-              audio: validResults.filter(r => r.category === "audio").length,
-            });
           } catch (err) {
-            console.error("❌ Error loading placement test JSON from storeUrl:", err);
+            console.error("Error loading placement test JSON from storeUrl:", err);
             throw err;
           }
         } else {
-          console.error("❌ Placement test does not have storeUrl - cannot load questions");
           throw new Error("Placement test is missing storeUrl. Please contact administrator.");
         }
 
@@ -544,7 +517,6 @@ export default function TakePlacementTestPage() {
               } else {
                 // Time is up - show expired state, auto-submit will be handled by useEffect after initial load
                 setIsTimerRunning(false);
-                console.warn("⏰ Loaded test with expired time - will auto-submit after questions load");
               }
             } catch (err) {
               console.error("Failed to load saved progress:", err);
@@ -610,7 +582,6 @@ export default function TakePlacementTestPage() {
   useEffect(() => {
     if (!loading && !isInitialLoad && timeRemaining !== null && timeRemaining <= 0 && !submitting && questions.length > 0) {
       // Time has expired, auto-submit
-      console.warn("⏰ Time expired - auto-submitting test");
       handleSubmit(true);
     }
   }, [loading, isInitialLoad, timeRemaining, submitting, questions.length]);
