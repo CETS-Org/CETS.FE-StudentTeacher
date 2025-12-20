@@ -48,7 +48,6 @@ export default function PlacementTestConfirmationDialog({
         // ========================================
         const questionCount = test.questions?.length || 0;
         setTotalQuestions(questionCount);
-        console.log(`📊 [Confirmation Dialog] Total question groups: ${questionCount}`);
       } catch (err: any) {
         console.error("Failed to load placement test details:", err);
         setError(err.response?.data || err.message || "Failed to load test details");
