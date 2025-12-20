@@ -36,9 +36,12 @@ export default function ScoreResultDialog({
   onRecommendPackages,
   recommendCoursesLabel = "Courses for you",
   recommendPackagesLabel = "Learning path for you",
-  maxScore = isTakingAssignment ? 10 : 900, // Default to 10 for assignments, 900 for placement test
+  maxScore, // Optional maxScore prop, will use submissionScore.totalPoints if not provided
 }: ScoreResultDialogProps) {
   if (!submissionScore) return null;
+
+  // Use submissionScore.totalPoints as maxScore if maxScore prop is not provided
+  const effectiveMaxScore = maxScore ?? submissionScore.totalPoints;
 
   const getScoreMessage = (score: number, max: number) => {
     const percentage = (score / max) * 100;
@@ -73,11 +76,11 @@ export default function ScoreResultDialog({
                   <div className="text-4xl font-bold text-white">
                     {submissionScore.score.toFixed(1)}
                   </div>
-                  <div className="text-sm text-primary-100">out of {maxScore}</div>
+                  <div className="text-sm text-primary-100">out of {effectiveMaxScore}</div>
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-neutral-800 mt-2">
-                {getScoreMessage(submissionScore.score, maxScore)}
+                {getScoreMessage(submissionScore.score, effectiveMaxScore)}
               </h3>
             </div>
 
@@ -105,7 +108,7 @@ export default function ScoreResultDialog({
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-600 font-medium">Final Score:</span>
                   <span className="text-xl font-bold text-primary-700">
-                    {submissionScore.score.toFixed(2)} / {maxScore}
+                    {submissionScore.score.toFixed(2)} / {effectiveMaxScore}
                   </span>
                 </div>
               </div>
@@ -115,12 +118,12 @@ export default function ScoreResultDialog({
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-neutral-600">
                 <span>Progress</span>
-                <span>{Math.round((submissionScore.score / maxScore) * 100)}%</span>
+                <span>{Math.round((submissionScore.score / effectiveMaxScore) * 100)}%</span>
               </div>
               <div className="w-full bg-neutral-200 rounded-full h-3">
                 <div
-                  className={`h-3 rounded-full transition-all ${getProgressColor(submissionScore.score, maxScore)}`}
-                  style={{ width: `${(submissionScore.score / maxScore) * 100}%` }}
+                  className={`h-3 rounded-full transition-all ${getProgressColor(submissionScore.score, effectiveMaxScore)}`}
+                  style={{ width: `${(submissionScore.score / effectiveMaxScore) * 100}%` }}
                 />
               </div>
             </div>

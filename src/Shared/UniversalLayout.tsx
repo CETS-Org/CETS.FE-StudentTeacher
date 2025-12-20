@@ -9,6 +9,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import type { Crumb } from "@/components/ui/Breadcrumbs";
 import { cn } from "@/lib/utils";
 import { useLocation } from "react-router-dom";
+import { config } from "@/lib/config";
 
 type Props = {
   children: React.ReactNode;
@@ -33,6 +34,26 @@ const NO_NAVBAR_PAGES = [
   '/student/placement-test',
   '/student/assignment/:assignmentId/take'
 ];
+
+// Helper function to get full image URL from storage
+// If image doesn't have http/https prefix, prepend Cloudflare storage URL
+const getImageUrl = (imageUrl: string | null | undefined): string | undefined => {
+  if (!imageUrl) return undefined;
+  
+  // If already a full URL (starts with http), return as is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // If it's a base64 data URL, return as is
+  if (imageUrl.startsWith('data:')) {
+    return imageUrl;
+  }
+  
+  // Otherwise, prepend storage public URL
+  const cleanUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  return `${config.storagePublicUrl}${cleanUrl}`;
+};
 
 export default function UniversalLayout({ 
   children, 
@@ -119,7 +140,7 @@ const userInfo = getUserInfo();
         initials: userInfo?.fullName ? 
           userInfo.fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 
           'ST',
-        avatar: userInfo?.avatarUrl 
+        avatar: getImageUrl(userInfo?.avatarUrl)
       }
     };
   } else if (userRole?.toLowerCase() === 'teacher') {
@@ -132,7 +153,7 @@ const userInfo = getUserInfo();
         initials: userInfo?.fullName ? 
           userInfo.fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 
           'TE',
-        avatar: userInfo?.avatarUrl 
+        avatar: getImageUrl(userInfo?.avatarUrl)
       }
     };
   } else {
