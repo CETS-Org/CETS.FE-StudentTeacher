@@ -196,7 +196,8 @@ export default function LearningPath() {
             attendedSessions: progress.attendedSessions
           },
           classItem: classItem || null, // Store class item for navigation
-          className: finalClassName // Get className from enrollment or classItem
+          className: finalClassName, // Get className from enrollment or classItem
+          expectedStartDate: course.expectedStartDate || matchingEnrollment?.tentativeStartDate || undefined
         } as CourseItem & { classItem: MyClass | null };
       });
     } catch (err) {

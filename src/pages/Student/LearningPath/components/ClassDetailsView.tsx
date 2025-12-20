@@ -1124,22 +1124,16 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({
                                               }`}>
                                                 <div className="flex items-start justify-between">
                                                   <div className="flex-1">
-                                                    <h5 className={`text-sm mb-0.5 ${
-                                                      isPastOrToday 
-                                                        ? "font-semibold text-blue-700" 
-                                                        : "font-semibold text-primary-800"
-                                                    }`}>
-                                                      Expected Start Date
+                                                    <h5 className="text-base mb-0.5">
+                                                      <span className="inline-block font-medium text-red-600 animate-text-red-pulse">
+                                                        Expected Start Date
+                                                      </span>
                                                     </h5>
                                                     <p className="text-accent-600 text-xs">
                                                       Anticipated class start date
                                                     </p>
                                                   </div>
-                                                  <span className={`text-xs font-medium whitespace-nowrap ml-4 ${
-                                                    isPastOrToday 
-                                                      ? "text-blue-700" 
-                                                      : "text-accent-600"
-                                                  }`}>
+                                                  <span className="text-xs font-medium whitespace-nowrap ml-4 text-red-600">
                                                     {formatDate(expectedStartDate)}
                                                   </span>
                                                 </div>
