@@ -42,6 +42,8 @@ export default function TeacherProfilePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [emailCheckTimer, setEmailCheckTimer] = useState<number | null>(null);
   const [cidCheckTimer, setCidCheckTimer] = useState<number | null>(null);
+  const [originalEmail, setOriginalEmail] = useState<string>(""); // Store original email to skip check if unchanged
+  const [originalCID, setOriginalCID] = useState<string>(""); // Store original CID to skip check if unchanged
   const [newCertName, setNewCertName] = useState("");
   const [newCertLevel, setNewCertLevel] = useState("");
 
@@ -69,20 +71,50 @@ export default function TeacherProfilePage() {
       if (key === "cid") {
         const vv = v.replace(/\D/g, "").slice(0, 12);
         setProfile((p) => ({ ...p, cid: vv }));
+        // Clear error if CID is back to original (unchanged)
+        if (vv === originalCID) {
+          setErrors((prev) => {
+            const newErrors = { ...prev };
+            if (newErrors.cid === "CID already exists") {
+              delete newErrors.cid;
+            }
+            return newErrors;
+          });
+        }
+        // Real-time validation for CID format
+        validateField("cid", vv);
       } else if (key === "yearsExperience") {
         setProfile((p) => ({ ...p, yearsExperience: Number(v || 0) }));
       } else if (key === "phoneNumber") {
         setProfile((p) => ({ ...p, phoneNumber: v }));
+        // Real-time validation for phone format
+        validateField("phoneNumber", v);
       } else if (key === "dateOfBirth") {
         setProfile((p) => ({ ...p, dateOfBirth: v }));
+        // Real-time validation for date of birth
+        validateField("dateOfBirth", v);
       } else if (key === "email") {
         setProfile((p) => ({ ...p, email: v }));
+        // Clear error if email is back to original (unchanged)
+        if (v === originalEmail) {
+          setErrors((prev) => {
+            const newErrors = { ...prev };
+            if (newErrors.email === "Email already exists") {
+              delete newErrors.email;
+            }
+            return newErrors;
+          });
+        }
+        // Real-time validation for email format
+        validateField("email", v);
       } else if (key === "address") {
         setProfile((p) => ({ ...p, address: v }));
       } else if (key === "bio") {
         setProfile((p) => ({ ...p, bio: v }));
       } else if (key === "fullName") {
         setProfile((p) => ({ ...p, fullName: v }));
+        // Real-time validation for full name
+        validateField("fullName", v);
       }
     };
 
@@ -99,6 +131,14 @@ export default function TeacherProfilePage() {
       // starting edit: clear temp certificate inputs
       setNewCertName("");
       setNewCertLevel("");
+      // Clear any "already exists" errors for email if it's unchanged
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        if (newErrors.email === "Email already exists" && profile.email === originalEmail) {
+          delete newErrors.email;
+        }
+        return newErrors;
+      });
     }
     setIsEditing((s) => !s);
   };
@@ -119,6 +159,8 @@ export default function TeacherProfilePage() {
       await updateTeacher(id, profile);
       const fresh = await getTeacherById(id);
       setAvatarUrl(fresh.avatarUrl || null);
+      setOriginalEmail(fresh.email || ""); // Update original email after save
+      setOriginalCID(fresh.cid || ""); // Update original CID after save
       setProfile((p) => ({
         ...p,
         fullName: fresh.fullName || "",
@@ -204,6 +246,133 @@ export default function TeacherProfilePage() {
     return "";
   };
 
+  // Validation function that doesn't update state
+  const validateField = (field: keyof UpdateTeacherProfile, value: string | null) => {
+    let err = "";
+    switch (field) {
+      case "fullName":
+        err = validateFullName(value);
+        break;
+      case "email": {
+        const v = value || "";
+        err = validateEmail(v);
+        // Always set format error immediately if format is invalid
+        setErrors((prev) => {
+          const n = { ...prev };
+          if (err) {
+            n.email = err; // Set format error immediately
+          } else {
+            // Only clear format errors, keep existence errors if any
+            if (n.email && n.email !== "Email already exists") {
+              delete n.email;
+            }
+          }
+          return n;
+        });
+        // If format is invalid, don't check existence
+        if (err) {
+          break;
+        }
+        // Clear error if email is back to original (unchanged) - don't check exist
+        if (v === originalEmail) {
+          setErrors((prev) => {
+            const newErrors = { ...prev };
+            if (newErrors.email === "Email already exists") {
+              delete newErrors.email;
+            }
+            return newErrors;
+          });
+          return; // Don't check exist for unchanged email
+        }
+        // Only check exist if email has changed and format is valid
+        if (id && v) {
+          if (emailCheckTimer) window.clearTimeout(emailCheckTimer);
+          const t = window.setTimeout(async () => {
+            try {
+              const exists = await checkEmailExist(v);
+              // exists=true means unique/available → no error
+              // exists=false means already taken → show error
+              setErrors((prev) => ({ ...prev, email: exists ? "" : "Email already exists" }));
+            } catch {}
+          }, 500);
+          setEmailCheckTimer(t as unknown as number);
+        }
+        break;
+      }
+      case "phoneNumber":
+        err = validatePhone(value);
+        // Set error with key "phone" to match UI
+        setErrors((prev) => {
+          const n = { ...prev };
+          if (err) n.phone = err; else delete n.phone;
+          return n;
+        });
+        return; // Return early to avoid double setting
+      case "dateOfBirth":
+        err = validateDateOfBirth(value);
+        // Set error with key "dob" to match UI
+        setErrors((prev) => {
+          const n = { ...prev };
+          if (err) n.dob = err; else delete n.dob;
+          return n;
+        });
+        return; // Return early to avoid double setting
+      case "cid": {
+        const v = (value || "").replace(/\D/g, "").slice(0, 12);
+        err = validateCID(v);
+        // Always set format error immediately if format is invalid
+        setErrors((prev) => {
+          const n = { ...prev };
+          if (err) {
+            n.cid = err; // Set format error immediately
+          } else {
+            // Only clear format errors, keep existence errors if any
+            if (n.cid && n.cid !== "CID already exists") {
+              delete n.cid;
+            }
+          }
+          return n;
+        });
+        // If format is invalid, don't check existence
+        if (err) {
+          break;
+        }
+        // Clear error if CID is back to original (unchanged) - don't check exist
+        if (v === originalCID) {
+          setErrors((prev) => {
+            const newErrors = { ...prev };
+            if (newErrors.cid === "CID already exists") {
+              delete newErrors.cid;
+            }
+            return newErrors;
+          });
+          return; // Don't check exist for unchanged CID
+        }
+        // Only check exist if CID has changed and format is valid
+        if (id && v) {
+          if (cidCheckTimer) window.clearTimeout(cidCheckTimer);
+          const t = window.setTimeout(async () => {
+            try {
+              const exists = await checkCIDExist(v);
+              // exists=true means unique/available → no error
+              // exists=false means already taken → show error
+              setErrors((prev) => ({ ...prev, cid: exists ? "" : "CID already exists" }));
+            } catch {}
+          }, 500);
+          setCidCheckTimer(t as unknown as number);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    setErrors((prev) => {
+      const n = { ...prev };
+      if (err) n[field] = err; else delete n[field];
+      return n;
+    });
+  };
+
   const handleFieldChange = (field: keyof UpdateTeacherProfile, value: string | null) => {
     // Update state
     if (field === "cid") {
@@ -224,55 +393,8 @@ export default function TeacherProfilePage() {
     } else if (field === "fullName") {
       setProfile((p) => ({ ...p, fullName: value || "" }));
     }
-    let err = "";
-    switch (field) {
-      case "fullName":
-        err = validateFullName(value);
-        break;
-      case "email": {
-        const v = value || "";
-        err = validateEmail(v);
-        if (!err && id && v) {
-          if (emailCheckTimer) window.clearTimeout(emailCheckTimer);
-          const t = window.setTimeout(async () => {
-            try {
-              const exists = await checkEmailExist(v);
-              setErrors((prev) => ({ ...prev, email: exists ? "" : "Email already exists" }));
-            } catch {}
-          }, 500);
-          setEmailCheckTimer(t as unknown as number);
-        }
-        break;
-      }
-      case "phoneNumber":
-        err = validatePhone(value);
-        break;
-      case "dateOfBirth":
-        err = validateDateOfBirth(value);
-        break;
-      case "cid": {
-        const v = (value || "").replace(/\D/g, "").slice(0, 12);
-        err = validateCID(v);
-        if (!err && id && v) {
-          if (cidCheckTimer) window.clearTimeout(cidCheckTimer);
-          const t = window.setTimeout(async () => {
-            try {
-              const exists = await checkCIDExist(v);
-              setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
-            } catch {}
-          }, 500);
-          setCidCheckTimer(t as unknown as number);
-        }
-        break;
-      }
-      default:
-        break;
-    }
-    setErrors((prev) => {
-      const n = { ...prev };
-      if (err) n[field] = err; else delete n[field];
-      return n;
-    });
+    // Validate the field
+    validateField(field, value);
   };
   useEffect(() => {
     const fetchData = async () => {
@@ -286,6 +408,8 @@ export default function TeacherProfilePage() {
         setError(null);
         const teacher: Teacher = await getTeacherById(id);
         setAvatarUrl(teacher.avatarUrl || null);
+        setOriginalEmail(teacher.email || ""); // Store original email
+        setOriginalCID(teacher.cid || ""); // Store original CID
         setProfile((p) => ({
           ...p,
           fullName: teacher.fullName || "",
@@ -635,10 +759,24 @@ export default function TeacherProfilePage() {
                         onChange={(e) => onChange("email")(e)}
                         onBlur={(e) => {
                           const v = e.target.value || "";
+                          // Skip check if email hasn't changed (still original email)
+                          if (v === originalEmail) {
+                            setErrors((prev) => {
+                              const newErrors = { ...prev };
+                              if (newErrors.email === "Email already exists") {
+                                delete newErrors.email;
+                              }
+                              return newErrors;
+                            });
+                            return; // Don't call API
+                          }
+                          // Only check exist if email format is valid and email has changed
                           if (!validateEmail(v)) {
                             void (async () => {
                               try {
                                 const exists = await checkEmailExist(v);
+                                // exists=true means unique/available → no error
+                                // exists=false means already taken → show error
                                 setErrors((prev) => ({ ...prev, email: exists ? "" : "Email already exists" }));
                               } catch {}
                             })();
@@ -706,11 +844,25 @@ export default function TeacherProfilePage() {
                         onChange={(e) => onChange("cid")(e)}
                         onBlur={(e) => {
                           const v = (e.target.value || "").replace(/\D/g, "");
+                          // Skip check if CID hasn't changed (still original CID)
+                          if (v === originalCID) {
+                            setErrors((prev) => {
+                              const newErrors = { ...prev };
+                              if (newErrors.cid === "CID already exists") {
+                                delete newErrors.cid;
+                              }
+                              return newErrors;
+                            });
+                            return; // Don't call API
+                          }
+                          // Only check exist if CID format is valid and CID has changed
                           if (!validateCID(v)) {
                             void (async () => {
                               try {
                                 const exists = await checkCIDExist(v);
-                                setErrors((prev) => ({ ...prev, cid: exists ? "CID already exists" : "" }));
+                                // exists=true means unique/available → no error
+                                // exists=false means already taken → show error
+                                setErrors((prev) => ({ ...prev, cid: exists ? "" : "CID already exists" }));
                               } catch {}
                             })();
                           }
