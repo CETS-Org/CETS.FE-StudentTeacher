@@ -94,6 +94,7 @@ export interface LearningPathCourseItem {
   statusName: string;
   courseProgress: string; // Format: "x/y" (attendedSessions/totalSessions)
   instructor: string;
+  expectedStartDate?: string; // Expected start date for pending courses
 }
 
 /**
