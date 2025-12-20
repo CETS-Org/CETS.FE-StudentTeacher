@@ -8,7 +8,6 @@ import {
   DollarSign,
   AlertCircle,
   Mail,
-  Phone,
   FileText,
   CheckCircle2,
   BookOpen
@@ -29,7 +28,6 @@ export default function ClassReservationPaymentDialog({
   const [paymentPlan, setPaymentPlan] = useState<'OneTime' | 'TwoTime'>('OneTime');
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
-  const [studentPhone, setStudentPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -79,14 +77,9 @@ export default function ClassReservationPaymentDialog({
       const userInfo = getUserInfo();
       
       if (userInfo) {
-        // Use actual user data from authentication
-        // Support both camelCase and PascalCase field names from backend
-        const phoneNumber = (userInfo as any).PhoneNumber || userInfo.phoneNumber || "";
-        
         // First, set data from localStorage (fast)
         setStudentName(userInfo.fullName || "");
         setStudentEmail(userInfo.email || "");
-        setStudentPhone(phoneNumber);
       } else {
         // If no user info found, user might not be logged in
         console.warn("No user info found in localStorage. User might not be logged in.");
@@ -94,7 +87,6 @@ export default function ClassReservationPaymentDialog({
         // Set fallback values
         setStudentName("");
         setStudentEmail("");
-        setStudentPhone("");
       }
       
       // Small delay to show loading state (optional)
@@ -105,7 +97,6 @@ export default function ClassReservationPaymentDialog({
       // Set fallback values if there's an error
       setStudentName("");
       setStudentEmail("");
-      setStudentPhone("");
     } finally {
       setIsLoadingProfile(false);
     }
@@ -197,7 +188,7 @@ export default function ClassReservationPaymentDialog({
 
     try {
       // Validate required fields
-      if (!studentName.trim() || !studentEmail.trim() || !studentPhone.trim()) {
+      if (!studentName.trim() || !studentEmail.trim()) {
         alert('Please fill in all required student information fields.');
         setIsProcessing(false);
         return;
@@ -242,7 +233,7 @@ export default function ClassReservationPaymentDialog({
         studentId: studentId,
         fullName: studentName.trim(),
         email: studentEmail.trim(),
-        phoneNumber: studentPhone.trim(),
+        phoneNumber: "123456789",
         note: notes || "",
         amount: amount
       };
@@ -581,21 +572,6 @@ export default function ClassReservationPaymentDialog({
                     required
                   />
                 </div>
-              </div>
-              
-              <div className="mt-4">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <Phone className="w-4 h-4 text-gray-500" />
-                  Phone Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={studentPhone}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                  placeholder="Enter your phone number"
-                  required
-                />
               </div>
             </div>
 
