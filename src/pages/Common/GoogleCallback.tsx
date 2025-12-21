@@ -66,19 +66,23 @@ export default function GoogleCallback() {
                 }, window.location.origin);
                 window.close();
               } else {
-                // Nếu không có parent window, lưu thông tin và redirect theo role
-                localStorage.setItem("authToken", backendData.token);
-                localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
-                
+                // Nếu không có parent window, kiểm tra verify trước khi lưu session
                 // Navigate based on user role and verification status
                 if (!normalizedAccount.isVerified) {
+                  // Do NOT store token and user info in localStorage for unverified accounts
                   window.location.href = '/';
-                } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Student')) {
-                  window.location.href = '/student/my-classes';
-                } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Teacher')) {
-                  window.location.href = '/teacher/courses';
                 } else {
-                  window.location.href = '/';
+                  // Only store token and user info in localStorage if account is verified
+                  localStorage.setItem("authToken", backendData.token);
+                  localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
+                  
+                  if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Student')) {
+                    window.location.href = '/student/my-classes';
+                  } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Teacher')) {
+                    window.location.href = '/teacher/courses';
+                  } else {
+                    window.location.href = '/';
+                  }
                 }
               }
             } catch (backendError) {
@@ -102,18 +106,22 @@ export default function GoogleCallback() {
                 }, window.location.origin);
                 window.close();
               } else {
-                localStorage.setItem("authToken", accessToken);
-                localStorage.setItem("userInfo", JSON.stringify(fallbackUserInfo));
-                
-                // Navigate based on fallback user role
+                // Navigate based on fallback user role and verification status
                 if (!fallbackUserInfo.isVerified) {
+                  // Do NOT store token and user info in localStorage for unverified accounts
                   window.location.href = '/';
-                } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Student')) {
-                  window.location.href = '/student/my-classes';
-                } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Teacher')) {
-                  window.location.href = '/teacher/courses';
                 } else {
-                  window.location.href = '/';
+                  // Only store token and user info in localStorage if account is verified
+                  localStorage.setItem("authToken", accessToken);
+                  localStorage.setItem("userInfo", JSON.stringify(fallbackUserInfo));
+                  
+                  if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Student')) {
+                    window.location.href = '/student/my-classes';
+                  } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Teacher')) {
+                    window.location.href = '/teacher/courses';
+                  } else {
+                    window.location.href = '/';
+                  }
                 }
               }
             }

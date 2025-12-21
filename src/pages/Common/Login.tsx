@@ -182,16 +182,17 @@ export default function Login() {
         roleNames: (response.account as any).RoleNames || response.account.roleNames || []
       };
       
-      // Always store token and user info in localStorage first
-      localStorage.setItem("authToken", response.token);
-      localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
-      
-      // Check if account is verified and navigate accordingly
+      // Check if account is verified before storing session
       if (!normalizedAccount.isVerified) {
         // Redirect to courses page for unverified accounts to show popup
+        // Do NOT store token and user info in localStorage for unverified accounts
         navigate("/courses");
         return;
       }
+      
+      // Only store token and user info in localStorage if account is verified
+      localStorage.setItem("authToken", response.token);
+      localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
       
       // Navigate to return URL or default based on role for verified users
       if (returnUrl) {
@@ -247,21 +248,25 @@ export default function Login() {
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
           const { token, userInfo } = event.data;
           
-          // Store token and user info 
-          localStorage.setItem("authToken", token);
-          localStorage.setItem("userInfo", JSON.stringify(userInfo));
-          
-          // Navigate based on user role from backend response
+          // Check if account is verified before storing session
           if (!userInfo.isVerified) {
             // Account not verified - redirect to courses page to show verification popup
+            // Do NOT store token and user info in localStorage for unverified accounts
             navigate("/courses");
-          } else if (userInfo.roleNames && userInfo.roleNames.includes('Student')) {
-            navigate("/student/my-classes");
-          } else if (userInfo.roleNames && userInfo.roleNames.includes('Teacher')) {
-            navigate("/teacher/courses");
           } else {
-            // Default navigation for verified users without specific role
-            navigate("/");
+            // Only store token and user info in localStorage if account is verified
+            localStorage.setItem("authToken", token);
+            localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            
+            // Navigate based on user role from backend response
+            if (userInfo.roleNames && userInfo.roleNames.includes('Student')) {
+              navigate("/student/my-classes");
+            } else if (userInfo.roleNames && userInfo.roleNames.includes('Teacher')) {
+              navigate("/teacher/courses");
+            } else {
+              // Default navigation for verified users without specific role
+              navigate("/");
+            }
           }
           
           popup.close();
