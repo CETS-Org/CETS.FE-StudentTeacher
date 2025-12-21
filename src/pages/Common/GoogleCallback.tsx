@@ -66,19 +66,26 @@ export default function GoogleCallback() {
                 }, window.location.origin);
                 window.close();
               } else {
-                // Nếu không có parent window, lưu thông tin và redirect theo role
-                localStorage.setItem("authToken", backendData.token);
-                localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
-                
+                // Nếu không có parent window, kiểm tra verify trước khi lưu session
                 // Navigate based on user role and verification status
                 if (!normalizedAccount.isVerified) {
-                  window.location.href = '/';
-                } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Student')) {
-                  window.location.href = '/student/my-classes';
-                } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Teacher')) {
-                  window.location.href = '/teacher/courses';
+                  // Store temporarily in sessionStorage for popup display (not localStorage for security)
+                  sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(normalizedAccount));
+                  sessionStorage.setItem("unverifiedToken", backendData.token);
+                  // Redirect to courses page to show verification popup
+                  window.location.href = '/courses';
                 } else {
-                  window.location.href = '/';
+                  // Only store token and user info in localStorage if account is verified
+                  localStorage.setItem("authToken", backendData.token);
+                  localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
+                  
+                  if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Student')) {
+                    window.location.href = '/student/my-classes';
+                  } else if (normalizedAccount.roleNames && normalizedAccount.roleNames.includes('Teacher')) {
+                    window.location.href = '/teacher/courses';
+                  } else {
+                    window.location.href = '/';
+                  }
                 }
               }
             } catch (backendError) {
@@ -102,18 +109,25 @@ export default function GoogleCallback() {
                 }, window.location.origin);
                 window.close();
               } else {
-                localStorage.setItem("authToken", accessToken);
-                localStorage.setItem("userInfo", JSON.stringify(fallbackUserInfo));
-                
-                // Navigate based on fallback user role
+                // Navigate based on fallback user role and verification status
                 if (!fallbackUserInfo.isVerified) {
-                  window.location.href = '/';
-                } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Student')) {
-                  window.location.href = '/student/my-classes';
-                } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Teacher')) {
-                  window.location.href = '/teacher/courses';
+                  // Store temporarily in sessionStorage for popup display (not localStorage for security)
+                  sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(fallbackUserInfo));
+                  sessionStorage.setItem("unverifiedToken", accessToken);
+                  // Redirect to courses page to show verification popup
+                  window.location.href = '/courses';
                 } else {
-                  window.location.href = '/';
+                  // Only store token and user info in localStorage if account is verified
+                  localStorage.setItem("authToken", accessToken);
+                  localStorage.setItem("userInfo", JSON.stringify(fallbackUserInfo));
+                  
+                  if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Student')) {
+                    window.location.href = '/student/my-classes';
+                  } else if (fallbackUserInfo.roleNames && fallbackUserInfo.roleNames.includes('Teacher')) {
+                    window.location.href = '/teacher/courses';
+                  } else {
+                    window.location.href = '/';
+                  }
                 }
               }
             }

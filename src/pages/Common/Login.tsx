@@ -182,16 +182,20 @@ export default function Login() {
         roleNames: (response.account as any).RoleNames || response.account.roleNames || []
       };
       
-      // Always store token and user info in localStorage first
-      localStorage.setItem("authToken", response.token);
-      localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
-      
-      // Check if account is verified and navigate accordingly
+      // Check if account is verified before storing session
       if (!normalizedAccount.isVerified) {
+        // Store temporarily in sessionStorage for popup display (not localStorage for security)
+        // This allows popup to show but doesn't create a persistent session
+        sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(normalizedAccount));
+        sessionStorage.setItem("unverifiedToken", response.token);
         // Redirect to courses page for unverified accounts to show popup
-        navigate("/courses");
+        navigate("/courses", { state: { showVerification: true, userEmail: normalizedAccount.email } });
         return;
       }
+      
+      // Only store token and user info in localStorage if account is verified
+      localStorage.setItem("authToken", response.token);
+      localStorage.setItem("userInfo", JSON.stringify(normalizedAccount));
       
       // Navigate to return URL or default based on role for verified users
       if (returnUrl) {
@@ -247,21 +251,27 @@ export default function Login() {
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
           const { token, userInfo } = event.data;
           
-          // Store token and user info 
-          localStorage.setItem("authToken", token);
-          localStorage.setItem("userInfo", JSON.stringify(userInfo));
-          
-          // Navigate based on user role from backend response
+          // Check if account is verified before storing session
           if (!userInfo.isVerified) {
+            // Store temporarily in sessionStorage for popup display (not localStorage for security)
+            sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(userInfo));
+            sessionStorage.setItem("unverifiedToken", token);
             // Account not verified - redirect to courses page to show verification popup
-            navigate("/courses");
-          } else if (userInfo.roleNames && userInfo.roleNames.includes('Student')) {
-            navigate("/student/my-classes");
-          } else if (userInfo.roleNames && userInfo.roleNames.includes('Teacher')) {
-            navigate("/teacher/courses");
+            navigate("/courses", { state: { showVerification: true, userEmail: userInfo.email } });
           } else {
-            // Default navigation for verified users without specific role
-            navigate("/");
+            // Only store token and user info in localStorage if account is verified
+            localStorage.setItem("authToken", token);
+            localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            
+            // Navigate based on user role from backend response
+            if (userInfo.roleNames && userInfo.roleNames.includes('Student')) {
+              navigate("/student/my-classes");
+            } else if (userInfo.roleNames && userInfo.roleNames.includes('Teacher')) {
+              navigate("/teacher/courses");
+            } else {
+              // Default navigation for verified users without specific role
+              navigate("/");
+            }
           }
           
           popup.close();

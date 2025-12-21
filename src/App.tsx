@@ -9,6 +9,7 @@ import RegisterPage from './pages/Common/Register'
 import ForgotPassword from './pages/Common/ForgotPassword'
 import OtpVerification from './pages/Common/OtpVerification'
 import ResetPassword from './pages/Common/ResetPassword'
+import ProtectedRoute from './components/auth/ProtectedRoute'
 import Wishlist from './pages/Student/Wishlist'
 import Schedule from './pages/Student/Schedule'
 import Feedback from './pages/Student/Feedback'
@@ -74,8 +75,16 @@ function LayoutContent() {
       <ToastContainer />
       <Routes>
       {/* Public routes - no layout */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/login" element={
+        <ProtectedRoute requireAuth={false}>
+          <LoginPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/register" element={
+        <ProtectedRoute requireAuth={false}>
+          <RegisterPage />
+        </ProtectedRoute>
+      } />
       <Route path="/gateway" element={<Gateway />} />
       <Route path="/forgotPassword" element={<ForgotPassword />} /> 
       <Route path="/otpVerification" element={<OtpVerification />} /> 
@@ -98,47 +107,187 @@ function LayoutContent() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/dev" element={<Dev_Home />} />
             <Route path="/dev/dashboard" element={<Dev_Dashboard />} />
-            <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/change-password" element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            } />
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             
-            {/* Student routes */}
-            <Route path="/student/wishlist" element={<Wishlist />} /> 
-            <Route path="/student/my-classes" element={<MyClasses />} /> 
-            <Route path="/student/class/:classId" element={<ClassSession />} />
-            <Route path="/student/class/:classId/session/:sessionId" element={<StudentSessionDetail />} />
-            <Route path="/student/assignment/:assignmentId/preview" element={<StudentAssignmentPreview />} />
-            <Route path="/student/assignment/:assignmentId/take" element={<StudentAssignmentTaking />} />
-            <Route path="/student/assignment/test" element={<TestPage />} />
-            <Route path="/student/schedule" element={<Schedule />} />
-            <Route path="/student/attendance" element={<AttendanceReport />} />
-            <Route path="/student/academic-results" element={<AcademicResults />} />
-            <Route path="/student/learning-path" element={<LearningPath />} />
-            <Route path="/student/feedback" element={<Feedback />} />
-            <Route path="/student/weekly-feedback" element={<WeeklyFeedback />} />
-            <Route path="/student/placement-test" element={<TakePlacementTestPage />} />
-            <Route path="/student/choose-paid-item" element={<ChoosePaidItem />} /> 
-            <Route path="/student/payment-history" element={<PaymentHistory />} />
-            <Route path="/payment/success" element={<PaymentSuccess />} />
-            <Route path="/payment/cancel" element={<PaymentCancel />} />
-            <Route path="/payment/callback" element={<PaymentCallback />} />
-            <Route path="/student/choose-paid-item/reservations/:reservationId" element={<ClassReservationDetails />} />
-            <Route path="/student/materials" element={<Materials />} />
-            <Route path="/student/request-issue/technical" element={<TechnicalReport />} />
-            <Route path="/student/request-issue/academic" element={<AcademicReport />} />
-            <Route path="/student/request-issue/detail/:id" element={<TechnicalIssueReportDetail />} />
-            <Route path="/student/academic-request/detail/:id" element={<AcademicChangeRequestDetail />} />
-            <Route path="/student/profile" element={<StudentDetailPage />} />
+            {/* Student routes - protected with Student role */}
+            <Route path="/student/wishlist" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <Wishlist />
+              </ProtectedRoute>
+            } /> 
+            <Route path="/student/my-classes" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <MyClasses />
+              </ProtectedRoute>
+            } /> 
+            <Route path="/student/class/:classId" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <ClassSession />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/class/:classId/session/:sessionId" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <StudentSessionDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/assignment/:assignmentId/preview" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <StudentAssignmentPreview />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/assignment/:assignmentId/take" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <StudentAssignmentTaking />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/assignment/test" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <TestPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/schedule" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <Schedule />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/attendance" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <AttendanceReport />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/academic-results" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <AcademicResults />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/learning-path" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <LearningPath />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/feedback" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <Feedback />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/weekly-feedback" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <WeeklyFeedback />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/placement-test" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <TakePlacementTestPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/choose-paid-item" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <ChoosePaidItem />
+              </ProtectedRoute>
+            } /> 
+            <Route path="/student/payment-history" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <PaymentHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/payment/success" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <PaymentSuccess />
+              </ProtectedRoute>
+            } />
+            <Route path="/payment/cancel" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <PaymentCancel />
+              </ProtectedRoute>
+            } />
+            <Route path="/payment/callback" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <PaymentCallback />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/choose-paid-item/reservations/:reservationId" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <ClassReservationDetails />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/materials" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <Materials />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/request-issue/technical" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <TechnicalReport />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/request-issue/academic" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <AcademicReport />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/request-issue/detail/:id" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <TechnicalIssueReportDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/academic-request/detail/:id" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <AcademicChangeRequestDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/profile" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <StudentDetailPage />
+              </ProtectedRoute>
+            } />
 
-            {/* Teacher routes */}
-            <Route path="/teacher/classes" element={<Classes />} />
-            <Route path="/teacher/courses" element={<Courses />} />
-            <Route path="/teacher/courses/:courseId/classes" element={<Classes />} />
-            <Route path="/teacher/class/:id" element={<ClassesDetail />} />
-            <Route path="/teacher/class/:id/session/:sessionId" element={<SessionDetail />} />
-            <Route path="/teacher/teacherProfile" element={<TeacherProfile />} />
-            <Route path="/teacher/schedule" element={<TeacherSchedule />} />
-            <Route path="/teacher/request-issue/:category" element={<TeacherReport />} />
+            {/* Teacher routes - protected with Teacher role */}
+            <Route path="/teacher/classes" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <Classes />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/courses" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <Courses />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/courses/:courseId/classes" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <Classes />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/class/:id" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <ClassesDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/class/:id/session/:sessionId" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <SessionDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/teacherProfile" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <TeacherProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/schedule" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <TeacherSchedule />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/request-issue/:category" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <TeacherReport />
+              </ProtectedRoute>
+            } />
             </Routes>
           </div>
           {!shouldHideFooterAndChat && <ChatWidget />}

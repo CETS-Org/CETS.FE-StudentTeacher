@@ -17,8 +17,17 @@ export default function HomePage() {
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
 
-  // Check if user is logged in and not verified
+  // Check if user needs verification (from localStorage or sessionStorage)
   useEffect(() => {
+    // Check location.state first (from login redirect)
+    if (location.state?.showVerification) {
+      const email = location.state.userEmail || "";
+      setUserEmail(email);
+      setShowVerificationDialog(true);
+      return;
+    }
+
+    // Check localStorage (verified users)
     if (isTokenValid()) {
       const userInfo = getUserInfo();
       if (userInfo && userInfo.isVerified === false) {
@@ -30,8 +39,29 @@ export default function HomePage() {
           setShowVerificationDialog(true);
         }
       }
+    } else {
+      // Check sessionStorage for unverified users (from login)
+      const unverifiedUserInfo = sessionStorage.getItem("unverifiedUserInfo");
+      if (unverifiedUserInfo) {
+        try {
+          const userInfo = JSON.parse(unverifiedUserInfo);
+          if (userInfo && userInfo.isVerified === false) {
+            setUserEmail(userInfo.email || "");
+            
+            // Use a combination of userId and a flag to track if dialog was shown
+            const dialogKey = `verificationDialog_${userInfo.id}_shown`;
+            const hasSeenInThisVisit = sessionStorage.getItem(dialogKey);
+            
+            if (!hasSeenInThisVisit) {
+              setShowVerificationDialog(true);
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing unverified user info:", error);
+        }
+      }
     }
-  }, []);
+  }, [location.state]);
 
   const handleExploreCourses = () => {
     navigate("/courses");
@@ -51,9 +81,27 @@ export default function HomePage() {
   const handleCloseVerificationDialog = () => {
     setShowVerificationDialog(false);
     // Remember that user has seen the dialog for this page visit
+    let userId: string | null = null;
+    
+    // Check localStorage first
     const userInfo = getUserInfo();
     if (userInfo?.id) {
-      const dialogKey = `verificationDialog_${userInfo.id}_shown`;
+      userId = userInfo.id;
+    } else {
+      // Check sessionStorage for unverified users
+      const unverifiedUserInfo = sessionStorage.getItem("unverifiedUserInfo");
+      if (unverifiedUserInfo) {
+        try {
+          const unverifiedInfo = JSON.parse(unverifiedUserInfo);
+          userId = unverifiedInfo?.id || null;
+        } catch (error) {
+          console.error("Error parsing unverified user info:", error);
+        }
+      }
+    }
+    
+    if (userId) {
+      const dialogKey = `verificationDialog_${userId}_shown`;
       sessionStorage.setItem(dialogKey, 'true');
     }
   };
