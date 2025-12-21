@@ -69,8 +69,11 @@ export default function GoogleCallback() {
                 // Nếu không có parent window, kiểm tra verify trước khi lưu session
                 // Navigate based on user role and verification status
                 if (!normalizedAccount.isVerified) {
-                  // Do NOT store token and user info in localStorage for unverified accounts
-                  window.location.href = '/';
+                  // Store temporarily in sessionStorage for popup display (not localStorage for security)
+                  sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(normalizedAccount));
+                  sessionStorage.setItem("unverifiedToken", backendData.token);
+                  // Redirect to courses page to show verification popup
+                  window.location.href = '/courses';
                 } else {
                   // Only store token and user info in localStorage if account is verified
                   localStorage.setItem("authToken", backendData.token);
@@ -108,8 +111,11 @@ export default function GoogleCallback() {
               } else {
                 // Navigate based on fallback user role and verification status
                 if (!fallbackUserInfo.isVerified) {
-                  // Do NOT store token and user info in localStorage for unverified accounts
-                  window.location.href = '/';
+                  // Store temporarily in sessionStorage for popup display (not localStorage for security)
+                  sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(fallbackUserInfo));
+                  sessionStorage.setItem("unverifiedToken", accessToken);
+                  // Redirect to courses page to show verification popup
+                  window.location.href = '/courses';
                 } else {
                   // Only store token and user info in localStorage if account is verified
                   localStorage.setItem("authToken", accessToken);

@@ -184,9 +184,12 @@ export default function Login() {
       
       // Check if account is verified before storing session
       if (!normalizedAccount.isVerified) {
+        // Store temporarily in sessionStorage for popup display (not localStorage for security)
+        // This allows popup to show but doesn't create a persistent session
+        sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(normalizedAccount));
+        sessionStorage.setItem("unverifiedToken", response.token);
         // Redirect to courses page for unverified accounts to show popup
-        // Do NOT store token and user info in localStorage for unverified accounts
-        navigate("/courses");
+        navigate("/courses", { state: { showVerification: true, userEmail: normalizedAccount.email } });
         return;
       }
       
@@ -250,9 +253,11 @@ export default function Login() {
           
           // Check if account is verified before storing session
           if (!userInfo.isVerified) {
+            // Store temporarily in sessionStorage for popup display (not localStorage for security)
+            sessionStorage.setItem("unverifiedUserInfo", JSON.stringify(userInfo));
+            sessionStorage.setItem("unverifiedToken", token);
             // Account not verified - redirect to courses page to show verification popup
-            // Do NOT store token and user info in localStorage for unverified accounts
-            navigate("/courses");
+            navigate("/courses", { state: { showVerification: true, userEmail: userInfo.email } });
           } else {
             // Only store token and user info in localStorage if account is verified
             localStorage.setItem("authToken", token);
