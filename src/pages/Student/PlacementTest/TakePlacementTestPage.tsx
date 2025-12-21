@@ -984,7 +984,7 @@ export default function TakePlacementTestPage() {
       // If this is a new play from the beginning (not a resume), check limit first
       if (!isResume) {
         if (playCount >= MAX_AUDIO_PLAY_COUNT) {
-          showError(`Bạn đã đạt giới hạn phát tối đa (${MAX_AUDIO_PLAY_COUNT} lần) cho audio này.`);
+          showError(`You have reached the maximum play limit (${MAX_AUDIO_PLAY_COUNT} times) for this audio.`);
           return;
         }
       }
@@ -1542,10 +1542,10 @@ export default function TakePlacementTestPage() {
                           }`}
                           title={
                             isCurrentAudioDisabled
-                              ? `Đã đạt giới hạn phát tối đa (${MAX_AUDIO_PLAY_COUNT} lần)`
+                              ? `Reached maximum play limit (${MAX_AUDIO_PLAY_COUNT} times)`
                               : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
-                              ? "Tạm dừng"
-                              : `Phát (còn ${currentAudioRemainingPlays} lần)`
+                              ? "Pause"
+                              : `Play (${currentAudioRemainingPlays} ${currentAudioRemainingPlays === 1 ? 'time' : 'times'} remaining)`
                           }
                         >
                           {isCurrentAudioDisabled ? (
@@ -1559,16 +1559,16 @@ export default function TakePlacementTestPage() {
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium ${isCurrentAudioDisabled ? 'text-red-900' : 'text-purple-900'}`}>
                             {isCurrentAudioDisabled
-                              ? `Đã đạt giới hạn phát (${MAX_AUDIO_PLAY_COUNT}/${MAX_AUDIO_PLAY_COUNT} lần)`
+                              ? `Reached play limit (${MAX_AUDIO_PLAY_COUNT}/${MAX_AUDIO_PLAY_COUNT} times)`
                               : questionAudioPlaying[normalizedCurrentAudioUrl || ''] || false
-                              ? "Đang phát audio..."
+                              ? "Playing audio..."
                               : currentAudioRemainingPlays > 0
-                              ? `Nhấn để phát audio (còn ${currentAudioRemainingPlays} ${currentAudioRemainingPlays === 1 ? 'lần' : 'lần'})`
-                              : "Nhấn để phát audio"}
+                              ? `Click to play audio (${currentAudioRemainingPlays} ${currentAudioRemainingPlays === 1 ? 'time' : 'times'} remaining)`
+                              : "Click to play audio"}
                           </p>
                           {currentAudioPlayCount > 0 && !isCurrentAudioDisabled && (
                             <p className="text-xs text-purple-600 mt-1">
-                              Đã phát: {currentAudioPlayCount}/{MAX_AUDIO_PLAY_COUNT} lần
+                              Played: {currentAudioPlayCount}/{MAX_AUDIO_PLAY_COUNT} times
                             </p>
                           )}
                         </div>
