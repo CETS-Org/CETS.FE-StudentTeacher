@@ -7,7 +7,7 @@ import { submitAcademicRequest, getAttachmentUploadUrl } from "@/api/academicReq
 import { validateSuspensionRequest } from "@/api/suspensionRequest.api";
 import { validateDropoutRequest } from "@/api/dropoutRequest.api";
 import { getAcademicRequestTypes, getTimeSlots } from "@/api/lookup.api";
-import { getClassMeetingsByClassId, getTeacherSchedule } from "@/api/classMeetings.api";
+import { getClassMeetingsByClassId, getTeacherSchedule, getClassMeetingCoveredTopic } from "@/api/classMeetings.api";
 import { getAllClasses } from "@/api/classes.api";
 import { getCourses } from "@/api/course.api";
 import { getStudentEnrollments } from "@/api/enrollment.api";
@@ -132,12 +132,169 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
   const [isValidatingSuspension, setIsValidatingSuspension] = useState(false);
   const [showSuspensionValidation, setShowSuspensionValidation] = useState(false);
   const [teacherSchedule, setTeacherSchedule] = useState<TeacherScheduleApiResponse[]>([]);
+  const [fromClassSessionNumber, setFromClassSessionNumber] = useState<number | null>(null);
+  const [classSessionNumbers, setClassSessionNumbers] = useState<Map<string, number>>(new Map());
+  const [isLoadingSessionNumbers, setIsLoadingSessionNumbers] = useState(false);
 
-  // Get filtered classes based on selected course
+  // Check if the selected request type is "class transfer"
+  // Moved here to be available before filteredClasses uses it
+  const isClassTransfer = (): boolean => {
+    if (!formData.requestTypeID) return false;
+    
+    const selectedType = requestTypes.find(type => {
+      const typeId = type.lookUpId || (type as any).LookUpId || type.id;
+      return typeId === formData.requestTypeID;
+    });
+
+    if (!selectedType) return false;
+
+    const typeName = (selectedType.name || '').toLowerCase();
+    const typeCode = (selectedType.code || '').toLowerCase();
+    
+    return typeName.includes('class transfer') || 
+           typeName.includes('class-transfer') ||
+           typeCode.includes('classtransfer') ||
+           typeCode.includes('class_transfer') ||
+           typeCode === 'classtransfer';
+  };
+
+  // Helper function to get current session number for a class based on covered topic
+  // This checks the most recent meeting that has occurred (date <= today)
+  const getClassCurrentSessionNumber = async (classId: string): Promise<number | null> => {
+    try {
+      // Get all class meetings for this class
+      const meetings = await getClassMeetingsByClassId(classId);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+      
+      // Filter to only meetings that have occurred (date <= today) and sort by date (most recent first)
+      const pastOrTodayMeetings = meetings
+        .filter((m: any) => {
+          if (m.isDeleted) return false;
+          const meetingDate = new Date(m.date);
+          meetingDate.setHours(0, 0, 0, 0);
+          return meetingDate <= today;
+        })
+        .sort((a: any, b: any) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateB - dateA; // Descending order (most recent first)
+        });
+
+      // Find the most recent meeting (that has occurred) with a covered topic
+      for (const meeting of pastOrTodayMeetings) {
+        try {
+          const coveredTopicResponse = await getClassMeetingCoveredTopic(meeting.id);
+          const coveredTopic = coveredTopicResponse.data;
+          
+          if (coveredTopic && coveredTopic.sessionNumber !== undefined && coveredTopic.sessionNumber !== null) {
+            return coveredTopic.sessionNumber;
+          }
+        } catch (error) {
+          // Continue to next meeting if this one doesn't have a covered topic
+          continue;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error getting session number for class ${classId}:`, error);
+      return null;
+    }
+  };
+
+  // Load session number for from class when it changes
+  useEffect(() => {
+    const loadFromClassSessionNumber = async () => {
+      const isTransfer = isClassTransfer();
+      if (isTransfer && formData.fromClassID) {
+        setIsLoadingSessionNumbers(true);
+        try {
+          const sessionNumber = await getClassCurrentSessionNumber(formData.fromClassID);
+          setFromClassSessionNumber(sessionNumber);
+        } catch (error) {
+          console.error('Error loading from class session number:', error);
+          setFromClassSessionNumber(null);
+        } finally {
+          setIsLoadingSessionNumbers(false);
+        }
+      } else {
+        setFromClassSessionNumber(null);
+      }
+    };
+
+    loadFromClassSessionNumber();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.fromClassID, formData.requestTypeID, requestTypes]);
+
+  // Load session numbers for all potential to classes
+  useEffect(() => {
+    const loadClassSessionNumbers = async () => {
+      const isTransfer = isClassTransfer();
+      if (isTransfer && formData.courseID && fromClassSessionNumber !== null) {
+        setIsLoadingSessionNumbers(true);
+        const sessionNumberMap = new Map<string, number>();
+        
+        // Get all classes for the selected course
+        const courseClasses = allClasses.filter((classItem: any) => {
+          const courseId = (classItem as any).courseId;
+          return courseId === formData.courseID && classItem.id !== formData.fromClassID;
+        });
+
+        // Load session numbers for each class in parallel
+        const promises = courseClasses.map(async (classItem: any) => {
+          try {
+            const sessionNumber = await getClassCurrentSessionNumber(classItem.id);
+            if (sessionNumber !== null) {
+              sessionNumberMap.set(classItem.id, sessionNumber);
+            }
+          } catch (error) {
+            console.error(`Error loading session number for class ${classItem.id}:`, error);
+          }
+        });
+
+        await Promise.all(promises);
+        setClassSessionNumbers(sessionNumberMap);
+        setIsLoadingSessionNumbers(false);
+      } else {
+        setClassSessionNumbers(new Map());
+      }
+    };
+
+    loadClassSessionNumbers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.courseID, formData.fromClassID, fromClassSessionNumber, allClasses, formData.requestTypeID, requestTypes]);
+
+  // Get filtered classes based on selected course and matching session number (for class transfer)
   const filteredClasses = formData.courseID 
     ? allClasses.filter((classItem: any) => {
         const courseId = (classItem as any).courseId;
-        return courseId === formData.courseID;
+        if (courseId !== formData.courseID) {
+          return false;
+        }
+
+        // For class transfer, filter by matching session number (allowing ±1-2 sessions variation)
+        if (isClassTransfer() && formData.fromClassID && fromClassSessionNumber !== null) {
+          // Exclude the from class
+          if (classItem.id === formData.fromClassID) {
+            return false;
+          }
+
+          // Get the session number for this class
+          const toClassSessionNumber = classSessionNumbers.get(classItem.id);
+          
+          // Only include classes with session number within ±2 sessions of from class
+          if (toClassSessionNumber === undefined) {
+            return false;
+          }
+          
+          const sessionDifference = Math.abs(toClassSessionNumber - fromClassSessionNumber);
+          if (sessionDifference > 2) {
+            return false;
+          }
+        }
+
+        return true;
       })
     : [];
 
@@ -829,27 +986,6 @@ const AcademicChangeRequestPopup: React.FC<AcademicChangeRequestPopupProps> = ({
     const typeCode = (selectedType.code || '').toLowerCase();
     
     return typeCode === 'reschedule';
-  };
-
-  // Check if the selected request type is "class transfer"
-  const isClassTransfer = (): boolean => {
-    if (!formData.requestTypeID) return false;
-    
-    const selectedType = requestTypes.find(type => {
-      const typeId = type.lookUpId || (type as any).LookUpId || type.id;
-      return typeId === formData.requestTypeID;
-    });
-
-    if (!selectedType) return false;
-
-    const typeName = (selectedType.name || '').toLowerCase();
-    const typeCode = (selectedType.code || '').toLowerCase();
-    
-    return typeName.includes('class transfer') || 
-           typeName.includes('class-transfer') ||
-           typeCode.includes('classtransfer') ||
-           typeCode.includes('class_transfer') ||
-           typeCode === 'classtransfer';
   };
 
   const isSuspension = (): boolean => {
