@@ -85,7 +85,7 @@ export default function CourseDetailPage() {
           courseImageUrl: data.courseImageUrl || "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
           courseLevel: data.courseLevel || "Beginner",
           startDate: data.startDate,
-          enrolledCount: data.enrolledCount,
+          enrolledCount: data.studentsCount,
           syllabusItems: Array.isArray(data.syllabusItems) ? data.syllabusItems : undefined,
           syllabi: structuredSyllabi,
           benefits: data.benefits || [],

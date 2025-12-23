@@ -263,8 +263,13 @@ export default function CourseDetail({ course }: CourseDetailProps) {
       });
       return;
     }
-    
-    // User is logged in, show enrollment dialog
+
+   
+    if (courseStatus.inReservation && !courseStatus.isEnrolled) {
+      navigate('/student/choose-paid-item');
+      return;
+    }
+
     setShowEnrollmentDialog(true);
   };
 
@@ -889,7 +894,6 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                       disabled={
                         checkingStatus || 
                         courseStatus.isEnrolled || 
-                        courseStatus.inReservation || 
                         (isTokenValid() && getUserRole()?.toLowerCase() !== 'student') ||
                         hasInsufficientScore
                       }
@@ -900,7 +904,7 @@ export default function CourseDetail({ course }: CourseDetailProps) {
                         : courseStatus.isEnrolled 
                           ? 'Already Enrolled' 
                           : courseStatus.inReservation
-                            ? 'In Reservation'
+                            ? 'Complete Reservation'
                             : 'Reserve Your Spot'}
                     </Button>
 

@@ -50,11 +50,9 @@ const DropoutWarningModal: React.FC<DropoutWarningModalProps> = ({
                 <li className="flex items-start gap-3">
                   <Ban className="w-5 h-5 text-error-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-neutral-800">
-                      This action is permanent and cannot be undone
-                    </p>
+                    <p className="font-medium text-neutral-800">This decision is final</p>
                     <p className="text-sm text-neutral-600">
-                      Once approved and completed, your dropout cannot be reversed
+                      Once your dropout is approved, it is permanent and cannot be undone.
                     </p>
                   </div>
                 </li>
@@ -62,11 +60,11 @@ const DropoutWarningModal: React.FC<DropoutWarningModalProps> = ({
                 <li className="flex items-start gap-3">
                   <FileX className="w-5 h-5 text-error-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-neutral-800">
-                      Your study contract will be terminated
-                    </p>
+                    <p className="font-medium text-neutral-800">Your enrolment will end</p>
                     <p className="text-sm text-neutral-600">
-                      All class enrollments and future sessions will be cancelled
+                      Your study contract will be terminated and all current or future classes and
+                      sessions will be cancelled. To return later, you will need to re-enrol as a
+                      new student.
                     </p>
                   </div>
                 </li>
@@ -74,125 +72,18 @@ const DropoutWarningModal: React.FC<DropoutWarningModalProps> = ({
                 <li className="flex items-start gap-3">
                   <RotateCcw className="w-5 h-5 text-error-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-neutral-800">
-                      You must re-enroll as a new student to return
-                    </p>
+                    <p className="font-medium text-neutral-800">Fees, access, and progress</p>
                     <p className="text-sm text-neutral-600">
-                      If you wish to study again in the future, you will need to go through the
-                      complete enrollment process
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-error-500 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <div>
-                    <p className="font-medium text-neutral-800">
-                      Financial obligations must be settled
-                    </p>
-                    <p className="text-sm text-neutral-600">
-                      All outstanding invoices and payments must be cleared. Refunds (if any) will
-                      be processed according to the centre's policy
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-error-500 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
-                  <div>
-                    <p className="font-medium text-neutral-800">
-                      Access to learning materials and systems will be removed
-                    </p>
-                    <p className="text-sm text-neutral-600">
-                      Your LMS access, class materials, and student portal access will be
-                      deactivated
-                    </p>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-error-500 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                  <div>
-                    <p className="font-medium text-neutral-800">
-                      Remaining sessions and progress will be lost
-                    </p>
-                    <p className="text-sm text-neutral-600">
-                      Unless refund policy applies, you will forfeit any remaining class sessions
+                      You must settle any unpaid fees. Your LMS and portal access will be removed,
+                      and remaining sessions or progress may be lost according to the centre's
+                      refund policy.
                     </p>
                   </div>
                 </li>
               </ul>
             </div>
 
-            <div className="bg-accent-50 border border-accent-200 rounded-lg p-4">
-              <h3 className="font-semibold text-accent-900 mb-2 flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Consider Alternatives
-              </h3>
-              <p className="text-sm text-accent-800 mb-2">
-                If you're facing temporary difficulties, you might want to consider:
-              </p>
-              <ul className="text-sm text-accent-700 space-y-1 pl-4">
-                <li className="list-disc">
-                  <strong>Suspension Request:</strong> Temporarily pause your studies and return
-                  later
-                </li>
-                <li className="list-disc">
-                  <strong>Class Transfer:</strong> Switch to a different class schedule
-                </li>
-                <li className="list-disc">
-                  <strong>Talk to Staff:</strong> Discuss your concerns with our academic advisors
-                </li>
-              </ul>
-            </div>
+    
 
             <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
               <p className="text-sm text-warning-800">
