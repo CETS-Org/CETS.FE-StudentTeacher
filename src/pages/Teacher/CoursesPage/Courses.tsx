@@ -40,7 +40,7 @@ export default function Courses() {
   const [formatFilter, setFormatFilter] = useState<"All" | "Online" | "Offline" | "Hybrid">("All");
 
   // NEW: Filter theo trạng thái lớp
-  const [classStatusFilter, setClassStatusFilter] = useState<"All" | "HaveClass" | "NoClass">("All");
+  const [classStatusFilter, setClassStatusFilter] = useState<"All" | "HaveClass" | "NoClass">("HaveClass");
 
   const itemsPerPage = 3;
 
